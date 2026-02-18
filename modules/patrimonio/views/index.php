@@ -1,0 +1,2 @@
+<div class='page-header'><div class='container-xl'><h2 class='page-title'>Patrimonio</h2></div></div>
+<div class='page-body'><div class='container-xl'><div class='card'><div class='card-body'>Bienvenido al sistema de Patrimonio.</div></div></div></div>
