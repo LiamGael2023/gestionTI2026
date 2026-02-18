@@ -1,0 +1,9 @@
+Options -MultiViews
+RewriteEngine On
+
+# Si la carpeta o archivo existe, úsalo directamente (para CSS, JS, imágenes)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Si no existe, manda todo a index.php pasando la ruta
+RewriteRule ^(.*)$ index.php?route=$1 [L,QSA]
