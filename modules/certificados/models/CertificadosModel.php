@@ -1,5 +1,5 @@
 <?php
-class Adquisición de equiposModel {
+class CertificadosModel {
     private $db;
 
     public function __construct($db) {
@@ -7,7 +7,7 @@ class Adquisición de equiposModel {
     }
 
     public function listar() {
-        $sql = "SELECT * FROM adquisición de equipos WHERE activo = 1";
+        $sql = "SELECT * FROM certificados WHERE activo = 1";
         return sqlsrv_query($this->db, $sql);
     }
 }

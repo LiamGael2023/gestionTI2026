@@ -1,5 +1,5 @@
 <?php
-class Salas de reunionesModel {
+class SalasModel {
     private $db;
 
     public function __construct($db) {
@@ -7,7 +7,7 @@ class Salas de reunionesModel {
     }
 
     public function listar() {
-        $sql = "SELECT * FROM salas de reuniones WHERE activo = 1";
+        $sql = "SELECT * FROM salas WHERE activo = 1";
         return sqlsrv_query($this->db, $sql);
     }
 }
