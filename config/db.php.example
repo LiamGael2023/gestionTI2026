@@ -1,0 +1,16 @@
+<?php
+class Conexion {
+    static public function conectar() {
+        $serverName = "TU_IP_O_HOST"; 
+        $connectionOptions = array(
+            "Database" => "TU_BASE_DE_DATOS",
+            "Uid" => "TU_USUARIO",
+            "PWD" => "TU_PASSWORD",
+            "CharacterSet" => "UTF-8",
+            "TrustServerCertificate" => true, 
+            "Encrypt" => true 
+        );
+        $conn = sqlsrv_connect($serverName, $connectionOptions);
+        return $conn;
+    }
+}
