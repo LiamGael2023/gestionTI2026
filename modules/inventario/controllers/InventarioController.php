@@ -11,4 +11,6 @@ switch($action) {
     default:
         include 'modules/inventario/views/index.php';
         break;
+
+        // kkk
 }
