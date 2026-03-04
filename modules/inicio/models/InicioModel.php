@@ -1,13 +1,102 @@
 <?php
-class InicioModel {
-    private $db;
 
-    public function __construct($db) {
-        $this->db = $db;
+class InicioModel
+{
+    /* ======================================================
+       MODELO PARA VISTAS
+    ====================================================== */
+    private $conn;
+
+    public function __construct($conn)
+    {
+        $this->conn = $conn;
     }
 
-    public function listar() {
+    public function listar()
+    {
         $sql = "SELECT * FROM inicio WHERE activo = 1";
-        return sqlsrv_query($this->db, $sql);
+        return sqlsrv_query($this->conn, $sql);
+    }
+
+    /* ======================================================
+       MÉTODOS ESTÁTICOS PARA AJAX
+    ====================================================== */
+
+    public static function mdlConsultarAniosBoletas($datos)
+    {
+        $conn = Conexion2::conectar();
+
+        $sql = "EXEC Planilla.SP_Listar_Anios_Boletas ?";
+        $params = [$datos['id_trabajador']];
+
+        $stmt = sqlsrv_query($conn, $sql, $params);
+if ($stmt === false) {
+
+    echo '<pre>';
+    print_r(sqlsrv_errors());
+    echo '</pre>';
+    exit;
+}
+
+
+        $rows = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $rows[] = $row;
+        }
+
+        sqlsrv_close($conn);
+
+        return ['status' => 'success', 'data' => $rows];
+    }
+
+    public static function mdlListarBoletasPorAnio($datos)
+    {
+        $conn = Conexion2::conectar();
+
+        $sql = "EXEC Planilla.SP_Listar_Boletas_X_Anio ?, ?";
+        $params = [
+            $datos['id_trabajador'],
+            $datos['anio']
+        ];
+
+        $stmt = sqlsrv_query($conn, $sql, $params);
+
+        if ($stmt === false) {
+            error_log(print_r(sqlsrv_errors(), true));
+            return ['status' => 'error', 'message' => 'Error consultando boletas'];
+        }
+
+        $rows = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $rows[] = $row;
+        }
+
+        sqlsrv_close($conn);
+
+        return ['status' => 'success', 'data' => $rows];
+    }
+
+    public static function mdlActualizarDescargadoBoleta($datos)
+    {
+        $conn = Conexion2::conectar();
+
+        $sql = "EXEC Planilla.SP_ACTUALIZAR_DESCARGADO ?,?,?,?";
+        $params = [
+            $datos['id_trabajador'],
+            $datos['anio'],
+            $datos['mes'],
+            $datos['planilla']
+        ];
+
+        $stmt = sqlsrv_query($conn, $sql, $params);
+
+        if ($stmt === false) {
+            error_log(print_r(sqlsrv_errors(), true));
+            return ['status' => 'error', 'message' => 'Error actualizando boleta'];
+        }
+
+        sqlsrv_close($conn);
+
+        return ['status' => 'success', 'message' => 'Boleta actualizada'];
     }
 }
