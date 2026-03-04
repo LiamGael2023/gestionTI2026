@@ -93,7 +93,7 @@ if (in_array($module, $modulos_estaticos)) {
             case 'certificados':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Certificados (Franklin)</div></div></div>';
                 break;
-            case 'adquisiciones':
+            case 'inventario':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Adquisiciones (Cristian)</div></div></div>';
                 break;
             default:
