@@ -48,6 +48,7 @@
 
 <div class="page-body">
     <div class="container-xl">
+        
         <div class="row g-4">
 
             <!-- Card 1 -->
@@ -179,5 +180,7 @@
 
         </div>
     </div>
+    
 </div>
+
 <script src="js/activos.js"></script>

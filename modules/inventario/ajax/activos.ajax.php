@@ -1,6 +1,7 @@
 <?php
+session_start();
 require_once "../controllers/ActivosController.php";
-require_once "../models/InventarioModel.php";
+require_once "../models/ActivosModel.php";
 
 class AjaxActivos {
     public function ajaxCrearActivo() {

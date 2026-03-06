@@ -1,6 +1,8 @@
  <body>
    <div class="page">
 
+     
+
      <!-- NAVBAR -->
      <header class="navbar navbar-expand-md navbar-light d-print-none">
        <div class="container-xl">
@@ -59,6 +61,7 @@
                </li>
              </ul>
            </div>
+           
 
            <!-- TABLE -->
            <div class="card-body p-0">
@@ -73,41 +76,64 @@
                    </tr>
                  </thead>
                  <tbody>
-                   <tr>
-                     <td>
-                       <i class="ti ti-router text-primary me-2"></i>
-                       Hardware de Red
-                     </td>
-                     <td>12/05/2023</td>
-                     <td>Rommel Jhondeyber Díaz Nureña</td>
-                     <td class="text-end">
-                       <button class="btn btn-sm btn-icon"
-                         data-bs-toggle="modal"
-                         data-bs-target="#modalEditarActivo">
-                         <i class="ti ti-edit me-1"></i>
-                       </button>
-                       <a href="#" class="btn btn-sm btn-icon text-danger">
-                         <i class="ti ti-trash"></i>
-                       </a>
-                     </td>
-                   </tr>
 
-                   <tr>
-                     <td>
-                       <i class="ti ti-device-laptop text-purple me-2"></i>
-                       Laptops
-                     </td>
-                     <td>15/05/2023</td>
-                     <td>Rommel Jhondeyber Díaz Nureña</td>
-                     <td class="text-end">
-                       <a href="#" class="btn btn-sm btn-icon">
-                         <i class="ti ti-edit"></i>
-                       </a>
-                       <a href="#" class="btn btn-sm btn-icon text-danger">
-                         <i class="ti ti-trash"></i>
-                       </a>
-                     </td>
-                   </tr>
+                   <?php
+
+                    $item = null;
+                    $valor = null;
+
+                    $activos = ActivosController::ctrMostrarActivos($item, $valor);
+
+                    foreach ($activos as $key => $value) {
+
+                      echo '
+
+                        <tr>
+
+                          <td>
+
+                          <i class="ti ' . $value["icono"] . ' text-primary me-2"></i>
+
+                          ' . $value["descripcion"] . '
+
+                          </td>
+
+                          <td>
+
+                          ' . date("d/m/Y", strtotime($value["fechaCreacion"])) . '
+
+                          </td>
+
+                          <td>
+
+                          ' . $value["idUsuarioRegistro"] . '
+
+                          </td>
+
+                          <td class="text-end">
+
+                          <button class="btn btn-sm btn-icon btnEditarActivo"
+                            data-id="' . $value["idActivos"] . '"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalEditarActivo">
+                            <i class="ti ti-edit"></i>
+                          </button>
+
+                          <a href="index.php?module=inventario&action=activos&idActivo=' . $value["idActivos"] . '"
+                          class="btn btn-sm btn-icon text-danger">
+
+                          <i class="ti ti-trash"></i>
+
+                          </a>
+
+                        </td>
+
+                        </tr>
+
+                        ';
+                    }
+
+                    ?>
 
                  </tbody>
                </table>
@@ -167,90 +193,90 @@
  </body>
 
 
-<!-- Modal Agregar Activo -->
-<div class="modal modal-blur fade" id="modalAgregarActivo" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content">
-      <form id="formNuevoActivo" method="POST">
-        
-        <div class="modal-header py-3">
-          <h5 class="modal-title d-flex align-items-center gap-2">
-            <div class="avatar avatar-sm bg-primary-lt text-primary">
-              <i class="ti ti-package"></i>
-            </div>
-            Agregar Activo
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
+ <!-- Modal Agregar Activo -->
+ <div class="modal modal-blur fade" id="modalAgregarActivo" tabindex="-1">
+   <div class="modal-dialog modal-lg modal-dialog-centered">
+     <div class="modal-content">
+       <form id="formNuevoActivo" method="POST">
 
-        <div class="modal-body pt-3">
-          <div class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Descripción</label>
-              <input type="text" class="form-control" maxlength="150" placeholder="Describa el activo..." name="nuevaDescripcion" required>
-            </div>
+         <div class="modal-header py-3">
+           <h5 class="modal-title d-flex align-items-center gap-2">
+             <div class="avatar avatar-sm bg-primary-lt text-primary">
+               <i class="ti ti-package"></i>
+             </div>
+             Agregar Activo
+           </h5>
+           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+         </div>
 
-            <div class="col-md-7">
-              <label class="form-label">Tipo de Activo</label>
-              <select class="form-select mb-2" id="tipoIcono">
-                <option value="">Seleccione</option>
-                <option value="equipos">Equipos</option>
-                <option value="componentes">Componentes</option>
-                <option value="perifericos">Perifericos</option>
-                <option value="pantallas">Pantallas</option>
-                <option value="impresion">Impresion</option>
-                <option value="red">Red</option>                
-              </select>
-              
-              <input type="hidden" name="iconoActivo" id="iconoActivo" value="ti ti-help">
+         <div class="modal-body pt-3">
+           <div class="row g-3">
+             <div class="col-12">
+               <label class="form-label">Descripción</label>
+               <input type="text" class="form-control" maxlength="150" placeholder="Describa el activo..." name="nuevaDescripcion" required>
+             </div>
 
-              <div id="listaIconos" class="row g-2 border rounded-3 p-2" style="max-height:160px; overflow-y:auto;">
-                </div>
-            </div>
+             <div class="col-md-7">
+               <label class="form-label">Tipo de Activo</label>
+               <select class="form-select mb-2" id="tipoIcono">
+                 <option value="">Seleccione</option>
+                 <option value="equipos">Equipos</option>
+                 <option value="componentes">Componentes</option>
+                 <option value="perifericos">Perifericos</option>
+                 <option value="pantallas">Pantallas</option>
+                 <option value="impresion">Impresion</option>
+                 <option value="red">Red</option>
+               </select>
 
-            <div class="col-md-5">
-              <label class="form-label">Vista previa</label>
-              <div class="card card-sm text-center">
-                <div class="card-body">
-                  <div class="avatar avatar-xl bg-primary-lt text-primary mb-2" id="previewIcon">
-                    <i class="ti ti-help" id="iconDisplay"></i>
-                  </div>
-                  <div class="text-muted small">Icono seleccionado</div>
-                </div>
-              </div>
-            </div>
+               <input type="hidden" name="iconoActivo" id="iconoActivo" value="ti ti-help">
 
-            <div class="col-12">
-              <div class="card card-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-components text-primary"></i>
-                    <div>
-                      <div class="fw-semibold small">Equipo compuesto</div>
-                      <div class="text-muted small">Contiene sub-components</div>
-                    </div>
-                  </div>
-                  <label class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" name="nuevoCompuesto" value="1">
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+               <div id="listaIconos" class="row g-2 border rounded-3 p-2" style="max-height:160px; overflow-y:auto;">
+               </div>
+             </div>
 
-        <div class="modal-footer py-2">
-          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">
-            <i class="ti ti-device-floppy me-1"></i>
-            Guardar
-          </button>
-        </div>
+             <div class="col-md-5">
+               <label class="form-label">Vista previa</label>
+               <div class="card card-sm text-center">
+                 <div class="card-body">
+                   <div class="avatar avatar-xl bg-primary-lt text-primary mb-2" id="previewIcon">
+                     <i class="ti ti-help" id="iconDisplay"></i>
+                   </div>
+                   <div class="text-muted small">Icono seleccionado</div>
+                 </div>
+               </div>
+             </div>
 
-      </form>
-    </div>
-  </div>
-</div>
+             <div class="col-12">
+               <div class="card card-sm">
+                 <div class="card-body d-flex justify-content-between align-items-center">
+                   <div class="d-flex align-items-center gap-2">
+                     <i class="ti ti-components text-primary"></i>
+                     <div>
+                       <div class="fw-semibold small">Equipo compuesto</div>
+                       <div class="text-muted small">Contiene sub-components</div>
+                     </div>
+                   </div>
+                   <label class="form-check form-switch m-0">
+                     <input class="form-check-input" type="checkbox" name="nuevoCompuesto" value="1">
+                   </label>
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
+
+         <div class="modal-footer py-2">
+           <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+           <button type="submit" class="btn btn-primary">
+             <i class="ti ti-device-floppy me-1"></i>
+             Guardar
+           </button>
+         </div>
+
+       </form>
+     </div>
+   </div>
+ </div>
 
  <!-- Modal Editar Activo -->
  <div class="modal modal-blur fade" id="modalEditarActivo" tabindex="-1">
@@ -417,6 +443,6 @@
    </div>
  </div>
 
- 
+
 
  <script src="modules/inventario/views/js/activos.js"></script>
