@@ -163,242 +163,245 @@
      </div>
 
    </div>
+
  </body>
 
- <!-- Modal Agregar Activo -->
- <div class="modal modal-blur fade" id="modalAgregarActivo" tabindex="-1">
-   <div class="modal-dialog modal-lg modal-dialog-centered">
-     <div class="modal-content">
 
-       <!-- Header -->
-       <div class="modal-header">
-         <h5 class="modal-title d-flex align-items-center gap-3">
-           <div class="avatar avatar-sm bg-primary-lt text-primary">
-             <i class="ti ti-package"></i>
-           </div>
-           Agregar Activo
-         </h5>
-         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-       </div>
+<!-- Modal Agregar Activo -->
+<div class="modal modal-blur fade" id="modalAgregarActivo" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formNuevoActivo" method="POST">
+        
+        <div class="modal-header py-3">
+          <h5 class="modal-title d-flex align-items-center gap-2">
+            <div class="avatar avatar-sm bg-primary-lt text-primary">
+              <i class="ti ti-package"></i>
+            </div>
+            Agregar Activo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
 
-       <!-- Body -->
-       <div class="modal-body">
+        <div class="modal-body pt-3">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Descripción</label>
+              <input type="text" class="form-control" maxlength="150" placeholder="Describa el activo..." name="nuevaDescripcion" required>
+            </div>
 
-         <!-- Descripción -->
-         <div class="mb-4">
-           <label class="form-label">
-             Descripción
-           </label>
-           <input type="text"
-             class="form-control"
-             maxlength="150"
-             placeholder="Describa el activo detalladamente..."
-             name="nuevaDescripcion"></input>
-         </div>
+            <div class="col-md-7">
+              <label class="form-label">Tipo de Activo</label>
+              <select class="form-select mb-2" id="tipoIcono">
+                <option value="">Seleccione</option>
+                <option value="equipos">Equipos</option>
+                <option value="componentes">Componentes</option>
+                <option value="perifericos">Perifericos</option>
+                <option value="pantallas">Pantallas</option>
+                <option value="impresion">Impresion</option>
+                <option value="red">Red</option>                
+              </select>
+              
+              <input type="hidden" name="iconoActivo" id="iconoActivo" value="ti ti-help">
 
-         <!-- Equipo Compuesto -->
-         <div class="card card-sm mb-4">
-           <div class="card-body d-flex justify-content-between align-items-center">
-             <div class="d-flex align-items-center gap-3">
-               <div class="avatar avatar-sm bg-primary-lt text-primary">
-                 <i class="ti ti-components"></i>
-               </div>
-               <div>
-                 <div class="fw-semibold">Equipo Compuesto</div>
-                 <div class="text-muted small">
-                   ¿Contiene múltiples componentes sub-activos?
-                 </div>
-               </div>
-             </div>
+              <div id="listaIconos" class="row g-2 border rounded-3 p-2" style="max-height:160px; overflow-y:auto;">
+                </div>
+            </div>
 
-             <label class="form-check form-switch m-0">
-               <input class="form-check-input" type="checkbox" name="nuevoCompuesto">
-             </label>
-           </div>
-         </div>
+            <div class="col-md-5">
+              <label class="form-label">Vista previa</label>
+              <div class="card card-sm text-center">
+                <div class="card-body">
+                  <div class="avatar avatar-xl bg-primary-lt text-primary mb-2" id="previewIcon">
+                    <i class="ti ti-help" id="iconDisplay"></i>
+                  </div>
+                  <div class="text-muted small">Icono seleccionado</div>
+                </div>
+              </div>
+            </div>
 
-         <!-- Auditoría -->
-         <div>
-           <div class="d-flex align-items-center gap-2 text-muted mb-3">
-             <i class="ti ti-history"></i>
-             <span class="text-uppercase small fw-bold">
-               Información de Auditoría
-             </span>
-           </div>
+            <div class="col-12">
+              <div class="card card-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-components text-primary"></i>
+                    <div>
+                      <div class="fw-semibold small">Equipo compuesto</div>
+                      <div class="text-muted small">Contiene sub-components</div>
+                    </div>
+                  </div>
+                  <label class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" name="nuevoCompuesto" value="1">
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-           <div class="row g-3">
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy me-1"></i>
+            Guardar
+          </button>
+        </div>
 
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Usuario Creación
-                   </div>
-                   <div class="d-flex align-items-center gap-2">
-                     <i class="ti ti-user text-primary"></i>
-                     <span class="fw-medium">admin_user</span>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Fecha Creación
-                   </div>
-                   <div class="d-flex align-items-center gap-2">
-                     <i class="ti ti-calendar text-primary"></i>
-                     <span class="fw-medium">25/10/2023 10:00</span>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-           </div>
-         </div>
-
-       </div>
-
-       <!-- Footer -->
-       <div class="modal-footer">
-         <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-           Cancelar
-         </button>
-
-         <button type="button" class="btn btn-primary">
-           <i class="ti ti-device-floppy me-1"></i>
-           Guardar Activo
-         </button>
-       </div>
-
-     </div>
-   </div>
- </div>
+      </form>
+    </div>
+  </div>
+</div>
 
  <!-- Modal Editar Activo -->
  <div class="modal modal-blur fade" id="modalEditarActivo" tabindex="-1">
    <div class="modal-dialog modal-lg modal-dialog-centered">
      <div class="modal-content">
 
-       <!-- Header -->
-       <div class="modal-header">
-         <h5 class="modal-title d-flex align-items-center gap-3">
+       <!-- HEADER -->
+       <div class="modal-header py-3">
+         <h5 class="modal-title d-flex align-items-center gap-2">
            <div class="avatar avatar-sm bg-primary-lt text-primary">
              <i class="ti ti-edit"></i>
            </div>
            Editar Activo
          </h5>
+
          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
        </div>
 
-       <!-- Body -->
-       <div class="modal-body">
+       <!-- BODY -->
+       <div class="modal-body pt-3">
 
-         <!-- Descripción -->
-         <div class="mb-4">
-           <label class="form-label">Descripción</label>
-           <input type="text"
-             class="form-control"
-             name="editarDescripcion" id="editarDescripcion">
-         </div>
+         <input type="hidden" id="editarIdActivo" name="editarIdActivo">
 
-         <!-- Equipo Compuesto -->
-         <div class="card card-sm mb-4">
-           <div class="card-body d-flex justify-content-between align-items-center">
-             <div class="d-flex align-items-center gap-3">
-               <div class="avatar avatar-sm bg-primary-lt text-primary">
-                 <i class="ti ti-components"></i>
-               </div>
-               <div>
-                 <div class="fw-semibold">Equipo Compuesto</div>
+         <div class="row g-3">
+
+           <!-- DESCRIPCIÓN -->
+           <div class="col-12">
+             <label class="form-label">Descripción</label>
+             <input type="text"
+               class="form-control"
+               maxlength="150"
+               name="editarDescripcion"
+               id="editarDescripcion">
+           </div>
+
+           <!-- ICONOS -->
+           <div class="col-md-7">
+
+             <label class="form-label">Tipo de Activo</label>
+             <select class="form-select mb-2" id="editarTipoIcono">
+               <option value="">Seleccione</option>
+               <option value="equipos">Equipos</option>
+               <option value="componentes">Componentes</option>
+               <option value="perifericos">Periféricos</option>
+               <option value="pantallas">Pantallas</option>
+               <option value="impresion">Impresión</option>
+               <option value="red">Red</option>
+             </select>
+
+             <input type="hidden" id="editarIconoActivo" name="editarIconoActivo">
+
+             <!-- LISTA ICONOS -->
+             <div id="editarListaIconos"
+               class="row g-2 border rounded-3 p-2"
+               style="max-height:160px; overflow-y:auto;">
+             </div>
+
+           </div>
+
+           <!-- PREVIEW -->
+           <div class="col-md-5">
+
+             <label class="form-label">Vista previa</label>
+
+             <div class="card card-sm text-center">
+               <div class="card-body">
+
+                 <div class="avatar avatar-xl bg-primary-lt text-primary mb-2" id="editarPreviewIcon">
+                   <i class="ti ti-help"></i>
+                 </div>
+
                  <div class="text-muted small">
-                   ¿Contiene múltiples componentes sub-activos?
+                   Icono seleccionado
                  </div>
+
                </div>
              </div>
 
-             <label class="form-check form-switch m-0">
-               <input class="form-check-input" type="checkbox" nochecked name="editarCompuesto" id="editarCompuesto">
-             </label>
-           </div>
-         </div>
-
-         <!-- Auditoría -->
-         <div>
-           <div class="d-flex align-items-center gap-2 text-muted mb-3">
-             <i class="ti ti-history"></i>
-             <span class="text-uppercase small fw-bold">
-               Información de Auditoría
-             </span>
            </div>
 
-           <div class="row g-3">
+           <!-- EQUIPO COMPUESTO -->
+           <div class="col-12">
 
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Usuario Creación
+             <div class="card card-sm">
+               <div class="card-body d-flex justify-content-between align-items-center">
+
+                 <div class="d-flex align-items-center gap-2">
+                   <i class="ti ti-components text-primary"></i>
+
+                   <div>
+                     <div class="fw-semibold small">Equipo compuesto</div>
+                     <div class="text-muted small">
+                       Contiene sub-componentes
+                     </div>
                    </div>
-                   <div class="d-flex align-items-center gap-2">
+                 </div>
+
+                 <label class="form-check form-switch m-0">
+                   <input class="form-check-input"
+                     type="checkbox"
+                     id="editarCompuesto"
+                     name="editarCompuesto">
+                 </label>
+
+               </div>
+             </div>
+
+           </div>
+
+           <!-- AUDITORÍA -->
+           <div class="col-12">
+
+             <div class="row g-2">
+
+               <div class="col-md-6">
+                 <div class="border rounded-3 p-2">
+
+                   <div class="text-muted small">Usuario creación</div>
+
+                   <div class="d-flex align-items-center gap-1">
                      <i class="ti ti-user text-primary"></i>
-                     <span class="fw-medium">admin_user</span>
+                     <span class="small fw-medium" id="editarUsuarioCreacion"></span>
                    </div>
+
                  </div>
                </div>
-             </div>
 
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Fecha Creación
-                   </div>
-                   <div class="d-flex align-items-center gap-2">
+               <div class="col-md-6">
+                 <div class="border rounded-3 p-2">
+
+                   <div class="text-muted small">Fecha creación</div>
+
+                   <div class="d-flex align-items-center gap-1">
                      <i class="ti ti-calendar text-primary"></i>
-                     <span class="fw-medium">2023-10-01 10:00</span>
+                     <span class="small fw-medium" id="editarFechaCreacion"></span>
                    </div>
-                 </div>
-               </div>
-             </div>
 
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Usuario Modificación
-                   </div>
-                   <div class="d-flex align-items-center gap-2">
-                     <i class="ti ti-edit text-primary"></i>
-                     <span class="fw-medium">editor_pro</span>
-                   </div>
                  </div>
                </div>
-             </div>
 
-             <div class="col-md-6">
-               <div class="card card-sm">
-                 <div class="card-body">
-                   <div class="text-muted small text-uppercase mb-1">
-                     Fecha Modificación
-                   </div>
-                   <div class="d-flex align-items-center gap-2">
-                     <i class="ti ti-refresh text-primary"></i>
-                     <span class="fw-medium">2023-11-15 14:30</span>
-                   </div>
-                 </div>
-               </div>
              </div>
 
            </div>
+
          </div>
 
        </div>
 
-       <!-- Footer -->
-       <div class="modal-footer">
+       <!-- FOOTER -->
+       <div class="modal-footer py-2">
+
          <button type="button" class="btn btn-link" data-bs-dismiss="modal">
            Cancelar
          </button>
@@ -407,8 +410,13 @@
            <i class="ti ti-device-floppy me-1"></i>
            Guardar Cambios
          </button>
+
        </div>
 
      </div>
    </div>
  </div>
+
+ 
+
+ <script src="modules/inventario/views/js/activos.js"></script>
