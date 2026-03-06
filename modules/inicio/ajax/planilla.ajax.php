@@ -1,6 +1,11 @@
 <?php
-error_log(print_r($_POST, true));
+// 1. Configuración de errores (Siempre al principio)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
+// 2. Log de depuración
+error_log(print_r($_POST, true));
 require_once __DIR__ . "/../controllers/InicioController.php";
 
 class AjaxPlanilla

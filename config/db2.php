@@ -1,9 +1,9 @@
 <?php
 class Conexion2 {
     static public function conectar() {
-        $serverName = "localhost"; 
+        $serverName = "10.0.100.252"; 
         $connectionOptions = array(
-            "Database" => "BD_PERSONAL",
+            "Database" => "BDPERSONAL",
             "Uid" => "sa",
             "PWD" => "SrvPRU01#$",
             "CharacterSet" => "UTF-8",

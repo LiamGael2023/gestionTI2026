@@ -7,9 +7,9 @@ class InicioModel
     ====================================================== */
     private $conn;
 
-    public function __construct($conn)
+    public function __construct($conn2)
     {
-        $this->conn = $conn;
+        $this->conn = $conn2;
     }
 
     public function listar()
@@ -30,13 +30,13 @@ class InicioModel
         $params = [$datos['id_trabajador']];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
-if ($stmt === false) {
+        if ($stmt === false) {
 
-    echo '<pre>';
-    print_r(sqlsrv_errors());
-    echo '</pre>';
-    exit;
-}
+            echo '<pre>';
+            print_r(sqlsrv_errors());
+            echo '</pre>';
+            exit;
+        }
 
 
         $rows = [];
@@ -99,4 +99,37 @@ if ($stmt === false) {
 
         return ['status' => 'success', 'message' => 'Boleta actualizada'];
     }
+
+
+    static public function cargarInformacionUsuario($tabla, $item, $valor)
+    {
+
+        $conn = Conexion::conectar();
+
+        if ($item != null) {
+            $query = "EXEC BDPERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ?";
+            $params = array($valor);
+
+            $stmt = sqlsrv_query($conn, $query, $params);
+        } else {
+            $query = "EXEC BDPERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ";
+            $stmt = sqlsrv_query($conn, $query);
+        }
+
+        if ($stmt === false) {
+            die(print_r(sqlsrv_errors(), true));
+        }
+
+        $result = array();
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $result[] = $row;
+        }
+
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+
+        return (count($result) == 1) ? $result[0] : $result;
+    }
+
+
 }
