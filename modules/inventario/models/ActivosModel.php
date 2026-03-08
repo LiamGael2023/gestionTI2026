@@ -1,15 +1,12 @@
 <?php
-require_once "../../../config/db.php"; // Ruta hacia tu db.php
+require_once __DIR__ . "/../../../config/db.php";
 
-class ActivosModel
-{
-    static public function mdlCrearActivo($tabla, $datos)
-    {
 
+class ActivosModel {
+
+    static public function mdlCrearActivo($tabla, $datos) {
         $conn = Conexion::conectar();
-
-        // Llamada al SP con los 4 parámetros definidos
-        $sql = "{call inventario.sp_InsertarActivo(?, ?, ?, ?)}";
+        $sql = "{call inventario.sp_CrearActivo(?, ?, ?, ?)}";
 
         $params = array(
             array($datos["descripcion"], SQLSRV_PARAM_IN),
@@ -21,11 +18,9 @@ class ActivosModel
         $stmt = sqlsrv_query($conn, $sql, $params);
 
         if ($stmt === false) {
-            // Error en la ejecución
             return "error";
         }
 
-        // Obtener el resultado 'ok' del SP
         $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
@@ -34,28 +29,35 @@ class ActivosModel
     }
 
     /*=============================================
-MOSTRAR ACTIVOS
-=============================================*/
-
-    static public function mdlMostrarActivos($tabla, $item, $valor)
-    {
+    MOSTRAR ACTIVOS (CORREGIDO PARA SQLSRV)
+    =============================================*/
+    static public function mdlMostrarActivos($tabla, $item, $valor) {
+        $conn = Conexion::conectar();
 
         if ($item != null) {
+            // Consulta filtrada
+            $sql = "SELECT * FROM $tabla WHERE $item = ?";
+            $params = array($valor);
+            $stmt = sqlsrv_query($conn, $sql, $params);
 
-            $stmt = Conexion::conectar()->prepare("SELECT * FROM $tabla WHERE $item = :$item");
+            if ($stmt === false) return "error";
 
-            $stmt->bindParam(":" . $item, $valor, PDO::PARAM_STR);
-
-            $stmt->execute();
-
-            return $stmt->fetch();
+            $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
+            // Consulta general
+            $sql = "SELECT * FROM $tabla ORDER BY descripcion ASC";
+            $stmt = sqlsrv_query($conn, $sql);
 
-            $stmt = Conexion::conectar()->prepare("SELECT * FROM $tabla ORDER BY descripcion ASC");
+            if ($stmt === false) return "error";
 
-            $stmt->execute();
-
-            return $stmt->fetchAll();
+            $resultado = array();
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $resultado[] = $row;
+            }
         }
+
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $resultado;
     }
 }

@@ -1,4 +1,12 @@
+
  <body>
+   <?php
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+?>
+<pre><?php print_r($_SESSION); ?></pre>
    <div class="page">
 
      
@@ -99,9 +107,7 @@
                           </td>
 
                           <td>
-
-                          ' . date("d/m/Y", strtotime($value["fechaCreacion"])) . '
-
+                              ' . ($value["fechaCreacion"] instanceof DateTime ? $value["fechaCreacion"]->format('d/m/Y') : "Sin fecha") . '
                           </td>
 
                           <td>
@@ -214,6 +220,7 @@
              <div class="col-12">
                <label class="form-label">Descripción</label>
                <input type="text" class="form-control" maxlength="150" placeholder="Describa el activo..." name="nuevaDescripcion" required>
+               
              </div>
 
              <div class="col-md-7">
@@ -444,5 +451,5 @@
  </div>
 
 
-
- <script src="modules/inventario/views/js/activos.js"></script>
+<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+<script src="modules/inventario/views/js/activos.js"></script>

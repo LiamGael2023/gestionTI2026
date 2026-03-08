@@ -183,4 +183,3 @@
     
 </div>
 
-<script src="js/activos.js"></script>

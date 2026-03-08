@@ -1,15 +1,18 @@
-<?
-require_once "../models/ActivosModel.php";
+<?php
+require_once __DIR__ . "/../models/ActivosModel.php";
 
 class ActivosController {
+    // En ActivosController.php
+
     static public function ctrCrearActivo() {
+        
 
         if (isset($_POST["nuevaDescripcion"])) {
 
             /* IMPORTANTE: Extraemos el ID del usuario directamente de la sesión. 
                Esto garantiza que el registro sea auditado correctamente.
             */
-            $idUsuario = $_SESSION["id_usuario"]; 
+            $idUsuario = isset($_SESSION["usuario_id"]) ? $_SESSION["usuario_id"] : 1; // 1 como respaldo o manejo de error
 
             $datos = array(
                 "descripcion"       => $_POST["nuevaDescripcion"],
