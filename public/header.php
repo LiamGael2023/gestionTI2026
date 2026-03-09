@@ -59,14 +59,14 @@ if (isset($_SESSION['usuario_id'])) {
   <script src="https://cdn.jsdelivr.net/npm/qrious/dist/qrious.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
   <!-- FLATPICKR CSS -->
- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 
 
   <!-- FLATPICKR JS (antes del tuyo) -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
-  
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/airbnb.css">
 
   <link href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/css/tabler.min.css" rel="stylesheet" />
@@ -172,4 +172,6 @@ if (isset($_SESSION['usuario_id'])) {
       </header>
     <?php endif; ?>
     <script src="/gestionTI/modules/papeletas/views/papeleta.js"></script>
+    <script src="/gestionTI/modules/papeletas/views/colaborador.js"></script>
+
     <div class="page-wrapper">

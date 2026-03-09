@@ -2,6 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
 class ModeloPapeleta
 {
     private $conn;
@@ -327,7 +328,7 @@ class ModeloPapeleta
 
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE $tabla SET anulado = 1 WHERE id_papeleta = ?";
+        $sql = "UPDATE [BDPERSONAL].$tabla SET anulado = 1 WHERE id_papeleta = ?";
         $params = array($idPapeleta);
 
         $stmt = sqlsrv_query($conn, $sql, $params);

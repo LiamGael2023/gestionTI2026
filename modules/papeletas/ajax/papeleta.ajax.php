@@ -238,19 +238,18 @@ class AjaxPapeleta
     }
 
     public function ajaxTienePapeletaPendiente()
-{
+    {
 
-    $respuesta = ControladorPapeleta::ctrTienePapeletaPendiente();
+        $respuesta = ControladorPapeleta::ctrTienePapeletaPendiente();
 
-    if ($respuesta["status"] === "success") {
-        // Devuelve solo 1 o 0
-        $tiene = $respuesta["data"][0]["TienePendiente"] ?? 0;
-        echo json_encode(["status" => "success", "tienePendiente" => $tiene]);
-    } else {
-        echo json_encode(["status" => "error", "tienePendiente" => 0, "message" => $respuesta["message"]]);
+        if ($respuesta["status"] === "success") {
+            // Devuelve solo 1 o 0
+            $tiene = $respuesta["data"][0]["TienePendiente"] ?? 0;
+            echo json_encode(["status" => "success", "tienePendiente" => $tiene]);
+        } else {
+            echo json_encode(["status" => "error", "tienePendiente" => 0, "message" => $respuesta["message"]]);
+        }
     }
-}
-
 }
 
 
@@ -301,6 +300,8 @@ if (isset($_POST["action"]) && $_POST["action"] === "anularPapeleta") {
         ]);
         exit;
     }
+    exit; // 👈 CRÍTICO
+
 }
 
 if (isset($_POST["accion"]) && $_POST["accion"] === "mostrar_detalle" && !empty($_POST["id_papeleta"])) {

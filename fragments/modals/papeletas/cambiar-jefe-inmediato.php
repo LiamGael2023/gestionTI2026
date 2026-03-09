@@ -62,7 +62,7 @@
         dropdownParent: $('#modal-cambiar_jefe'),
         placeholder: 'Seleccione un personal...',
         ajax: {
-          url: 'ajax/ajax/papeleta.ajax.php',
+          url: "modules/papeletas/ajax/papeleta.ajax.php",
           dataType: 'json',
           delay: 250,
           data: function(params) {
@@ -120,7 +120,7 @@
       const cod_jefe = $("#jefe_papeleta").val();
 
       $.ajax({
-        url: "ajax/ajax/papeleta.ajax.php",
+        url: "modules/papeletas/ajax/papeleta.ajax.php",
         type: "POST",
         data: {
           accion: "actualizar_jefe",

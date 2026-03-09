@@ -3,6 +3,10 @@
 session_start();
 ob_start();
 
+ini_set('display_errors', 1);
+error_reporting(E_ERROR | E_PARSE);
+
+
 require_once __DIR__ . "/../controllers/PapeletasController.php";
 require_once __DIR__ . "/../models/PapeletasModel.php";
 

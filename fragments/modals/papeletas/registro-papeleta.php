@@ -732,7 +732,3 @@
     });
 </script>
 
-<?php
-require_once __DIR__ . "/../../../modules/transportes/controllers/ControllerPapeletaVehicular.php";
-
-?>
