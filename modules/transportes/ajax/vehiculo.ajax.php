@@ -1,8 +1,9 @@
 <?php
 ini_set('display_errors', 0);
 
-require_once "../../controladores/transportes/Vehiculo.controlador.php";
-require_once "../../modelos/transportes/Vehiculo.modelo.php";
+
+require_once __DIR__ . "/../controllers/VehiculoController.php";
+require_once __DIR__ . "/../models/VehiculoModel.php";
 
 class AjaxVehiculo
 {
@@ -45,7 +46,7 @@ class AjaxVehiculo
                     "id" => $row["Id_Trabajador"],
                     "text" => $trabajador, // Nombre completo
                     "gerencia" => $gerencia,   // Sub Gerencia / Gerencia
-                    "foto" => "../fotosIndividuales/" . $fotocheck. ".jpg"
+                    "foto" => "../fotos-trabajador/" . $fotocheck. ".jpg"
                 ];
 
             }

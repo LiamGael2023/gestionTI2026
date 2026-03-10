@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/../../../config/db2.php';
+require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../models/InicioModel.php';
 
 /* ======================================================
@@ -15,8 +15,8 @@ $isAjax = (
 /* ======================================================
    CONEXIÓN Y MODELO (para vistas)
 ====================================================== */
-$conn2  = Conexion2::conectar();
-$model = new InicioModel($conn2);
+$conn  = Conexion::conectar();
+$model = new InicioModel($conn);
 
 /* ======================================================
    ROUTER DE VISTAS (SOLO SI NO ES AJAX)

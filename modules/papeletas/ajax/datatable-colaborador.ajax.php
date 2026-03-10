@@ -33,22 +33,21 @@ class tablaColaborador
 
 
             $numeroFila = '<td style="text-align: left !important;">' . ($key + 1) . '</td>'; // Aplicar estilo directamente
-            $fotoReal = !empty($colaboradores["Trab_Fotocheck"])
-                ? $_SERVER['DOCUMENT_ROOT'] . '/personal/fotosIndividuales/' . $colaboradores["Trab_Fotocheck"] . '.jpg'
+            $fotoArchivo = !empty($colaboradores["Trab_Fotocheck"])
+                ? $colaboradores["Trab_Fotocheck"] . '.jpg'
                 : '';
 
-            if (!empty($fotoReal) && file_exists($fotoReal)) {
-                $fotoPath = '/personal/fotosIndividuales/' . $colaboradores["Trab_Fotocheck"] . '.jpg';
-            } else {
-                $fotoPath = '/personal/fotosIndividuales/sinfoto.jpg';
-            }
+            $fotoArchivo = $colaboradores["Trab_Fotocheck"] . '.jpg';
+            $fotoPath = '/gestionTI/public/fotos-trabajador/' . $fotoArchivo;
+            $rutaSinFoto = '/gestionTI/public/fotos-trabajador/sinfoto.jpg';
 
             $imagen = '<a href="' . $fotoPath . '" 
-             class="avatar-lightbox " 
+             class="avatar-lightbox" 
              data-caption="Foto de ' . htmlspecialchars($colaboradores["Trabajador_apellidos"]) . '">
                 <img src="' . $fotoPath . '" 
-                     class="avatar avatar-1 rounded" 
-                     style="width:40px; height:40px; object-fit:cover;">
+                     class="avatar avatar-1 rounded"
+                     style="width:40px; height:40px; object-fit:cover;"
+                     onerror="this.onerror=null;this.src=\'' . $rutaSinFoto . '\';">
            </a>';
 
             $nombres = '<td>' . utf8_encode($colaboradores["Trabajador_apellidos"]) . '<br>' . utf8_encode($colaboradores["Trabajador_nombres"]) . '</td>';

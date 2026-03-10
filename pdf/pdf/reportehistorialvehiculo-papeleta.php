@@ -1,8 +1,12 @@
 <?php
 require_once 'tcpdf_include.php';
 
-require_once __DIR__ . '/../../controladores/transportes/vehiculo.controlador.php';
-require_once __DIR__ . '/../../modelos/transportes/vehiculo.modelo.php';
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
+require_once('../../modules/transportes/controllers/VehiculoController.php');
+require_once('../../modules/transportes/models/VehiculoModel.php');
+
 
 function safeText($text) {
     $text = trim($text ?? '');

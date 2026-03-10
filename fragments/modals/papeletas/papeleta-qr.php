@@ -352,7 +352,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
                         $("#papeletaAvatar").css(
                             "background-image",
-                            "url('/personal/fotosIndividuales/" + data.Trab_Fotocheck + ".jpg')"
+                            "url('/gestionti/public/fotos-trabajador/" + data.Trab_Fotocheck + ".jpg')"
                         );
 
                         /* ==========================

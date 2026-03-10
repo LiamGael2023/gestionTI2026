@@ -30,9 +30,9 @@
                         <!-- Photo -->
                         <?php
                         if ($_SESSION['FirmaPersonal'] == "") {
-                          echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/sinfirma.jpg"></div>';
+                          echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/sinfirma.jpg"></div>';
                         } else {
-                          echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/' . $_SESSION['FirmaPersonal'] . '"></div>';
+                          echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/' . $_SESSION['FirmaPersonal'] . '"></div>';
                         }
                         ?>
 
@@ -53,9 +53,9 @@
                                 ';
 
                       if ($_SESSION['FirmaJefe'] == "") {
-                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/sinfirma.jpg"></div>';
+                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/sinfirma.jpg"></div>';
                       } else {
-                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/' . $_SESSION['FirmaJefe'] . '"></div>';
+                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/' . $_SESSION['FirmaJefe'] . '"></div>';
                       }
 
                       echo '   
@@ -79,9 +79,9 @@
                                 ';
 
                       if ($_SESSION['FirmaJefeSede'] == "") {
-                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/sinfirma.jpg"></div>';
+                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/sinfirma.jpg"></div>';
                       } else {
-                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../personal/repositorio/perfil/' . $_SESSION['FirmaJefeSede'] . '"></div>';
+                        echo '<div class="img-responsive img-responsive card-img-bottom" style="background-image: url(../gestionti/pdf/perfil/' . $_SESSION['FirmaJefeSede'] . '"></div>';
                       }
 
                       echo '   

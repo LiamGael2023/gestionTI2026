@@ -1,10 +1,9 @@
 <?php
-error_reporting(0); // Oculta todos los errores (no recomendado en desarrollo)
 
 require_once('tcpdf_include.php');
-require_once __DIR__ . '/../../controladores/transportes/vehiculo.controlador.php';
-require_once __DIR__ . '/../../modelos/transportes/vehiculo.modelo.php';
-require_once __DIR__ . '/../../modelos/sistema/conexion.php';
+require_once('../../config/db.php');
+require_once('../../modules/transportes/controllers/VehiculoController.php');
+require_once('../../modules/transportes/models/VehiculoModel.php');
 
 
 $vehiculos = ControladorVehiculo::ctrMostrarReporteVehiculos(null, null);
@@ -33,7 +32,7 @@ if (@getimagesize($logoPath)) {
 $logoPat = __DIR__ . '/images/gobierno.png';
 
 if (@getimagesize($logoPat)) {
-    @$pdf->Image($logoPat, 230,4, 55, 22);
+    @$pdf->Image($logoPat, 230, 4, 55, 22);
 }
 
 $pdf->SetFont('helvetica', 'B', 14);
@@ -45,7 +44,7 @@ $pdf->SetFont('helvetica', '', 9);
 $pdf->SetXY(-60, 25);
 $pdf->Cell(0, 10, 'Generado: ' . date('Y/m/d H:i:s'), 0, 1, 'R');
 
-$pdf->Ln(5); 
+$pdf->Ln(5);
 
 
 $html = <<<EOD

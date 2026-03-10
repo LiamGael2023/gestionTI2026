@@ -1,0 +1,2 @@
+<div class='page-header'><div class='container-xl'><h2 class='page-title'>Papeletas Vehiculares</h2></div></div>
+<div class='page-body'><div class='container-xl'><div class='card'><div class='card-body'>Bienvenido al sistema de Papeletas Vehiculares.</div></div></div></div>

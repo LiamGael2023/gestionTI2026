@@ -1,8 +1,10 @@
 <?php
 require_once 'tcpdf_include.php';
 
-require_once __DIR__ . '/../../controladores/transportes/vehiculo.controlador.php';
-require_once __DIR__ . '/../../modelos/transportes/vehiculo.modelo.php';
+
+
+require_once __DIR__ . "/../controllers/VehiculoController.php";
+require_once __DIR__ . "/../models/VehiculoModel.php";
 
 function safeText($text) {
     $text = trim($text ?? '');

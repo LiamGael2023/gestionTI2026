@@ -4,16 +4,22 @@ require_once __DIR__ . "/../models/VehiculoModel.php";
 $model = new ModeloVehiculo($conn);
 $action = $_GET['action'] ?? 'index';
 
-switch ($action) {
-    case 'guardar':
-        // Lógica de guardado
-        break;
-    default:
-        include 'modules/transportes/views/index.php';
-        break;
-}
+
+
+
+// switch ($action) {
+//     case 'guardar':
+//         // Lógica de guardado
+//         break;
+//     default:
+//         include 'modules/transportes/views/index.php';
+//         break;
+// }
 $conn  = Conexion::conectar();
 $model = new ModeloVehiculo($conn);
+
+
+
 
 class ControladorVehiculo
 {

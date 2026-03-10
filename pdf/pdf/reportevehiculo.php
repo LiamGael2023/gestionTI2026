@@ -1,8 +1,9 @@
 <?php
 require_once 'tcpdf_include.php';
+require_once('../../config/db.php');
+require_once('../../modules/transportes/controllers/VehiculoController.php');
+require_once('../../modules/transportes/models/VehiculoModel.php');
 
-require_once __DIR__ . '/../../controladores/transportes/vehiculo.controlador.php';
-require_once __DIR__ . '/../../modelos/transportes/vehiculo.modelo.php';
 
 if (!isset($_GET['placa'])) {
     die('Faltan parámetros');

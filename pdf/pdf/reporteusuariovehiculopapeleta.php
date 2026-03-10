@@ -1,7 +1,8 @@
 <?php
 require_once 'tcpdf_include.php';
-require_once __DIR__ . '/../../controladores/personal/papeleta.controlador.php';
-require_once __DIR__ . '/../../modelos/personal/papeleta.modelo.php';
+
+require_once __DIR__ . "/../controllers/VehiculoController.php";
+require_once __DIR__ . "/../models/VehiculoModel.php";
 
 if (!isset($_GET['id'])) {
         die('Faltan parámetros');

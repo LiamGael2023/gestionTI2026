@@ -3,7 +3,6 @@ session_start();
 ob_start();
 
 
-
 require_once __DIR__ . "/../controllers/PapeletasController.php";
 require_once __DIR__ . "/../models/PapeletasModel.php";
 

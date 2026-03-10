@@ -24,9 +24,9 @@ class InicioModel
 
     public static function mdlConsultarAniosBoletas($datos)
     {
-        $conn = Conexion2::conectar();
+        $conn = Conexion::conectar();
 
-        $sql = "EXEC Planilla.SP_Listar_Anios_Boletas ?";
+        $sql = "EXEC BDPersonal.Planilla.SP_Listar_Anios_Boletas ?";
         $params = [$datos['id_trabajador']];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -51,9 +51,9 @@ class InicioModel
 
     public static function mdlListarBoletasPorAnio($datos)
     {
-        $conn = Conexion2::conectar();
+        $conn = Conexion::conectar();
 
-        $sql = "EXEC Planilla.SP_Listar_Boletas_X_Anio ?, ?";
+        $sql = "EXEC BDPersonal.Planilla.SP_Listar_Boletas_X_Anio ?, ?";
         $params = [
             $datos['id_trabajador'],
             $datos['anio']
@@ -78,9 +78,9 @@ class InicioModel
 
     public static function mdlActualizarDescargadoBoleta($datos)
     {
-        $conn = Conexion2::conectar();
+        $conn = Conexion::conectar();
 
-        $sql = "EXEC Planilla.SP_ACTUALIZAR_DESCARGADO ?,?,?,?";
+        $sql = "EXEC BDPersonal.Planilla.SP_ACTUALIZAR_DESCARGADO ?,?,?,?";
         $params = [
             $datos['id_trabajador'],
             $datos['anio'],
