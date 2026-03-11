@@ -1,5 +1,6 @@
 <script src="modules/transportes/views/vehiculo.js"></script>
 <script src="modules/transportes/views/conductor.js"></script>
+<script src="modules/transportes/views/papeleta-vehicular.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/fslightbox/index.js"></script>
 
@@ -7,9 +8,6 @@
     <!-- BEGIN PAGE BODY -->
     <div class="page-body">
         <div class="container-xl">
-
-
-
             <!-- Tabler JS (OBLIGATORIO para modal-blur) -->
             <div class="card">
                 <div class="card-header">
@@ -32,9 +30,6 @@
                                 Papeletas Vehiculares
                             </a>
                         </li>
-
-
-
                     </ul>
                 </div>
 
@@ -70,15 +65,17 @@
     </div>
 
 </div>
-    <?php require_once __DIR__ . "/../controllers/VehiculoController.php"; ?>
+<?php require_once __DIR__ . "/../controllers/VehiculoController.php"; ?>
 
 
-    <?php
-    include __DIR__ . '/../../../fragments/transportes/registro-vehiculo.php';
-    include __DIR__ . '/../../../fragments/modals/contenedor-pdf.php';
+<?php
+include __DIR__ . '/../../../fragments/modals/papeletas/mostrar-evidencias.php';
+include __DIR__ . '/../../../fragments/transportes/registro-vehiculo.php';
+include __DIR__ . '/../../../fragments/modals/contenedor-pdf.php';
+include __DIR__ . '/../../../fragments/modals/papeletas/papeleta-qr.php';
 
-    ?>
-    
-    <?php
-    include __DIR__ . '/../../../fragments/transportes/asignacion-vehicular.php';
-    ?>
+?>
+
+<?php
+include __DIR__ . '/../../../fragments/transportes/asignacion-vehicular.php';
+?>

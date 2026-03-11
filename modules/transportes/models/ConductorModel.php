@@ -9,7 +9,7 @@ class ModeloConductor
 
         $conn = Conexion::conectar();
 
-        $sql = "{CALL [Transportes].[SP_Listar_Conductores_Papeleta_Diaria](?)}";
+        $sql = "{CALL [BDPersonal].[Transportes].[SP_Listar_Conductores_Papeleta_Diaria](?)}";
         $params = array($fecha);
 
 
@@ -37,7 +37,7 @@ class ModeloConductor
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC Transportes.SP_HISTORIAL_ASIGNAMIENTO_CONDUCTOR ?";
+        $sql = "EXEC [BDPersonal].[Transportes].[SP_HISTORIAL_ASIGNAMIENTO_CONDUCTOR] ?";
         $params = array($valor);
 
         $stmt = sqlsrv_query($conn, $sql, $params);

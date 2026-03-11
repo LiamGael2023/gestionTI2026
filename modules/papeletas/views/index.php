@@ -8,7 +8,6 @@
 
 <script src="/gestionTI/modules/papeletas/views/papeleta.js"></script>
 <script src="/gestionTI/modules/papeletas/views/colaborador.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/fslightbox/index.js"></script>
 <div class="page-wrapper">
     <!-- BEGIN PAGE BODY -->

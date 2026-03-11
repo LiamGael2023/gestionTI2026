@@ -22,7 +22,7 @@ class ModeloPapeletaVehicular
 
 
 
-        $sql = "EXEC Transportes.SP_InsertarBitacora ?, ?";
+        $sql = "EXEC BDPersonal.Transportes.SP_InsertarBitacora ?, ?";
 
         $params = array(
             $datos["descripcion_bitacora"],
@@ -65,7 +65,7 @@ class ModeloPapeletaVehicular
             // ============================================
             // ✅ Ejecutar SP con TODOS los parámetros
             // ============================================
-            $sql = "EXEC [Transportes].[VW_Papeleta_Vehicular_Sede] ?, ?, ?, ?, ?, ?";
+            $sql = "EXEC [BDPersonal].[Transportes].[VW_Papeleta_Vehicular_Sede] ?, ?, ?, ?, ?, ?";
             $params = array(
                 $id_establecimiento,
                 $start,
@@ -126,7 +126,7 @@ class ModeloPapeletaVehicular
     {
         $conn = Conexion::conectar();
 
-        $sql = "select id_sede as id, sede_nombre as sede, sede_abrev as abreviatura from Transportes.tbl_sede_salida_vehicular";
+        $sql = "select id_sede as id, sede_nombre as sede, sede_abrev as abreviatura from [BDPersonal].[Transportes].[tbl_sede_salida_vehicular]";
         $stmt = sqlsrv_query($conn, $sql);
 
         if ($stmt === false) {
@@ -154,7 +154,7 @@ class ModeloPapeletaVehicular
     {
         $conn = Conexion::conectar();
 
-        $sql = "select Id_Vehiculo as id, placa as placaseleccionada from Transportes.tbl_Vehiculo  ";
+        $sql = "select Id_Vehiculo as id, placa as placaseleccionada from [BDPersonal].[Transportes].[tbl_Vehiculo]  ";
         $stmt = sqlsrv_query($conn, $sql);
 
         if ($stmt === false) {

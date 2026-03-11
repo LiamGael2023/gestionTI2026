@@ -1,8 +1,8 @@
 <?php
 
 require_once __DIR__ . "/../../../config/db.php";
-require_once __DIR__ . "/../models/ColaboradorModel.php";
-$model = new ModeloColaborador($conn);
+require_once __DIR__ . "/../models/ConductorModel.php";
+$model = new ModeloConductor($conn);
 $action = $_GET['action'] ?? 'index';
 
 // switch ($action) {
@@ -13,7 +13,7 @@ $action = $_GET['action'] ?? 'index';
 //         break;
 // }
 $conn  = Conexion::conectar();
-$model = new ModeloColaborador($conn);
+$model = new ModeloConductor($conn);
 
 class ControladorConductor
 {

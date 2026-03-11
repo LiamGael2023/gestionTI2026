@@ -2,8 +2,8 @@
 session_start();
 ob_start();
 
-require_once "../../controladores/transportes/papeleta-vehicular.controlador.php";
-require_once "../../modelos/transportes/papeleta-vehicular.modelo.php";
+require_once __DIR__ . "/../controllers/PapeletaVehicularController.php";
+require_once __DIR__ . "/../models/PapeletaVehicularModel.php";
 
 class tablaAminPapeleta
 {
@@ -152,10 +152,27 @@ class tablaAminPapeleta
 
             if (!is_array($papeleta)) continue;
 
-            $foto = !empty($papeleta["Trab_Fotocheck"])
-                ? '<div class="avatar avatar-sm rounded lazyload" data-bg="/personal/fotosIndividuales/' . $papeleta["Trab_Fotocheck"] . '.jpg" style="width:30px; height:30px; background-size:cover; background-position:center;"></div>'
-                : '<div class="avatar avatar-sm rounded lazyload" data-bg="/vistas/img/default/sinfoto.jpg" style="width:30px; height:30px; background-size:cover; background-position:center;"></div>';
+            $rutaBaseProyecto = dirname(__DIR__, 3); // sube hasta gestionTI
+            $rutaFotosServidor = $rutaBaseProyecto . '/public/fotos-trabajador/';
 
+            $fotoReal = !empty($papeleta["Trab_Fotocheck"])
+                ? $rutaFotosServidor . $papeleta["Trab_Fotocheck"] . '.jpg'
+                : '';
+
+            if (!empty($fotoReal) && file_exists($fotoReal)) {
+                $fotoPath = '/gestionTI/public/fotos-trabajador/' . $papeleta["Trab_Fotocheck"] . '.jpg';
+            } else {
+                $fotoPath = '/gestionTI/public/fotos-trabajador/sinfoto.jpg';
+            }
+
+
+            $foto = '<a href="' . $fotoPath . '" 
+                        class="avatar-lightbox d-inline-block" 
+                        style="width:40px; height:40px; border-radius:0.25rem; overflow:hidden;"
+                        data-caption="Foto de ' . htmlspecialchars($papeleta["nombres"]) . '">
+                        <img src="' . $fotoPath . '" 
+                            style="width:100%; height:100%; object-fit:cover; display:block;">
+                    </a>';
 
 
 
@@ -230,13 +247,13 @@ class tablaAminPapeleta
                 . '</h6>';
 
             $Id_Trabajador_Lugar_APP = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-    title="' . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
+                title="' . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
                 . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"])
                 . '</h6>';
 
 
             $establecimiento = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-    title="' . utf8_encode($papeleta["establecimiento"]) . '">'
+             title="' . utf8_encode($papeleta["establecimiento"]) . '">'
                 . utf8_encode($papeleta["establecimiento"])
                 . '</h6>';
 
@@ -250,7 +267,7 @@ class tablaAminPapeleta
                         class="btn btn-icon btn-x"
                         data-bs-toggle="modal"
                         data-bs-target="#pdfModal"
-                        data-pdf-url="repositorio/pdf/papeleta-vehicular.php?id=' . htmlspecialchars($papeleta["id_papeleta"]) . '">
+                        data-pdf-url="pdf/pdf/papeleta-vehicular.php?id=' . htmlspecialchars($papeleta["id_papeleta"]) . '">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                             viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -269,39 +286,22 @@ class tablaAminPapeleta
 
         <!-- Botón Evidencias -->
               <a class="btn btn-icon btn-tabler ' . ($tieneEvidencias ? '' : 'disabled opacity-20') . '"
-    ' . ($tieneEvidencias ? 'data-bs-toggle="modal" data-bs-target="#modal-evidencias"' : '') . '
-    data-id="' . $papeleta["id_papeleta"] . '">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-        class="icon icon-tabler icons-tabler-outline icon-tabler-photo">
-        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-        <path d="M15 8h.01" />
-        <path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z" />
-        <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
-        <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" />
-    </svg>
-</a>';
+                    ' . ($tieneEvidencias ? 'data-bs-toggle="modal" data-bs-target="#modal-evidencias"' : '') . '
+                    data-id="' . $papeleta["id_papeleta"] . '">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="icon icon-tabler icons-tabler-outline icon-tabler-photo">
+                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                        <path d="M15 8h.01" />
+                        <path d="M3 6a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v12a3 3 0 0 1 -3 3h-12a3 3 0 0 1 -3 -3v-12z" />
+                        <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l5 5" />
+                        <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0l3 3" />
+                    </svg>
+                </a>';
 
             // 👇 Solo mostrar botón "Editar" si es jefe de sede
-            if (!empty($_SESSION["esJefeSede"]) && $_SESSION["esJefeSede"] == 1) {
-                $acciones .= '
-            <a class="btn btn-lime btn-icon btn-editar-jefe" 
-                data-bs-toggle="modal"
-                data-bs-target="#modal-cambiar_jefe"
             
-                data-id="' . $papeleta["id_papeleta"] . '">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    class="icon icon-tabler icons-tabler-outline icon-tabler-edit">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
-                    <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
-                    <path d="M16 5l3 3" />
-                </svg>
-            </a>';
-            }
 
             $acciones .= '
     </div>

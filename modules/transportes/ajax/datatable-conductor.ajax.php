@@ -1,10 +1,14 @@
 <?php
 session_start();
 ob_start();
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
+require_once __DIR__ . "/../../../config/db.php";
 
 
-require_once __DIR__ . "/../controllers/VehiculoController.php";
-require_once __DIR__ . "/../models/VehiculoModel.php";
+require_once __DIR__ . "/../controllers/ConductorController.php";
+require_once __DIR__ . "/../models/ConductorModel.php";
 
 class tablaConductor
 {
@@ -42,7 +46,6 @@ class tablaConductor
                 ? __DIR__ . '/../../../public/fotos-trabajador/' . $colaboradores["Trab_Fotocheck"] . '.jpg'
                 : '';
 
-            echo "<pre>Ruta que busca PHP: " . $fotoReal . "</pre>";
 
 
             if (!empty($fotoReal) && file_exists($fotoReal)) {
@@ -66,22 +69,22 @@ class tablaConductor
             $oficinaTexto  = $colaboradores["oficina"];
 
             $gerencia = '
-<td>
-  <div title="' . htmlspecialchars(($gerenciaTexto), ENT_QUOTES, 'UTF-8') . '" 
-       style="max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-    ' . htmlspecialchars(($gerenciaTexto), ENT_QUOTES, 'UTF-8') . '
-  </div>
-</td>';
+                            <td>
+                            <div title="' . htmlspecialchars(($gerenciaTexto), ENT_QUOTES, 'UTF-8') . '" 
+                                style="max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ' . htmlspecialchars(($gerenciaTexto), ENT_QUOTES, 'UTF-8') . '
+                            </div>
+                            </td>';
 
             $oficina = '
-<td>
-  <div title="' . htmlspecialchars(conversionUTF($oficinaTexto), ENT_QUOTES, 'UTF-8') . '" 
-       style="max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-    ' . htmlspecialchars(conversionUTF($oficinaTexto), ENT_QUOTES, 'UTF-8') . '
-  </div>
-</td>';
+                            <td>
+                            <div title="' . htmlspecialchars(($oficinaTexto), ENT_QUOTES, 'UTF-8') . '" 
+                                style="max-width:150px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                ' . htmlspecialchars(($oficinaTexto), ENT_QUOTES, 'UTF-8') . '
+                            </div>
+                            </td>';
 
-            $placa = '<td>' . conversionUTF($colaboradores["Placa"], "---") . '</td>';
+            $placa = '<td>' . ($colaboradores["Placa"] ?? "---") . '</td>';
 
 
             if ($colaboradores["tiene_papeleta"] == 1) {
@@ -145,7 +148,7 @@ class tablaConductor
                 <div class="btn-group" role="group">
                     <a data-bs-toggle="modal"
                         data-bs-target="#pdfModal"
-                        data-pdf-url="repositorio/pdf/reportehistorialconductor.php?id=' . $colaboradores["id_trabajador"] . '" target="_blank" class="btn btn-icon btn-x">
+                        data-pdf-url="pdf/pdf/reportehistorialconductor.php?id=' . $colaboradores["id_trabajador"] . '" target="_blank" class="btn btn-icon btn-x">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-file-type-pdf">
                             <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                             <path d="M14 3v4a1 1 0 0 0 1 1h4" />
