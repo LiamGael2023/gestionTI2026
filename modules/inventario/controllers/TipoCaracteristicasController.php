@@ -1,13 +1,13 @@
 <?php
-require_once __DIR__ . "/../models/ActivosModel.php";
+require_once __DIR__ . "/../models/TipoCaracteristicasModel.php";
 
-class ActivosController
+class TipoCaracteristicasController
 {
 
     /*=============================================
-    AGREGAR ACTIVOS
+    AGREGAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function ctrCrearActivo()
+    static public function ctrCrearTipoCaracteristica()
     {
 
 
@@ -17,27 +17,25 @@ class ActivosController
 
             $datos = array(
                 "descripcion"       => $_POST["nuevaDescripcion"],
-                "icono"             => $_POST["iconoActivo"],
-                "compuesto"         => isset($_POST["nuevoCompuesto"]) ? 1 : 0,
                 "idUsuarioRegistro" => $idUsuario
             );
 
-            // Llamada al modelo para ejecutar el SP sp_InsertarActivo
-            $tabla = "inventario.activos";
-            $respuesta = ActivosModel::mdlCrearActivo($tabla, $datos);
+            // Llamada al modelo para ejecutar el SP sp_InsertarTipoCaracteristica
+            $tabla = "inventario.TipoCaracteristica";
+            $respuesta = TipoCaracteristicasModel::mdlCrearTipoCaracteristica($tabla, $datos);
 
             return $respuesta;
         }
     }
     /*=============================================
-    EDITAR ACTIVOS
+    EDITAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function ctrEditarActivo()
+    static public function ctrEditarTipoCaracteristica()
     {
         if (isset($_POST["editarDescripcion"])) {
 
             // Validamos que el ID no llegue vacío
-            if (empty($_POST["editarIdActivo"])) {
+            if (empty($_POST["editarIdTipoCaracteristica"])) {
                 return "error";
             }
 
@@ -45,29 +43,27 @@ class ActivosController
             $idUsuario = $_SESSION["usuario_id"];
 
             $datos = array(
-                "idActivos"   => $_POST["editarIdActivo"],
+                "idTipoCaracteristicas"   => $_POST["editarIdTipoCaracteristica"],
                 "descripcion" => $_POST["editarDescripcion"],
-                "compuesto"   => isset($_POST["editarCompuesto"]) ? 1 : 0,
-                "icono"       => $_POST["editarIconoActivo"],
                 "usuario"     => $idUsuario
             );
 
-            $tabla = "inventario.activos";
-            $respuesta = ActivosModel::mdlEditarActivo($tabla, $datos);
+            $tabla = "inventario.TipoCaracteristica";
+            $respuesta = TipoCaracteristicasModel::mdlEditarTipoCaracteristica($tabla, $datos);
 
             return $respuesta;
         }
     }
 
     /*=============================================
-    MOSTRAR ACTIVOS
+    MOSTRAR TipoCaracteristicaS
     =============================================*/
-    static public function ctrMostrarActivos($item, $valor)
+    static public function ctrMostrarTipoCaracteristicas($item, $valor)
     {
 
-        $tabla = "inventario.activos";
+        $tabla = "inventario.TipoCaracteristica";
 
-        $respuesta = ActivosModel::mdlMostrarActivos($tabla, $item, $valor);
+        $respuesta = TipoCaracteristicasModel::mdlMostrarTipoCaracteristicas($tabla, $item, $valor);
 
         return $respuesta;
     }

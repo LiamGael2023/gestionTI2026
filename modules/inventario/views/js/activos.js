@@ -195,45 +195,67 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 
+    /*==================================================
+    EDITAR ACTIVO
+    ==================================================*/
+    // Usamos delegación de eventos con JavaScript puro
+    document.addEventListener("click", function (e) {
+
+        // Verificamos si el elemento clickeado es el botón o está dentro del botón
+        const boton = e.target.closest(".btnEditarActivo");
+
+        if (boton) {
+            // Capturamos el ID usando getAttribute o dataset
+            var idActivo = boton.getAttribute("data-id");
+            console.log("1. ID enviado al servidor:", idActivo);
+
+            let datos = new FormData();
+            datos.append("idActivo", idActivo);
+
+            fetch("modules/inventario/ajax/activos.ajax.php", {
+                method: "POST",
+                body: datos
+            })
+                .then(res => res.text())
+                .then(respuesta => {
+                    console.log("2. Respuesta cruda del servidor:", respuesta);
+
+                    try {
+                        let json = JSON.parse(respuesta.trim());
+
+                        if (json.error) {
+                            mostrarToast("error", json.error);
+                            return;
+                        }
+
+                        // Llenamos los inputs
+                        document.getElementById("editarIdActivo").value = json.idActivos;
+                        document.getElementById("editarDescripcion").value = json.descripcion;
+                        document.getElementById("editarIconoActivo").value = json.icono;
+                        document.getElementById("editarCompuesto").checked = (json.compuesto == 1);
+                        document.getElementById("editarUsuarioCreacion").textContent = json.idUsuarioRegistro;
+                        document.getElementById("editarFechaCreacion").textContent = json.fechaCreacion;
+                        document.getElementById("editarPreviewIcon").innerHTML = `<i class="ti ${json.icono}"></i>`;
+
+                        // Abrimos el modal
+                        let modalElement = document.getElementById('modalEditarActivo');
+                        let modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+                        modalInstance.show();
+
+                    } catch (e) {
+                        console.error("Error al parsear el JSON:", e);
+                        mostrarToast("error", "Error interno en el servidor.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error en la petición Fetch:", error);
+                    mostrarToast("error", "Error de conexión.");
+                });
+        }
+    });
+
     /* =====================================
-       CARGAR MODAL EDITAR
-    ===================================== */
-
-    window.cargarEditarActivo = function (data) {
-
-        if (document.getElementById("editarIdActivo"))
-            document.getElementById("editarIdActivo").value = data.idActivos;
-
-        if (document.getElementById("editarDescripcion"))
-            document.getElementById("editarDescripcion").value = data.descripcion;
-
-        if (document.getElementById("editarIconoActivo"))
-            document.getElementById("editarIconoActivo").value = data.icono;
-
-
-        if (document.getElementById("editarUsuarioCreacion"))
-            document.getElementById("editarUsuarioCreacion").textContent = data.usuarioCreacion;
-
-        if (document.getElementById("editarFechaCreacion"))
-            document.getElementById("editarFechaCreacion").textContent = data.fechaCreacion;
-
-
-        if (document.getElementById("editarCompuesto"))
-            document.getElementById("editarCompuesto").checked = (data.compuesto == 1);
-
-
-        if (document.getElementById("editarPreviewIcon"))
-            document.getElementById("editarPreviewIcon").innerHTML = `<i class="ti ${data.icono}"></i>`;
-
-
-        if (editarListaIconos) editarListaIconos.innerHTML = "";
-        if (editarTipoIcono) editarTipoIcono.value = "";
-
-    };
-
-
-    /* =====================================
-       ENVÍO AJAX FORMULARIO
+       ENVÍO AJAX FORMULARIO AGREGAR
     ===================================== */
 
     const form = document.getElementById("formNuevoActivo");
@@ -261,52 +283,150 @@ document.addEventListener("DOMContentLoaded", function () {
 
             })
 
-            .then(res => res.text())
+                .then(res => res.text())
 
-            .then(respuesta => {
+                .then(respuesta => {
 
-                console.log("Respuesta servidor:", respuesta);
+                    console.log("Respuesta servidor:", respuesta);
 
-                let res = JSON.parse(respuesta.trim());
+                    let res = JSON.parse(respuesta.trim());
 
 
-                if (res === "ok") {
+                    if (res === "ok") {
 
-                    let modal = bootstrap.Modal.getInstance(
-                        document.getElementById("modalAgregarActivo")
+                        let modal = bootstrap.Modal.getInstance(
+                            document.getElementById("modalAgregarActivo")
+                        );
+
+                        modal.hide();
+
+                        mostrarToast("success", "Activo guardado correctamente");
+
+                        setTimeout(() => {
+
+                            location.reload();
+
+                        }, 1500);
+
+                    } else {
+
+                        mostrarToast("error", "No se pudo guardar: " + res);
+
+                    }
+
+                })
+
+                .catch(error => {
+
+                    console.error("Error AJAX:", error);
+
+                    mostrarToast(
+                        "error",
+                        "No se pudo contactar con el servidor"
                     );
 
-                    modal.hide();
-
-                    mostrarToast("success", "Activo guardado correctamente");
-
-                    setTimeout(() => {
-
-                        location.reload();
-
-                    }, 1500);
-
-                } else {
-
-                    mostrarToast("error", "No se pudo guardar: " + res);
-
-                }
-
-            })
-
-            .catch(error => {
-
-                console.error("Error AJAX:", error);
-
-                mostrarToast(
-                    "error",
-                    "No se pudo contactar con el servidor"
-                );
-
-            });
+                });
 
         });
 
     }
 
+    /* =====================================
+       ENVÍO AJAX FORMULARIO EDITAR
+    ===================================== */
+
+    const formEditar = document.getElementById("formEditarActivo");
+
+    if (formEditar) {
+
+        formEditar.addEventListener("submit", function (e) {
+
+            e.preventDefault();
+
+            let datos = new FormData(formEditar);
+
+            fetch("modules/inventario/ajax/activos.ajax.php", {
+
+                method: "POST",
+                body: datos
+
+            })
+
+                .then(res => res.json())
+
+                .then(res => {
+
+                    if (res === "ok") {
+
+                        mostrarToast("success", "Activo actualizado correctamente");
+
+                        setTimeout(() => {
+
+                            location.reload();
+
+                        }, 1500);
+
+                    } else {
+
+                        mostrarToast("error", "No se pudo actualizar");
+
+                    }
+
+                })
+
+                .catch(error => {
+
+                    mostrarToast("error", "Error en el servidor");
+
+                });
+
+        });
+
+    }
+
+    $(document).ready(function () {
+        $('#tablaActivos').DataTable({
+            "responsive": true,
+            "pageLength": 10,
+            // "language": {
+            //     "url": "//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json" // Traducción completa
+            // },
+            "dom": `
+            <'card-body border-bottom py-2'
+                <'d-flex align-items-center'
+                    <'text-muted small'l>
+                    <'ms-auto d-flex align-items-center gap-2'Bf>
+                >
+            >
+            <'table-responsive'tr>
+            <'card-footer d-flex align-items-center py-2'
+                <'m-0 text-muted small'i>
+                <'pagination m-0 ms-auto'p>
+            >
+        `,
+            "buttons": [
+                {
+                    extend: 'excelHtml5',
+                    text: '<i class="ti ti-file-spreadsheet"></i>',
+                    className: 'btn btn-sm btn-icon btn-outline-success',
+                    titleAttr: 'Excel',
+                    exportOptions: { columns: [0, 1, 2] }
+                }, // <-- Esta coma es obligatoria
+                {
+                    extend: 'pdfHtml5',
+                    text: '<i class="ti ti-file-description"></i>',
+                    className: 'btn btn-sm btn-icon btn-outline-danger ms-2', // ms-2 añade margen a la izquierda
+                    titleAttr: 'PDF',
+                    exportOptions: { columns: [0, 1, 2] }
+                }
+            ],
+            "initComplete": function () {
+
+                $('.dataTables_filter input').addClass('form-control form-control-sm').attr('placeholder', 'Buscar...');
+                $('.dataTables_length select').addClass('form-select form-select-sm');
+
+                $('.dataTables_paginate .pagination').addClass('pagination-sm');
+            }
+        });
+    });
 });

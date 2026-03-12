@@ -67,57 +67,56 @@
                      <!-- TABLE -->
                      <div class="card-body p-0">
                          <div class="table-responsive">
-                             <table class="table table-vcenter">
+                             <table id="tablaTipoCaracteristicas" class="table table-vcenter table-mobile-md card-table table-sm">
                                  <thead>
                                      <tr>
-                                         <th>Nombre</th>
+                                         <th>Descripción</th>
                                          <th>Fecha de Creación</th>
-                                         <th>Registrado Por</th>
+                                         <th class="d-none d-sm-table-cell">Registrado Por</th>
                                          <th class="text-end">Acciones</th>
                                      </tr>
                                  </thead>
                                  <tbody>
-                                     <tr>
-                                         <td>
-                                             <i class="ti ti-router text-primary me-2"></i>
-                                             Marca
-                                         </td>
-                                         <td>12/05/2026</td>
-                                         <td>Rommel Jhondeyber Díaz Nureña</td>
-                                         <td class="text-end">
-                                             <button class="btn btn-sm btn-icon"
-                                                 data-bs-toggle="modal"
-                                                 data-bs-target="#modalEditarTipoCaracteristica">
-                                                 <i class="ti ti-edit me-1"></i>
-                                             </button>
-                                             <a href="#" class="btn btn-sm btn-icon text-danger">
-                                                 <i class="ti ti-trash"></i>
-                                             </a>
-                                         </td>
-                                     </tr>
+                                     <?php
+                                        $item = null;
+                                        $valor = null;
+                                        $tipoCaracteristicas = TipoCaracteristicasController::ctrMostrarTipoCaracteristicas($item, $valor);
 
-                                     <tr>
-                                         <td>
-                                             <i class="ti ti-device-laptop text-purple me-2"></i>
-                                             Modelo
-                                         </td>
-                                         <td>15/05/2026</td>
-                                         <td>Rommel Jhondeyber Díaz Nureña</td>
-                                         <td class="text-end">
-                                             <a href="#" class="btn btn-sm btn-icon">
-                                                 <i class="ti ti-edit"></i>
-                                             </a>
-                                             <a href="#" class="btn btn-sm btn-icon text-danger">
-                                                 <i class="ti ti-trash"></i>
-                                             </a>
-                                         </td>
-                                     </tr>
-
+                                        foreach ($tipoCaracteristicas as $key => $value) {
+                                            echo '
+                                        <tr>
+                                            <td data-label="Nombre">
+                                                <div class="d-flex align-items-center">                                            
+                                                <div class="font-weight-medium">' . $value["descripcion"] . '</div>
+                                                </div>
+                                            </td>
+                                            <td data-label="Fecha" class="text-muted small">
+                                                ' . ($value["fechaCreacion"] instanceof DateTime ? $value["fechaCreacion"]->format('d/m/Y') : "Sin fecha") . '
+                                            </td>
+                                            <td data-label="Usuario" class="d-none d-sm-table-cell">
+                                                <span class="badge badge-outline text-muted fw-normal">ID: ' . $value["idUsuarioRegistro"] . '</span>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="btn-list justify-content-end">
+                                                <button class="btn btn-sm btn-icon btn-outline-primary btnEditarTipoCaracteristica" 
+                                                        data-id="' . $value["idTipoCaracteristica"] . '" 
+                                                        title="Editar">
+                                                    <i class="ti ti-edit"></i>
+                                                </button>
+                                                <a href="index.php?module=inventario&action=tipoCaracteristica&idTipoCaracteristica=' . $value["idTipoCaracteristica"] . '" 
+                                                    class="btn btn-sm btn-icon btn-outline-danger" 
+                                                    title="Eliminar">
+                                                    <i class="ti ti-trash"></i>
+                                                </a>
+                                                </div>
+                                            </td>
+                                          </tr>';
+                                        }
+                                        ?>
                                  </tbody>
                              </table>
                          </div>
                      </div>
-
                  </div>
 
                  <!-- INFO CARDS -->
@@ -173,92 +172,96 @@
  <div class="modal modal-blur fade" id="modalAgregarTipoCaracteristica" tabindex="-1">
      <div class="modal-dialog modal-lg modal-dialog-centered">
          <div class="modal-content">
-
-             <!-- Header -->
-             <div class="modal-header">
-                 <h5 class="modal-title d-flex align-items-center gap-2">
-                     <i class="ti ti-list-details text-primary"></i>
-                     Agregar Tipo de Característica
-                 </h5>
-                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-             </div>
-
-             <!-- Body -->
-             <div class="modal-body">
-
-                 <!-- Campo Descripción -->
-                 <div class="mb-4">
-                     <label class="form-label">
-                         Descripción
-                         <span class="text-muted">(máx. 100 caracteres)</span>
-                     </label>
-
-                     <div class="position-relative">
-                         <input type="text"
-                             maxlength="100"
-                             class="form-control pe-5"
-                             placeholder="Ej: Marca, Modelo, Tipo Pantalla...">
-                         <small class="position-absolute top-50 end-0 translate-middle-y me-3 text-muted">
-                             0 / 100
-                         </small>
-                     </div>
+             <form id="formNuevoTipoCaracteristica" method="POST">
+                 <!-- Header -->
+                 <div class="modal-header py-3">
+                     <h5 class="modal-title d-flex align-items-center gap-2">
+                         <i class="ti ti-list-details text-primary"></i>
+                         Agregar Tipo de Característica
+                     </h5>
+                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                  </div>
 
-                 <!-- Información de Auditoría -->
-                 <div>
-                     <div class="d-flex align-items-center gap-2 text-muted mb-3">
-                         <i class="ti ti-history"></i>
-                         <span class="text-uppercase small fw-bold">
-                             Información de Auditoría
-                         </span>
+                 <!-- Body -->
+                 <div class="modal-body">
+
+                     <!-- Campo Descripción -->
+                     <div class="mb-4">
+                         <label class="form-label">
+                             Descripción
+                             <span class="text-muted">(máx. 100 caracteres)</span>
+                         </label>
+
+                         <div class="position-relative">
+                             <input type="text"
+                                 maxlength="100"
+                                 class="form-control pe-5"
+                                 name="nuevaDescripcion"
+                                 id="nuevaDescripcion"
+                                 placeholder="Ej: Marca, Modelo, Tipo Pantalla...">
+                             <small class="position-absolute top-50 end-0 translate-middle-y me-3 text-muted">
+                                 0 / 100
+                             </small>
+                         </div>
                      </div>
 
-                     <div class="row g-3">
+                     <!-- Información de Auditoría -->
+                     <div>
+                         <div class="d-flex align-items-center gap-2 text-muted mb-3">
+                             <i class="ti ti-history"></i>
+                             <span class="text-uppercase small fw-bold">
+                                 Información de Auditoría
+                             </span>
+                         </div>
 
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Usuario Creación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-user text-primary"></i>
-                                         <span class="fw-medium">admin_user</span>
+                         <div class="row g-3">
+
+                             <div class="col-md-6">
+                                 <div class="card card-sm">
+                                     <div class="card-body">
+                                         <div class="text-muted small text-uppercase mb-1">
+                                             Usuario Creación
+                                         </div>
+                                         <div class="d-flex align-items-center gap-2">
+                                             <i class="ti ti-user text-primary"></i>
+                                             <span class="fw-medium">admin_user</span>
+                                         </div>
                                      </div>
                                  </div>
                              </div>
-                         </div>
 
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Fecha Creación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-calendar text-primary"></i>
-                                         <span class="fw-medium">2023-11-20</span>
+                             <div class="col-md-6">
+                                 <div class="card card-sm">
+                                     <div class="card-body">
+                                         <div class="text-muted small text-uppercase mb-1">
+                                             Fecha Creación
+                                         </div>
+                                         <div class="d-flex align-items-center gap-2">
+                                             <i class="ti ti-calendar text-primary"></i>
+                                             <span class="fw-medium">2023-11-20</span>
+                                         </div>
                                      </div>
                                  </div>
                              </div>
-                         </div>
 
+                         </div>
                      </div>
+
                  </div>
 
-             </div>
+                 <!-- Footer -->
+                 <div class="modal-footer">
+                     <button type="button" class="btn btn-link" data-bs-dismiss="modal">
+                         Cancelar
+                     </button>
 
-             <!-- Footer -->
-             <div class="modal-footer">
-                 <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-                     Cancelar
-                 </button>
+                     <button type="submit" class="btn btn-primary">
+                         <i class="ti ti-device-floppy me-1"></i>
+                         Guardar
+                     </button>
+                 </div>
 
-                 <button type="button" class="btn btn-primary">
-                     <i class="ti ti-device-floppy me-1"></i>
-                     Guardar
-                 </button>
-             </div>
+             </form>
 
          </div>
      </div>
@@ -392,3 +395,5 @@
          </div>
      </div>
  </div>
+
+ <script src="modules/inventario/views/js/tipoCaracteristicas.js"></script>

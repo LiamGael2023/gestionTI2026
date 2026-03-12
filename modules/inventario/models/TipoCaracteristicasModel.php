@@ -2,39 +2,43 @@
 require_once __DIR__ . "/../../../config/db.php";
 
 
-class ActivosModel {
+class TipoCaracteristicasModel
+{
 
     /*=============================================
-    AGREGAR ACTIVOS 
+    AGREGAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function mdlCrearActivo($tabla, $datos) {
+    static public function mdlCrearTipoCaracteristica($tabla, $datos)
+    {
         $conn = Conexion::conectar();
-        $sql = "{call inventario.sp_CrearActivo(?, ?, ?, ?)}";
+        $sql = "{call inventario.sp_CrearTipoCaracteristica(?, ?)}";
 
         $params = array(
             array($datos["descripcion"], SQLSRV_PARAM_IN),
-            array($datos["icono"], SQLSRV_PARAM_IN),
-            array($datos["compuesto"], SQLSRV_PARAM_IN),
             array($datos["idUsuarioRegistro"], SQLSRV_PARAM_IN)
         );
 
         $stmt = sqlsrv_query($conn, $sql, $params);
 
         if ($stmt === false) {
-            return "error";
+            return "error_db";
         }
 
-        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        // Leemos el valor simple que devuelve el SELECT 'ok'
+        $fila = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_NUMERIC);
+        $resultado = ($fila) ? $fila[0] : "error_vacio";
+
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
 
-        return $resultado['resultado'];
+        return $resultado; // Retornará "ok", "error_duplicado", etc.
     }
 
     /*=============================================
-    MOSTRAR ACTIVOS
+    MOSTRAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function mdlMostrarActivos($tabla, $item, $valor) {
+    static public function mdlMostrarTipoCaracteristicas($tabla, $item, $valor)
+    {
         $conn = Conexion::conectar();
 
         if ($item != null) {
@@ -65,31 +69,30 @@ class ActivosModel {
     }
 
     /*=============================================
-    EDITAR ACTIVOS
+    EDITAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function mdlEditarActivo($tabla, $datos) {
-    $conn = Conexion::conectar();
-    $sql = "{call inventario.sp_EditarActivo(?, ?, ?, ?, ?)}";
+    static public function mdlEditarTipoCaracteristica($tabla, $datos)
+    {
+        $conn = Conexion::conectar();
+        $sql = "{call inventario.sp_EditarTipoCaracteristica(?, ?, ?)}";
 
-    $params = array(
-        array($datos["idActivos"], SQLSRV_PARAM_IN),
-        array($datos["descripcion"], SQLSRV_PARAM_IN),
-        array($datos["compuesto"], SQLSRV_PARAM_IN),
-        array($datos["icono"], SQLSRV_PARAM_IN),
-        array($datos["usuario"], SQLSRV_PARAM_IN)
-    );
+        $params = array(
+            array($datos["idTipoCaracteristicas"], SQLSRV_PARAM_IN),
+            array($datos["descripcion"], SQLSRV_PARAM_IN),
+            array($datos["usuario"], SQLSRV_PARAM_IN)
+        );
 
-    $stmt = sqlsrv_query($conn, $sql, $params);
+        $stmt = sqlsrv_query($conn, $sql, $params);
 
-    if ($stmt === false) {
-        return "error";
+        if ($stmt === false) {
+            return "error";
+        }
+
+        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+
+        return $resultado['resultado'] ?? "error";
     }
-
-    $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-    
-    sqlsrv_free_stmt($stmt);
-    sqlsrv_close($conn);
-
-    return $resultado['resultado'] ?? "error";
-}
 }
