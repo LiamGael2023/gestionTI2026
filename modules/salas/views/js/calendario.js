@@ -144,13 +144,36 @@ $(document).ready(function () {
 });
 
 function ajustarAlturaCalendario() {
-  const topbarH = document.getElementById('salas-topbar').offsetHeight;
+  const topbarEl = document.getElementById('salas-topbar');
   const bodyEl  = document.getElementById('salas-body');
   const rootEl  = document.getElementById('salas-root');
+  const topbarH = topbarEl ? topbarEl.offsetHeight : 0;
   const available = window.innerHeight - rootEl.getBoundingClientRect().top - topbarH;
-  bodyEl.style.height = available + 'px';
+
+  if (window.matchMedia('(max-width: 991.98px)').matches) {
+    bodyEl.style.height = '';
+  } else {
+    bodyEl.style.height = available + 'px';
+  }
+
   if (window._calPrincipal) {
-    window._calPrincipal.setOption('height', available - 2);
+    const alto = window.matchMedia('(max-width: 991.98px)').matches ? 'auto' : (available - 2);
+    window._calPrincipal.setOption('height', alto);
+  }
+
+  aplicarVistaResponsiveCalendario();
+}
+
+function aplicarVistaResponsiveCalendario() {
+  if (!window._calPrincipal) return;
+
+  const esMovil = window.matchMedia('(max-width: 991.98px)').matches;
+  const vistaActual = window._calPrincipal.view ? window._calPrincipal.view.type : '';
+
+  if (esMovil && vistaActual !== 'timeGridDay') {
+    window._calPrincipal.changeView('timeGridDay');
+  } else if (!esMovil && vistaActual === 'timeGridDay') {
+    window._calPrincipal.changeView('timeGridWeek');
   }
 }
 
@@ -166,7 +189,7 @@ function iniciarCalendarioPrincipal() {
 
   window._calPrincipal = new FullCalendar.Calendar(el, {
     locale        : 'es',
-    initialView   : 'timeGridWeek',
+    initialView   : window.matchMedia('(max-width: 991.98px)').matches ? 'timeGridDay' : 'timeGridWeek',
     firstDay      : 1,
     weekends      : false,
     headerToolbar : {
