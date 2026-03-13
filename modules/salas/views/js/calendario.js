@@ -281,7 +281,9 @@ function iniciarCalendarioPrincipal() {
         width: 560,
         padding: 0,
         showConfirmButton: false,
-        showCloseButton  : true,
+        showCloseButton  : false,
+        allowOutsideClick: true,
+        allowEscapeKey   : true,
       });
     },
     eventDidMount: function(info) {
