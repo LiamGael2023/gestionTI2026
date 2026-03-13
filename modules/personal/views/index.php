@@ -1,3 +1,6 @@
+<script src="/gestionTI/modules/personal/views/papeleta_por_trabajador.js"></script>
+<script src="/gestionTI/modules/personal/views/papeleta_uper.js"></script>
+
 <div class="page-wrapper">
     <!-- BEGIN PAGE BODY -->
     <div class="page-body">
@@ -56,3 +59,9 @@
     </div>
 
 </div>
+<?php
+
+include __DIR__ . '/../../../fragments/modals/papeletas/papeleta-qr.php';
+include __DIR__ . '/../../../fragments/modals/contenedor-pdf.php';
+include __DIR__ . '/../../../fragments/modals/papeletas/mostrar-evidencias.php';
+?>

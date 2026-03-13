@@ -137,12 +137,6 @@
   </div>
 </div>
 
-<!-- Modal para mostrar el código QR -->
-<?php include __DIR__ . '/../fragments/modals/papeleta-qr.php'; ?>
-<!-- Modal para mostrar el PDF -->
-<?php include __DIR__ . '/../fragments/modals/contenedor-pdf.php'; ?>
-<!-- Modal para mostrar las evidencias -->
-<?php include __DIR__ . '/../fragments/modals/mostrar-evidencias.php'; ?>
 
 <script>
   $(document).ready(function() {
@@ -153,7 +147,7 @@
       allowClear: true,
       width: '100%',
       ajax: {
-        url: 'ajax/ajax/colaborador.ajax.php', // tu archivo PHP
+        url: "modules/personal/ajax/colaborador.ajax.php",
         dataType: 'json',
         delay: 250,
         data: function(params) {
@@ -179,7 +173,7 @@
       templateResult: function(item) {
         if (!item.id) return item.text;
 
-        const sinFoto = '../personal/vistas/static/avatars/sinfoto.jpg';
+        const sinFoto = '../gestionti/pdf/perfil/sinfoto.jpg';
         const fotoUrl = item.foto ? item.foto : sinFoto;
 
         return $(
