@@ -23,10 +23,12 @@ switch ($action) {
         if ($usuario && password_verify($pass_input, $usuario['contrasenia'])) {
             
             // --- AQUÍ ESTABA EL ERROR: DEBES GUARDAR LOS DATOS ---
-            $_SESSION['usuario_id']     = $usuario['id_usuario'];
-            $_SESSION['usuario_nombre'] = $usuario['nombres'];
-            $_SESSION['usuario_rol']    = $usuario['rol'];
-            $_SESSION['autenticado']    = true;
+            $_SESSION['usuario_id']         = $usuario['id_usuario'];
+            $_SESSION['usuario_nombre']      = $usuario['nombres'];
+            $_SESSION['usuario_login']       = $usuario['usuario'];
+            $_SESSION['usuario_rol']         = $usuario['rol'];         // campo texto legacy
+            $_SESSION['usuario_rol_nombre']  = $usuario['rol_nombre'];  // nombre real desde comun.Rol
+            $_SESSION['autenticado']         = true;
 
             // Usamos una ruta relativa simple para que funcione con localhost o IP
             echo json_encode([

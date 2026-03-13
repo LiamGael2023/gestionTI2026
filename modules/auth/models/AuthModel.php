@@ -13,9 +13,11 @@ class AuthModel {
      * Busca un usuario por su nombre de usuario (login)
      */
     public function buscarUsuario($usuario) {
-        $sql = "SELECT id_usuario, usuario, contrasenia, nombres, apellidos, rol 
-                FROM comun.Usuarios 
-                WHERE usuario = ? AND activo = 1";
+        $sql = "SELECT u.id_usuario, u.usuario, u.contrasenia, u.nombres, u.apellidos,
+                       u.rol, u.id_rol, r.nombre AS rol_nombre
+                FROM comun.Usuarios u
+                LEFT JOIN comun.Rol r ON u.id_rol = r.id_rol
+                WHERE u.usuario = ? AND u.activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, array($usuario));
         
         if ($stmt === false) return false;

@@ -23,5 +23,11 @@
       </footer>
 
     </div> </div> <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
+    <style>
+      /* Evitar que SweetAlert2 desplace el layout al abrir un alert.
+         SweetAlert añade padding-right al body para compensar el scrollbar oculto. */
+      body.swal2-shown > :not(.swal2-container) { padding-right: 0 !important; }
+      body.swal2-height-auto { height: 100% !important; }
+    </style>
 </body>
 </html>

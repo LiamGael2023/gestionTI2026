@@ -1,0 +1,604 @@
+/* ============================================================
+   calendario.css — Estilos del módulo Reserva de Salas
+   Proyecto Especial Chavimochic (PECH) — GestionTI v1.0
+   ============================================================ */
+
+/* ── Layout raíz ──────────────────────────────────────────── */
+#salas-root {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 56px);   /* descuenta la navbar de Tabler */
+  min-height: 600px;
+  overflow: hidden;
+}
+
+/* ── Cabecera del módulo ──────────────────────────────────── */
+#salas-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1a2940;
+  color: #fff;
+  padding: 0 1.25rem;
+  height: 50px;
+  flex-shrink: 0;
+  gap: 1rem;
+}
+#salas-topbar .salas-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+#salas-topbar .salas-filters {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-size: .82rem;
+}
+#salas-topbar .salas-filters label {
+  margin: 0;
+  opacity: .85;
+  white-space: nowrap;
+}
+#salas-topbar .salas-filters select {
+  height: 30px;
+  font-size: .8rem;
+  padding: 0 .5rem;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(65, 62, 228, 0.12);
+  color: #fff;
+  min-width: 140px;
+  cursor: pointer;
+}
+#salas-topbar .salas-filters select option {
+  background: #1a2940;
+  color: #fff;
+}
+#btn-imprimir-calendario {
+  height: 30px;
+  padding: 0 .8rem;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+#btn-imprimir-calendario:hover {
+  background: rgba(255,255,255,.22);
+  border-color: rgba(255,255,255,.4);
+}
+
+/* ── Cuerpo principal ─────────────────────────────────────── */
+#salas-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Panel del calendario ─────────────────────────────────── */
+#salas-cal-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  background: #fff;
+}
+#salas-print-meta {
+  display: none;
+  padding: 1rem 1rem 0;
+  color: #1a2940;
+  font-size: .85rem;
+  gap: 1rem;
+}
+#salas-main-calendar {
+  flex: 1;
+  overflow: hidden;
+}
+/* ── Toolbar del calendario ───────────────────────────────── */
+#salas-main-calendar .fc-toolbar {
+  padding: .65rem 1rem .55rem;
+  background: #fff;
+  border-bottom: 1px solid #e4e8f0;
+  margin-bottom: 0 !important;
+  align-items: center;
+}
+#salas-main-calendar .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a2940;
+  letter-spacing: .01em;
+}
+#salas-main-calendar .fc-button {
+  font-size: .8rem;
+  padding: .32rem .75rem;
+  border-radius: 6px !important;
+  line-height: 1.4;
+  font-weight: 500;
+  box-shadow: none !important;
+  transition: background .15s, border-color .15s;
+}
+#salas-main-calendar .fc-button-group .fc-button {
+  border-radius: 0 !important;
+}
+#salas-main-calendar .fc-button-group .fc-button:first-child {
+  border-radius: 6px 0 0 6px !important;
+}
+#salas-main-calendar .fc-button-group .fc-button:last-child {
+  border-radius: 0 6px 6px 0 !important;
+}
+#salas-main-calendar .fc-button-primary {
+  background-color: #1a2940;
+  border-color: #1a2940;
+  color: #fff;
+}
+#salas-main-calendar .fc-button-primary:hover {
+  background-color: #243552;
+  border-color: #243552;
+}
+#salas-main-calendar .fc-button-primary:not(.fc-button-active):not(:disabled) {
+  background-color: #1a2940;
+  border-color: #1a2940;
+}
+#salas-main-calendar .fc-button-primary.fc-button-active {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+#salas-main-calendar .fc-today-button,
+#salas-main-calendar .fc-today-button.fc-button-primary,
+#salas-main-calendar .fc-today-button.fc-button-primary:not(.fc-button-active):not(:disabled) {
+  background-color: #f4f6fb !important;
+  border-color: #cdd5e0 !important;
+  color: #1a2940 !important;
+  font-weight: 600;
+}
+#salas-main-calendar .fc-today-button:hover,
+#salas-main-calendar .fc-today-button.fc-button-primary:hover {
+  background-color: #e4e8f0 !important;
+  border-color: #aab4c4 !important;
+  color: #1a2940 !important;
+}
+#salas-main-calendar .fc-today-button:disabled,
+#salas-main-calendar .fc-today-button.fc-button-primary:disabled {
+  background-color: #e9ecef !important;
+  border-color: #dee2e6 !important;
+  color: #6c757d !important;
+  opacity: .65;
+}
+#salas-main-calendar .fc-col-header-cell-cushion {
+  font-weight: 600;
+  color: #1a2940;
+}
+#salas-main-calendar .fc-timegrid-slot-label {
+  font-size: .72rem;
+  color: #6c757d;
+}
+#salas-main-calendar .fc-event {
+  border: none !important;
+  border-radius: 4px !important;
+  font-size: .75rem !important;
+  cursor: pointer;
+}
+#salas-main-calendar .fc-event.ev-APROBADA  { background-color: #2fb344 !important; }
+#salas-main-calendar .fc-event.ev-PENDIENTE { background-color: #f59f00 !important; }
+#salas-main-calendar .fc-event.ev-RECHAZADA { background-color: #d63939 !important; }
+#salas-main-calendar .fc-event.ev-CANCELADA { background-color: #6c757d !important; }
+
+/* Cursor de arrastre en celdas vacías del grid */
+#salas-main-calendar .fc-timegrid-slot-lane { cursor: default; }
+/* Resaltado de la selección al arrastrar */
+#salas-main-calendar .fc-highlight {
+  background: rgba(26, 41, 64, 0.15) !important;
+  border: 2px dashed #1a2940 !important;
+  border-radius: 4px !important;
+}
+
+/* ── Panel lateral derecho ────────────────────────────────── */
+#salas-side-panel {
+  width: 240px;
+  flex-shrink: 0;
+  background: #f4f6fb;
+  border-left: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem .9rem;
+  gap: .75rem;
+  overflow-y: auto;
+}
+
+/* Botón Nueva Solicitud */
+.btn-nueva-solicitud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  width: 100%;
+  padding: .7rem 1rem;
+  background: #1a2940;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s;
+  text-decoration: none;
+}
+.btn-nueva-solicitud:hover { background: #243552; color: #fff; }
+
+/* Botón Mis Reservas */
+.btn-mis-reservas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  width: 100%;
+  padding: .7rem 1rem;
+  background: #0dcaf0;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: .88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .18s;
+  text-decoration: none;
+}
+.btn-mis-reservas:hover { background: #09b5d6; color: #000; }
+
+/* Botones secundarios del panel (autorizador/admin) */
+.btn-side-secondary {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  padding: .55rem .9rem;
+  background: #fff;
+  color: #1a2940;
+  border: 1px solid #cdd5e0;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  text-decoration: none;
+}
+.btn-side-secondary:hover { border-color: #1a2940; background: #eef1f7; color: #1a2940; }
+.btn-side-secondary .badge-count {
+  margin-left: auto;
+  background: #f59f00;
+  color: #fff;
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-size: .72rem;
+}
+.btn-side-secondary .badge-count.danger { background: #d63939; }
+
+/* Tarjeta de estadísticas */
+.salas-stats-card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  overflow: hidden;
+}
+.salas-stats-card .stats-header {
+  background: #0dcaf0;
+  color: #000;
+  padding: .45rem .75rem;
+  font-size: .8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.salas-stats-card .stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .45rem .75rem;
+  font-size: .82rem;
+  border-top: 1px solid #f1f3f7;
+}
+.salas-stats-card .stats-row:first-of-type { border-top: none; }
+.badge-stat {
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: #fff;
+  min-width: 24px;
+  text-align: center;
+}
+.badge-stat.pendiente { background: #f59f00; }
+.badge-stat.aprobada  { background: #2fb344; }
+.badge-stat.rechazada { background: #d63939; }
+.badge-stat.cancelada { background: #6c757d; }
+
+/* Leyenda */
+.salas-legend {
+  margin-top: auto;
+  padding-top: .5rem;
+  border-top: 1px solid #dee2e6;
+}
+.salas-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .75rem;
+  color: #666;
+  margin-bottom: .3rem;
+}
+.salas-legend .legend-dot {
+  width: 11px; height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Badges genéricos */
+.badge-PENDIENTE { background:#f59f00; color:#fff; }
+.badge-APROBADA  { background:#2fb344; color:#fff; }
+.badge-RECHAZADA { background:#d63939; color:#fff; }
+.badge-CANCELADA { background:#6c757d; color:#fff; }
+
+/* Separador de sección en el panel lateral */
+.side-section-title {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #999;
+  margin: .25rem 0 .1rem;
+}
+
+/* ── Offcanvas de tablas ──────────────────────────────────── */
+#oc-pendientes   .offcanvas-header    { background: #f59f00; color: #000; }
+#oc-historial    .offcanvas-header    { background: #1a2940; color: #fff; }
+.offcanvas-header .btn-close-white    { filter: invert(1); }
+
+/* ── Modal Mis Reservas ──────────────────────────────────── */
+#modal-mis-reservas .modal-header     { background: #0dcaf0; }
+#modal-nueva-solicitud .modal-header  { background: #1a2940; color: #fff; }
+#modal-nueva-solicitud .modal-content { position: relative; }
+
+/* ── Iconos de tabler en nuestros botones ─────────────────── */
+.ti { vertical-align: middle; }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 5mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #salas-root,
+  #salas-root * {
+    visibility: visible;
+  }
+
+  #salas-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto !important;
+    min-height: 0;
+    overflow: visible !important;
+  }
+
+  /* ── Encabezado azul ──────────────────────────────────── */
+  #salas-topbar {
+    height: auto;
+    padding: .4rem .8rem;
+    background: #1a2940 !important;
+    color: #fff !important;
+    border-bottom: 2px solid #0dcaf0;
+  }
+
+  #salas-topbar .salas-title {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: #fff !important;
+  }
+
+  #salas-topbar .salas-filters,
+  #salas-topbar > span:last-child,
+  #salas-side-panel,
+  #btn-imprimir-calendario {
+    display: none !important;
+  }
+
+  /* ── Metadatos de impresión ──────────────────────────── */
+  #salas-print-meta {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: .4rem 0;
+    border-bottom: 1px solid #cdd5e0;
+    font-size: .75rem !important;
+    color: #1a2940;
+  }
+
+  #salas-print-meta div {
+    display: flex;
+    gap: .3rem;
+  }
+
+  #salas-print-meta strong {
+    font-weight: 600;
+    color: #1a2940;
+  }
+
+  /* ── Cuerpo del calendario ────────────────────────────── */
+  #salas-body,
+  #salas-cal-panel,
+  #salas-main-calendar,
+  #salas-main-calendar .fc,
+  #salas-main-calendar .fc-media-screen,
+  #salas-main-calendar .fc-view-harness,
+  #salas-main-calendar .fc-view-harness-active,
+  #salas-main-calendar .fc-scrollgrid,
+  #salas-main-calendar .fc-scrollgrid-section,
+  #salas-main-calendar .fc-scroller-harness,
+  #salas-main-calendar .fc-scroller,
+  #salas-main-calendar .fc-scroller-liquid-absolute,
+  #salas-main-calendar .fc-timegrid,
+  #salas-main-calendar .fc-timegrid-body,
+  #salas-main-calendar .fc-timegrid-body table,
+  #salas-main-calendar .fc-timegrid-cols table,
+  #salas-main-calendar .fc-timegrid-slots table {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #salas-main-calendar .fc-view-harness {
+    padding-bottom: 0 !important;
+  }
+
+  #salas-main-calendar .fc-timegrid-body {
+    min-height: 0 !important;
+  }
+
+  /* ── Toolbar del calendario ────────────────────────────── */
+  #salas-main-calendar .fc-toolbar {
+    padding: .8rem 0 .6rem;
+    border-bottom: 2px solid #1a2940;
+  }
+
+  #salas-main-calendar .fc-toolbar-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a2940 !important;
+    letter-spacing: .02em;
+  }
+
+  #salas-main-calendar .fc-toolbar-title {
+    display: none !important;
+  }
+
+  #salas-main-calendar .fc-button,
+  #salas-main-calendar .fc-toolbar-chunk:last-child {
+    display: none !important;
+  }
+
+  /* ── Encabezados de columnas ────────────────────────────── */
+  #salas-main-calendar .fc-col-header-cell {
+    background: #f4f6fb !important;
+    border: 1px solid #cdd5e0 !important;
+    padding: .6rem !important;
+  }
+
+  #salas-main-calendar .fc-col-header-cell-cushion {
+    color: #1a2940 !important;
+    font-weight: 700;
+    font-size: .95rem;
+  }
+
+  /* ── Celdas de tiempo optimizadas para impresión ──────────── */
+  #salas-main-calendar .fc-timegrid-slot {
+    height: 1rem !important;
+  }
+
+  #salas-main-calendar .fc-timegrid-slot-label {
+    color: #495057 !important;
+    font-weight: 500;
+    font-size: .65rem !important;
+  }
+
+  #salas-main-calendar .fc-timegrid-slot-label-cell {
+    border: 1px solid #e9ecef !important;
+    padding: 1px !important;
+  }
+
+  #salas-main-calendar .fc-timegrid-slot-lane {
+    border: 1px solid #e9ecef !important;
+  }
+
+  /* ── Ocultar filas sin eventos ────────────────────────────── */
+  #salas-main-calendar .fc-timegrid-slot,
+  #salas-main-calendar .fc-col-header-cell {
+    page-break-inside: avoid;
+  }
+
+  /* Reducir padding general ──────────────────────────────────── */
+  #salas-main-calendar .fc {
+    font-size: .85rem !important;
+  }
+
+  #salas-main-calendar .fc-toolbar-title {
+    font-size: .95rem !important;
+    margin: 0 !important;
+  }
+
+  #salas-main-calendar .fc-col-header-cell {
+    background: #f4f6fb !important;
+    border: 1px solid #cdd5e0 !important;
+    padding: .4rem !important;
+  }
+
+  #salas-main-calendar .fc-col-header-cell-cushion {
+    color: #1a2940 !important;
+    font-weight: 700;
+    font-size: .85rem !important;
+  }
+
+  /* ── Eventos con color ────────────────────────────────────── */
+  #salas-main-calendar .fc-event {
+    border: 1px solid #000 !important;
+    border-radius: 2px !important;
+    padding: 1px 2px !important;
+    font-size: .65rem !important;
+    font-weight: 600;
+    color: #fff !important;
+  }
+
+  /* Ocultar eventos no aprobados en impresión */
+  #salas-main-calendar .fc-event.ev-PENDIENTE,
+  #salas-main-calendar .fc-event.ev-RECHAZADA,
+  #salas-main-calendar .fc-event.ev-CANCELADA {
+    display: none !important;
+  }
+
+  #salas-main-calendar .fc-event.ev-APROBADA {
+    background-color: #2fb344 !important;
+    border-color: #25a035 !important;
+  }
+
+  #salas-main-calendar .fc-event.ev-PENDIENTE {
+    background-color: #f59f00 !important;
+    border-color: #d48806 !important;
+  }
+
+  #salas-main-calendar .fc-event.ev-RECHAZADA {
+    background-color: #d63939 !important;
+    border-color: #b92e2e !important;
+  }
+
+  #salas-main-calendar .fc-event.ev-CANCELADA {
+    background-color: #6c757d !important;
+    border-color: #5a6268 !important;
+  }
+
+  #salas-main-calendar .fc-event-title {
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+  /* ── Leyenda de borde general ────────────────────────────── */
+  #salas-main-calendar {
+    border: 1px solid #1a2940;
+  }
+}

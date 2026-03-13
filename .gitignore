@@ -1,11 +1,25 @@
-# Ignorar credenciales de base de datos
+# ==========================================
+# Credenciales y configuracion sensible local
+# ==========================================
 config/db.php
 config/config.php
 
-# Ignorar archivos temporales y logs de IIS/PHP
-C:\windows\Temp\
+# Si creas plantillas sin secretos, si se suben
+!config/*.example.php
+!config/config.example.php
+!config/db.example.php
+
+# ==========================================
+# Logs y temporales
+# ==========================================
 error_log
 *.log
+*.tmp
 
-# Carpetas de editores
+# ==========================================
+# Archivos de sistema/editor
+# ==========================================
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
