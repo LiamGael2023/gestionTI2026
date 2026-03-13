@@ -3,7 +3,7 @@
  * ajax_handler.php
  * Manejador de peticiones AJAX/JSON del módulo de Gestión de Reservas de Sala.
  * Todas las respuestas son en formato JSON.
- * Proyecto Especial Chavimochic (PECH) — GestionTI v1.0
+ * Proyecto Especial Chavimochic (PECH) — GestionTI
  */
 ob_start(); // Captura cualquier salida espuria (warnings, notices) para no corromper el JSON
 
