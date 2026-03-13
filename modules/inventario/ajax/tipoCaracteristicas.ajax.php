@@ -5,27 +5,6 @@ require_once __DIR__ . "/../controllers/TipoCaracteristicasController.php";
 
 class AjaxTipoCaracteristicas
 {
-    /*=============================================
-    AGREGAR TIPO CARACTERÍSTICA
-    =============================================*/
-    public function ajaxCrearTipoCaracteristica()
-    {
-        $respuesta = TipoCaracteristicasController::ctrCrearTipoCaracteristica();
-        echo json_encode($respuesta);
-    }
-
-    /*=============================================
-    EDITAR TIPO CARACTERÍSTICA
-    =============================================*/
-    public function ajaxEditarTipoCaracteristica()
-    {
-        $respuesta = TipoCaracteristicasController::ctrEditarTipoCaracteristica();
-        echo json_encode($respuesta);
-    }
-
-    /*=============================================
-    MOSTRAR PARA EDITAR
-    =============================================*/
     public $idTipo;
 
     public function ajaxMostrarEditarTipoCaracteristica()
@@ -36,45 +15,63 @@ class AjaxTipoCaracteristicas
         $tipo = TipoCaracteristicasController::ctrMostrarTipoCaracteristicas($item, $valor);
 
         if (!$tipo) {
-            echo json_encode(["error" => "No se encontró el tipo de característica"]);
+            echo json_encode(["error" => "No se encontró el registro"]);
             return;
         }
 
-        // Formateamos la respuesta para el JS
+        // SOLUCIÓN: Validar si la fecha es un objeto de SQL Server antes de formatearla
+        $fechaFormateada = "";
+        if (isset($tipo["fechaCreacion"])) {
+            if ($tipo["fechaCreacion"] instanceof DateTime) {
+                $fechaFormateada = $tipo["fechaCreacion"]->format("d/m/Y");
+            } else {
+                $fechaFormateada = date("d/m/Y", strtotime($tipo["fechaCreacion"]));
+            }
+        }
+
+        // Formateo consistente para tu JS
         $respuesta = [
             "idTipoCaracteristica" => intval($tipo["idTipoCaracteristica"]),
             "descripcion"          => $tipo["descripcion"] ?? "",
-            "idUsuarioRegistro"    => $tipo["idUsuarioRegistro"] ?? "",
-            "fechaCreacion"        => isset($tipo["fechaCreacion"]) 
-                ? ($tipo["fechaCreacion"] instanceof DateTime 
-                    ? $tipo["fechaCreacion"]->format("d/m/Y") 
-                    : date("d/m/Y", strtotime($tipo["fechaCreacion"])))
-                : ""
+            "idUsuarioRegistro"    => $tipo["idUsuarioRegistro"] ?? "N/A",
+            "fechaCreacion"        => $fechaFormateada
         ];
 
         echo json_encode($respuesta);
     }
+
+    // Guardar Cambios (Update)
+    public function ajaxEditarTipoCaracteristica()
+    {
+        $respuesta = TipoCaracteristicasController::ctrEditarTipoCaracteristica();
+        echo json_encode($respuesta);
+    }
+
+    // Crear Nuevo
+    public function ajaxCrearTipoCaracteristica()
+    {
+        $respuesta = TipoCaracteristicasController::ctrCrearTipoCaracteristica();
+        echo json_encode($respuesta);
+    }
 }
 
-/*=============================================
-DISPARADORES (TRIGGERS)
-=============================================*/
+/* --- DISPARADORES --- */
 
-// Guardar nuevo
-if (isset($_POST["nuevaDescripcion"])) {
-    $crear = new AjaxTipoCaracteristicas();
-    $crear->ajaxCrearTipoCaracteristica();
+// 1. Prioridad: Cargar datos para el modal (cuando solo envías el ID)
+if (isset($_POST["idTipoCaracteristica"]) && !isset($_POST["editarDescripcion"])) {
+    $mostrar = new AjaxTipoCaracteristicas();
+    $mostrar->idTipo = $_POST["idTipoCaracteristica"];
+    $mostrar->ajaxMostrarEditarTipoCaracteristica();
 }
 
-// Editar existente
-if (isset($_POST["editarDescripcion"])) {
+// 2. Guardar edición (cuando envías el ID y la descripción editada)
+else if (isset($_POST["editarIdTipoCaracteristica"])) {
     $editar = new AjaxTipoCaracteristicas();
     $editar->ajaxEditarTipoCaracteristica();
 }
 
-// Traer datos para el modal de edición
-if (isset($_POST["idTipoCaracteristica"])) {
-    $mostrar = new AjaxTipoCaracteristicas();
-    $mostrar->idTipo = $_POST["idTipoCaracteristica"];
-    $mostrar->ajaxMostrarEditarTipoCaracteristica();
+// 3. Crear nuevo
+else if (isset($_POST["nuevaDescripcion"])) {
+    $crear = new AjaxTipoCaracteristicas();
+    $crear->ajaxCrearTipoCaracteristica();
 }

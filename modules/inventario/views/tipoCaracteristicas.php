@@ -205,61 +205,17 @@
                          </div>
                      </div>
 
-                     <!-- Información de Auditoría -->
-                     <div>
-                         <div class="d-flex align-items-center gap-2 text-muted mb-3">
-                             <i class="ti ti-history"></i>
-                             <span class="text-uppercase small fw-bold">
-                                 Información de Auditoría
-                             </span>
-                         </div>
+                     <!-- Footer -->
+                     <div class="modal-footer">
+                         <button type="button" class="btn btn-link" data-bs-dismiss="modal">
+                             Cancelar
+                         </button>
 
-                         <div class="row g-3">
-
-                             <div class="col-md-6">
-                                 <div class="card card-sm">
-                                     <div class="card-body">
-                                         <div class="text-muted small text-uppercase mb-1">
-                                             Usuario Creación
-                                         </div>
-                                         <div class="d-flex align-items-center gap-2">
-                                             <i class="ti ti-user text-primary"></i>
-                                             <span class="fw-medium">admin_user</span>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
-
-                             <div class="col-md-6">
-                                 <div class="card card-sm">
-                                     <div class="card-body">
-                                         <div class="text-muted small text-uppercase mb-1">
-                                             Fecha Creación
-                                         </div>
-                                         <div class="d-flex align-items-center gap-2">
-                                             <i class="ti ti-calendar text-primary"></i>
-                                             <span class="fw-medium">2023-11-20</span>
-                                         </div>
-                                     </div>
-                                 </div>
-                             </div>
-
-                         </div>
+                         <button type="submit" class="btn btn-primary">
+                             <i class="ti ti-device-floppy me-1"></i>
+                             Guardar
+                         </button>
                      </div>
-
-                 </div>
-
-                 <!-- Footer -->
-                 <div class="modal-footer">
-                     <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-                         Cancelar
-                     </button>
-
-                     <button type="submit" class="btn btn-primary">
-                         <i class="ti ti-device-floppy me-1"></i>
-                         Guardar
-                     </button>
-                 </div>
 
              </form>
 
@@ -270,130 +226,37 @@
  <!-- Modal Editar -->
  <div class="modal modal-blur fade" id="modalEditarTipoCaracteristica" tabindex="-1">
      <div class="modal-dialog modal-lg modal-dialog-centered">
-         <div class="modal-content">
-
-             <!-- Header -->
+         <form id="formEditarTipoCaracteristica" class="modal-content">
              <div class="modal-header">
                  <h5 class="modal-title d-flex align-items-center gap-2">
-                     <i class="ti ti-edit text-primary"></i>
-                     Editar Tipo de Característica
+                     <i class="ti ti-edit text-primary"></i> Editar Tipo de Característica
                  </h5>
                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
              </div>
 
-             <!-- Body -->
              <div class="modal-body">
+                 <input type="hidden" id="editarIdTipoCaracteristica" name="editarIdTipoCaracteristica">
 
-                 <!-- Campo Descripción -->
                  <div class="mb-4">
-                     <label class="form-label">
-                         Descripción
-                         <span class="text-muted">(máx. 100 caracteres)</span>
-                     </label>
-
-                     <div class="position-relative">
-                         <input type="text"
-                             maxlength="100"
-                             value="Marca"
-                             class="form-control pe-5"
-                             id="descripcionEditar"
-                             placeholder="Ej: Marca, Modelo, Tipo Pantalla...">
-                         <small class="position-absolute top-50 end-0 translate-middle-y me-3 text-muted">
-                             5 / 100
-                         </small>
-                     </div>
+                     <label class="form-label">Descripción</label>
+                     <input type="text" name="editarDescripcion" id="editarDescripcion" class="form-control" maxlength="100">
                  </div>
 
-                 <!-- Información de Auditoría -->
-                 <div>
-                     <div class="d-flex align-items-center gap-2 text-muted mb-3">
-                         <i class="ti ti-history"></i>
-                         <span class="text-uppercase small fw-bold">
-                             Información de Auditoría
-                         </span>
-                     </div>
-
-                     <div class="row g-3">
-
-                         <!-- Usuario Creación -->
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Usuario Creación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-user text-primary"></i>
-                                         <span class="fw-medium">admin_system</span>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         <!-- Fecha Creación -->
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Fecha Creación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-calendar text-primary"></i>
-                                         <span class="fw-medium">2023-10-15</span>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         <!-- Usuario Modificación -->
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Usuario Modificación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-edit text-primary"></i>
-                                         <span class="fw-medium">editor_pro</span>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                         <!-- Fecha Modificación -->
-                         <div class="col-md-6">
-                             <div class="card card-sm">
-                                 <div class="card-body">
-                                     <div class="text-muted small text-uppercase mb-1">
-                                         Fecha Modificación
-                                     </div>
-                                     <div class="d-flex align-items-center gap-2">
-                                         <i class="ti ti-refresh text-primary"></i>
-                                         <span class="fw-medium">2024-05-20</span>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-
-                     </div>
+                 <div class="row g-3 text-muted">
+                     <div class="col-6 small">Creado por: <span id="viewUserCrea" class="fw-bold text-dark">-</span></div>
+                     <div class="col-6 small text-end">Fecha: <span id="viewFechaCrea" class="fw-bold text-dark">-</span></div>
                  </div>
-
              </div>
 
-             <!-- Footer -->
              <div class="modal-footer">
-                 <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-                     Cancelar
-                 </button>
-
-                 <button type="button" class="btn btn-primary">
-                     <i class="ti ti-device-floppy me-1"></i>
-                     Guardar
+                 <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+                 <button type="submit" class="btn btn-primary">
+                     <i class="ti ti-device-floppy me-1"></i> Guardar Cambios
                  </button>
              </div>
-
-         </div>
+         </form>
      </div>
  </div>
 
+ <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
  <script src="modules/inventario/views/js/tipoCaracteristicas.js"></script>
