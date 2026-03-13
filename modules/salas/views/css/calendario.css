@@ -363,6 +363,135 @@
 #modal-nueva-solicitud .modal-header  { background: #1a2940; color: #fff; }
 #modal-nueva-solicitud .modal-content { position: relative; }
 
+/* ── Tarjeta popup de evento en calendario ───────────────── */
+.swal2-popup.cal-event-popup {
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(26, 41, 64, 0.26);
+  overflow: hidden;
+}
+
+.cal-event-close {
+  color: #6c757d !important;
+}
+
+.cal-event-card {
+  background: linear-gradient(180deg, #f7fafc 0%, #eef3fa 100%);
+  color: #1a2940;
+  text-align: left;
+}
+
+.cal-event-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: 1.15rem 1.2rem .9rem;
+  border-bottom: 1px solid #dbe3ef;
+}
+
+.cal-event-card__title {
+  margin: 0;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  font-weight: 800;
+  color: #1a2940;
+}
+
+.cal-event-card__status {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: .2rem .7rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.cal-event-card__status.estado-pendiente {
+  background: #ffe8cc;
+  color: #d97200;
+}
+
+.cal-event-card__status.estado-aprobada {
+  background: #d9f7e1;
+  color: #177a2d;
+}
+
+.cal-event-card__status.estado-rechazada {
+  background: #ffd9d9;
+  color: #b92e2e;
+}
+
+.cal-event-card__status.estado-cancelada {
+  background: #e3e6ea;
+  color: #495057;
+}
+
+.cal-event-card__meta {
+  display: grid;
+  gap: .8rem;
+  padding: .95rem 1.2rem;
+}
+
+.cal-event-card__row {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: .75rem;
+  align-items: start;
+}
+
+.cal-event-card__label {
+  font-size: .73rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #58708e;
+}
+
+.cal-event-card__value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #1a2940;
+}
+
+.cal-event-card__motivo {
+  margin: 0 1.2rem 1.2rem;
+  padding: .9rem 1rem;
+  background: rgba(255,255,255,.82);
+  border: 1px solid #dbe3ef;
+  border-radius: 10px;
+}
+
+.cal-event-card__motivo p {
+  margin: .45rem 0 0;
+  font-size: .98rem;
+  line-height: 1.15;
+  color: #30465f;
+}
+
+@media (max-width: 640px) {
+  .swal2-popup.cal-event-popup {
+    width: calc(100vw - 1.25rem) !important;
+  }
+
+  .cal-event-card__header {
+    flex-direction: column;
+  }
+
+  .cal-event-card__title {
+    font-size: .98rem;
+  }
+
+  .cal-event-card__value {
+    font-size: .92rem;
+  }
+
+  .cal-event-card__motivo p {
+    font-size: .9rem;
+  }
+}
+
 /* ── Iconos de tabler en nuestros botones ─────────────────── */
 .ti { vertical-align: middle; }
 

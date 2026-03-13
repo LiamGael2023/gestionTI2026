@@ -105,6 +105,17 @@ function badgeEstado(estado) {
   return `<span class="badge bg-${color}-lt text-${color}">${estado}</span>`;
 }
 
+function claseEstadoTarjeta(estado) {
+  const est = String(estado || '').toUpperCase();
+  const map = {
+    PENDIENTE: 'estado-pendiente',
+    APROBADA : 'estado-aprobada',
+    RECHAZADA: 'estado-rechazada',
+    CANCELADA: 'estado-cancelada',
+  };
+  return map[est] || 'estado-cancelada';
+}
+
 // ============================================================
 // HELPER — Offcanvas
 // ============================================================
@@ -223,14 +234,52 @@ function iniciarCalendarioPrincipal() {
     },
     eventClick: function(info) {
       const p = info.event.extendedProps;
+      const estado = (p.estado || 'APROBADA').toUpperCase();
+      const sede = escHtml(p.sede || 'No definida');
+      const sala = escHtml(p.sala || 'No definida');
+      const motivo = escHtml(p.motivo || 'Sin detalle');
+
+      const inicio = info.event.start
+        ? info.event.start.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      const fin = info.event.end
+        ? info.event.end.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+        : '';
+      const horario = (inicio && fin) ? `${inicio} - ${fin}` : (inicio || 'No definido');
+
       Swal.fire({
-        title: info.event.title,
-        html: `<div class="text-start small">
-          <b>Sede:</b> ${escHtml(p.sede || '')}<br>
-          <b>Sala:</b> ${escHtml(p.sala || '')}<br>
-          <b>Motivo:</b> ${escHtml(p.motivo || '')}<br>
-          <b>Estado:</b> ${badgeEstado(p.estado || 'APROBADA')}
+        html: `<div class="cal-event-card">
+          <div class="cal-event-card__header">
+            <h3 class="cal-event-card__title">${escHtml(info.event.title || 'Reserva de sala')}</h3>
+            <span class="cal-event-card__status ${claseEstadoTarjeta(estado)}">${escHtml(estado)}</span>
+          </div>
+
+          <div class="cal-event-card__meta">
+            <div class="cal-event-card__row">
+              <span class="cal-event-card__label">Sede</span>
+              <span class="cal-event-card__value">${sede}</span>
+            </div>
+            <div class="cal-event-card__row">
+              <span class="cal-event-card__label">Sala</span>
+              <span class="cal-event-card__value">${sala}</span>
+            </div>
+            <div class="cal-event-card__row">
+              <span class="cal-event-card__label">Horario</span>
+              <span class="cal-event-card__value">${escHtml(horario)}</span>
+            </div>
+          </div>
+
+          <div class="cal-event-card__motivo">
+            <span class="cal-event-card__label">Motivo</span>
+            <p>${motivo}</p>
+          </div>
         </div>`,
+        customClass: {
+          popup: 'cal-event-popup',
+          closeButton: 'cal-event-close',
+        },
+        width: 560,
+        padding: 0,
         showConfirmButton: false,
         showCloseButton  : true,
       });
