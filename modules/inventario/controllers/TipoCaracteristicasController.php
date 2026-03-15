@@ -10,7 +10,6 @@ class TipoCaracteristicasController
     static public function ctrCrearTipoCaracteristica()
     {
 
-
         if (isset($_POST["nuevaDescripcion"])) {
 
             $idUsuario = $_SESSION["usuario_id"];
@@ -20,8 +19,8 @@ class TipoCaracteristicasController
                 "idUsuarioRegistro" => $idUsuario
             );
 
-            // Llamada al modelo para ejecutar el SP sp_InsertarTipoCaracteristica
-            $tabla = "inventario.TipoCaracteristica";
+            // Llamada al modelo para ejecutar el SP sp_CrearTipoCaracteristica
+            $tabla = "inventario.tipoCaracteristica";
             $respuesta = TipoCaracteristicasModel::mdlCrearTipoCaracteristica($tabla, $datos);
 
             return $respuesta;
@@ -30,42 +29,20 @@ class TipoCaracteristicasController
     /*=============================================
     EDITAR TIPO CARACTERISTICAS
     =============================================*/
-    static public function ctrEditarTipoCaracteristica()
-    {
-        if (!isset($_POST["editarDescripcion"]) || !isset($_POST["editarIdTipoCaracteristica"])) {
-            return ["status" => "error", "message" => "Parámetros faltantes"];
-        }
-
-        $id = (int) $_POST["editarIdTipoCaracteristica"];
-        if ($id <= 0) {
-            return ["status" => "error", "message" => "ID inválido"];
-        }
-
-        // Asegúrate de que la sesión tenga el id del usuario
-        if (!isset($_SESSION["usuario_id"]) || empty($_SESSION["usuario_id"])) {
-            return ["status" => "error", "message" => "Sesión inválida o usuario no autenticado"];
-        }
-        $idUsuario = (int) $_SESSION["usuario_id"];
-
-        $descripcion = trim($_POST["editarDescripcion"]);
-        if ($descripcion === "") {
-            return ["status" => "error", "message" => "Descripción vacía"];
-        }
-
+    static public function ctrEditarTipoCaracteristica() {
+    if (isset($_POST["editarDescripcion"])) {
         $datos = [
-            "idTipoCaracteristicas" => $id,
-            "descripcion"           => $descripcion,
-            "usuario"               => $idUsuario
+            "idTipoCaracteristicas" => $_POST["editarIdTipoCaracteristica"],
+            "descripcion" => trim($_POST["editarDescripcion"]),
+            "usuario" => $_SESSION["usuario_id"]
         ];
-
         $tabla = "inventario.TipoCaracteristica";
         $respuesta = TipoCaracteristicasModel::mdlEditarTipoCaracteristica($tabla, $datos);
-
-        // Si el modelo devuelve un array con error, propágalo
-        if (is_array($respuesta)) return $respuesta;
-
-        return ["status" => "ok", "message" => $respuesta];
+        
+        // Empaquetar SIEMPRE como array
+        return $respuesta; 
     }
+}
 
 
     /*=============================================

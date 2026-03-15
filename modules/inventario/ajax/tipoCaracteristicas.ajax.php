@@ -3,10 +3,12 @@ session_start();
 require_once __DIR__ . "/../models/TipoCaracteristicasModel.php";
 require_once __DIR__ . "/../controllers/TipoCaracteristicasController.php";
 
-class AjaxTipoCaracteristicas {
+class AjaxTipoCaracteristicas
+{
     public $idTipo;
 
-    public function ajaxMostrarEditarTipoCaracteristica() {
+    public function ajaxMostrarEditarTipoCaracteristica()
+    {
         $item = "idTipoCaracteristica";
         $valor = (int)$this->idTipo;
         $tipo = TipoCaracteristicasController::ctrMostrarTipoCaracteristicas($item, $valor);
@@ -28,17 +30,21 @@ class AjaxTipoCaracteristicas {
         echo json_encode($respuesta);
     }
 
-    public function ajaxEditarTipoCaracteristica() {
-        $respuesta = TipoCaracteristicasController::ctrEditarTipoCaracteristica();
-        // Devolver tal cual para que el JS lo normalice
-        header('Content-Type: application/json');
+    /*=============================================
+    AGREGAR TIPO CARACTERISTICA
+    =============================================*/
+    public function ajaxCrearTipoCaracteristica()
+    {
+        $respuesta = TipoCaracteristicasController::ctrCrearTipoCaracteristica();
         echo json_encode($respuesta);
     }
 
-    public function ajaxCrearTipoCaracteristica() {
-        $respuesta = TipoCaracteristicasController::ctrCrearTipoCaracteristica();
-        header('Content-Type: application/json');
-        echo json_encode($respuesta);
+    public function ajaxEditarTipoCaracteristica()
+    {
+        $respuesta = TipoCaracteristicasController::ctrEditarTipoCaracteristica();
+        // Limpieza de buffer para evitar espacios en blanco antes del "ok"
+        if (ob_get_length()) ob_clean();
+        echo $respuesta; // <--- Lo mismo aquí
     }
 }
 
@@ -62,4 +68,3 @@ else if (isset($_POST["nuevaDescripcion"])) {
     $crear = new AjaxTipoCaracteristicas();
     $crear->ajaxCrearTipoCaracteristica();
 }
-?>

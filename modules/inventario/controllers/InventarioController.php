@@ -21,6 +21,8 @@ switch ($action) {
         break;
 
     case 'caracteristicas':
+        require_once 'modules/inventario/models/CaracteristicasModel.php';
+        require_once 'modules/inventario/controllers/CaracteristicasController.php';
         include 'modules/inventario/views/caracteristicas.php';
         break;
 

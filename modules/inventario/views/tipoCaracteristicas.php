@@ -173,20 +173,22 @@
  <div class="modal modal-blur fade" id="modalAgregarTipoCaracteristica" tabindex="-1">
      <div class="modal-dialog modal-lg modal-dialog-centered">
          <div class="modal-content">
+
              <form id="formNuevoTipoCaracteristica" method="POST">
-                 <!-- Header -->
+
+                 <!-- HEADER -->
                  <div class="modal-header py-3">
                      <h5 class="modal-title d-flex align-items-center gap-2">
                          <i class="ti ti-list-details text-primary"></i>
                          Agregar Tipo de Característica
                      </h5>
+
                      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                  </div>
 
-                 <!-- Body -->
+                 <!-- BODY -->
                  <div class="modal-body">
 
-                     <!-- Campo Descripción -->
                      <div class="mb-4">
                          <label class="form-label">
                              Descripción
@@ -194,29 +196,38 @@
                          </label>
 
                          <div class="position-relative">
-                             <input type="text"
+
+                             <input
+                                 type="text"
                                  maxlength="100"
                                  class="form-control pe-5"
                                  name="nuevaDescripcion"
                                  id="nuevaDescripcion"
-                                 placeholder="Ej: Marca, Modelo, Tipo Pantalla...">
+                                 placeholder="Ej: Marca, Modelo, Tipo Pantalla..."
+                                 required>
+
                              <small class="position-absolute top-50 end-0 translate-middle-y me-3 text-muted">
                                  0 / 100
                              </small>
+
                          </div>
                      </div>
 
-                     <!-- Footer -->
-                     <div class="modal-footer">
-                         <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-                             Cancelar
-                         </button>
+                 </div>
 
-                         <button type="submit" class="btn btn-primary">
-                             <i class="ti ti-device-floppy me-1"></i>
-                             Guardar
-                         </button>
-                     </div>
+                 <!-- FOOTER -->
+                 <div class="modal-footer">
+
+                     <button type="button" class="btn btn-link" data-bs-dismiss="modal">
+                         Cancelar
+                     </button>
+
+                     <button type="submit" class="btn btn-primary">
+                         <i class="ti ti-device-floppy me-1"></i>
+                         Guardar
+                     </button>
+
+                 </div>
 
              </form>
 
@@ -301,7 +312,6 @@
 
 
 
-<!-- Contenedor para toasts -->
-<div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index:10800;"></div>
+ <div id="toastContainerTipoCaracteristica" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 
  <script src="modules/inventario/views/js/tipoCaracteristicas.js"></script>

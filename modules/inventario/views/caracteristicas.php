@@ -63,59 +63,64 @@
            <!-- TABLE -->
            <div class="card-body p-0">
              <div class="table-responsive">
-               <table class="table table-vcenter">
+               <table id="tablaCaracteristicas" class="table table-vcenter table-mobile-md card-table table-sm">
                  <thead>
                    <tr>
                      <th>Nombre</th>
                      <th>Descripción</th>
                      <th>Fecha de Creación</th>
-                     <th>Registrado Por</th>
+                     <th class="d-none d-sm-table-cell">Registrado Por</th>
                      <th class="text-end">Acciones</th>
                    </tr>
                  </thead>
                  <tbody>
-                   <tr>
-                     <td>
-                       <i class="ti ti-router text-primary me-2"></i>
-                       Marca
-                     </td>
-                     <td>Lenovo</td>
-                     <td>12/05/2023</td>
-                     <td>Rommel Jhondeyber Díaz Nureña</td>
-                     <td class="text-end">
-                       <button class="btn btn-sm btn-icon"
-                         data-bs-toggle="modal"
-                         data-bs-target="#modalEditarCaracteristica">
-                         <i class="ti ti-edit me-1"></i>
-                       </button>
-                       <a href="#" class="btn btn-sm btn-icon text-danger">
-                         <i class="ti ti-trash"></i>
-                       </a>
-                     </td>
-                   </tr>
+                   <?php
+                    $item = null;
+                    $valor = null;
+                    $caracteristicas = CaracteristicasController::ctrMostrarCaracteristicas($item, $valor);
 
-                   <tr>
-                     <td>
-                       <i class="ti ti-device-laptop text-purple me-2"></i>
-                       Marca
-                     </td>
-                     <td>Dell</td>
-                     <td>15/05/2026</td>
-                     <td>Rommel Jhondeyber Díaz Nureña</td>
-                     <td class="text-end">
-                       <a href="#" class="btn btn-sm btn-icon">
-                         <i class="ti ti-edit"></i>
-                       </a>
-                       <a href="#" class="btn btn-sm btn-icon text-danger">
-                         <i class="ti ti-trash"></i>
-                       </a>
-                     </td>
-                   </tr>
-
+                    foreach ($caracteristicas as $key => $value) {
+                      echo '
+                        <tr>
+                          <td data-label="Nombre" class="text-muted small" style="font-family: \'Inter\', \'Segoe UI\', Roboto, Arial, sans-serif;">
+                            ' . htmlspecialchars($value["tipoDescripcion"] ?? '') . '
+                          </td>
+                          <td data-label="Descripción" class="text-muted small" style="font-family: \'Inter\', \'Segoe UI\', Roboto, Arial, sans-serif;">
+                            ' . htmlspecialchars($value["valor"] ?? '') . '
+                          </td>
+                          <td data-label="Fecha" class="text-muted small" style="font-family: \'Inter\', \'Segoe UI\', Roboto, Arial, sans-serif;">
+                            ' . (
+                                  isset($value["fechaCreacion"]) && $value["fechaCreacion"] instanceof DateTime
+                                  ? $value["fechaCreacion"]->format('d/m/Y')
+                                  : (is_string($value["fechaCreacion"]) ? date('d/m/Y', strtotime($value["fechaCreacion"])) : "Sin fecha")
+                                ) . '
+                          </td>
+                          <td data-label="Usuario" class="d-none d-sm-table-cell" style="font-family: \'Inter\', \'Segoe UI\', Roboto, Arial, sans-serif;">
+                            <span class="badge badge-outline text-muted fw-normal">ID: ' . htmlspecialchars($value["idUsuarioCreacion"] ?? 'N/A') . '</span>
+                          </td>
+                          <td class="text-end">
+                            <div class="btn-list justify-content-end">
+                              <button class="btn btn-sm btn-icon btn-outline-primary btnEditarCaracteristica"
+                                      data-id="' . htmlspecialchars($value["idCaracteristica"] ?? '') . '"
+                                      title="Editar">
+                                <i class="ti ti-edit"></i>
+                              </button>
+                              <a href="index.php?module=inventario&action=caracteristicas&idCaracteristica=' . htmlspecialchars($value["idCaracteristica"] ?? '') . '"
+                                class="btn btn-sm btn-icon btn-outline-danger"
+                                title="Eliminar">
+                                <i class="ti ti-trash"></i>
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      ';
+                    }
+                    ?>
                  </tbody>
                </table>
              </div>
            </div>
+
 
          </div>
 
@@ -168,238 +173,178 @@
    </div>
  </body>
 
- <!-- Modal Agregar Activo -->
-<div class="modal modal-blur fade" id="modalAgregarCaracteristica" tabindex="-1">
+<!-- Modal Agregar Característica -->
+<div class="modal modal-blur fade" id="modalAgregarCaracteristica" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-
-      <!-- Header -->
-      <div class="modal-header">
-        <h5 class="modal-title d-flex align-items-center gap-3">
-          <div class="avatar avatar-sm bg-primary-lt text-primary">
-            <i class="ti ti-settings"></i>
-          </div>
-          Agregar Característica
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <!-- Body -->
-      <div class="modal-body">
-
-        <!-- Tipo de Característica -->
-        <div class="mb-4">
-          <label class="form-label">Tipo de Característica</label>
-          <select class="form-select">
-            <option selected disabled>Seleccionar tipo...</option>
-            <option value="marca">Marca</option>
-            <option value="modelo">Modelo</option>
-            <option value="pantalla">Tipo de Pantalla</option>
-            <option value="pulgadas">Pulgadas</option>
-            <option value="capacidad">Capacidad</option>
-            <option value="procesador">Procesador</option>
-            <option value="ram">Memoria RAM</option>
-          </select>
+      <form id="formNuevoCaracteristica" autocomplete="off">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-3">
+            <div class="avatar avatar-sm bg-primary-lt text-primary"><i class="ti ti-settings"></i></div>
+            Agregar Característica
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
 
-        <!-- Valor -->
-        <div class="mb-4">
-          <label class="form-label">Valor</label>
-          <input type="text"
-                 class="form-control"
-                 placeholder='Ej: Dell, Latitude 5420, LED, 14"'>
-        </div>
-
-        <!-- Auditoría -->
-        <div>
-          <div class="d-flex align-items-center gap-2 text-muted mb-3">
-            <i class="ti ti-history"></i>
-            <span class="text-uppercase small fw-bold">
-              Información de Auditoría
-            </span>
+        <div class="modal-body">
+          <div class="mb-4">
+            <label class="form-label">Tipo de Característica</label>
+            <select name="idTipoCaracteristica" id="nuevoSelectTipo" class="form-select" required>
+              <option value="" selected disabled>Seleccionar tipo...</option>
+            </select>
           </div>
 
-          <div class="row g-3">
+          <div class="mb-4">
+            <label class="form-label">Valor</label>
+            <input name="nuevoValor" type="text" class="form-control" placeholder='Ej: DELL; Latitude 5420; LED; 14"' required>
+            <div class="form-text small">Incluye unidad si aplica (ej. 24 pulgadas, 256 GB).</div>
+          </div>
 
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Usuario Creación
+          <div>
+            <div class="d-flex align-items-center gap-2 text-muted mb-3">
+              <i class="ti ti-history"></i>
+              <span class="text-uppercase small fw-bold">Información de Auditoría</span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Usuario Creación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-user text-primary"></i>
+                      <span class="fw-medium" id="nuevoUsuarioCreacion">--</span>
+                    </div>
                   </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-user text-primary"></i>
-                    <span class="fw-medium">admin_user</span>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Fecha Creación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-calendar text-primary"></i>
+                      <span class="fw-medium" id="nuevoFechaCreacion">--</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Fecha Creación
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-calendar text-primary"></i>
-                    <span class="fw-medium">2023-11-15</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
+
         </div>
 
-      </div>
-
-      <!-- Footer -->
-      <div class="modal-footer">
-        <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-          Cancelar
-        </button>
-
-        <button type="button" class="btn btn-primary">
-          <i class="ti ti-device-floppy me-1"></i>
-          Guardar
-        </button>
-      </div>
-
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy me-1"></i> Guardar
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 
- <!-- Modal Editar Característica -->
-<div class="modal modal-blur fade" id="modalEditarCaracteristica" tabindex="-1">
+<!-- Modal Editar Característica -->
+<div class="modal modal-blur fade" id="modalEditarCaracteristica" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
-
-      <!-- Header -->
-      <div class="modal-header">
-        <h5 class="modal-title d-flex align-items-center gap-3">
-          <div class="avatar avatar-sm bg-primary-lt text-primary">
-            <i class="ti ti-edit"></i>
-          </div>
-          Editar Característica
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <!-- Body -->
-      <div class="modal-body">
-
-        <!-- Tipo de Característica -->
-        <div class="mb-4">
-          <label class="form-label">Tipo de Característica</label>
-          <select class="form-select">
-            <option value="marca">Marca</option>
-            <option value="modelo" selected>Modelo</option>
-            <option value="pantalla">Tipo de Pantalla</option>
-            <option value="pulgadas">Pulgadas</option>
-            <option value="capacidad">Capacidad</option>
-            <option value="procesador">Procesador</option>
-            <option value="ram">Memoria RAM</option>
-          </select>
+      <form id="formEditarCaracteristica" autocomplete="off">
+        <div class="modal-header">
+          <h5 class="modal-title d-flex align-items-center gap-3">
+            <div class="avatar avatar-sm bg-primary-lt text-primary"><i class="ti ti-edit"></i></div>
+            Editar Característica
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>
 
-        <!-- Valor -->
-        <div class="mb-4">
-          <label class="form-label">Valor</label>
-          <input type="text"
-                 class="form-control"
-                 value="Latitude 5420"
-                 placeholder="Ingrese el valor">
-        </div>
+        <div class="modal-body">
+          <input type="hidden" name="editarIdCaracteristica" id="editarIdCaracteristica" value="">
 
-        <!-- Auditoría -->
-        <div>
-          <div class="d-flex align-items-center gap-2 text-muted mb-3">
-            <i class="ti ti-history"></i>
-            <span class="text-uppercase small fw-bold">
-              Información de Auditoría
-            </span>
+          <div class="mb-4">
+            <label class="form-label">Tipo de Característica</label>
+            <select name="editarIdTipoCaracteristica" id="editarSelectTipo" class="form-select" required>
+              <option value="" disabled>Seleccionar tipo...</option>
+            </select>
           </div>
 
-          <div class="row g-3">
-
-            <!-- Usuario Creación -->
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Usuario Creación
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-user text-primary"></i>
-                    <span class="fw-medium">admin_user</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Fecha Creación -->
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Fecha Creación
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-calendar text-primary"></i>
-                    <span class="fw-medium">2023-11-15</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Usuario Modificación -->
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Usuario Modificación
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-edit text-primary"></i>
-                    <span class="fw-medium">editor_pro</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Fecha Modificación -->
-            <div class="col-md-6">
-              <div class="card card-sm">
-                <div class="card-body">
-                  <div class="text-muted small text-uppercase mb-1">
-                    Fecha Modificación
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-refresh text-primary"></i>
-                    <span class="fw-medium">2024-05-20</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+          <div class="mb-4">
+            <label class="form-label">Valor</label>
+            <input name="editarValor" id="editarValor" type="text" class="form-control" placeholder="Ingrese el valor" required>
           </div>
+
+          <div>
+            <div class="d-flex align-items-center gap-2 text-muted mb-3">
+              <i class="ti ti-history"></i>
+              <span class="text-uppercase small fw-bold">Información de Auditoría</span>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Usuario Creación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-user text-primary"></i>
+                      <span class="fw-medium" id="editarUsuarioCreacion">--</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Fecha Creación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-calendar text-primary"></i>
+                      <span class="fw-medium" id="editarFechaCreacion">--</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Usuario Modificación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-edit text-primary"></i>
+                      <span class="fw-medium" id="editarUsuarioModifica">--</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card card-sm">
+                  <div class="card-body">
+                    <div class="text-muted small text-uppercase mb-1">Fecha Modificación</div>
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="ti ti-refresh text-primary"></i>
+                      <span class="fw-medium" id="editarFechaModificacion">--</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
-      </div>
-
-      <!-- Footer -->
-      <div class="modal-footer">
-        <button type="button" class="btn btn-link" data-bs-dismiss="modal">
-          Cancelar
-        </button>
-
-        <button type="button" class="btn btn-primary">
-          <i class="ti ti-device-floppy me-1"></i>
-          Guardar Cambios
-        </button>
-      </div>
-
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy me-1"></i> Guardar Cambios
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+
+<!-- Toast container -->
+<div id="toastContainerCaracteristicas" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+<script src="modules/inventario/views/js/caracteristicas.js"></script>
