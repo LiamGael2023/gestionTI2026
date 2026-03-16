@@ -1,4 +1,3 @@
-
 <?php
 
 
@@ -601,7 +600,9 @@
                             title: '¡Éxito!',
                             text: response.message
                         }).then(() => {
-                            $('.tablaRegistroPapeleta').DataTable().ajax.reload(null, false);
+                            tabla.ajax.reload(null, false);
+                            tablaAdmin.ajax.reload(null, false);
+
                         });
 
                     } else {
@@ -731,4 +732,3 @@
 
     });
 </script>
-

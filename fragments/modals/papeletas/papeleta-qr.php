@@ -2,34 +2,48 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// ... resto de tu código
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
 
 <style>
-    /* FOTO móvil full width */
+    .qr-container {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.12);
+        max-width: 100%;
+    }
+
+    .qr-box {
+        width: 150px;
+        height: 150px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* CLAVE: el canvas nunca supera su contenedor */
+    .qr-box canvas {
+        max-width: 100% !important;
+        max-height: 100% !important;
+        display: block;
+    }
+
     @media (max-width: 576px) {
+        .qr-container { width: 100%; }
+        .qr-box { width: 200px; height: 200px; }
+
         #papeletaAvatar {
             width: 100% !important;
             height: auto !important;
             padding-top: 100%;
-            /* mantiene cuadrado */
             background-size: cover !important;
             background-position: center !important;
-        }
-
-        /* QR full width
-        #qrCanvas {
-            width: 100% !important;
-            height: auto !important;
-            max-width: none !important;
-        } */
-
-        /* Contenedor del QR full width */
-        .qr-container {
-            width: 100%;
-            text-align: center;
         }
     }
 </style>
@@ -47,10 +61,10 @@ if (session_status() === PHP_SESSION_NONE) {
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
 
-                        <!-- Fila principal: foto, datos, QR -->
+                        
                         <div class="row g-4 align-items-center">
 
-                            <!-- Foto (SIN ICONO) -->
+                            <!-- Foto -->
                             <div class="col-12 col-sm-3 text-center">
                                 <div id="papeletaAvatar" class="avatar rounded border"
                                     style="width:150px; height:150px; background-size:cover; background-position:center; margin:auto;">
@@ -60,159 +74,100 @@ if (session_status() === PHP_SESSION_NONE) {
                             <!-- Datos -->
                             <div class="col-12 col-sm-6 text-center text-sm-start">
                                 <h4 class="fw-bold" id="papeletaNombres"></h4>
-
                                 <div class="row g-2 mt-2 small text-muted">
-
                                     <div class="col-md-6">
                                         <div class="d-flex align-items-start gap-2">
                                             <img src="vistas/img/iconos/papeleta/gerencia.svg" width="18" alt="">
-                                            <div>
-                                                <strong>Gerencia:</strong><br>
-                                                <span id="papeletaSubgerencia"></span>
-                                            </div>
+                                            <div><strong>Gerencia:</strong><br><span id="papeletaSubgerencia"></span></div>
                                         </div>
                                     </div>
-
                                     <div class="col-md-6">
                                         <div class="d-flex align-items-start gap-2">
                                             <img src="vistas/img/iconos/papeleta/oficina.svg" width="18" alt="">
-                                            <div>
-                                                <strong>Oficina:</strong><br>
-                                                <span id="papeletaOficina"></span>
-                                            </div>
+                                            <div><strong>Oficina:</strong><br><span id="papeletaOficina"></span></div>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
 
-                            <!-- QR (SIN ICONO) -->
+                            <!-- QR -->
                             <div class="col-12 col-sm-3 text-center">
-                                <div class="border rounded p-2 bg-white shadow-sm d-inline-block qr-container">
-                                    <canvas id="qrCanvas" width="200" height="200"></canvas>
-
+                                <div class="qr-container">
+                                    <div class="qr-box" id="qrBox">
+                                        <canvas id="qrCanvas"></canvas>
+                                    </div>
                                     <div class="mt-2">
-                                        <span id="papeletaID"
-                                            class="px-3 py-1 rounded"
-                                            style="background-color:white; color:black; font-weight:bold; display:inline-block;">
-                                        </span>
+                                        <span id="papeletaID" style="color:black; font-weight:bold; display:inline-block;"></span>
                                     </div>
                                 </div>
                             </div>
 
-                        </div><!-- /row -->
+                        </div>
 
-                        <!-- Info adicional -->
                         <hr class="my-4">
                         <div class="small">
 
-                            <!-- Concepto / Motivo -->
                             <div class="mb-3 d-flex align-items-start gap-2">
                                 <img src="vistas/img/iconos/papeleta/concepto.svg" width="18" alt="">
-                                <div>
-                                    <strong>Concepto/Motivo:</strong>
-                                    <p class="mb-0" id="papeletaConceptoMotivo"></p>
-                                </div>
+                                <div><strong>Concepto/Motivo:</strong><p class="mb-0" id="papeletaConceptoMotivo"></p></div>
                             </div>
 
-                            <!-- Lugar -->
                             <div class="mb-3 d-flex align-items-start gap-2">
                                 <img src="vistas/img/iconos/papeleta/lugar.svg" width="18" alt="">
-                                <div>
-                                    <strong>Lugar:</strong>
-                                    <p class="mb-0" id="papeletaLugar"></p>
-                                </div>
+                                <div><strong>Lugar:</strong><p class="mb-0" id="papeletaLugar"></p></div>
                             </div>
 
-                            <!-- Fechas -->
                             <div class="row g-4">
-
                                 <div class="col-sm-6">
                                     <div class="d-flex align-items-start gap-2">
                                         <img src="vistas/img/iconos/papeleta/fecha.svg" width="18" alt="">
                                         <div>
                                             <strong>Fechas</strong>
-
                                             <div class="d-flex flex-column flex-md-row gap-3 mt-1">
-
-                                                <div>
-                                                    <small class="text-muted">Inicio</small>
-                                                    <p class="mb-0" id="papeletaFechaInicio"></p>
-                                                </div>
-
-                                                <div>
-                                                    <small class="text-muted">Fin</small>
-                                                    <p class="mb-0" id="papeletaFechaFin"></p>
-                                                </div>
-
+                                                <div><small class="text-muted">Inicio</small><p class="mb-0" id="papeletaFechaInicio"></p></div>
+                                                <div><small class="text-muted">Fin</small><p class="mb-0" id="papeletaFechaFin"></p></div>
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Horas -->
                                 <div class="col-sm-6">
                                     <div class="d-flex align-items-start gap-2">
                                         <img src="vistas/img/iconos/papeleta/hora.svg" width="18" alt="">
                                         <div>
                                             <strong>Horas</strong>
                                             <div class="d-flex flex-column flex-md-row gap-3 mt-1">
-                                                <div>
-                                                    <small class="text-muted">Inicio</small>
-                                                    <p class="mb-0" id="papeletaHoraInicio"></p>
-                                                </div>
-                                                <div>
-                                                    <small class="text-muted">Fin</small>
-                                                    <p class="mb-0" id="papeletaHoraFin"></p>
-                                                </div>
+                                                <div><small class="text-muted">Inicio</small><p class="mb-0" id="papeletaHoraInicio"></p></div>
+                                                <div><small class="text-muted">Fin</small><p class="mb-0" id="papeletaHoraFin"></p></div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-
-                            </div><!-- /row -->
+                            </div>
                         </div>
 
-                        <!-- Sección vehículo -->
                         <hr id="rowVehiculo" class="my-4 d-none">
-
                         <div class="row g-4 small d-none" id="vehiculoInfo">
-
                             <div class="col-sm-4">
                                 <div class="d-flex align-items-start gap-2">
                                     <img src="vistas/img/iconos/papeleta/placa.svg" width="18" alt="">
-                                    <div>
-                                        <strong>Placa:</strong>
-                                        <p class="mb-0" id="papeletaPlaca"></p>
-                                    </div>
+                                    <div><strong>Placa:</strong><p class="mb-0" id="papeletaPlaca"></p></div>
                                 </div>
                             </div>
-
                             <div class="col-sm-4">
                                 <div class="d-flex align-items-start gap-2">
                                     <img src="vistas/img/iconos/papeleta/km-inicial.svg" width="18" alt="">
-                                    <div>
-                                        <strong>Kilom. Inicial:</strong>
-                                        <p class="mb-0" id="papeletaKMInicial"></p>
-                                    </div>
+                                    <div><strong>Kilom. Inicial:</strong><p class="mb-0" id="papeletaKMInicial"></p></div>
                                 </div>
                             </div>
-
                             <div class="col-sm-4">
                                 <div class="d-flex align-items-start gap-2">
                                     <img src="vistas/img/iconos/papeleta/km-final.svg" width="18" alt="">
-                                    <div>
-                                        <strong>Kilom. Final:</strong>
-                                        <p class="mb-0" id="papeletaKMFinal"></p>
-                                    </div>
+                                    <div><strong>Kilom. Final:</strong><p class="mb-0" id="papeletaKMFinal"></p></div>
                                 </div>
                             </div>
-
                         </div>
 
                     </div>
-
                 </div>
             </div>
 
@@ -222,184 +177,132 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </div>
 </div>
+
 <script>
-    $(document).ready(function() {
+$(document).ready(function () {
 
-        var modal = $("#modalQR");
+    var canvasEl = document.getElementById("qrCanvas");
+    var qrBox    = document.getElementById("qrBox");
 
-        /* ==========================
-           INICIALIZAR QR
-        ========================== */
+    function getQrSize() {
+        var boxW = qrBox ? qrBox.offsetWidth : 0;
+        if (boxW > 20) return boxW;
+        return window.innerWidth <= 576 ? 200 : 150;
+    }
 
-        var qr = new QRious({
-            element: document.getElementById("qrCanvas"),
-            size: 110,
-            value: ""
-        });
+    var qr = new QRious({
+        element : canvasEl,
+        size    : getQrSize(),
+        value   : "INIT"
+    });
 
-        /* ==========================
-           CUANDO SE ABRE EL MODAL
-        ========================== */
+    console.log("QRious init size:", qr.size);
+    $("#debugQR").text("QR init size=" + qr.size + " canvas=" + canvasEl.width + "x" + canvasEl.height);
 
-        modal.on("show.bs.modal", function(event) {
+    var modal = $("#modalQR");
 
-            var button = $(event.relatedTarget);
-            var id = button.data("id");
+    /* Redimensionar QR cuando el modal ya es visible (shown con 'n') */
+    modal.on("shown.bs.modal", function () {
+        var s = getQrSize();
+        if (qr.size !== s) {
+            qr.size = s;
+            console.log("QR redimensionado a:", s);
+        }
+    });
 
-            /* ==========================
-               ACTUALIZAR QR
-            ========================== */
+    modal.on("show.bs.modal", function (event) {
 
-            qr.value = "";
-            qr.value = id;
+        var id = $(event.relatedTarget).data("id");
+        console.log("data-id:", id, typeof id);
+        $("#debugID").text("ID: " + (id !== undefined ? id : "UNDEFINED — revisa data-id en el boton"));
 
-            $("#papeletaID").text(id);
+        if (!id) {
+            $("#debugAjax").text("AJAX: no ejecutado — ID vacio");
+            return;
+        }
 
-            /* ==========================
-               AJAX DETALLE PAPELETA
-            ========================== */
+        var idStr = String(id);
+        qr.value  = idStr;
+        $("#papeletaID").text(idStr);
+        $("#debugQR").text("QR value=" + idStr + " | canvas " + canvasEl.width + "x" + canvasEl.height);
+        $("#debugAjax").text("AJAX: enviando...");
 
-            var formData = new FormData();
-            formData.append("accion", "mostrar_detalle");
-            formData.append("id_papeleta", id);
+        $.ajax({
+            url      : "modules/papeletas/ajax/papeleta.ajax.php",
+            type     : "POST",
+            data     : { accion: "mostrar_detalle", id_papeleta: id },
+            dataType : "json",
 
-            $.ajax({
-                url: "modules/papeletas/ajax/papeleta.ajax.php",
-                type: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                dataType: "json",
+            success: function (resp) {
+                console.log("AJAX resp:", resp);
+                $("#debugAjax").text("AJAX: status=" + resp.status);
 
-                success: function(resp) {
-
-                    console.log("Respuesta del servidor:", resp);
-
-                    if (resp.status === "success") {
-
-                        var data = resp.data;
-
-                        /* ==========================
-                           FORMATEO FECHAS
-                        ========================== */
-
-                        let fechaInicio = data.fecha_inicio;
-                        if (fechaInicio && typeof fechaInicio === "object" && fechaInicio.date) {
-                            fechaInicio = new Date(fechaInicio.date).toLocaleDateString("es-ES");
-                        }
-
-                        let fechaFin = data.fecha_fin;
-                        if (fechaFin && typeof fechaFin === "object" && fechaFin.date) {
-                            fechaFin = new Date(fechaFin.date).toLocaleDateString("es-ES");
-                        }
-
-                        /* ==========================
-                           FORMATEO HORAS
-                        ========================== */
-
-                        let horaSalida = data.hora_salida;
-
-                        if (horaSalida && typeof horaSalida === "object" && horaSalida.date) {
-                            horaSalida = new Date(horaSalida.date).toLocaleTimeString("es-ES", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            });
-                        } else if (typeof horaSalida === "string") {
-                            horaSalida = new Date(horaSalida).toLocaleTimeString("es-ES", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            });
-                        }
-
-                        let horaLlegada = data.hora_llegada;
-
-                        if (horaLlegada && typeof horaLlegada === "object" && horaLlegada.date) {
-                            horaLlegada = new Date(horaLlegada.date).toLocaleTimeString("es-ES", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            });
-                        } else if (typeof horaLlegada === "string") {
-                            horaLlegada = new Date(horaLlegada).toLocaleTimeString("es-ES", {
-                                hour: "2-digit",
-                                minute: "2-digit"
-                            });
-                        }
-
-                        /* ==========================
-                           CARGAR DATOS
-                        ========================== */
-
-                        $("#papeletaNombres").text(data.nombres);
-                        $("#papeletaSubgerencia").text(data.gerencia);
-                        $("#papeletaOficina").text(data.oficina);
-
-                        $("#papeletaFechaInicio").text(fechaInicio || "");
-                        $("#papeletaFechaFin").text(fechaFin || "");
-
-                        $("#papeletaHoraInicio").text(horaSalida || "");
-                        $("#papeletaHoraFin").text(horaLlegada || "");
-
-                        $("#papeletaConceptoMotivo").html(
-                            data.Id_Trabajador_Concepto_APP + "<br>" +
-                            data.Id_Trabajador_Motivo_APP
-                        );
-
-                        $("#papeletaLugar").text(data.Id_Trabajador_Lugar_APP);
-
-                        /* ==========================
-                           FOTO TRABAJADOR
-                        ========================== */
-
-                        $("#papeletaAvatar").css(
-                            "background-image",
-                            "url('/gestionti/public/fotos-trabajador/" + data.Trab_Fotocheck + ".jpg')"
-                        );
-
-                        /* ==========================
-                           DATOS VEHICULO
-                        ========================== */
-
-                        if (parseInt(data.es_salida_vehicular) === 1) {
-
-                            $("#rowVehiculo").removeClass("d-none");
-                            $("#vehiculoInfo").removeClass("d-none");
-
-                            $("#papeletaPlaca").text(data.placa || "No disponible");
-                            $("#papeletaKMInicial").text(data.kilometraje_inicial || "No disponible");
-                            $("#papeletaKMFinal").text(data.kilometraje_final || "No disponible");
-
-                        } else {
-
-                            $("#rowVehiculo").addClass("d-none");
-                            $("#vehiculoInfo").addClass("d-none");
-
-                            $("#papeletaPlaca").text("");
-                            $("#papeletaKMInicial").text("");
-                            $("#papeletaKMFinal").text("");
-
-                        }
-
-                    } else if (resp.status === "empty") {
-
-                        console.warn("No se encontraron datos de la papeleta");
-
-                    } else {
-
-                        console.error("Error del servidor:", resp.message);
-
-                    }
-
-                },
-
-                error: function(xhr, status, error) {
-
-                    console.error("Error AJAX:", error);
-
+                if (resp.status !== "success") {
+                    console.warn("status:", resp.status, resp.message || "");
+                    return;
                 }
 
-            });
+                var d = resp.data;
 
+                function fmtFecha(f) {
+                    if (!f) return "";
+                    var src = (typeof f === "object" && f.date) ? f.date : f;
+                    var dt  = new Date(src);
+                    return isNaN(dt) ? src : dt.toLocaleDateString("es-ES");
+                }
+
+                function fmtHora(h) {
+                    if (!h) return "";
+                    var src = (typeof h === "object" && h.date) ? h.date : h;
+                    var dt  = new Date(src);
+                    if (isNaN(dt)) return String(h);
+                    return dt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+                }
+
+                $("#papeletaNombres").text(d.nombres);
+                $("#papeletaSubgerencia").text(d.gerencia);
+                $("#papeletaOficina").text(d.oficina);
+                $("#papeletaFechaInicio").text(fmtFecha(d.fecha_inicio));
+                $("#papeletaFechaFin").text(fmtFecha(d.fecha_fin));
+                $("#papeletaHoraInicio").text(fmtHora(d.hora_salida));
+                $("#papeletaHoraFin").text(fmtHora(d.hora_llegada));
+                $("#papeletaConceptoMotivo").html((d.Id_Trabajador_Concepto_APP||"") + "<br>" + (d.Id_Trabajador_Motivo_APP||""));
+                $("#papeletaLugar").text(d.Id_Trabajador_Lugar_APP || "");
+
+                var urlFoto = "/gestionti/public/fotos-trabajador/" + d.Trab_Fotocheck + ".jpg";
+                console.log("Foto:", urlFoto);
+                $("#debugFoto").text("Foto: " + urlFoto);
+                $("#papeletaAvatar").css("background-image", "url('" + urlFoto + "')");
+
+                var esVeh = parseInt(d.es_salida_vehicular) === 1;
+                $("#rowVehiculo").toggleClass("d-none", !esVeh);
+                $("#vehiculoInfo").toggleClass("d-none", !esVeh);
+                if (esVeh) {
+                    $("#papeletaPlaca").text(d.placa || "No disponible");
+                    $("#papeletaKMInicial").text(d.kilometraje_inicial || "No disponible");
+                    $("#papeletaKMFinal").text(d.kilometraje_final || "No disponible");
+                }
+            },
+
+            error: function (xhr, status, error) {
+                console.error("AJAX error:", xhr.status, error, xhr.responseText);
+                $("#debugAjax").text("AJAX: ERROR HTTP " + xhr.status + " — " + error);
+            }
         });
 
     });
+
+    modal.on("hidden.bs.modal", function () {
+        qr.value = "";
+        ["#papeletaNombres","#papeletaSubgerencia","#papeletaOficina",
+         "#papeletaFechaInicio","#papeletaFechaFin","#papeletaHoraInicio",
+         "#papeletaHoraFin","#papeletaLugar","#papeletaID",
+         "#papeletaPlaca","#papeletaKMInicial","#papeletaKMFinal"
+        ].forEach(function(s){ $(s).text(""); });
+        $("#papeletaConceptoMotivo").html("");
+        $("#papeletaAvatar").css("background-image","");
+        $("#debugID,#debugQR,#debugAjax,#debugFoto").text("(esperando...)");
+    });
+
+});
 </script>
