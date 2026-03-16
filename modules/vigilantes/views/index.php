@@ -564,4 +564,8 @@
                 // Limpiar elemento temporal
                 setTimeout(() => document.body.removeChild(tempFsLightbox), 100);
             });
+            
+
+
         </script>
+        
