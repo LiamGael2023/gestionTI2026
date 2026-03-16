@@ -27,8 +27,8 @@ switch ($action) {
         break;
 
     case 'equipos':
-        require_once 'modules/inventario/models/EquiposModel.php';
-        require_once 'modules/inventario/controllers/EquiposController.php';
+        require_once 'modules/inventario/models/EquipoModel.php';
+        require_once 'modules/inventario/controllers/EquipoController.php';
         include 'modules/inventario/views/equipos.php';
         break;
 
