@@ -19,10 +19,19 @@ class UsuarioController{
 
     $data = UsuarioModel::obtenerUsuario($codigo);
 
-    echo json_encode([
-        "success"=>true,
-        "data"=>$data
-    ]);
-}
+     if(empty($data)){
+            echo json_encode([
+                "success"=>false,
+                "mensaje"=>"Usuario no encontrado"
+            ]);
+            return;
+        }
+
+   
+        echo json_encode([
+            "success"=>true,
+            "data"=>$data
+        ]);
+    }
 
 }

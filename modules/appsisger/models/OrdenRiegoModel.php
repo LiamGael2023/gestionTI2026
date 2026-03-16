@@ -1,18 +1,18 @@
 <?php
 
-class PeriodoModel{
+class OrdenRiegoModel{
 
-    static public function obtenerPeriodo($idAmbito,$codigoCatastral){
+    static public function obtenerOrden($idAmbito,$anio,$uc,$periodo){
 
         $conn = Conexion::conectar();
 
-         $anioActual = date("Y");
-        $sql = "{CALL BDSISGERWEB.appsisger.pa_ObtenerPeriodoxUC(?,?,?)}";
+        $sql = "{CALL BDSISGERWEB.Distribucion.pa_OrdenRiego_Listar_Aplicativo_sisger(?,?,?,?)}";
 
         $params = [
             $idAmbito,
-            $codigoCatastral,
-            $anioActual
+            $anio,
+            $uc,
+            $periodo
         ];
 
         $stmt = sqlsrv_query($conn,$sql,$params);
