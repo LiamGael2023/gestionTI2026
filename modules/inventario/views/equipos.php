@@ -182,289 +182,159 @@
   </div>
 </body>
 
-<!-- MODAL AGREGAR EQUIPO - ESTRUCTURA OPTIMIZADA -->
+
+<!-- MODAL AGREGAR / EDITAR EQUIPO -->
 <div class="modal modal-blur fade" id="modalAgregarEquipo" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-
-      <!-- ================= HEADER ================= -->
       <div class="modal-header border-0 px-4 pt-4 pb-3">
-
         <div class="d-flex align-items-center gap-3">
           <div class="bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-sm"
-            style="width:50px;height:50px;">
+               style="width:50px;height:50px;">
             <i class="ti ti-device-laptop fs-3"></i>
           </div>
-
           <div>
-            <h5 class="fw-bold mb-1">Agregar Equipo</h5>
-            <small class="text-muted">
-              Registro del equipo en inventario
-            </small>
+            <h5 class="fw-bold mb-1" id="modalEquipoTitle">Agregar Equipo</h5>
+            <small class="text-muted" id="modalEquipoSubtitle">Registro del equipo en inventario</small>
           </div>
         </div>
-
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <form>
+      <form id="formEquipo" class="needs-validation" novalidate>
         <div class="modal-body px-4 pb-4 pt-2">
-
           <div class="row g-3">
-
-            <!-- ================= COLUMNA IZQUIERDA ================= -->
             <div class="col-lg-6 d-flex flex-column gap-3">
-
-              <!-- INFORMACIÓN GENERAL -->
               <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-info-circle me-2"></i>
-                    Información General
-                  </h6>
-
+                  <h6 class="fw-bold text-primary mb-3"><i class="ti ti-info-circle me-2"></i>Información General</h6>
                   <div class="row g-3">
-
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Activo</label>
-                      <select class="form-select">
-                        <option>Seleccionar activo...</option>
+                      <select id="equipoSelectActivo" name="idActivo" class="form-select" required>
+                        <option value="">Seleccionar activo...</option>
                       </select>
                     </div>
 
                     <div class="col-md-6">
-                      <label class="form-label small fw-semibold">
-                        Código Patrimonial
-                      </label>
-                      <input type="text" class="form-control"
-                        placeholder="CP-2024-001">
+                      <label class="form-label small fw-semibold">Código Patrimonial</label>
+                      <input id="equipoCodigo" name="codigoPatrimonial" type="text" class="form-control" placeholder="CP-2024-001">
                     </div>
 
                     <div class="col-md-6">
-                      <label class="form-label small fw-semibold">
-                        Número de Serie
-                      </label>
-                      <input type="text" class="form-control"
-                        placeholder="SN-XJK9201LH">
+                      <label class="form-label small fw-semibold">Número de Serie</label>
+                      <input id="equipoSerie" name="numeroSerie" type="text" class="form-control" placeholder="SN-XJK9201LH">
                     </div>
-
                   </div>
                 </div>
               </div>
 
-              <!-- FECHAS -->
               <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-calendar me-2"></i>
-                    Fechas y Garantía
-                  </h6>
-
+                  <h6 class="fw-bold text-primary mb-3"><i class="ti ti-calendar me-2"></i>Fechas y Garantía</h6>
                   <div class="row g-3">
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Fecha Adquisición
-                      </label>
-                      <input type="date" class="form-control">
+                      <label class="form-label small fw-semibold">Fecha Adquisición</label>
+                      <input id="equipoFechaAdq" name="fechaAdquisicion" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Inicio Garantía
-                      </label>
-                      <input type="date" class="form-control">
+                      <label class="form-label small fw-semibold">Inicio Garantía</label>
+                      <input id="equipoFechaInicioG" name="fechaInicioGarantia" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Fin Garantía
-                      </label>
-                      <input type="date" class="form-control">
+                      <label class="form-label small fw-semibold">Fin Garantía</label>
+                      <input id="equipoFechaFinG" name="fechaFinGarantia" type="date" class="form-control">
                     </div>
                   </div>
-
                 </div>
               </div>
 
-              <!-- AUDITORÍA (AHORA DEBAJO DE FECHAS) -->
+              <!-- Auditoría -->
               <div class="card border-0 bg-light rounded-4">
                 <div class="card-body p-3 small">
-
-                  <div class="fw-bold text-muted text-uppercase mb-2">
-                    Auditoría
-                  </div>
-
+                  <div class="fw-bold text-muted text-uppercase mb-2">Auditoría</div>
                   <div class="row">
                     <div class="col-md-6">
                       <div class="text-muted">Usuario Creación</div>
-                      <div class="fw-semibold">admin_sistemas</div>
+                      <div class="fw-semibold" id="equipoUsuarioCreacion">--</div>
                     </div>
-
                     <div class="col-md-6">
                       <div class="text-muted">Fecha Creación</div>
-                      <div class="fw-semibold">
-                        24/05/2024 14:30
-                      </div>
+                      <div class="fw-semibold" id="equipoFechaCreacion">--</div>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                      <div class="text-muted">Usuario Modificación</div>
+                      <div class="fw-semibold" id="equipoUsuarioModificacion">--</div>
+                    </div>
+                    <div class="col-md-6 mt-2">
+                      <div class="text-muted">Fecha Modificación</div>
+                      <div class="fw-semibold" id="equipoFechaModificacion">--</div>
                     </div>
                   </div>
-
                 </div>
               </div>
 
             </div>
 
-            <!-- ================= COLUMNA DERECHA ================= -->
+            <!-- Columna derecha: características -->
             <div class="col-lg-6">
-
               <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-body p-4 d-flex flex-column">
+                  <h6 class="fw-bold text-primary mb-3"><i class="ti ti-settings me-2"></i>Características Técnicas</h6>
 
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-settings me-2"></i>
-                    Características Técnicas
-                  </h6>
-
-                  <!-- FORM AGREGAR -->
                   <div class="bg-light rounded-4 p-3 border mb-3">
-
                     <div class="row g-3 align-items-end">
-
-                      <!-- TIPO -->
                       <div class="col-md-4">
-                        <label class="form-label small fw-semibold text-muted">
-                          Tipo de Característica
-                        </label>
-                        <select class="form-select">
-                          <option>Seleccionar tipo...</option>
-                          <option>Marca</option>
-                          <option>Modelo</option>
-                          <option>RAM</option>
-                          <option>Almacenamiento</option>
-                          <option>Procesador</option>
-                        </select>
+                        <label class="form-label small fw-semibold text-muted">Tipo de Característica</label>
+                        <select id="nuevoSelectTipo" class="form-select"></select>
                       </div>
 
-                      <!-- VALOR (HEREDADO) -->
                       <div class="col-md-5">
-                        <label class="form-label small fw-semibold text-muted">
-                          Valor Disponible
-                        </label>
-                        <select class="form-select">
-                          <option>Seleccionar valor...</option>
-                          <!-- Se cargan dinámicamente según tipo -->
-                          <option>Dell</option>
-                          <option>HP</option>
-                          <option>Lenovo</option>
-                        </select>
+                        <label class="form-label small fw-semibold text-muted">Valor Disponible</label>
+                        <select id="nuevoSelectValor" class="form-select"></select>
                       </div>
 
-                      <!-- BOTÓN -->
                       <div class="col-md-3">
-                        <button type="button"
-                          class="btn btn-primary w-100 rounded-3 d-flex align-items-center justify-content-center gap-2">
-                          <i class="ti ti-plus"></i>
-                          Agregar
+                        <button id="btnAgregarCaracteristica" type="button" class="btn btn-primary w-100 rounded-3 d-flex align-items-center justify-content-center gap-2">
+                          <i class="ti ti-plus"></i> Agregar
                         </button>
                       </div>
-
                     </div>
-
                   </div>
 
-                  <!-- TABLA SCROLLABLE -->
-                  <div class="table-responsive border rounded-4"
-                    style="max-height:350px; overflow-y:auto;">
-
-                    <table class="table table-hover align-middle mb-0">
-
+                  <div class="table-responsive border rounded-4" style="max-height:350px; overflow-y:auto;">
+                    <table class="table table-hover align-middle mb-0" id="tablaCaracteristicasEquipo">
                       <thead class="table-light sticky-top">
                         <tr>
                           <th class="small text-uppercase fw-semibold">Tipo</th>
                           <th class="small text-uppercase fw-semibold">Valor</th>
-                          <th class="text-end small text-uppercase fw-semibold" width="80">
-                            Acción
-                          </th>
+                          <th class="text-end small text-uppercase fw-semibold" width="80">Acción</th>
                         </tr>
                       </thead>
-
-                      <tbody>
-
-                        <tr>
-                          <td class="fw-semibold">Marca</td>
-                          <td>Dell</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger" title="Eliminar">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td class="fw-semibold">Modelo</td>
-                          <td>Latitude 5420</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger" title="Eliminar">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td class="fw-semibold">RAM</td>
-                          <td>32GB DDR4</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger" title="Eliminar">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td class="fw-semibold">Almacenamiento</td>
-                          <td>1TB SSD NVMe</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger" title="Eliminar">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                      </tbody>
-
+                      <tbody></tbody>
                     </table>
                   </div>
 
                 </div>
               </div>
-
             </div>
 
           </div>
-
         </div>
 
-        <!-- ================= FOOTER ================= -->
         <div class="modal-footer border-0 px-4 pb-4 pt-3">
-          <button type="button"
-            class="btn btn-light rounded-3 px-4"
-            data-bs-dismiss="modal">
-            Cancelar
-          </button>
-
-          <button type="submit"
-            class="btn btn-primary rounded-3 px-4 shadow-sm">
-            <i class="ti ti-device-floppy me-1"></i>
-            Guardar Equipo
+          <input type="hidden" id="equipoId" name="idEquipo" value="">
+          <input type="hidden" id="equipoCaracteristicasIds" name="idCaracteristicas" value="">
+          <button type="button" class="btn btn-light rounded-3 px-4" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" id="btnGuardarEquipo" class="btn btn-primary rounded-3 px-4 shadow-sm">
+            <i class="ti ti-device-floppy me-1"></i> Guardar Equipo
           </button>
         </div>
-
       </form>
-
     </div>
   </div>
 </div>
+
 
 <!-- MODAL EDITAR EQUIPO -->
 <div class="modal modal-blur fade" id="modalEditarEquipo" tabindex="-1">
@@ -739,3 +609,5 @@
     </div>
   </div>
 </div>
+
+<script src="modules/inventario/views/js/caracteristicas.js"></script>
