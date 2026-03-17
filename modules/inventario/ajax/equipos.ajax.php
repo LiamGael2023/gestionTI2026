@@ -3,6 +3,8 @@ session_start();
 require_once __DIR__ . "/../models/EquipoModel.php";
 require_once __DIR__ . "/../controllers/EquipoController.php";
 
+header('Content-Type: application/json; charset=utf-8');
+
 class AjaxEquipo
 {
     /*=============================================
@@ -10,71 +12,89 @@ class AjaxEquipo
     =============================================*/
     public function ajaxCrearEquipo()
     {
-        $respuesta = EquipoController::ctrCrearEditarEquipo();
+        $respuesta = EquipoController::ctrCrearEquipo();
         echo json_encode($respuesta);
     }
 
     /*=============================================
-    MOSTRAR PARA EDITAR EQUIPO
+    EDITAR EQUIPO
+    =============================================*/
+    public function ajaxEditarEquipo()
+    {
+        $respuesta = EquipoController::ctrEditarEquipo();
+        echo json_encode($respuesta);
+    }
+
+    /*=============================================
+    CARGAR DATOS PARA MODAL EDITAR
+    Devuelve los datos del equipo + array de
+    características con sus IDs reales para que
+    el JS pueda reconstruir la lista editable.
     =============================================*/
     public $idEquipo;
 
-    public function ajaxMostrarEditarEquipo()
+    public function ajaxMostrarEquipo()
     {
-        $item = "idEquipo";
-        $valor = $this->idEquipo;
-
-        $equipo = EquipoController::ctrMostrarEquipo($item, $valor);
+        $equipo = EquipoController::ctrMostrarEquipo("idEquipo", $this->idEquipo);
 
         if (!$equipo) {
-            echo json_encode(["error" => "No se encontró el equipo"]);
+            echo json_encode(["error" => "No se encontró el equipo."]);
             return;
         }
+
+        // Helper fechas DateTime de sqlsrv
+        $fmt = function ($fecha, $formato = "Y-m-d") {
+            if (!$fecha) return null;
+            if ($fecha instanceof DateTime) return $fecha->format($formato);
+            $ts = strtotime($fecha);
+            return $ts ? date($formato, $ts) : null;
+        };
+
+        // Traer características con sus IDs reales desde la BD
+        $caracteristicasDetalle = EquipoController::ctrMostrarCaracteristicasEquipo($this->idEquipo);
 
         $respuesta = [
             "idEquipo"            => intval($equipo["idEquipo"]),
             "idActivo"            => intval($equipo["idActivo"]),
-            "idEquipoPadre"       => $equipo["idEquipoPadre"] ?? null,
-            "codigoPatrimonial"   => $equipo["codigoPatrimonial"] ?? "",
-            "numeroSerie"         => $equipo["numeroSerie"] ?? "",
-            "fechaAdquisicion"    => isset($equipo["fechaAdquisicion"])
-                ? date("Y-m-d", strtotime($equipo["fechaAdquisicion"])) : null,
-            "fechaInicioGarantia" => isset($equipo["fechaInicioGarantia"])
-                ? date("Y-m-d", strtotime($equipo["fechaInicioGarantia"])) : null,
-            "fechaFinGarantia"    => isset($equipo["fechaFinGarantia"])
-                ? date("Y-m-d", strtotime($equipo["fechaFinGarantia"])) : null,
-            "usuarioCreacion"     => $equipo["usuarioCreacion"] ?? "",
-            "fechaCreacion"       => isset($equipo["fechaCreacion"])
-                ? ($equipo["fechaCreacion"] instanceof DateTime
-                    ? $equipo["fechaCreacion"]->format("d/m/Y H:i:s")
-                    : date("d/m/Y H:i:s", strtotime($equipo["fechaCreacion"])))
-                : "",
-            "usuarioModificacion" => $equipo["usuarioModificacion"] ?? "",
-            "fechaModificacion"   => isset($equipo["fechaModificacion"])
-                ? ($equipo["fechaModificacion"] instanceof DateTime
-                    ? $equipo["fechaModificacion"]->format("d/m/Y H:i:s")
-                    : date("d/m/Y H:i:s", strtotime($equipo["fechaModificacion"])))
-                : "",
-            "caracteristicas"     => $equipo["caracteristicas"] ?? ""
+            "idEquipoPadre"       => $equipo["idEquipoPadre"]       ?? null,
+            "codigoPatrimonial"   => $equipo["codigoPatrimonial"]   ?? "",
+            "numeroSerie"         => $equipo["numeroSerie"]         ?? "",
+            "fechaAdquisicion"    => $fmt($equipo["fechaAdquisicion"]    ?? null),
+            "fechaInicioGarantia" => $fmt($equipo["fechaInicioGarantia"] ?? null),
+            "fechaFinGarantia"    => $fmt($equipo["fechaFinGarantia"]    ?? null),
+            "idUsuarioRegistro"   => $equipo["idUsuarioRegistro"]   ?? "",
+            "fechaCreacion"       => $fmt($equipo["fechaCreacion"]       ?? null, "d/m/Y H:i:s"),
+            "idUsuarioModifica"   => $equipo["idUsuarioModifica"]   ?? "",
+            "fechaModificacion"   => $fmt($equipo["fechaModificacion"]   ?? null, "d/m/Y H:i:s"),
+            "nombreActivo"        => $equipo["nombreActivo"]        ?? "",
+            // Array con {idCaracteristica, tipo, valor} para reconstruir la tabla editable
+            "caracteristicasDetalle" => $caracteristicasDetalle,
         ];
 
         echo json_encode($respuesta);
     }
 }
 
-/*=============================================
-DISPARADORES
-=============================================*/
+/* =============================================
+   DISPARADORES
+============================================= */
 
-// Crear equipo
-if (isset($_POST["idActivo"])) {
-    $crear = new AjaxEquipo();
-    $crear->ajaxCrearEquipo();
+// Crear equipo nuevo
+if (isset($_POST["nuevoIdActivo"])) {
+    (new AjaxEquipo())->ajaxCrearEquipo();
+    exit;
 }
 
-// Mostrar para editar equipo
+// Editar equipo existente
+if (isset($_POST["editarIdActivo"])) {
+    (new AjaxEquipo())->ajaxEditarEquipo();
+    exit;
+}
+
+// Cargar datos para el modal editar
 if (isset($_POST["idEquipo"])) {
-    $mostrar = new AjaxEquipo();
-    $mostrar->idEquipo = $_POST["idEquipo"];
-    $mostrar->ajaxMostrarEditarEquipo();
+    $ajax           = new AjaxEquipo();
+    $ajax->idEquipo = intval($_POST["idEquipo"]);
+    $ajax->ajaxMostrarEquipo();
+    exit;
 }

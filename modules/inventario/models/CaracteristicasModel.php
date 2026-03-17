@@ -69,43 +69,49 @@ class CaracteristicasModel
     static public function mdlMostrarCaracteristicas($tabla, $item, $valor)
     {
         $conn = Conexion::conectar();
-
+ 
         if ($item != null) {
-            // Consulta filtrada (incluye descripción del tipo)
+            // Consulta filtrada — incluye descripción del tipo
             $sql = "SELECT c.*, t.descripcion AS tipoDescripcion
                     FROM $tabla c
                     LEFT JOIN inventario.tipoCaracteristica t
                       ON c.idTipoCaracteristica = t.idTipoCaracteristica
-                    WHERE c.$item = ?";
+                    WHERE c.$item = ?
+                    ORDER BY c.valor ASC";
             $params = array($valor);
             $stmt = sqlsrv_query($conn, $sql, $params);
-
+ 
             if ($stmt === false) {
                 sqlsrv_close($conn);
                 return "error";
             }
-
-            $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+ 
+            // Puede llegar más de uno para el mismo tipo → devolver array
+            $resultado = [];
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $resultado[] = $row;
+            }
+ 
         } else {
-            // Consulta general con JOIN para traer la descripción del tipo
+            // Consulta general con JOIN
             $sql = "SELECT c.*, t.descripcion AS tipoDescripcion
                     FROM $tabla c
                     LEFT JOIN inventario.tipoCaracteristica t
                       ON c.idTipoCaracteristica = t.idTipoCaracteristica
                     ORDER BY c.valor ASC";
             $stmt = sqlsrv_query($conn, $sql);
-
+ 
             if ($stmt === false) {
                 sqlsrv_close($conn);
                 return "error";
             }
-
-            $resultado = array();
+ 
+            $resultado = [];
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
                 $resultado[] = $row;
             }
         }
-
+ 
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
         return $resultado;

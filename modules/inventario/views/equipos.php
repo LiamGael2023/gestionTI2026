@@ -1,223 +1,320 @@
+<!-- ============================================================
+     EQUIPOS.PHP  — Custom select sin librerías
+============================================================ -->
+<style>
+/* =============================================================
+   CUSTOM SELECT  (.cs-*)
+   El panel usa position:absolute dentro del .cs-wrap.
+   z-index 1060 para estar sobre el modal (Bootstrap usa 1050).
+   No usa position:fixed → no causa saltos ni rompre scroll.
+============================================================= */
+.cs-wrap {
+    position: relative;
+    width: 100%;
+    font-size: 0.875rem;
+}
+
+/* Botón visible */
+.cs-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .375rem .75rem;
+    min-height: 36px;
+    background: #fff;
+    border: 1px solid var(--tblr-border-color, #d0d5dd);
+    border-radius: var(--tblr-border-radius, .375rem);
+    cursor: pointer;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.cs-display:hover { border-color: var(--tblr-primary, #0054a6); }
+.cs-wrap.cs-open .cs-display,
+.cs-display:focus {
+    border-color: var(--tblr-primary, #0054a6);
+    box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb,0,84,166),.15);
+}
+
+.cs-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.cs-text.placeholder-text { color: #9ca3af; }
+
+.cs-arrow {
+    flex-shrink: 0;
+    color: #6c757d;
+    transition: transform .2s;
+}
+.cs-wrap.cs-open .cs-arrow { transform: rotate(180deg); }
+
+/* Panel dropdown */
+.cs-panel {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    background: #fff;
+    border: 1px solid var(--tblr-border-color, #d0d5dd);
+    border-radius: var(--tblr-border-radius, .375rem);
+    box-shadow: 0 4px 20px rgba(0,0,0,.12);
+    overflow: hidden;
+}
+.cs-wrap.cs-open .cs-panel { display: block; }
+
+/* Buscador */
+.cs-search-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .65rem;
+    border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
+    background: var(--tblr-bg-surface-secondary, #f8fafc);
+}
+.cs-search {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: .8rem;
+    width: 100%;
+    padding: 0;
+    color: #374151;
+}
+
+/* Lista de opciones */
+.cs-list {
+    list-style: none;
+    margin: 0;
+    padding: .2rem 0;
+    max-height: 190px;
+    overflow-y: auto;
+}
+.cs-list li {
+    padding: .38rem .75rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background .1s;
+}
+.cs-list li:hover,
+.cs-list li.cs-selected {
+    background: var(--tblr-primary-lt, #e7f0ff);
+    color: var(--tblr-primary, #0054a6);
+}
+.cs-list li.cs-selected { font-weight: 600; }
+.cs-list li.cs-placeholder-item { color: #9ca3af; font-style: italic; }
+.cs-list li.cs-empty { color: #9ca3af; font-style: italic; cursor: default; }
+.cs-list li.cs-empty:hover { background: none; }
+
+/* =============================================================
+   LAYOUT MODAL
+============================================================= */
+/* Sin modal-dialog-scrollable; el scroll lo maneja el modal-body */
+.modal-body-scroll {
+    overflow-y: auto;
+    /* Altura máxima = viewport - header modal (~80px) - footer (~70px) - margen (~40px) */
+    max-height: calc(100vh - 240px);
+}
+
+/* Secciones */
+.seccion-card {
+    border: 1px solid var(--tblr-border-color, #e6ebf1);
+    border-left: 4px solid var(--tblr-primary, #0054a6);
+    border-radius: .5rem;
+    background: #fff;
+}
+.seccion-header {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .65rem 1.1rem .45rem;
+    border-bottom: 1px solid var(--tblr-border-color-light, #f0f3f8);
+}
+.seccion-titulo {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+.seccion-body { padding: .9rem 1.1rem 1rem; }
+
+.auditoria-box {
+    background: var(--tblr-bg-surface-secondary, #f8fafc);
+    border: 1px dashed var(--tblr-border-color, #d0d5dd);
+    border-radius: .5rem;
+    padding: .8rem 1rem;
+}
+
+.panel-caract {
+    background: var(--tblr-bg-surface-secondary, #f8fafc);
+    border: 1px solid var(--tblr-border-color, #d0d5dd);
+    border-radius: .5rem;
+    padding: .8rem .9rem;
+}
+
+.tabla-caract-wrap {
+    border: 1px solid var(--tblr-border-color, #d0d5dd);
+    border-radius: .5rem;
+    overflow: hidden;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+/* En mobile las dos columnas se apilan */
+@media (max-width: 991px) {
+    .modal-body-scroll { max-height: calc(100vh - 180px); }
+}
+</style>
+
 <body>
-  <div class="page">
+<div class="page">
 
-    <!-- NAVBAR -->
-    <header class="navbar navbar-expand-md navbar-light d-print-none shadow-sm">
-      <div class="container-xl">
-        <h1 class="navbar-brand">
-          <i class="ti ti-package me-2 text-primary"></i>
-          Inventario TI
-        </h1>
-      </div>
-    </header>
+  <header class="navbar navbar-expand-md navbar-light d-print-none shadow-sm">
+    <div class="container-xl">
+      <h1 class="navbar-brand">
+        <i class="ti ti-package me-2 text-primary"></i>Inventario TI
+      </h1>
+    </div>
+  </header>
 
-    <div class="page-wrapper">
-      <div class="container-xl">
+  <div class="page-wrapper">
+    <div class="container-xl">
 
-        <!-- PAGE HEADER -->
-        <div class="page-header d-print-none">
-          <div class="row align-items-center">
-            <div class="col">
-              <h2 class="page-title">Gestión de Equipos</h2>
-              <div class="text-muted mt-1">
-                Administración y control de los equipos registrados.
-              </div>
-            </div>
-
-            <div class="col-auto ms-auto d-flex gap-2">
-              <div class="input-icon">
-                <span class="input-icon-addon">
-                  <i class="ti ti-search"></i>
-                </span>
-                <input type="text" class="form-control" placeholder="Buscar equipo...">
-              </div>
-
-              <select class="form-select w-auto">
-                <option>Todos</option>
-                <option>Activo</option>
-                <option>Mantenimiento</option>
-              </select>
-
-              <button class="btn btn-primary"
-                data-bs-toggle="modal"
-                data-bs-target="#modalAgregarEquipo">
-                <i class="ti ti-plus me-1"></i>
-                Nuevo Equipo
-              </button>
-            </div>
+      <div class="page-header d-print-none">
+        <div class="row align-items-center">
+          <div class="col">
+            <h2 class="page-title">Gestión de Equipos</h2>
+            <p class="text-muted mb-0">Administración y control de los equipos registrados.</p>
+          </div>
+          <div class="col-auto ms-auto">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarEquipo">
+              <i class="ti ti-plus me-1"></i>Nuevo Equipo
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- CARD PRINCIPAL -->
-        <div class="card mb-4 shadow-sm">
-          <div class="card-header">
-            <h3 class="card-title">
-              <i class="ti ti-devices me-2 text-primary"></i>
-              Listado de Equipos
-            </h3>
-          </div>
-
-          <!-- TABLE -->
-          <div class="card-body p-0">
-            <div class="table-responsive">
-              <table id="tablaEquipos" class="table table-vcenter table-mobile-md card-table table-sm">
-                <thead>
-                  <tr>
-                    <th>Equipo</th>
-                    <th>N° Serie</th>
-                    <th>Código Patrimonial</th>
-                    <th>Características</th>
-                    <th>Fecha de Creación</th>
-                    <th class="d-none d-sm-table-cell">Registrado Por</th>
-                    <th class="text-end">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php
-                  $item = null;
-                  $valor = null;
-                  $equipos = EquipoController::ctrMostrarEquipo($item, $valor);
-
-                  foreach ($equipos as $value) {
-                    echo '
-                      <tr>
-                        <td data-label="Equipo">
-                          <div class="d-flex align-items-center">
-                            <i class="ti ' . (!empty($value["iconoActivo"]) ? $value["iconoActivo"] : 'ti-package') . ' text-primary me-2 fs-3"></i>
-                            <div class="font-weight-medium">' . $value["nombreActivo"] . '</div>
-                          </div>
-                        </td>
-                        <td data-label="Serie">' . $value["numeroSerie"] . '</td>
-                        <td data-label="Código">' . $value["codigoPatrimonial"] . '</td>
-                        <td data-label="Características" class="small text-muted">
-                          ' . $value["caracteristicas"] . '
-                        </td>
-                        <td data-label="Fecha" class="text-muted small">
-                          ' . ($value["fechaCreacion"] instanceof DateTime ? $value["fechaCreacion"]->format("d/m/Y") : "Sin fecha") . '
-                        </td>
-                        <td data-label="Usuario" class="d-none d-sm-table-cell">
-                          <span class="badge badge-outline text-muted fw-normal">ID: ' . $value["idUsuarioRegistro"] . '</span>
-                        </td>
-                        <td class="text-end">
-                          <div class="btn-list justify-content-end">
-                            <button class="btn btn-sm btn-icon btn-outline-primary btnEditarEquipo" 
-                                    data-id="' . $value["idEquipo"] . '" 
-                                    title="Editar">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i class="ti ti-devices me-2 text-primary"></i>Listado de Equipos
+          </h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table id="tablaEquipos" class="table table-vcenter table-mobile-md card-table table-sm">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>N° Serie</th>
+                  <th>Código Patrimonial</th>
+                  <th>Características</th>
+                  <th>Fecha Creación</th>
+                  <th class="d-none d-sm-table-cell">Registrado Por</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php
+                $equipos = EquipoController::ctrMostrarEquipo(null, null);
+                if ($equipos && $equipos !== "error") {
+                    foreach ($equipos as $value) {
+                        $icono = !empty($value["iconoActivo"]) ? $value["iconoActivo"] : 'ti-package';
+                        $fecha = isset($value["fechaCreacion"])
+                            ? ($value["fechaCreacion"] instanceof DateTime
+                                ? $value["fechaCreacion"]->format("d/m/Y")
+                                : date("d/m/Y", strtotime($value["fechaCreacion"])))
+                            : "Sin fecha";
+                        echo '
+                        <tr>
+                          <td>
+                            <div class="d-flex align-items-center gap-2">
+                              <i class="ti ' . $icono . ' text-primary fs-3"></i>
+                              <span class="fw-medium">' . htmlspecialchars($value["nombreActivo"] ?? '') . '</span>
+                            </div>
+                          </td>
+                          <td>' . htmlspecialchars($value["numeroSerie"] ?? '') . '</td>
+                          <td>' . htmlspecialchars($value["codigoPatrimonial"] ?? '') . '</td>
+                          <td class="small text-muted">' . htmlspecialchars($value["caracteristicas"] ?? '') . '</td>
+                          <td class="small text-muted">' . $fecha . '</td>
+                          <td class="d-none d-sm-table-cell">
+                            <span class="badge badge-outline text-muted">ID: ' . $value["idUsuarioRegistro"] . '</span>
+                          </td>
+                          <td class="text-end">
+                            <button type="button"
+                              class="btn btn-sm btn-icon btn-outline-primary btnEditarEquipo"
+                              data-id="' . $value["idEquipo"] . '" title="Editar">
                               <i class="ti ti-edit"></i>
                             </button>
-                            <a href="index.php?module=inventario&action=equipos&idEquipo=' . $value["idEquipo"] . '" 
-                              class="btn btn-sm btn-icon btn-outline-danger" 
-                              title="Eliminar">
-                              <i class="ti ti-trash"></i>
-                            </a>
-                          </div>
-                        </td>
-                      </tr>
-                    ';
-                  }
-                  ?>
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                        </tr>';
+                    }
+                }
+                ?>
+              </tbody>
+            </table>
           </div>
-
         </div>
-
-        <!-- INFO CARDS -->
-        <div class="row row-deck row-cards">
-
-          <div class="col-md-4">
-            <div class="card bg-primary-lt shadow-sm">
-              <div class="card-body">
-                <div class="d-flex align-items-center mb-2">
-                  <i class="ti ti-info-circle text-primary me-2 fs-4"></i>
-                  <strong>Información General</strong>
-                </div>
-                <p class="text-muted mb-0">
-                  Los estados determinan la disponibilidad del equipo dentro del inventario.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <strong>Últimos Movimientos</strong>
-                <ul class="mt-3 small">
-                  <li>Equipo agregado hoy</li>
-                  <li>Equipo enviado a mantenimiento</li>
-                  <li>Equipo actualizado hace 1 hora</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-4">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <strong>Resumen</strong>
-                <div class="mt-3">
-                  <div class="mb-2">
-                    Total Equipos: <strong>1,240</strong>
-                  </div>
-                  <div>
-                    En Mantenimiento:
-                    <strong class="text-warning">42</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
       </div>
-    </div>
 
+    </div>
   </div>
+</div>
 </body>
 
 
-<!-- MODAL AGREGAR / EDITAR EQUIPO -->
-<div class="modal modal-blur fade" id="modalAgregarEquipo" tabindex="-1">
+<!-- ============================================================
+     MODAL AGREGAR EQUIPO
+     Sin modal-dialog-scrollable — el scroll está en modal-body
+============================================================ -->
+<div class="modal modal-blur fade" id="modalAgregarEquipo" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+    <div class="modal-content border-0 shadow-lg rounded-4">
 
-      <div class="modal-header border-0 px-4 pt-4 pb-3">
+      <!-- Header -->
+      <div class="modal-header px-4 pt-4 pb-3"
+           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
-          <div class="bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-sm"
-            style="width:50px;height:50px;">
-            <i class="ti ti-device-laptop fs-3"></i>
+          <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
+               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            <i class="ti ti-device-laptop fs-2"></i>
           </div>
           <div>
-            <h5 class="fw-bold mb-1">Agregar Equipo</h5>
-            <small class="text-muted">Registro del equipo en inventario</small>
+            <h5 class="mb-0 fw-bold">Agregar Equipo</h5>
+            <small class="text-muted">Complete los datos del nuevo equipo</small>
           </div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <form id="formNuevoEquipo" class="needs-validation" novalidate>
+      <form id="formNuevoEquipo" novalidate>
 
-        <div class="modal-body px-4 pb-4 pt-2">
+        <!-- Body con scroll propio -->
+        <div class="modal-body-scroll px-4 py-3">
           <div class="row g-3">
 
-            <!-- COLUMNA IZQUIERDA -->
+            <!-- ── IZQUIERDA ── -->
             <div class="col-lg-6 d-flex flex-column gap-3">
 
-              <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-info-circle me-2"></i>Información General
-                  </h6>
-
+              <div class="seccion-card">
+                <div class="seccion-header">
+                  <i class="ti ti-info-circle text-primary"></i>
+                  <span class="seccion-titulo text-primary">Información General</span>
+                </div>
+                <div class="seccion-body">
                   <div class="row g-3">
 
-                    <div class="col-md-6">
-                      <label class="form-label small fw-semibold">Activo</label>
-                      <select id="nuevoIdActivo" name="nuevoIdActivo" class="form-select" required>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">
+                        Activo <span class="text-danger">*</span>
+                      </label>
+                      <select id="nuevoIdActivo" name="nuevoIdActivo" required style="display:none">
                         <option value="">Seleccionar activo...</option>
                       </select>
                     </div>
@@ -225,443 +322,315 @@
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Código Patrimonial</label>
                       <input id="nuevoCodigoPatrimonial" name="nuevoCodigoPatrimonial"
-                        type="text" class="form-control" placeholder="CP-2024-001">
+                             type="text" class="form-control" placeholder="CP-2024-001">
                     </div>
 
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Número de Serie</label>
                       <input id="nuevoNumeroSerie" name="nuevoNumeroSerie"
-                        type="text" class="form-control" placeholder="SN-XJK9201LH">
+                             type="text" class="form-control" placeholder="SN-XJK9201LH">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-calendar me-2"></i>Fechas y Garantía
-                  </h6>
-
+              <div class="seccion-card">
+                <div class="seccion-header">
+                  <i class="ti ti-calendar text-primary"></i>
+                  <span class="seccion-titulo text-primary">Fechas y Garantía</span>
+                </div>
+                <div class="seccion-body">
                   <div class="row g-3">
-
                     <div class="col-md-4">
                       <label class="form-label small fw-semibold">Fecha Adquisición</label>
-                      <input id="nuevoFechaAdquisicion" name="nuevoFechaAdquisicion"
-                        type="date" class="form-control">
+                      <input id="nuevoFechaAdquisicion" name="nuevoFechaAdquisicion" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
                       <label class="form-label small fw-semibold">Inicio Garantía</label>
-                      <input id="nuevoFechaInicioGarantia" name="nuevoFechaInicioGarantia"
-                        type="date" class="form-control">
+                      <input id="nuevoFechaInicioGarantia" name="nuevoFechaInicioGarantia" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
                       <label class="form-label small fw-semibold">Fin Garantía</label>
-                      <input id="nuevoFechaFinGarantia" name="nuevoFechaFinGarantia"
-                        type="date" class="form-control">
+                      <input id="nuevoFechaFinGarantia" name="nuevoFechaFinGarantia" type="date" class="form-control">
                     </div>
-
                   </div>
                 </div>
               </div>
 
-              <!-- Auditoría -->
-              <div class="card border-0 bg-light rounded-4">
-                <div class="card-body p-3 small">
-
-                  <div class="fw-bold text-muted text-uppercase mb-2">Auditoría</div>
-
-                  <div class="row">
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Usuario Creación</div>
-                      <div class="fw-semibold" id="nuevoUsuarioCreacion">--</div>
-                    </div>
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Fecha Creación</div>
-                      <div class="fw-semibold" id="nuevoFechaCreacion">--</div>
-                    </div>
-
-                    <div class="col-md-6 mt-2">
-                      <div class="text-muted">Usuario Modificación</div>
-                      <div class="fw-semibold" id="nuevoUsuarioModificacion">--</div>
-                    </div>
-
-                    <div class="col-md-6 mt-2">
-                      <div class="text-muted">Fecha Modificación</div>
-                      <div class="fw-semibold" id="nuevoFechaModificacion">--</div>
-                    </div>
-
+              <div class="auditoria-box">
+                <div class="small fw-bold text-muted text-uppercase mb-2">
+                  <i class="ti ti-shield-check me-1"></i>Auditoría
+                </div>
+                <div class="row g-2 small">
+                  <div class="col-6">
+                    <div class="text-muted">Usuario Creación</div>
+                    <div class="fw-semibold" id="nuevoUsuarioCreacion">--</div>
+                  </div>
+                  <div class="col-6">
+                    <div class="text-muted">Fecha Creación</div>
+                    <div class="fw-semibold" id="nuevoFechaCreacion">--</div>
+                  </div>
+                  <div class="col-6 mt-1">
+                    <div class="text-muted">Últ. Modificación</div>
+                    <div class="fw-semibold" id="nuevoUsuarioModificacion">--</div>
+                  </div>
+                  <div class="col-6 mt-1">
+                    <div class="text-muted">Fecha Modificación</div>
+                    <div class="fw-semibold" id="nuevoFechaModificacion">--</div>
                   </div>
                 </div>
               </div>
 
-            </div>
+            </div><!-- /izquierda -->
 
-            <!-- COLUMNA DERECHA -->
-            <div class="col-lg-6">
+            <!-- ── DERECHA — CARACTERÍSTICAS ── -->
+            <div class="col-lg-6 d-flex flex-column">
+              <div class="seccion-card flex-grow-1 d-flex flex-column">
+                <div class="seccion-header">
+                  <i class="ti ti-settings text-primary"></i>
+                  <span class="seccion-titulo text-primary">Características Técnicas</span>
+                </div>
+                <div class="seccion-body d-flex flex-column gap-3 flex-grow-1">
 
-              <div class="card border-0 shadow-sm rounded-4 h-100">
-
-                <div class="card-body p-4 d-flex flex-column">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-settings me-2"></i>Características Técnicas
-                  </h6>
-
-                  <div class="bg-light rounded-4 p-3 border mb-3">
-
-                    <div class="row g-3 align-items-end">
-
+                  <div class="panel-caract">
+                    <div class="row g-2 align-items-end">
                       <div class="col-md-4">
-                        <label class="form-label small fw-semibold text-muted">
-                          Tipo de Característica
-                        </label>
-                        <select id="nuevoTipoCaracteristica" class="form-select"></select>
+                        <label class="form-label small fw-semibold mb-1">Tipo</label>
+                        <select id="nuevoTipoCaracteristica" style="display:none">
+                          <option value="">Seleccionar tipo...</option>
+                        </select>
                       </div>
-
                       <div class="col-md-5">
-                        <label class="form-label small fw-semibold text-muted">
-                          Valor Disponible
-                        </label>
-                        <select id="nuevoValorCaracteristica" class="form-select"></select>
+                        <label class="form-label small fw-semibold mb-1">Valor</label>
+                        <select id="nuevoValorCaracteristica" style="display:none">
+                          <option value="">Seleccionar valor...</option>
+                        </select>
                       </div>
-
                       <div class="col-md-3">
                         <button id="btnAgregarNuevaCaracteristica" type="button"
-                          class="btn btn-primary w-100 rounded-3 d-flex align-items-center justify-content-center gap-2">
-                          <i class="ti ti-plus"></i> Agregar
+                                class="btn btn-primary w-100">
+                          <i class="ti ti-plus me-1"></i>Agregar
                         </button>
                       </div>
-
                     </div>
                   </div>
 
-                  <div class="table-responsive border rounded-4" style="max-height:350px; overflow-y:auto;">
-
-                    <table class="table table-hover align-middle mb-0" id="tablaNuevoEquipoCaracteristicas">
-
-                      <thead class="table-light sticky-top">
+                  <div class="tabla-caract-wrap flex-grow-1">
+                    <table id="tablaNuevoEquipoCaracteristicas" class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
                         <tr>
                           <th class="small text-uppercase fw-semibold">Tipo</th>
                           <th class="small text-uppercase fw-semibold">Valor</th>
-                          <th class="text-end small text-uppercase fw-semibold" width="80">Acción</th>
+                          <th class="text-end" width="60">Acción</th>
                         </tr>
                       </thead>
-
                       <tbody></tbody>
-
                     </table>
-
                   </div>
 
                 </div>
               </div>
-
-            </div>
+            </div><!-- /derecha -->
 
           </div>
-        </div>
+        </div><!-- /modal-body-scroll -->
 
-        <div class="modal-footer border-0 px-4 pb-4 pt-3">
-
-          <input type="hidden" id="nuevoIdEquipo" name="nuevoIdEquipo">
+        <div class="modal-footer px-4 pb-4 pt-2"
+             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <input type="hidden" id="nuevoCaracteristicasIds" name="nuevoCaracteristicasIds">
-
-          <button type="button" class="btn btn-light rounded-3 px-4" data-bs-dismiss="modal">
-            Cancelar
+          <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
+            <i class="ti ti-x me-1"></i>Cancelar
           </button>
-
-          <button type="submit" id="btnGuardarNuevoEquipo"
-            class="btn btn-primary rounded-3 px-4 shadow-sm">
-            <i class="ti ti-device-floppy me-1"></i> Guardar Equipo
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy me-1"></i>Guardar Equipo
           </button>
-
         </div>
-
       </form>
+
     </div>
   </div>
 </div>
 
 
-<!-- MODAL EDITAR EQUIPO -->
-<div class="modal modal-blur fade" id="modalEditarEquipo" tabindex="-1">
+<!-- ============================================================
+     MODAL EDITAR EQUIPO  (mismo azul)
+============================================================ -->
+<div class="modal modal-blur fade" id="modalEditarEquipo" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
-    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+    <div class="modal-content border-0 shadow-lg rounded-4">
 
-      <!-- ================= HEADER ================= -->
-      <div class="modal-header border-0 px-4 pt-4 pb-3">
-
+      <div class="modal-header px-4 pt-4 pb-3"
+           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
-          <div class="bg-primary text-white rounded-4 d-flex align-items-center justify-content-center shadow-sm"
-            style="width:50px;height:50px;">
-            <i class="ti ti-edit fs-3"></i>
+          <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
+               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            <i class="ti ti-edit fs-2"></i>
           </div>
-
           <div>
-            <h5 class="fw-bold mb-1">Editar Equipo</h5>
-            <small class="text-muted">
-              Modificación de información del equipo
-            </small>
+            <h5 class="mb-0 fw-bold">Editar Equipo</h5>
+            <small class="text-muted">Modificación de información del equipo</small>
           </div>
         </div>
-
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <form>
-        <div class="modal-body px-4 pb-4 pt-2">
+      <form id="formEditarEquipo" novalidate>
 
+        <div class="modal-body-scroll px-4 py-3">
           <div class="row g-3">
 
-            <!-- ================= COLUMNA IZQUIERDA ================= -->
+            <!-- IZQUIERDA -->
             <div class="col-lg-6 d-flex flex-column gap-3">
 
-              <!-- INFORMACIÓN GENERAL -->
-              <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-info-circle me-2"></i>
-                    Información General
-                  </h6>
-
+              <div class="seccion-card">
+                <div class="seccion-header">
+                  <i class="ti ti-info-circle text-primary"></i>
+                  <span class="seccion-titulo text-primary">Información General</span>
+                </div>
+                <div class="seccion-body">
                   <div class="row g-3">
 
-                    <div class="col-md-6">
-                      <label class="form-label small fw-semibold">Activo</label>
-                      <select class="form-select">
-                        <option selected>Laptop Dell Latitude 5420</option>
+                    <div class="col-12">
+                      <label class="form-label small fw-semibold">
+                        Activo <span class="text-danger">*</span>
+                      </label>
+                      <select id="editarIdActivo" name="editarIdActivo" required style="display:none">
+                        <option value="">Seleccionar activo...</option>
                       </select>
                     </div>
 
                     <div class="col-md-6">
-                      <label class="form-label small fw-semibold">
-                        Código Patrimonial
-                      </label>
-                      <input type="text"
-                        class="form-control"
-                        value="CP-2024-001"
-                        readonly>
+                      <label class="form-label small fw-semibold">Código Patrimonial</label>
+                      <input id="editarCodigoPatrimonial" name="editarCodigoPatrimonial" type="text" class="form-control">
                     </div>
 
                     <div class="col-md-6">
-                      <label class="form-label small fw-semibold">
-                        Número de Serie
-                      </label>
-                      <input type="text"
-                        class="form-control"
-                        value="SN-XJK9201LH">
+                      <label class="form-label small fw-semibold">Número de Serie</label>
+                      <input id="editarNumeroSerie" name="editarNumeroSerie" type="text" class="form-control">
                     </div>
 
                   </div>
                 </div>
               </div>
 
-              <!-- FECHAS -->
-              <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-body p-4">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-calendar me-2"></i>
-                    Fechas y Garantía
-                  </h6>
-
+              <div class="seccion-card">
+                <div class="seccion-header">
+                  <i class="ti ti-calendar text-primary"></i>
+                  <span class="seccion-titulo text-primary">Fechas y Garantía</span>
+                </div>
+                <div class="seccion-body">
                   <div class="row g-3">
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Fecha Adquisición
-                      </label>
-                      <input type="date"
-                        class="form-control"
-                        value="2024-05-20">
+                      <label class="form-label small fw-semibold">Fecha Adquisición</label>
+                      <input id="editarFechaAdquisicion" name="editarFechaAdquisicion" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Inicio Garantía
-                      </label>
-                      <input type="date"
-                        class="form-control"
-                        value="2024-05-21">
+                      <label class="form-label small fw-semibold">Inicio Garantía</label>
+                      <input id="editarFechaInicioGarantia" name="editarFechaInicioGarantia" type="date" class="form-control">
                     </div>
-
                     <div class="col-md-4">
-                      <label class="form-label small fw-semibold">
-                        Fin Garantía
-                      </label>
-                      <input type="date"
-                        class="form-control"
-                        value="2026-05-21">
+                      <label class="form-label small fw-semibold">Fin Garantía</label>
+                      <input id="editarFechaFinGarantia" name="editarFechaFinGarantia" type="date" class="form-control">
                     </div>
                   </div>
-
                 </div>
               </div>
 
-              <!-- AUDITORÍA COMPLETA -->
-              <div class="card border-0 bg-light rounded-4">
-                <div class="card-body p-3 small">
-
-                  <div class="fw-bold text-muted text-uppercase mb-2">
-                    Auditoría
+              <div class="auditoria-box">
+                <div class="small fw-bold text-muted text-uppercase mb-2">
+                  <i class="ti ti-shield-check me-1"></i>Auditoría
+                </div>
+                <div class="row g-2 small">
+                  <div class="col-6">
+                    <div class="text-muted">Usuario Creación</div>
+                    <div class="fw-semibold" id="editarUsuarioCreacion">--</div>
                   </div>
-
-                  <div class="row g-2">
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Creado por</div>
-                      <div class="fw-semibold">admin_sistemas</div>
-                    </div>
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Fecha Creación</div>
-                      <div class="fw-semibold">24/05/2024 14:30</div>
-                    </div>
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Modificado por</div>
-                      <div class="fw-semibold">soporte_tecnico</div>
-                    </div>
-
-                    <div class="col-md-6">
-                      <div class="text-muted">Fecha Modificación</div>
-                      <div class="fw-semibold">28/05/2024 10:12</div>
-                    </div>
-
+                  <div class="col-6">
+                    <div class="text-muted">Fecha Creación</div>
+                    <div class="fw-semibold" id="editarFechaCreacion">--</div>
                   </div>
-
+                  <div class="col-6 mt-1">
+                    <div class="text-muted">Últ. Modificación</div>
+                    <div class="fw-semibold" id="editarUsuarioModificacion">--</div>
+                  </div>
+                  <div class="col-6 mt-1">
+                    <div class="text-muted">Fecha Modificación</div>
+                    <div class="fw-semibold" id="editarFechaModificacion">--</div>
+                  </div>
                 </div>
               </div>
 
-            </div>
+            </div><!-- /izquierda -->
 
-            <!-- ================= COLUMNA DERECHA ================= -->
-            <div class="col-lg-6">
+            <!-- DERECHA -->
+            <div class="col-lg-6 d-flex flex-column">
+              <div class="seccion-card flex-grow-1 d-flex flex-column">
+                <div class="seccion-header">
+                  <i class="ti ti-settings text-primary"></i>
+                  <span class="seccion-titulo text-primary">Características Técnicas</span>
+                </div>
+                <div class="seccion-body d-flex flex-column gap-3 flex-grow-1">
 
-              <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4 d-flex flex-column">
-
-                  <h6 class="fw-bold text-primary mb-3">
-                    <i class="ti ti-settings me-2"></i>
-                    Características Técnicas
-                  </h6>
-
-                  <!-- FORM AGREGAR -->
-                  <div class="bg-light rounded-4 p-3 border mb-3">
-
-                    <div class="row g-3 align-items-end">
-
+                  <div class="panel-caract">
+                    <div class="row g-2 align-items-end">
                       <div class="col-md-4">
-                        <label class="form-label small fw-semibold text-muted">
-                          Tipo
-                        </label>
-                        <select class="form-select">
-                          <option>Seleccionar tipo...</option>
+                        <label class="form-label small fw-semibold mb-1">Tipo</label>
+                        <select id="editarTipoCaracteristica" style="display:none">
+                          <option value="">Seleccionar tipo...</option>
                         </select>
                       </div>
-
                       <div class="col-md-5">
-                        <label class="form-label small fw-semibold text-muted">
-                          Valor
-                        </label>
-                        <select class="form-select">
-                          <option>Seleccionar valor...</option>
+                        <label class="form-label small fw-semibold mb-1">Valor</label>
+                        <select id="editarValorCaracteristica" style="display:none">
+                          <option value="">Seleccionar valor...</option>
                         </select>
                       </div>
-
                       <div class="col-md-3">
-                        <button type="button"
-                          class="btn btn-primary w-100 rounded-3 d-flex align-items-center justify-content-center gap-2">
-                          <i class="ti ti-plus"></i>
-                          Agregar
+                        <button id="btnAgregarEditarCaracteristica" type="button"
+                                class="btn btn-primary w-100">
+                          <i class="ti ti-plus me-1"></i>Agregar
                         </button>
                       </div>
-
                     </div>
-
                   </div>
 
-                  <!-- TABLA -->
-                  <div class="table-responsive border rounded-4"
-                    style="max-height:350px; overflow-y:auto;">
-
-                    <table class="table table-hover align-middle mb-0">
-
-                      <thead class="table-light sticky-top">
+                  <div class="tabla-caract-wrap flex-grow-1">
+                    <table id="tablaEditarEquipoCaracteristicas" class="table table-hover align-middle mb-0">
+                      <thead class="table-light">
                         <tr>
                           <th class="small text-uppercase fw-semibold">Tipo</th>
                           <th class="small text-uppercase fw-semibold">Valor</th>
-                          <th class="text-end small text-uppercase fw-semibold" width="80">
-                            Acción
-                          </th>
+                          <th class="text-end" width="60">Acción</th>
                         </tr>
                       </thead>
-
-                      <tbody>
-
-                        <tr>
-                          <td class="fw-semibold">Marca</td>
-                          <td>Dell</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                        <tr>
-                          <td class="fw-semibold">RAM</td>
-                          <td>32GB DDR4</td>
-                          <td class="text-end">
-                            <button class="btn btn-sm btn-icon btn-outline-danger">
-                              <i class="ti ti-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-
-                      </tbody>
-
+                      <tbody></tbody>
                     </table>
-
                   </div>
 
                 </div>
               </div>
-
-            </div>
+            </div><!-- /derecha -->
 
           </div>
+        </div><!-- /modal-body-scroll -->
 
-        </div>
-
-        <!-- ================= FOOTER ================= -->
-        <div class="modal-footer border-0 px-4 pb-4 pt-3">
-
-          <button type="button"
-            class="btn btn-light rounded-3 px-4"
-            data-bs-dismiss="modal">
-            Cancelar
+        <div class="modal-footer px-4 pb-4 pt-2"
+             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+          <input type="hidden" id="editarIdEquipo" name="editarIdEquipo">
+          <input type="hidden" id="editarCaracteristicasIds" name="editarCaracteristicasIds">
+          <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
+            <i class="ti ti-x me-1"></i>Cancelar
           </button>
-
-          <button type="submit"
-            class="btn btn-primary rounded-3 px-4 shadow-sm">
-            <i class="ti ti-check me-1"></i>
-            Actualizar Equipo
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-check me-1"></i>Actualizar Equipo
           </button>
-
         </div>
-
       </form>
 
     </div>
   </div>
 </div>
 
+<div id="toastContainerEquipos" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 <script src="modules/inventario/views/js/equipos.js"></script>
