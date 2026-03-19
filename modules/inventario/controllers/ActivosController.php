@@ -9,26 +9,25 @@ class ActivosController
     =============================================*/
     static public function ctrCrearActivo()
     {
-
-
         if (isset($_POST["nuevaDescripcion"])) {
 
             $idUsuario = $_SESSION["usuario_id"];
 
             $datos = array(
-                "descripcion"       => $_POST["nuevaDescripcion"],
+                // Guardar siempre en MAYÚSCULAS y sin espacios extra
+                "descripcion"       => mb_strtoupper(trim($_POST["nuevaDescripcion"]), "UTF-8"),
                 "icono"             => $_POST["iconoActivo"],
                 "compuesto"         => isset($_POST["nuevoCompuesto"]) ? 1 : 0,
                 "idUsuarioRegistro" => $idUsuario
             );
 
-            // Llamada al modelo para ejecutar el SP sp_InsertarActivo
             $tabla = "inventario.activos";
             $respuesta = ActivosModel::mdlCrearActivo($tabla, $datos);
 
             return $respuesta;
         }
     }
+
     /*=============================================
     EDITAR ACTIVOS
     =============================================*/
@@ -36,17 +35,16 @@ class ActivosController
     {
         if (isset($_POST["editarDescripcion"])) {
 
-            // Validamos que el ID no llegue vacío
             if (empty($_POST["editarIdActivo"])) {
                 return "error";
             }
 
-            // Obtenemos el nombre de usuario de la sesión
             $idUsuario = $_SESSION["usuario_id"];
 
             $datos = array(
                 "idActivos"   => $_POST["editarIdActivo"],
-                "descripcion" => $_POST["editarDescripcion"],
+                // Guardar siempre en MAYÚSCULAS y sin espacios extra
+                "descripcion" => mb_strtoupper(trim($_POST["editarDescripcion"]), "UTF-8"),
                 "compuesto"   => isset($_POST["editarCompuesto"]) ? 1 : 0,
                 "icono"       => $_POST["editarIconoActivo"],
                 "usuario"     => $idUsuario
@@ -64,11 +62,29 @@ class ActivosController
     =============================================*/
     static public function ctrMostrarActivos($item, $valor)
     {
-
         $tabla = "inventario.activos";
-
         $respuesta = ActivosModel::mdlMostrarActivos($tabla, $item, $valor);
-
         return $respuesta;
+    }
+
+    /*=============================================
+    ELIMINAR ACTIVO (lógico)
+    =============================================*/
+    static public function ctrEliminarActivo()
+    {
+        if (isset($_POST["eliminarIdActivo"])) {
+
+            if (empty($_POST["eliminarIdActivo"])) {
+                return ["resultado" => "error", "mensaje" => "ID no recibido."];
+            }
+
+            $datos = array(
+                "idActivos"         => intval($_POST["eliminarIdActivo"]),
+                "idUsuarioModifica" => intval($_SESSION["usuario_id"])
+            );
+
+            $respuesta = ActivosModel::mdlEliminarActivo($datos);
+            return $respuesta;
+        }
     }
 }

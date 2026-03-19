@@ -151,16 +151,8 @@
 </style>
 
   <div class="page">
+<?php include __DIR__ . '/_submenu.php'; ?>
 
-    <!-- NAVBAR -->
-    <header class="navbar navbar-expand-md navbar-light d-print-none shadow-sm">
-      <div class="container-xl">
-        <h1 class="navbar-brand">
-          <i class="ti ti-package me-2 text-primary"></i>
-          Inventario TI
-        </h1>
-      </div>
-    </header>
 
     <div class="page-wrapper">
       <div class="container-xl">

@@ -14,10 +14,10 @@ class AjaxActivos
         $respuesta = ActivosController::ctrCrearActivo();
         echo json_encode($respuesta);
     }
+
     /*=============================================
     EDITAR ACTIVO
     =============================================*/
-
     public function ajaxEditarActivo()
     {
         $respuesta = ActivosController::ctrEditarActivo();
@@ -31,52 +31,63 @@ class AjaxActivos
 
     public function ajaxMostrarEditarActivo()
     {
-
-        $item = "idActivos";
+        $item  = "idActivos";
         $valor = $this->idActivo;
 
         $activo = ActivosController::ctrMostrarActivos($item, $valor);
 
         if (!$activo) {
-
             echo json_encode(["error" => "No se encontró el activo"]);
             return;
         }
 
         $respuesta = [
-
-            "idActivos" => intval($activo["idActivos"]),
-            "descripcion" => $activo["descripcion"] ?? "",
-            "icono" => $activo["icono"] ?? "",
-            "compuesto" => $activo["compuesto"] ?? 0,
+            "idActivos"         => intval($activo["idActivos"]),
+            "descripcion"       => $activo["descripcion"] ?? "",
+            "icono"             => $activo["icono"] ?? "",
+            "compuesto"         => $activo["compuesto"] ?? 0,
             "idUsuarioRegistro" => $activo["idUsuarioRegistro"] ?? "",
-            "fechaCreacion" => isset($activo["fechaCreacion"])
-                ? ($activo["fechaCreacion"] instanceof DateTime ? $activo["fechaCreacion"]->format("d/m/Y") : date("d/m/Y", strtotime($activo["fechaCreacion"])))
+            "fechaCreacion"     => isset($activo["fechaCreacion"])
+                ? ($activo["fechaCreacion"] instanceof DateTime
+                    ? $activo["fechaCreacion"]->format("d/m/Y")
+                    : date("d/m/Y", strtotime($activo["fechaCreacion"])))
                 : ""
-
         ];
 
         echo json_encode($respuesta);
     }
+
+    /*=============================================
+    ELIMINAR ACTIVO (lógico)
+    =============================================*/
+    public function ajaxEliminarActivo()
+    {
+        $respuesta = ActivosController::ctrEliminarActivo();
+        echo json_encode($respuesta);
+    }
 }
 
+/* ── CREAR ─────────────────────────────────── */
 if (isset($_POST["nuevaDescripcion"])) {
-    $crear = new AjaxActivos();
-    $crear->ajaxCrearActivo();
+    $obj = new AjaxActivos();
+    $obj->ajaxCrearActivo();
 }
 
+/* ── EDITAR ─────────────────────────────────── */
 if (isset($_POST["editarDescripcion"])) {
-    $crear = new AjaxActivos();
-    $crear->ajaxEditarActivo();
+    $obj = new AjaxActivos();
+    $obj->ajaxEditarActivo();
 }
 
-/*=============================================
-MOSTRAR PARA EDITAR ACTIVO
-=============================================*/
-
+/* ── CARGAR DATOS PARA MODAL EDITAR ─────────── */
 if (isset($_POST["idActivo"])) {
+    $obj          = new AjaxActivos();
+    $obj->idActivo = $_POST["idActivo"];
+    $obj->ajaxMostrarEditarActivo();
+}
 
-    $editar = new AjaxActivos();
-    $editar->idActivo = $_POST["idActivo"];
-    $editar->ajaxMostrarEditarActivo();
+/* ── ELIMINAR ───────────────────────────────── */
+if (isset($_POST["eliminarIdActivo"])) {
+    $obj = new AjaxActivos();
+    $obj->ajaxEliminarActivo();
 }

@@ -14,12 +14,7 @@ function fmtFecha($fecha, $formato = "Y-m-d") {
     return $ts ? date($formato, $ts) : null;
 }
 
-/* ═══════════════════════════════════════════════
-   AGREGAR COMPONENTE  ← DEBE IR PRIMERO
-   porque su POST también contiene idEquipoPadre
-   y el bloque de abajo lo interceptaría antes
-   POST { accion:'agregarComponente', idEquipoPadre, idEquipoHijo }
-═══════════════════════════════════════════════ */
+/* ── AGREGAR COMPONENTE ── */
 if (isset($_POST["accion"]) && $_POST["accion"] === "agregarComponente") {
     $idPadre = intval($_POST["idEquipoPadre"] ?? 0);
     $idHijo  = intval($_POST["idEquipoHijo"]  ?? 0);
@@ -27,33 +22,29 @@ if (isset($_POST["accion"]) && $_POST["accion"] === "agregarComponente") {
     responder(EquipoController::ctrAgregarComponente($idPadre, $idHijo));
 }
 
-/* ═══════════════════════════════════════════════
-   QUITAR COMPONENTE  ← también antes de idEquipoPadre
-   POST { accion:'quitarComponente', idEquipoHijo }
-═══════════════════════════════════════════════ */
+/* ── QUITAR COMPONENTE ── */
 if (isset($_POST["accion"]) && $_POST["accion"] === "quitarComponente") {
     $idHijo = intval($_POST["idEquipoHijo"] ?? 0);
     if (!$idHijo) responder(["resultado" => "error", "mensaje" => "ID de componente no recibido."]);
     responder(EquipoController::ctrQuitarComponente($idHijo));
 }
 
-/* ═══════════════════════════════════════════════
-   CREAR EQUIPO
-═══════════════════════════════════════════════ */
+/* ── ELIMINAR EQUIPO (lógico) ── */
+if (isset($_POST["eliminarIdEquipo"])) {
+    responder(EquipoController::ctrEliminarEquipo());
+}
+
+/* ── CREAR EQUIPO ── */
 if (isset($_POST["nuevoIdActivo"])) {
     responder(EquipoController::ctrCrearEquipo());
 }
 
-/* ═══════════════════════════════════════════════
-   EDITAR EQUIPO
-═══════════════════════════════════════════════ */
+/* ── EDITAR EQUIPO ── */
 if (isset($_POST["editarIdActivo"])) {
     responder(EquipoController::ctrEditarEquipo());
 }
 
-/* ═══════════════════════════════════════════════
-   CARGAR DATOS PARA MODAL EDITAR
-═══════════════════════════════════════════════ */
+/* ── CARGAR DATOS PARA MODAL EDITAR ── */
 if (isset($_POST["idEquipo"])) {
     $equipo = EquipoController::ctrMostrarEquipo("idEquipo", intval($_POST["idEquipo"]));
     if (!$equipo) responder(["error" => "No se encontró el equipo."]);
@@ -78,19 +69,13 @@ if (isset($_POST["idEquipo"])) {
     ]);
 }
 
-/* ═══════════════════════════════════════════════
-   CARGAR COMPONENTES ACTUALES DEL EQUIPO PADRE
-   POST { idEquipoPadre }
-═══════════════════════════════════════════════ */
+/* ── CARGAR COMPONENTES DEL EQUIPO PADRE ── */
 if (isset($_POST["idEquipoPadre"])) {
     $componentes = EquipoController::ctrMostrarComponentes(intval($_POST["idEquipoPadre"]));
     responder($componentes ?: []);
 }
 
-/* ═══════════════════════════════════════════════
-   CARGAR EQUIPOS DISPONIBLES (sin padre)
-   GET ?disponibles=1&idPadre=N
-═══════════════════════════════════════════════ */
+/* ── EQUIPOS DISPONIBLES ── */
 if (isset($_GET["disponibles"])) {
     $idPadre     = intval($_GET["idPadre"] ?? 0);
     $disponibles = EquipoController::ctrEquiposDisponibles($idPadre);

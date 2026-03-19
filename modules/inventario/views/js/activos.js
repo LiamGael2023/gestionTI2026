@@ -2,12 +2,12 @@
    CONFIGURACIÓN GLOBAL DE ICONOS
 ===================================== */
 const iconosConfig = {
-    equipos: ["ti-device-desktop", "ti-device-laptop", "ti-device-tablet", "ti-server"],
+    equipos:     ["ti-device-desktop", "ti-device-laptop", "ti-device-tablet", "ti-server"],
     componentes: ["ti-cpu", "ti-device-hdd", "ti-device-ssd", "ti-device-usb", "ti-device-sd-card"],
     perifericos: ["ti-mouse", "ti-keyboard", "ti-headphones", "ti-microphone", "ti-speaker"],
-    pantallas: ["ti-device-desktop", "ti-presentation", "ti-projector"],
-    impresion: ["ti-printer", "ti-printer-3d", "ti-copy"],
-    red: ["ti-router", "ti-network", "ti-wifi", "ti-antenna"]
+    pantallas:   ["ti-device-desktop", "ti-presentation", "ti-projector"],
+    impresion:   ["ti-printer", "ti-printer-3d", "ti-copy"],
+    red:         ["ti-router", "ti-network", "ti-wifi", "ti-antenna"]
 };
 
 /* =====================================
@@ -28,7 +28,7 @@ function mostrarToast(tipo, mensaje) {
 
     container.insertAdjacentHTML("beforeend", html);
     const toast = new bootstrap.Toast(container.lastElementChild, { delay: 3500 });
-    container.lastElementChild.addEventListener('hidden.bs.toast', function() { this.remove(); });
+    container.lastElementChild.addEventListener('hidden.bs.toast', function () { this.remove(); });
     toast.show();
 }
 
@@ -37,8 +37,8 @@ function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = nul
     if (!iconosConfig[tipo]) return;
 
     iconosConfig[tipo].forEach(icono => {
-        let seleccionado = (icono === iconoActual) ? "border-primary bg-primary-lt" : "";
-        let html = `
+        const seleccionado = (icono === iconoActual) ? "border-primary bg-primary-lt" : "";
+        const html = `
         <div class="col-4 col-sm-3">
             <div class="card card-sm text-center icono-item ${seleccionado}" data-icon="${icono}" style="cursor:pointer">
                 <div class="card-body p-2">
@@ -61,11 +61,27 @@ function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = nul
 ===================================== */
 document.addEventListener("DOMContentLoaded", function () {
 
+    /* --- MAYÚSCULAS en tiempo real sobre los inputs de descripción --- */
+    ["nuevaDescripcion", "editarDescripcion"].forEach(id => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener("input", function () {
+            const pos = this.selectionStart;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(pos, pos);
+        });
+    });
+
     /* --- Lógica de Iconos (Cambio de Categoría) --- */
     const tipoIcono = document.getElementById("tipoIcono");
     if (tipoIcono) {
         tipoIcono.addEventListener("change", function () {
-            generarIconos(this.value, document.getElementById("listaIconos"), document.getElementById("previewIcon"), document.getElementById("iconoActivo"));
+            generarIconos(
+                this.value,
+                document.getElementById("listaIconos"),
+                document.getElementById("previewIcon"),
+                document.getElementById("iconoActivo")
+            );
         });
     }
 
@@ -73,7 +89,13 @@ document.addEventListener("DOMContentLoaded", function () {
     if (editarTipoIcono) {
         editarTipoIcono.addEventListener("change", function () {
             const inputIcono = document.getElementById("editarIconoActivo");
-            generarIconos(this.value, document.getElementById("editarListaIconos"), document.getElementById("editarPreviewIcon"), inputIcono, inputIcono.value);
+            generarIconos(
+                this.value,
+                document.getElementById("editarListaIconos"),
+                document.getElementById("editarPreviewIcon"),
+                inputIcono,
+                inputIcono.value
+            );
         });
     }
 
@@ -104,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!boton) return;
 
         const idActivo = boton.getAttribute("data-id");
-        let datos = new FormData();
+        const datos = new FormData();
         datos.append("idActivo", idActivo);
 
         fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: datos })
@@ -112,15 +134,15 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(json => {
                 if (json.error) return mostrarToast("error", json.error);
 
-                document.getElementById("editarIdActivo").value = json.idActivos;
-                document.getElementById("editarDescripcion").value = json.descripcion;
-                document.getElementById("editarIconoActivo").value = json.icono;
-                document.getElementById("editarCompuesto").checked = (json.compuesto == 1);
+                document.getElementById("editarIdActivo").value           = json.idActivos;
+                document.getElementById("editarDescripcion").value        = json.descripcion;
+                document.getElementById("editarIconoActivo").value        = json.icono;
+                document.getElementById("editarCompuesto").checked        = (json.compuesto == 1);
                 document.getElementById("editarUsuarioCreacion").textContent = json.idUsuarioRegistro;
-                document.getElementById("editarFechaCreacion").textContent = json.fechaCreacion;
-                document.getElementById("editarPreviewIcon").innerHTML = `<i class="ti ${json.icono}"></i>`;
+                document.getElementById("editarFechaCreacion").textContent   = json.fechaCreacion;
+                document.getElementById("editarPreviewIcon").innerHTML    = `<i class="ti ${json.icono}"></i>`;
 
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarActivo')).show();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarActivo")).show();
             })
             .catch(() => mostrarToast("error", "Error al cargar datos."));
     });
@@ -130,17 +152,19 @@ document.addEventListener("DOMContentLoaded", function () {
     if (formAgregar) {
         formAgregar.addEventListener("submit", function (e) {
             e.preventDefault();
-            if (document.getElementById("iconoActivo").value === "ti ti-help") {
+
+            if (!document.getElementById("iconoActivo").value ||
+                document.getElementById("iconoActivo").value === "ti ti-help") {
                 return mostrarToast("warning", "Selecciona un icono válido.");
             }
 
             fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
                 .then(res => {
-                    const r = res.toString().trim();
+                    const r = String(res).trim();
                     if (r === "ok") {
                         bootstrap.Modal.getInstance(document.getElementById("modalAgregarActivo")).hide();
-                        mostrarToast("success", "Activo guardado correctamente");
+                        mostrarToast("success", "Activo guardado correctamente.");
                         setTimeout(() => location.reload(), 1500);
                     } else if (r === "error_duplicado") {
                         mostrarToast("warning", "¡Atención! Ya existe un activo con este nombre.");
@@ -161,13 +185,12 @@ document.addEventListener("DOMContentLoaded", function () {
             fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
                 .then(res => {
-                    const r = res.toString().trim();
+                    const r = String(res).trim();
                     if (r === "ok") {
                         bootstrap.Modal.getInstance(document.getElementById("modalEditarActivo")).hide();
-                        mostrarToast("success", "Activo actualizado correctamente");
+                        mostrarToast("success", "Activo actualizado correctamente.");
                         setTimeout(() => location.reload(), 1500);
                     } else if (r === "error_duplicado") {
-                        // Colores consistentes: warning para duplicados
                         mostrarToast("warning", "¡Atención! El nombre ya existe en otro registro.");
                     } else {
                         mostrarToast("error", "No se pudo actualizar: " + r);
@@ -177,7 +200,53 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /* --- 4. CONFIGURACIÓN DATATABLE --- */
+    /* --- 4. ELIMINAR ACTIVO (lógico) con confirmación --- */
+    document.addEventListener("click", function (e) {
+        const boton = e.target.closest(".btnEliminarActivo");
+        if (!boton) return;
+
+        const idActivo     = boton.getAttribute("data-id");
+        const descripcion  = boton.getAttribute("data-descripcion") || "este activo";
+
+        // Mostrar modal de confirmación
+        document.getElementById("eliminarNombreActivo").textContent = descripcion;
+        document.getElementById("confirmarEliminarActivo").setAttribute("data-id", idActivo);
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalConfirmarEliminar")).show();
+    });
+
+    const btnConfirmar = document.getElementById("confirmarEliminarActivo");
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener("click", function () {
+            const idActivo = this.getAttribute("data-id");
+            const datos    = new FormData();
+            datos.append("eliminarIdActivo", idActivo);
+
+            // Deshabilitar botón mientras procesa
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...';
+
+            fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: datos })
+                .then(res => res.json())
+                .then(json => {
+                    bootstrap.Modal.getInstance(document.getElementById("modalConfirmarEliminar")).hide();
+
+                    if (json.resultado === "ok") {
+                        mostrarToast("success", json.mensaje || "Activo eliminado correctamente.");
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        mostrarToast("error", json.mensaje || "No se pudo eliminar el activo.");
+                    }
+                })
+                .catch(() => mostrarToast("error", "Error al comunicarse con el servidor."))
+                .finally(() => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="ti ti-trash me-1"></i>Sí, eliminar';
+                });
+        });
+    }
+
+    /* --- 5. CONFIGURACIÓN DATATABLE --- */
     if ($.fn.DataTable.isDataTable('#tablaActivos')) {
         $('#tablaActivos').DataTable().destroy();
     }
@@ -203,7 +272,7 @@ document.addEventListener("DOMContentLoaded", function () {
     `,
         "buttons": [
             { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-outline-success btn-sm m-0' },
-            { extend: 'pdfHtml5', text: '<i class="ti ti-file-description"></i>', className: 'btn btn-outline-danger btn-sm m-0' }
+            { extend: 'pdfHtml5',   text: '<i class="ti ti-file-description"></i>',  className: 'btn btn-outline-danger btn-sm m-0' }
         ],
         "initComplete": function () {
             $('.dataTables_filter input').addClass('form-control form-control-sm m-0').attr('placeholder', 'Buscar...');

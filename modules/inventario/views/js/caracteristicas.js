@@ -1,111 +1,69 @@
-/* caracteristicas.js
-   Versión final integrada: rellena combo, selecciona por id y actualiza texto con tipoDescripcion,
-   maneja auditoría y muestra modal solo después de tener datos.
-   Incluir este script al final del body.
-*/
+/* caracteristicas.js — versión corregida */
 
 (function () {
   'use strict';
 
-  /* ---------------------------
-     Utilidades de Toast
-     --------------------------- */
+  /* ══════════════════════════════════════
+     UTILIDADES DE TOAST
+  ══════════════════════════════════════ */
   function ensureToastContainer() {
-    let container = document.getElementById("toastContainerCaracteristicas");
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'toastContainerCaracteristicas';
-      container.className = 'position-fixed bottom-0 end-0 p-3';
-      container.style.zIndex = '10800';
-      document.body.appendChild(container);
+    let c = document.getElementById("toastContainerCaracteristicas");
+    if (!c) {
+      c = document.createElement('div');
+      c.id = 'toastContainerCaracteristicas';
+      c.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+      c.style.zIndex = '10800';
+      document.body.appendChild(c);
     }
-    return container;
-  }
-
-  function sanitizeMessage(msg) {
-    if (msg === null || msg === undefined) return '';
-    if (typeof msg === 'object') {
-      return String(msg.mensaje ?? msg.message ?? JSON.stringify(msg)).replace(/["{}]/g, '');
-    }
-    const s = String(msg).trim();
-    if (/^[0-9]+$/.test(s)) return 'Operación completada';
-    if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
-      try {
-        const p = JSON.parse(s);
-        return String(p.mensaje ?? p.message ?? JSON.stringify(p)).replace(/["{}]/g, '');
-      } catch (e) {
-        return s;
-      }
-    }
-    return s.length > 240 ? s.slice(0, 237) + '...' : s;
+    return c;
   }
 
   function mostrarToast(tipo, mensaje, delay = 3500) {
     const colores = { success: "bg-success", error: "bg-danger", warning: "bg-warning", info: "bg-info" };
     const container = ensureToastContainer();
-    const colorClass = colores[tipo] || colores.info;
-    const safeMsg = sanitizeMessage(mensaje) || (tipo === 'success' ? 'Operación exitosa' : 'Ocurrió un error');
+    const msg = (typeof mensaje === 'object')
+      ? (mensaje.mensaje ?? mensaje.message ?? JSON.stringify(mensaje))
+      : String(mensaje ?? '');
 
     const html = `
-      <div class="toast align-items-center text-white ${colorClass} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast align-items-center text-white ${colores[tipo] || 'bg-info'} border-0 mb-2" role="alert">
         <div class="d-flex">
-          <div class="toast-body">${safeMsg}</div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+          <div class="toast-body">${msg}</div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
       </div>`;
 
     container.insertAdjacentHTML("beforeend", html);
-    const elementoToast = container.lastElementChild;
-
-    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-      const toast = new bootstrap.Toast(elementoToast, { delay });
-      elementoToast.addEventListener('hidden.bs.toast', () => elementoToast.remove());
-      toast.show();
-    }
-
-    return elementoToast;
+    const el = container.lastElementChild;
+    const toast = new bootstrap.Toast(el, { delay });
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+    toast.show();
   }
 
-  function normalizarRespuesta(raw) {
-    if (raw === null || raw === undefined) return { code: null, message: null, raw: raw };
-    if (typeof raw === 'string') {
-      const s = raw.trim();
-      if ((s.startsWith('{') && s.endsWith('}')) || (s.startsWith('[') && s.endsWith(']'))) {
-        try {
-          const parsed = JSON.parse(s);
-          if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-            return {
-              code: parsed.resultado ?? parsed.status ?? parsed.code ?? null,
-              message: parsed.mensaje ?? parsed.message ?? parsed.msg ?? null,
-              raw: parsed
-            };
-          }
-          return { code: s, message: null, raw: parsed };
-        } catch (e) {
-          return { code: s, message: null, raw: s };
-        }
-      }
-      return { code: s, message: null, raw: s };
-    }
-    if (typeof raw === 'object') {
-      return {
-        code: raw.resultado ?? raw.status ?? raw.code ?? null,
-        message: raw.mensaje ?? raw.message ?? raw.msg ?? null,
-        raw: raw
-      };
-    }
-    return { code: String(raw).trim(), message: null, raw: raw };
-  }
-
-  /* ---------------------------
-     Endpoints
-     --------------------------- */
-  const tiposEndpoint = 'modules/inventario/ajax/tipoCaracteristicasTabla.ajax.php';
+  /* ══════════════════════════════════════
+     ENDPOINTS
+  ══════════════════════════════════════ */
+  const tiposEndpoint      = 'modules/inventario/ajax/tipoCaracteristicasTabla.ajax.php';
   const ajaxCaracteristicas = 'modules/inventario/ajax/caracteristicas.ajax.php';
 
-  /* ---------------------------
-     DataTable (inicialización)
-     --------------------------- */
+  /* ══════════════════════════════════════
+     MAYÚSCULAS en tiempo real
+  ══════════════════════════════════════ */
+  document.addEventListener('DOMContentLoaded', function () {
+    ["nuevoValor", "editarValor"].forEach(function (id) {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener("input", function () {
+        const pos = this.selectionStart;
+        this.value = this.value.toUpperCase();
+        this.setSelectionRange(pos, pos);
+      });
+    });
+  });
+
+  /* ══════════════════════════════════════
+     DATATABLE
+  ══════════════════════════════════════ */
   document.addEventListener('DOMContentLoaded', function () {
     if (typeof $ !== 'undefined' && $.fn && $.fn.DataTable) {
       try {
@@ -114,7 +72,6 @@
           autoWidth: false,
           pageLength: 10,
           order: [[0, "asc"]],
-          columnDefs: [{ responsivePriority: 1, targets: 0 }, { responsivePriority: 2, targets: -1 }],
           dom: `
             <'card-body border-bottom py-2'
                 <'row align-items-center'
@@ -129,8 +86,8 @@
             >
           `,
           buttons: [
-            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-sm btn-icon btn-outline-success', titleAttr: 'Exportar a Excel', exportOptions: { columns: [0, 1, 2] } },
-            { extend: 'pdfHtml5', text: '<i class="ti ti-file-description"></i>', className: 'btn btn-sm btn-icon btn-outline-danger ms-2', titleAttr: 'Exportar a PDF', exportOptions: { columns: [0, 1, 2] } }
+            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-sm btn-icon btn-outline-success', exportOptions: { columns: [0, 1, 2] } },
+            { extend: 'pdfHtml5',   text: '<i class="ti ti-file-description"></i>',  className: 'btn btn-sm btn-icon btn-outline-danger ms-2', exportOptions: { columns: [0, 1, 2] } }
           ],
           initComplete: function () {
             $('.dataTables_filter input').addClass('form-control form-control-sm').attr('placeholder', 'Buscar...');
@@ -139,385 +96,271 @@
           }
         });
       } catch (err) {
-        console.error('Error inicializando DataTable caracteristicas:', err);
-        mostrarToast('error', 'Error inicializando tabla: ' + (err.message || err));
+        console.error('DataTable error:', err);
       }
     }
   });
 
-  /* ---------------------------
-     Fetch y llenado de tipos
-     --------------------------- */
+  /* ══════════════════════════════════════
+     FETCH Y LLENADO DE TIPOS
+  ══════════════════════════════════════ */
   async function fetchTipos() {
     try {
       const res = await fetch(tiposEndpoint, { cache: 'no-store' });
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        console.error('fetchTipos error body:', text);
-        mostrarToast('error', `Error al obtener tipos (HTTP ${res.status})`);
-        return [];
-      }
+      if (!res.ok) return [];
       const data = await res.json();
-      if (!Array.isArray(data)) {
-        console.error('fetchTipos: data no es array', data);
-        mostrarToast('error', 'Respuesta inválida al obtener tipos');
-        return [];
-      }
-      return data;
+      return Array.isArray(data) ? data : [];
     } catch (err) {
-      console.error('Error al obtener tipos:', err);
-      mostrarToast('error', 'Error de red al cargar tipos: ' + (err.message || err));
+      console.error('fetchTipos error:', err);
       return [];
     }
   }
 
-  async function llenarSelectTipo(selectRef, placeholderText = 'Seleccionar tipo...') {
-    let selectEl = null;
-    if (!selectRef) return;
-    if (typeof selectRef === 'string') {
-      selectEl = document.getElementById(selectRef) || document.querySelector(`select[name="${selectRef}"]`);
-    } else {
-      selectEl = selectRef;
-    }
-    if (!selectEl) {
-      console.warn('llenarSelectTipo: select no encontrado para', selectRef);
-      return;
-    }
+  async function llenarSelectTipo(selectEl, placeholder = 'Seleccionar tipo...') {
+    if (!selectEl) return;
 
-    selectEl.innerHTML = '';
-    const loading = document.createElement('option');
-    loading.value = '';
-    loading.disabled = true;
-    loading.selected = true;
-    loading.textContent = 'Cargando tipos...';
-    selectEl.appendChild(loading);
+    selectEl.innerHTML = `<option value="" disabled selected>${placeholder}</option>`;
 
     const tipos = await fetchTipos();
 
-    selectEl.innerHTML = '';
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    placeholder.textContent = placeholderText;
-    selectEl.appendChild(placeholder);
-
-    if (!tipos || tipos.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.disabled = true;
-      opt.textContent = 'No hay tipos disponibles';
-      selectEl.appendChild(opt);
+    if (!tipos.length) {
+      selectEl.innerHTML += '<option value="" disabled>No hay tipos disponibles</option>';
       return;
     }
 
     tipos.forEach(t => {
       const opt = document.createElement('option');
-      opt.value = String(t.idTipoCaracteristica ?? t.id ?? '');
-      opt.textContent = t.descripcion ?? t.descripcionCorta ?? ('Tipo ' + opt.value);
-      opt.setAttribute('data-descripcion', opt.textContent);
+      opt.value = String(t.idTipoCaracteristica ?? '');
+      opt.textContent = t.descripcion ?? ('Tipo ' + opt.value);
       selectEl.appendChild(opt);
     });
   }
 
-  /* ---------------------------
-     Selección robusta del tipo (acepta descripcion)
-     --------------------------- */
-  async function seleccionarTipoCuandoListo(selectEl, idTipo, descripcionTipo) {
-    if (!selectEl) return;
-    const target = String(idTipo ?? '');
-    if (!target) return;
+  async function seleccionarTipo(selectEl, idTipo) {
+    if (!selectEl || !idTipo) return;
+    const target = String(idTipo);
 
-    // 1) si ya existe la opción, actualizar texto si viene descripcionTipo y seleccionar
-    let opt = selectEl.querySelector(`option[value="${target}"]`);
-    if (opt) {
-      if (descripcionTipo) {
-        opt.textContent = descripcionTipo;
-        opt.setAttribute('data-descripcion', descripcionTipo);
-      }
-      selectEl.value = target;
-      return;
-    }
-
-    // 2) intentar coincidencia por índice/valor
+    // Buscar la opción directamente
     for (let i = 0; i < selectEl.options.length; i++) {
-      const o = selectEl.options[i];
-      if (String(o.value).trim() === target.trim()) {
-        if (descripcionTipo) o.textContent = descripcionTipo;
-        selectEl.selectedIndex = i;
-        return;
-      }
-      if (!isNaN(o.value) && !isNaN(target) && Number(o.value) === Number(target)) {
-        if (descripcionTipo) o.textContent = descripcionTipo;
+      if (String(selectEl.options[i].value) === target) {
         selectEl.selectedIndex = i;
         return;
       }
     }
 
-    // 3) esperar hasta 2s a que la opción aparezca (por si se está llenando en paralelo)
+    // Si no existe todavía, esperar hasta 1.5s (mientras carga el fetch)
     const start = Date.now();
-    while (Date.now() - start < 2000) {
-      opt = selectEl.querySelector(`option[value="${target}"]`);
-      if (opt) {
-        if (descripcionTipo) {
-          opt.textContent = descripcionTipo;
-          opt.setAttribute('data-descripcion', descripcionTipo);
-        }
-        selectEl.value = target;
-        return;
-      }
+    while (Date.now() - start < 1500) {
       await new Promise(r => setTimeout(r, 80));
+      for (let i = 0; i < selectEl.options.length; i++) {
+        if (String(selectEl.options[i].value) === target) {
+          selectEl.selectedIndex = i;
+          return;
+        }
+      }
     }
-
-    // 4) si no existe, crear opción temporal con la descripción correcta
-    const newOpt = document.createElement('option');
-    newOpt.value = target;
-    newOpt.textContent = descripcionTipo ?? ('Tipo ' + target);
-    newOpt.setAttribute('data-descripcion', descripcionTipo ?? '');
-    newOpt.selected = true;
-    selectEl.appendChild(newOpt);
-    selectEl.value = target;
+    console.warn('No se encontró la opción con idTipo:', target);
   }
 
-  /* ---------------------------
-     Formulario: Crear Característica
-     --------------------------- */
+  /* ══════════════════════════════════════
+     MODAL AGREGAR — llenar select al abrir
+  ══════════════════════════════════════ */
+  const modalAgregarEl = document.getElementById('modalAgregarCaracteristica');
+  if (modalAgregarEl) {
+    modalAgregarEl.addEventListener('show.bs.modal', function () {
+      const sel = document.getElementById('nuevoSelectTipo');
+      llenarSelectTipo(sel, 'Seleccionar tipo...');
+
+      const fechaSpan = document.getElementById('nuevoFechaCreacion');
+      if (fechaSpan) fechaSpan.textContent = new Date().toLocaleString('es-PE');
+    });
+  }
+
+  /* ══════════════════════════════════════
+     FORMULARIO CREAR
+  ══════════════════════════════════════ */
   const formNuevo = document.getElementById('formNuevoCaracteristica');
   if (formNuevo) {
-    const modalAgregar = document.getElementById('modalAgregarCaracteristica');
-    if (modalAgregar) {
-      modalAgregar.addEventListener('show.bs.modal', function () {
-        llenarSelectTipo('nuevoSelectTipo', 'Seleccionar tipo...');
-        const usuarioSpan = modalAgregar.querySelector('#nuevoUsuarioCreacion');
-        const fechaSpan = modalAgregar.querySelector('#nuevoFechaCreacion');
-        if (usuarioSpan && window.USUARIO_NOMBRE) usuarioSpan.textContent = window.USUARIO_NOMBRE;
-        if (fechaSpan) fechaSpan.textContent = new Date().toLocaleString();
-      });
-    }
-
     formNuevo.addEventListener('submit', function (e) {
       e.preventDefault();
 
-      const modalEl = document.getElementById('modalAgregarCaracteristica');
-      const selectTipo = formNuevo.querySelector('select[name="idTipoCaracteristica"]') || modalEl.querySelector('#nuevoSelectTipo');
-      const inputValor = formNuevo.querySelector('input[name="nuevoValor"]') || modalEl.querySelector('input[type="text"]');
+      const sel   = document.getElementById('nuevoSelectTipo');
+      const input = document.getElementById('nuevoValor');
+      const idTipo = sel ? sel.value : '';
+      const valor  = input ? input.value.trim() : '';
 
-      const idTipo = selectTipo ? selectTipo.value : null;
-      const valor = inputValor ? inputValor.value.trim() : '';
-
-      if (!idTipo || idTipo === '' || valor === '') {
+      if (!idTipo || !valor) {
         mostrarToast('warning', 'Completa el tipo y el valor antes de guardar.');
         return;
       }
 
-      const formData = new FormData();
-      formData.append('nuevoValor', valor);
-      formData.append('nuevoIdTipoCaracteristica', idTipo);
+      const fd = new FormData();
+      fd.append('nuevoValor', valor);
+      fd.append('nuevoIdTipoCaracteristica', idTipo);
 
-      fetch(ajaxCaracteristicas, { method: 'POST', body: formData })
-        .then(res => res.text())
-        .then(raw => {
-          const parsed = normalizarRespuesta(raw);
-          const code = parsed.code ? String(parsed.code).toLowerCase() : null;
-          const msg = parsed.message ?? null;
-
+      fetch(ajaxCaracteristicas, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(res => {
+          const code = String(res.resultado ?? '').trim();
           if (code === 'ok') {
-
-            const toastEl = mostrarToast('success', msg || 'Característica guardada correctamente');
-
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal.hide();
-
-            setTimeout(() => location.reload(), 500);
-
+            bootstrap.Modal.getInstance(modalAgregarEl).hide();
+            mostrarToast('success', 'Característica guardada correctamente.');
+            setTimeout(() => location.reload(), 1200);
           } else if (code === 'error_duplicado') {
-            mostrarToast('warning', msg || '¡Atención! Ya existe esa característica.');
+            mostrarToast('warning', '¡Atención! Ya existe esa característica.');
           } else {
-            mostrarToast('error', msg || 'Error al crear característica.');
-            console.error('Crear caracteristica - respuesta raw:', parsed.raw);
+            mostrarToast('error', res.mensaje || 'Error al crear característica.');
           }
         })
-        .catch(err => {
-          console.error('Error técnico al crear caracteristica:', err);
-          mostrarToast('error', 'Error de servidor al crear característica.');
-        });
+        .catch(() => mostrarToast('error', 'Error de servidor.'));
     });
   }
 
-  /* ---------------------------
-   Formulario: Editar Característica
-   --------------------------- */
-  const formEditar = document.getElementById('formEditarCaracteristica');
-
-  if (formEditar) {
-
-    formEditar.addEventListener('submit', function (e) {
-
-      e.preventDefault();
-
-      const modalEl = document.getElementById('modalEditarCaracteristica');
-
-      const inputId = formEditar.querySelector('input[name="editarIdCaracteristica"]')
-        || modalEl.querySelector('#editarIdCaracteristica');
-
-      const selectTipo = formEditar.querySelector('select[name="editarIdTipoCaracteristica"]')
-        || modalEl.querySelector('#editarSelectTipo');
-
-      const inputValor = formEditar.querySelector('input[name="editarValor"]')
-        || modalEl.querySelector('#editarValor');
-
-      const id = inputId ? inputId.value : null;
-      const idTipo = selectTipo ? selectTipo.value : null;
-      const valor = inputValor ? inputValor.value.trim() : '';
-
-      if (!id || valor === '') {
-        mostrarToast('warning', 'Faltan datos obligatorios para editar.');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('editarIdCaracteristica', id);
-      formData.append('editarValor', valor);
-
-      if (idTipo) {
-        formData.append('editarIdTipoCaracteristica', idTipo);
-      }
-
-      fetch(ajaxCaracteristicas, {
-        method: 'POST',
-        body: formData
-      })
-        .then(res => res.text())
-        .then(raw => {
-
-          const parsed = normalizarRespuesta(raw);
-          const code = parsed.code ? String(parsed.code).toLowerCase() : null;
-          const msg = parsed.message ?? null;
-
-          if (code === 'ok') {
-
-            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-            modal.hide();
-
-            mostrarToast('success', msg || 'Característica actualizada correctamente');
-
-            setTimeout(() => location.reload(), 500);
-
-          }
-          else if (code === 'error_duplicado') {
-
-            mostrarToast('warning', msg || '¡Atención! Ya existe esa característica.');
-
-          }
-          else {
-
-            mostrarToast('error', msg || 'Error al actualizar característica.');
-            console.error('Editar caracteristica - respuesta raw:', parsed.raw);
-
-          }
-
-        })
-        .catch(err => {
-
-          console.error('Error técnico al editar caracteristica:', err);
-          mostrarToast('error', 'Error de servidor al actualizar característica.');
-
-        });
-
-    });
-
-  }
-
-  /* ---------------------------
-     Cargar datos para editar (flujo robusto)
-     --------------------------- */
+  /* ══════════════════════════════════════
+     CARGAR DATOS PARA MODAL EDITAR
+  ══════════════════════════════════════ */
   document.addEventListener('click', function (e) {
     const btn = e.target.closest('.btnEditarCaracteristica');
     if (!btn) return;
 
-    const id = btn.dataset.id || btn.getAttribute('data-id');
-    if (!id) {
-      mostrarToast('error', 'ID no encontrado para editar.');
-      return;
-    }
+    const id = btn.getAttribute('data-id');
+    if (!id) return mostrarToast('error', 'ID no encontrado.');
+
+    const modalEl = document.getElementById('modalEditarCaracteristica');
 
     (async function () {
       try {
-        const datos = new FormData();
-        datos.append('idCaracteristica', id);
+        // 1. Llenar el select PRIMERO (en paralelo con el fetch de datos)
+        const selPromise = llenarSelectTipo(
+          document.getElementById('editarSelectTipo'),
+          'Seleccionar tipo...'
+        );
 
-        const resp = await fetch(ajaxCaracteristicas, { method: 'POST', body: datos });
-        const rawText = await resp.text();
-        let parsed;
-        try { parsed = JSON.parse(rawText); } catch (err) { parsed = rawText; }
+        // 2. Fetch de datos del registro
+        const fd = new FormData();
+        fd.append('idCaracteristica', id);
 
-        if (!parsed) {
-          mostrarToast('error', 'Respuesta inválida del servidor');
-          console.error('Respuesta cruda inválida:', rawText);
+        const resp    = await fetch(ajaxCaracteristicas, { method: 'POST', body: fd });
+        const json    = await resp.json();
+
+        // Esperar a que el select termine de cargarse
+        await selPromise;
+
+        if (!json || json.resultado === 'error') {
+          mostrarToast('error', json?.mensaje || 'No se encontró el registro.');
           return;
         }
 
-        const row = parsed.data ?? parsed;
+        const row = json.data;
 
-        const modalEl = document.getElementById('modalEditarCaracteristica');
-        if (!modalEl) {
-          console.error('Modal editar no encontrado en DOM');
-          mostrarToast('error', 'Modal de edición no disponible');
-          return;
-        }
+        // 3. Rellenar campos
+        document.getElementById('editarIdCaracteristica').value = row.idCaracteristica ?? '';
+        document.getElementById('editarValor').value            = row.valor ?? '';
 
-        const inputId = modalEl.querySelector('input[name="editarIdCaracteristica"]') || modalEl.querySelector('#editarIdCaracteristica');
-        const selectTipo = modalEl.querySelector('#editarSelectTipo') || modalEl.querySelector('select[name="editarIdTipoCaracteristica"]');
-        const inputValor = modalEl.querySelector('input[name="editarValor"]') || modalEl.querySelector('#editarValor');
+        // 4. Seleccionar el tipo en el combo
+        await seleccionarTipo(
+          document.getElementById('editarSelectTipo'),
+          row.idTipoCaracteristica
+        );
 
-        // FORZAR recarga del select siempre antes de seleccionar
-        if (selectTipo) {
-          await llenarSelectTipo(selectTipo, 'Seleccionar tipo...');
-        }
+        // 5. Auditoría
+        document.getElementById('editarUsuarioCreacion').textContent  = row.idUsuarioCreacion  ?? '--';
+        document.getElementById('editarFechaCreacion').textContent    = row.fechaCreacion       ?? '--';
+        document.getElementById('editarUsuarioModifica').textContent  = row.idUsuarioModifica   ?? '--';
+        document.getElementById('editarFechaModificacion').textContent = row.fechaModificacion  ?? '--';
 
-        // asignar valores básicos (id y valor)
-        if (inputId) inputId.value = row.idCaracteristica ?? row.id ?? id;
-        if (inputValor) inputValor.value = row.valor ?? '';
-
-        // seleccionar tipo pasando la descripcion que vino del servidor
-        if (selectTipo) {
-          await seleccionarTipoCuandoListo(selectTipo, row.idTipoCaracteristica ?? row.idTipo ?? '', row.tipoDescripcion ?? null);
-        }
-
-        // asignar auditoría (mostrar nombres si vienen, si no mostrar ids o '--')
-        const viewUser = modalEl.querySelector('#editarUsuarioCreacion');
-        const viewFecha = modalEl.querySelector('#editarFechaCreacion');
-        const viewUserMod = modalEl.querySelector('#editarUsuarioModifica');
-        const viewFechaMod = modalEl.querySelector('#editarFechaModificacion');
-
-        if (viewUser) viewUser.textContent = row.usuarioCreacionNombre ?? row.idUsuarioCreacion ?? 'N/A';
-        if (viewFecha) viewFecha.textContent = row.fechaCreacion ?? '--';
-        if (viewUserMod) viewUserMod.textContent = row.usuarioModificaNombre ?? row.idUsuarioModifica ?? '--';
-        if (viewFechaMod) viewFechaMod.textContent = row.fechaModificacion ?? '--';
-
-        // mostrar modal al final
-        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modalInstance.show();
+        // 6. Mostrar modal
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
 
       } catch (err) {
-        console.error('Error en flujo editar:', err);
+        console.error('Error cargando datos para editar:', err);
         mostrarToast('error', 'Error al cargar datos de la característica.');
       }
     })();
   });
 
-  /* ---------------------------
-     Exportar utilidades al window
-     --------------------------- */
-  window.caracteristicasUtils = {
-    mostrarToast,
-    normalizarRespuesta
-  };
+  /* ══════════════════════════════════════
+     FORMULARIO EDITAR
+  ══════════════════════════════════════ */
+  const formEditar = document.getElementById('formEditarCaracteristica');
+  if (formEditar) {
+    formEditar.addEventListener('submit', function (e) {
+      e.preventDefault();
 
-  window.caracteristicasTipos = {
-    fetchTipos,
-    llenarSelectTipo,
-    seleccionarTipoCuandoListo
-  };
+      const modalEl = document.getElementById('modalEditarCaracteristica');
+      const fd = new FormData(formEditar);
+
+      fetch(ajaxCaracteristicas, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(res => {
+          const code = String(res.resultado ?? '').trim();
+          if (code === 'ok') {
+            bootstrap.Modal.getInstance(modalEl).hide();
+            mostrarToast('success', 'Característica actualizada correctamente.');
+            setTimeout(() => location.reload(), 1200);
+          } else if (code === 'error_duplicado') {
+            mostrarToast('warning', '¡Atención! Ya existe esa característica.');
+          } else {
+            mostrarToast('error', res.mensaje || 'Error al actualizar.');
+          }
+        })
+        .catch(() => mostrarToast('error', 'Error al comunicarse con el servidor.'));
+    });
+  }
+
+  /* ══════════════════════════════════════
+     ELIMINAR (lógico)
+  ══════════════════════════════════════ */
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.btnEliminarCaracteristica');
+    if (!btn) return;
+
+    const id          = btn.getAttribute('data-id');
+    const descripcion = btn.getAttribute('data-descripcion') || 'este registro';
+
+    document.getElementById('eliminarNombreCaracteristica').textContent = descripcion;
+    document.getElementById('confirmarEliminarCaracteristica').setAttribute('data-id', id);
+
+    bootstrap.Modal.getOrCreateInstance(
+      document.getElementById('modalConfirmarEliminarCaracteristica')
+    ).show();
+  });
+
+  const btnConfirmar = document.getElementById('confirmarEliminarCaracteristica');
+  if (btnConfirmar) {
+    btnConfirmar.addEventListener('click', function () {
+      const id   = this.getAttribute('data-id');
+      const fd   = new FormData();
+      fd.append('eliminarIdCaracteristica', id);
+
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...';
+
+      fetch(ajaxCaracteristicas, { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(json => {
+          bootstrap.Modal.getInstance(
+            document.getElementById('modalConfirmarEliminarCaracteristica')
+          ).hide();
+
+          if (json.resultado === 'ok') {
+            mostrarToast('success', json.mensaje || 'Eliminado correctamente.');
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            mostrarToast('error', json.mensaje || 'No se pudo eliminar.');
+          }
+        })
+        .catch(() => mostrarToast('error', 'Error al comunicarse con el servidor.'))
+        .finally(() => {
+          this.disabled = false;
+          this.innerHTML = '<i class="ti ti-trash me-1"></i>Sí, eliminar';
+        });
+    });
+  }
+
+  /* ══════════════════════════════════════
+     EXPORTS
+  ══════════════════════════════════════ */
+  window.caracteristicasUtils = { mostrarToast, fetchTipos, llenarSelectTipo };
 
 })();

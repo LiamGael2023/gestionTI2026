@@ -11,19 +11,15 @@ class EquipoController
         if (!isset($_POST["nuevoIdActivo"])) return null;
 
         $datos = [
-            "idEquipo"            => null,   // el SP genera el ID (IDENTITY)
+            "idEquipo"            => null,
             "idActivo"            => intval($_POST["nuevoIdActivo"]),
-            "idEquipoPadre"       => null,   // nuevo equipo sin padre
-            "codigoPatrimonial"   => trim($_POST["nuevoCodigoPatrimonial"]   ?? ''),
-            "numeroSerie"         => trim($_POST["nuevoNumeroSerie"]         ?? ''),
-            "fechaAdquisicion"    => !empty($_POST["nuevoFechaAdquisicion"])
-                                        ? $_POST["nuevoFechaAdquisicion"]    : null,
-            "fechaInicioGarantia" => !empty($_POST["nuevoFechaInicioGarantia"])
-                                        ? $_POST["nuevoFechaInicioGarantia"] : null,
-            "fechaFinGarantia"    => !empty($_POST["nuevoFechaFinGarantia"])
-                                        ? $_POST["nuevoFechaFinGarantia"]    : null,
-            // El model espera "idCaracteristicas", el form envía "nuevoCaracteristicasIds"
-            "idCaracteristicas"   => trim($_POST["nuevoCaracteristicasIds"]  ?? ''),
+            "idEquipoPadre"       => null,
+            "codigoPatrimonial"   => mb_strtoupper(trim($_POST["nuevoCodigoPatrimonial"]   ?? ''), "UTF-8"),
+            "numeroSerie"         => mb_strtoupper(trim($_POST["nuevoNumeroSerie"]         ?? ''), "UTF-8"),
+            "fechaAdquisicion"    => !empty($_POST["nuevoFechaAdquisicion"])    ? $_POST["nuevoFechaAdquisicion"]    : null,
+            "fechaInicioGarantia" => !empty($_POST["nuevoFechaInicioGarantia"]) ? $_POST["nuevoFechaInicioGarantia"] : null,
+            "fechaFinGarantia"    => !empty($_POST["nuevoFechaFinGarantia"])    ? $_POST["nuevoFechaFinGarantia"]    : null,
+            "idCaracteristicas"   => trim($_POST["nuevoCaracteristicasIds"]     ?? ''),
             "idUsuario"           => $_SESSION["usuario_id"],
         ];
 
@@ -36,11 +32,9 @@ class EquipoController
     static public function ctrEditarEquipo()
     {
         if (!isset($_POST["editarIdActivo"])) return null;
-        if (empty($_POST["editarIdEquipo"])) {
+        if (empty($_POST["editarIdEquipo"]))
             return ["resultado" => "error", "mensaje" => "ID de equipo no recibido."];
-        }
 
-        // Recuperar el idEquipoPadre actual para no perderlo al editar
         $equipoActual = EquipoModel::mdlMostrarEquipo(
             'inventario.equipo', 'idEquipo', intval($_POST["editarIdEquipo"])
         );
@@ -49,15 +43,12 @@ class EquipoController
             "idEquipo"            => intval($_POST["editarIdEquipo"]),
             "idActivo"            => intval($_POST["editarIdActivo"]),
             "idEquipoPadre"       => $equipoActual["idEquipoPadre"] ?? null,
-            "codigoPatrimonial"   => trim($_POST["editarCodigoPatrimonial"]   ?? ''),
-            "numeroSerie"         => trim($_POST["editarNumeroSerie"]         ?? ''),
-            "fechaAdquisicion"    => !empty($_POST["editarFechaAdquisicion"])
-                                        ? $_POST["editarFechaAdquisicion"]    : null,
-            "fechaInicioGarantia" => !empty($_POST["editarFechaInicioGarantia"])
-                                        ? $_POST["editarFechaInicioGarantia"] : null,
-            "fechaFinGarantia"    => !empty($_POST["editarFechaFinGarantia"])
-                                        ? $_POST["editarFechaFinGarantia"]    : null,
-            "idCaracteristicas"   => trim($_POST["editarCaracteristicasIds"]  ?? ''),
+            "codigoPatrimonial"   => mb_strtoupper(trim($_POST["editarCodigoPatrimonial"]   ?? ''), "UTF-8"),
+            "numeroSerie"         => mb_strtoupper(trim($_POST["editarNumeroSerie"]         ?? ''), "UTF-8"),
+            "fechaAdquisicion"    => !empty($_POST["editarFechaAdquisicion"])    ? $_POST["editarFechaAdquisicion"]    : null,
+            "fechaInicioGarantia" => !empty($_POST["editarFechaInicioGarantia"]) ? $_POST["editarFechaInicioGarantia"] : null,
+            "fechaFinGarantia"    => !empty($_POST["editarFechaFinGarantia"])    ? $_POST["editarFechaFinGarantia"]    : null,
+            "idCaracteristicas"   => trim($_POST["editarCaracteristicasIds"]     ?? ''),
             "idUsuario"           => $_SESSION["usuario_id"],
         ];
 
@@ -81,33 +72,42 @@ class EquipoController
     }
 
     /*=============================================
-    ARMAR EQUIPO — COMPONENTES
+    COMPONENTES
     =============================================*/
-
-    /** Componentes actuales del equipo padre */
     static public function ctrMostrarComponentes(int $idEquipoPadre)
     {
         return EquipoModel::mdlMostrarComponentes($idEquipoPadre);
     }
 
-    /** Equipos disponibles para ser componentes */
     static public function ctrEquiposDisponibles(int $idPadre)
     {
         return EquipoModel::mdlEquiposDisponibles($idPadre);
     }
 
-    /** Asignar componente al padre */
     static public function ctrAgregarComponente(int $idPadre, int $idHijo)
     {
-        if ($idPadre === $idHijo) {
+        if ($idPadre === $idHijo)
             return ["resultado" => "error", "mensaje" => "Un equipo no puede ser su propio componente."];
-        }
         return EquipoModel::mdlAgregarComponente($idPadre, $idHijo);
     }
 
-    /** Quitar componente del padre */
     static public function ctrQuitarComponente(int $idHijo)
     {
         return EquipoModel::mdlQuitarComponente($idHijo);
+    }
+
+    /*=============================================
+    ELIMINAR EQUIPO (lógico)
+    =============================================*/
+    static public function ctrEliminarEquipo()
+    {
+        if (empty($_POST["eliminarIdEquipo"]))
+            return ["resultado" => "error", "mensaje" => "ID no recibido."];
+
+        $datos = [
+            "idEquipo"          => intval($_POST["eliminarIdEquipo"]),
+            "idUsuarioModifica" => intval($_SESSION["usuario_id"]),
+        ];
+        return EquipoModel::mdlEliminarEquipo($datos);
     }
 }

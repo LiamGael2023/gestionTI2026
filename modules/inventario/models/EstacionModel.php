@@ -21,11 +21,11 @@ class EstacionModel
                 [$datos["idUsuario"],         SQLSRV_PARAM_IN],
             ]
         );
-        if ($stmt === false) { sqlsrv_close($conn); return ["resultado"=>"error","mensaje"=>"Error al ejecutar SP."]; }
+        if ($stmt === false) { sqlsrv_close($conn); return ["resultado" => "error", "mensaje" => "Error al ejecutar SP."]; }
         $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
-        return $row ?? ["resultado"=>"error","mensaje"=>"Sin respuesta."];
+        return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta."];
     }
 
     /* ════════════════════════════════════════
@@ -47,15 +47,15 @@ class EstacionModel
                 [$datos["idUsuario"],         SQLSRV_PARAM_IN],
             ]
         );
-        if ($stmt === false) { sqlsrv_close($conn); return ["resultado"=>"error","mensaje"=>"Error al ejecutar SP."]; }
+        if ($stmt === false) { sqlsrv_close($conn); return ["resultado" => "error", "mensaje" => "Error al ejecutar SP."]; }
         $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
-        return $row ?? ["resultado"=>"error","mensaje"=>"Sin respuesta."];
+        return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta."];
     }
 
     /* ════════════════════════════════════════
-       MOSTRAR ESTACION(ES)
+       MOSTRAR ESTACION(ES) — solo activo = 1
     ════════════════════════════════════════ */
     static public function mdlMostrarEstacion($item, $valor)
     {
@@ -69,6 +69,7 @@ class EstacionModel
             FROM inventario.estacion est
             LEFT JOIN inventario.ip             ip ON est.idIp       = ip.idIp
             LEFT JOIN inventario.estacionEquipo ee ON est.idEstacion = ee.idEstacion
+            WHERE est.activo = 1
         ";
         $groupBy = "
             GROUP BY est.idEstacion, est.nombreEstacion, est.idIp, ip.ipAddress,
@@ -77,14 +78,14 @@ class EstacionModel
                      est.idUsuarioModifica, est.fechaModificacion
         ";
         if ($item !== null) {
-            $sql  .= " WHERE est.$item = ? " . $groupBy;
+            $sql  .= " AND est.$item = ? " . $groupBy;
             $stmt  = sqlsrv_query($conn, $sql, [[$valor, SQLSRV_PARAM_IN]]);
             if ($stmt === false) { sqlsrv_close($conn); return null; }
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
             $sql  .= $groupBy . " ORDER BY est.nombreEstacion ASC";
             $stmt  = sqlsrv_query($conn, $sql);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
+            if ($stmt === false) { sqlsrv_close($conn); return []; }
             $resultado = [];
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $resultado[] = $row;
         }
@@ -94,10 +95,27 @@ class EstacionModel
     }
 
     /* ════════════════════════════════════════
+       ELIMINAR ESTACION (lógico via SP)
+    ════════════════════════════════════════ */
+    static public function mdlEliminarEstacion($datos)
+    {
+        $conn = Conexion::conectar();
+        $stmt = sqlsrv_query($conn,
+            "{call inventario.sp_EliminarEstacion(?, ?)}",
+            [
+                [$datos["idEstacion"],        SQLSRV_PARAM_IN],
+                [$datos["idUsuarioModifica"], SQLSRV_PARAM_IN],
+            ]
+        );
+        if ($stmt === false) { sqlsrv_close($conn); return ["resultado" => "error", "mensaje" => "Error al ejecutar el SP."]; }
+        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $resultado ?? ["resultado" => "error", "mensaje" => "Sin respuesta del SP."];
+    }
+
+    /* ════════════════════════════════════════
        EQUIPOS AGRUPADOS (para página editar)
-       — Clasifica en PHP para evitar problemas
-         con ORDER BY alias en SQL Server
-       — Maneja compuesto tipo BIT (true/false)
     ════════════════════════════════════════ */
     static public function mdlEquiposDeEstacionAgrupados(int $idEstacion)
     {
@@ -144,7 +162,7 @@ class EstacionModel
     }
 
     /* ════════════════════════════════════════
-       VER DETALLE — incluye componentes internos
+       VER DETALLE
     ════════════════════════════════════════ */
     static public function mdlVerDetalle(int $idEstacion)
     {
@@ -159,7 +177,7 @@ class EstacionModel
             WHERE ee.idEstacion = ?
             ORDER BY a.descripcion ASC
         ";
-        $stmt  = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
+        $stmt        = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
         $grupos      = ['principal' => [], 'perifericos' => [], 'software' => []];
         $idPrincipal = null;
 
@@ -188,10 +206,9 @@ class EstacionModel
             sqlsrv_free_stmt($stmt);
         }
 
-        // Componentes internos del equipo principal
         $grupos['componentesPrincipal'] = [];
         if ($idPrincipal) {
-            $sql2 = "
+            $sql2  = "
                 SELECT e.idEquipo, e.numeroSerie, e.codigoPatrimonial,
                        a.descripcion AS nombreActivo, a.icono AS iconoActivo
                 FROM inventario.equipo e
@@ -249,7 +266,7 @@ class EstacionModel
         $params = [[$idEstacion === 0 ? -1 : $idEstacion, SQLSRV_PARAM_IN]];
 
         if (!empty($excluirFinal)) {
-            $ph = implode(',', array_fill(0, count($excluirFinal), '?'));
+            $ph   = implode(',', array_fill(0, count($excluirFinal), '?'));
             $sql .= " AND e.idEquipo NOT IN ($ph)";
             foreach ($excluirFinal as $id) $params[] = [$id, SQLSRV_PARAM_IN];
         }
@@ -271,18 +288,12 @@ class EstacionModel
     /* ════════════════════════════════════════
        LISTAR IPs DISPONIBLES
     ════════════════════════════════════════ */
-    /**
-     * Lista IPs disponibles para asignar.
-     * $idEstacion = 0 → solo disponibles (agregar nueva estación)
-     * $idEstacion > 0 → disponibles + la IP actual de esa estación (editar)
-     */
     static public function mdlListarIps(int $idEstacion = 0)
     {
         $conn = Conexion::conectar();
 
         if ($idEstacion > 0) {
-            // Editar: mostrar disponibles + la IP actualmente asignada a esta estación
-            $sql = "
+            $sql  = "
                 SELECT ip.idIp, ip.ipAddress
                 FROM inventario.ip ip
                 WHERE ip.estado = 'disponible'
@@ -295,8 +306,7 @@ class EstacionModel
             ";
             $stmt = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
         } else {
-            // Agregar: solo disponibles
-            $sql = "
+            $sql  = "
                 SELECT ip.idIp, ip.ipAddress
                 FROM inventario.ip ip
                 WHERE ip.estado = 'disponible'
@@ -319,7 +329,67 @@ class EstacionModel
         return $rows;
     }
 
-    /* ── Helper ── */
+    /* ════════════════════════════════════════
+       CREAR TERMINAL
+    ════════════════════════════════════════ */
+    static public function mdlCrearTerminal($datos)
+    {
+        $conn = Conexion::conectar();
+        $stmt = sqlsrv_query($conn,
+            "{call inventario.sp_CrearTerminal(?, ?, ?)}",
+            [
+                [$datos['nombreEstacion'], SQLSRV_PARAM_IN],
+                [$datos['idEquipo'],       SQLSRV_PARAM_IN],
+                [$datos['idUsuario'],      SQLSRV_PARAM_IN],
+            ]
+        );
+        if ($stmt === false) { sqlsrv_close($conn); return ["resultado" => "error", "mensaje" => "Error SP."]; }
+        $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta."];
+    }
+
+    /* ════════════════════════════════════════
+       EQUIPOS DISPONIBLES PARA TERMINAL
+    ════════════════════════════════════════ */
+    static public function mdlEquiposDisponibles()
+    {
+        $conn = Conexion::conectar();
+        $sql  = "
+            SELECT e.idEquipo,
+                   a.descripcion AS nombreActivo,
+                   e.codigoPatrimonial,
+                   e.numeroSerie,
+                   a.icono
+            FROM inventario.equipo e
+            INNER JOIN inventario.activos a ON e.idActivo = a.idActivos
+            WHERE e.idEquipo NOT IN (
+                SELECT idEquipo FROM inventario.estacionEquipo
+            )
+            ORDER BY a.descripcion ASC, e.codigoPatrimonial ASC
+        ";
+        $stmt = sqlsrv_query($conn, $sql);
+        $rows = [];
+        if ($stmt !== false) {
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
+                $rows[] = [
+                    'idEquipo'          => intval($row['idEquipo']),
+                    'nombreActivo'      => $row['nombreActivo']      ?? '',
+                    'codigoPatrimonial' => $row['codigoPatrimonial'] ?? '',
+                    'numeroSerie'       => $row['numeroSerie']       ?? '',
+                    'icono'             => $row['icono']             ?? 'ti-package',
+                    'label'             => '[' . ($row['codigoPatrimonial'] ?? 'S/C') . '] ' . ($row['nombreActivo'] ?? ''),
+                ];
+            sqlsrv_free_stmt($stmt);
+        }
+        sqlsrv_close($conn);
+        return $rows;
+    }
+
+    /* ════════════════════════════════════════
+       HELPER
+    ════════════════════════════════════════ */
     private static function buildEquiposIds(string $principalId, string $perifericosIds, string $softwareIds): string
     {
         $partes = [];

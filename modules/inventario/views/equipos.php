@@ -197,15 +197,7 @@
 
 <body>
 <div class="page">
-
-  <header class="navbar navbar-expand-md navbar-light d-print-none shadow-sm">
-    <div class="container-xl">
-      <h1 class="navbar-brand">
-        <i class="ti ti-package me-2 text-primary"></i>Inventario TI
-      </h1>
-    </div>
-  </header>
-
+  <?php include __DIR__ . '/_submenu.php'; ?>
   <div class="page-wrapper">
     <div class="container-xl">
 
@@ -246,8 +238,8 @@
               <tbody>
                 <?php
                 $equipos = EquipoController::ctrMostrarEquipo(null, null);
-                if ($equipos && $equipos !== "error") {
-                    foreach ($equipos as $value) {
+                if (!is_array($equipos)) $equipos = [];
+                foreach ($equipos as $value) {
                         $icono = !empty($value["iconoActivo"]) ? $value["iconoActivo"] : 'ti-package';
                         $fecha = isset($value["fechaCreacion"])
                             ? ($value["fechaCreacion"] instanceof DateTime
@@ -292,10 +284,17 @@
                                 data-id="' . $value["idEquipo"] . '" title="Editar">
                                 <i class="ti ti-edit"></i>
                               </button>
+                              <button type="button"
+                                class="btn btn-sm btn-icon btn-outline-danger btnEliminarEquipo"
+                                data-id="' . $value["idEquipo"] . '"
+                                data-nombre="' . htmlspecialchars($value["nombreActivo"] ?? '', ENT_QUOTES) . '"
+                                data-es-padre="' . (!empty($value["compuesto"]) && intval($value["compuesto"]) === 1 ? '1' : '0') . '"
+                                title="Eliminar">
+                                <i class="ti ti-trash"></i>
+                              </button>
                             </div>
                           </td>
                         </tr>';
-                    }
                 }
                 ?>
               </tbody>
@@ -713,6 +712,32 @@
   </div>
 </div>
 
+
+<!-- ════════ MODAL CONFIRMAR ELIMINACIÓN EQUIPO ════════ -->
+<div class="modal modal-blur fade" id="modalConfirmarEliminarEquipo" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title d-flex align-items-center gap-2 text-danger">
+          <i class="ti ti-alert-triangle"></i> Confirmar eliminación
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted mb-1">¿Estás seguro de que deseas eliminar:</p>
+        <p class="fw-bold mb-0" id="eliminarNombreEquipo"></p>
+        <p class="text-muted small mt-2 mb-0">Esta acción es reversible solo desde la base de datos.<br>
+        No se puede eliminar si tiene componentes asignados o está en una estación.</p>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="confirmarEliminarEquipo">
+          <i class="ti ti-trash me-1"></i>Sí, eliminar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="toastContainerEquipos" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 <script src="modules/inventario/views/js/equipos.js"></script>

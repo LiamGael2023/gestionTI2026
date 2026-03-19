@@ -153,13 +153,7 @@ function fmtF($f, $fmt="d/m/Y H:i") {
 </style>
 
 <div class="page">
-<header class="navbar navbar-expand-md navbar-light d-print-none" style="border-bottom:1.5px solid #e2e8f0;background:#fff;font-family:'DM Sans',sans-serif">
-  <div class="container-xl">
-    <span class="navbar-brand fw-bold" style="font-size:.95rem;color:#1e293b">
-      <i class="ti ti-package me-2 text-primary"></i>Inventario TI
-    </span>
-  </div>
-</header>
+<?php include __DIR__ . '/_submenu.php'; ?>
 
 <div style="background:var(--gray-50);font-family:'DM Sans',sans-serif;padding:1.25rem 1.5rem 0">
   <div class="container-xl">

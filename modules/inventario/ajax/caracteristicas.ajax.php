@@ -12,124 +12,121 @@ class AjaxCaracteristicas
     private function formatDate($value)
     {
         if (empty($value)) return null;
-        // Si ya es DateTime
         if ($value instanceof DateTime) return $value->format("d/m/Y H:i:s");
-        // Intentar parsear
-        $ts = strtotime($value);
-        if ($ts === false) return (string)$value;
-        return date("d/m/Y H:i:s", $ts);
+        $ts = strtotime((string)$value);
+        return $ts !== false ? date("d/m/Y H:i:s", $ts) : (string)$value;
     }
 
+    /*=============================================
+    CARGAR DATOS PARA MODAL EDITAR
+    =============================================*/
     public function ajaxMostrarEditarCaracteristica()
     {
-        // Evitar salidas previas que rompan el JSON
         if (ob_get_length()) ob_clean();
 
-        $item = "idCaracteristica";
+        $item  = "idCaracteristica";
         $valor = (int)$this->idCaracteristica;
+
+        // El modelo ahora devuelve UN solo array asociativo para este item
         $car = CaracteristicasController::ctrMostrarCaracteristicas($item, $valor);
 
-        if (!$car) {
+        if (!$car || $car === "error") {
             echo json_encode([
                 "resultado" => "error",
-                "mensaje"   => "No se encontró el registro",
+                "mensaje"   => "No se encontró el registro.",
                 "data"      => null
             ], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        // Función local para formatear fecha aceptando DateTime o string
-        $formatDate = function ($value) {
-            if ($value === null || $value === '') return null;
-            if ($value instanceof DateTime) {
-                return $value->format("d/m/Y H:i:s");
-            }
-            // Si viene como array (SQLSRV puede devolver arrays con DateTime en algunos drivers)
-            if (is_array($value) && isset($value['date'])) {
-                // estructura tipo ['date' => '2026-03-15 13:41:21', ...]
-                return date("d/m/Y H:i:s", strtotime($value['date']));
-            }
-            // intentar parsear string
-            $ts = strtotime((string)$value);
-            if ($ts === false) return (string)$value;
-            return date("d/m/Y H:i:s", $ts);
-        };
-
-        $fechaCreacion = $formatDate($car["fechaCreacion"] ?? ($car->fechaCreacion ?? null));
-        $fechaModificacion = $formatDate($car["fechaModificacion"] ?? ($car->fecha_modificacion ?? null));
-
         $respuesta = [
             "resultado" => "ok",
-            "mensaje"   => "Registro obtenido",
-            "data" => [
-                "idCaracteristica"     => intval($car["idCaracteristica"] ?? $car->id ?? 0),
-                "idTipoCaracteristica" => intval($car["idTipoCaracteristica"] ?? $car->idTipoCaracteristica ?? 0),
-                "valor"                => $car["valor"] ?? ($car->valor ?? ""),
-                "idUsuarioCreacion"    => $car["idUsuarioCreacion"] ?? ($car->idUsuarioRegistro ?? null),
-                "fechaCreacion"        => $fechaCreacion,
-                // incluir tipoDescripcion que tu modelo ya trae por el JOIN
-                "tipoDescripcion"      => $car["tipoDescripcion"] ?? ($car->tipoDescripcion ?? null),
-                // si no necesitas mostrar modificación puedes devolverlo igual (null si no existe)
-                "idUsuarioModifica"    => $car["idUsuarioModifica"] ?? ($car->idUsuarioModifica ?? null),
-                "fechaModificacion"    => $fechaModificacion
+            "mensaje"   => "Registro obtenido.",
+            "data"      => [
+                "idCaracteristica"     => intval($car["idCaracteristica"]     ?? 0),
+                "idTipoCaracteristica" => intval($car["idTipoCaracteristica"] ?? 0),
+                "valor"                => $car["valor"]             ?? "",
+                "tipoDescripcion"      => $car["tipoDescripcion"]   ?? null,
+                "idUsuarioCreacion"    => $car["idUsuarioCreacion"] ?? null,
+                "fechaCreacion"        => $this->formatDate($car["fechaCreacion"]     ?? null),
+                "idUsuarioModifica"    => $car["idUsuarioModifica"] ?? null,
+                "fechaModificacion"    => $this->formatDate($car["fechaModificacion"] ?? null),
             ]
         ];
 
         echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
     }
 
-
-
     /*=============================================
-    AGREGAR CARACTERISTICA
+    CREAR
     =============================================*/
     public function ajaxCrearCaracteristica()
     {
         if (ob_get_length()) ob_clean();
         $respuesta = CaracteristicasController::ctrCrearCaracteristica();
-        if (is_array($respuesta) || is_object($respuesta)) {
+
+        if (is_array($respuesta)) {
             echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
         } else {
-            // si el controlador devuelve string (ej. 'ok' o 'error'), normalizar
             echo json_encode(["resultado" => (string)$respuesta], JSON_UNESCAPED_UNICODE);
         }
     }
 
+    /*=============================================
+    EDITAR
+    =============================================*/
     public function ajaxEditarCaracteristica()
     {
         if (ob_get_length()) ob_clean();
         $respuesta = CaracteristicasController::ctrEditarCaracteristica();
-        if (is_array($respuesta) || is_object($respuesta)) {
+
+        if (is_array($respuesta)) {
             echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
         } else {
             echo json_encode(["resultado" => (string)$respuesta], JSON_UNESCAPED_UNICODE);
         }
     }
+
+    /*=============================================
+    ELIMINAR (lógico)
+    =============================================*/
+    public function ajaxEliminarCaracteristica()
+    {
+        if (ob_get_length()) ob_clean();
+        $respuesta = CaracteristicasController::ctrEliminarCaracteristica();
+        echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+    }
 }
 
-/* --- DISPARADORES --- */
+/* ── DISPARADORES ───────────────────────────────────────────── */
 
-// 1. CARGAR (Si solo viene el ID para obtener datos y no viene el campo de edición)
+// 1. CARGAR para editar (solo idCaracteristica, sin editarValor)
 if (isset($_POST["idCaracteristica"]) && !isset($_POST["editarValor"])) {
-    $mostrar = new AjaxCaracteristicas();
-    $mostrar->idCaracteristica = $_POST["idCaracteristica"];
-    $mostrar->ajaxMostrarEditarCaracteristica();
+    $obj = new AjaxCaracteristicas();
+    $obj->idCaracteristica = $_POST["idCaracteristica"];
+    $obj->ajaxMostrarEditarCaracteristica();
     exit;
 }
 
-// 2. EDITAR (Si viene el ID oculto del formulario de edición)
+// 2. EDITAR
 if (isset($_POST["editarIdCaracteristica"])) {
-    $editar = new AjaxCaracteristicas();
-    $editar->ajaxEditarCaracteristica();
+    $obj = new AjaxCaracteristicas();
+    $obj->ajaxEditarCaracteristica();
     exit;
 }
 
-// 3. CREAR (Si viene el nuevo valor de la característica)
+// 3. CREAR
 if (isset($_POST["nuevoValor"])) {
-    $crear = new AjaxCaracteristicas();
-    $crear->ajaxCrearCaracteristica();
+    $obj = new AjaxCaracteristicas();
+    $obj->ajaxCrearCaracteristica();
     exit;
 }
 
-// Si no coincide ninguna ruta, devolver error
-echo json_encode(["resultado" => "error", "mensaje" => "Solicitud inválida"]);
+// 4. ELIMINAR
+if (isset($_POST["eliminarIdCaracteristica"])) {
+    $obj = new AjaxCaracteristicas();
+    $obj->ajaxEliminarCaracteristica();
+    exit;
+}
+
+echo json_encode(["resultado" => "error", "mensaje" => "Solicitud inválida."]);

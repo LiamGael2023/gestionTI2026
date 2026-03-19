@@ -28,18 +28,18 @@ class ActivosModel {
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
 
-        return $resultado['resultado'];
+        return $resultado['resultado'] ?? "error";
     }
 
     /*=============================================
-    MOSTRAR ACTIVOS
+    MOSTRAR ACTIVOS  (solo activo = 1)
     =============================================*/
     static public function mdlMostrarActivos($tabla, $item, $valor) {
         $conn = Conexion::conectar();
 
         if ($item != null) {
-            // Consulta filtrada
-            $sql = "SELECT * FROM $tabla WHERE $item = ?";
+            // Consulta filtrada — solo registros activos
+            $sql = "SELECT * FROM $tabla WHERE $item = ? AND activo = 1";
             $params = array($valor);
             $stmt = sqlsrv_query($conn, $sql, $params);
 
@@ -47,8 +47,8 @@ class ActivosModel {
 
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
-            // Consulta general
-            $sql = "SELECT * FROM $tabla ORDER BY descripcion ASC";
+            // Consulta general — solo registros activos
+            $sql = "SELECT * FROM $tabla WHERE activo = 1 ORDER BY descripcion ASC";
             $stmt = sqlsrv_query($conn, $sql);
 
             if ($stmt === false) return "error";
@@ -68,28 +68,52 @@ class ActivosModel {
     EDITAR ACTIVOS
     =============================================*/
     static public function mdlEditarActivo($tabla, $datos) {
-    $conn = Conexion::conectar();
-    $sql = "{call inventario.sp_EditarActivo(?, ?, ?, ?, ?)}";
+        $conn = Conexion::conectar();
+        $sql = "{call inventario.sp_EditarActivo(?, ?, ?, ?, ?)}";
 
-    $params = array(
-        array($datos["idActivos"], SQLSRV_PARAM_IN),
-        array($datos["descripcion"], SQLSRV_PARAM_IN),
-        array($datos["compuesto"], SQLSRV_PARAM_IN),
-        array($datos["icono"], SQLSRV_PARAM_IN),
-        array($datos["usuario"], SQLSRV_PARAM_IN)
-    );
+        $params = array(
+            array($datos["idActivos"],   SQLSRV_PARAM_IN),
+            array($datos["descripcion"], SQLSRV_PARAM_IN),
+            array($datos["compuesto"],   SQLSRV_PARAM_IN),
+            array($datos["icono"],       SQLSRV_PARAM_IN),
+            array($datos["usuario"],     SQLSRV_PARAM_IN)
+        );
 
-    $stmt = sqlsrv_query($conn, $sql, $params);
+        $stmt = sqlsrv_query($conn, $sql, $params);
 
-    if ($stmt === false) {
-        return "error";
+        if ($stmt === false) {
+            return "error";
+        }
+
+        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+
+        return $resultado['resultado'] ?? "error";
     }
 
-    $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-    
-    sqlsrv_free_stmt($stmt);
-    sqlsrv_close($conn);
+    /*=============================================
+    ELIMINAR ACTIVO (lógico via SP)
+    =============================================*/
+    static public function mdlEliminarActivo($datos) {
+        $conn = Conexion::conectar();
+        $sql = "{call inventario.sp_EliminarActivo(?, ?)}";
 
-    return $resultado['resultado'] ?? "error";
-}
+        $params = array(
+            array($datos["idActivos"],           SQLSRV_PARAM_IN),
+            array($datos["idUsuarioModifica"],   SQLSRV_PARAM_IN)
+        );
+
+        $stmt = sqlsrv_query($conn, $sql, $params);
+
+        if ($stmt === false) {
+            return ["resultado" => "error", "mensaje" => "Error al ejecutar el SP."];
+        }
+
+        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+
+        return $resultado ?? ["resultado" => "error", "mensaje" => "Sin respuesta del SP."];
+    }
 }

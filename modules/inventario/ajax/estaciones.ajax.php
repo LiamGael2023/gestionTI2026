@@ -6,16 +6,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 function responder($data) { echo json_encode($data); exit; }
 
-function fmtFecha($fecha, $fmt = "d/m/Y H:i:s") {
-    if (!$fecha) return "--";
-    if ($fecha instanceof DateTime) return $fecha->format($fmt);
-    $ts = strtotime($fecha);
-    return $ts ? date($fmt, $ts) : "--";
-}
-
 /* ── Listar IPs disponibles ── */
 if (isset($_GET["listarIps"])) {
-    // Pasar idEstacion para que en editar se muestre también la IP actual
     $idEstacion = intval($_GET["idEstacion"] ?? 0);
     responder(EstacionController::ctrListarIps($idEstacion));
 }
@@ -29,8 +21,8 @@ if (isset($_GET["listarEquipos"])) {
     $result     = [];
     foreach (($equipos ?: []) as $eq) {
         $label = $tipo === 'software'
-            ? ($eq["nombreActivo"] ?? 'Software') . (!empty($eq["numeroSerie"]) ? ' — '.$eq["numeroSerie"] : '')
-            : (!empty($eq["codigoPatrimonial"]) ? '['.$eq["codigoPatrimonial"].'] ' : '') . ($eq["nombreActivo"] ?? 'Equipo') . (!empty($eq["numeroSerie"]) ? ' — '.$eq["numeroSerie"] : '');
+            ? ($eq["nombreActivo"] ?? 'Software') . (!empty($eq["numeroSerie"]) ? ' — ' . $eq["numeroSerie"] : '')
+            : (!empty($eq["codigoPatrimonial"]) ? '[' . $eq["codigoPatrimonial"] . '] ' : '') . ($eq["nombreActivo"] ?? 'Equipo') . (!empty($eq["numeroSerie"]) ? ' — ' . $eq["numeroSerie"] : '');
         $result[] = [
             "idEquipo"          => intval($eq["idEquipo"]),
             "label"             => $label,
@@ -56,4 +48,31 @@ if (isset($_POST["nuevoNombreEstacion"])) {
 /* ── Editar estación ── */
 if (isset($_POST["editarNombreEstacion"])) {
     responder(EstacionController::ctrEditarEstacion());
+}
+
+/* ── Eliminar estación (lógico) ── */
+if (isset($_POST["eliminarIdEstacion"])) {
+    responder(EstacionController::ctrEliminarEstacion());
+}
+
+/* ── Equipos disponibles para terminal ── */
+if (isset($_GET['equiposDisponibles'])) {
+    $rows   = EstacionController::ctrEquiposDisponibles();
+    $result = [];
+    foreach ($rows as $r) {
+        $result[] = [
+            'idEquipo'          => $r['idEquipo'],
+            'label'             => $r['label'],
+            'nombreActivo'      => $r['nombreActivo'],
+            'codigoPatrimonial' => $r['codigoPatrimonial'],
+            'numeroSerie'       => $r['numeroSerie'],
+            'icono'             => $r['icono'],
+        ];
+    }
+    responder($result);
+}
+
+/* ── Crear terminal ── */
+if (isset($_POST['terminalNombre'])) {
+    responder(EstacionController::ctrCrearTerminal());
 }

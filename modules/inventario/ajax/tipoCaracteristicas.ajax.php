@@ -7,31 +7,42 @@ class AjaxTipoCaracteristicas
 {
     public $idTipo;
 
+    /*=============================================
+    MOSTRAR PARA EDITAR
+    =============================================*/
     public function ajaxMostrarEditarTipoCaracteristica()
     {
-        $item = "idTipoCaracteristica";
+        $item  = "idTipoCaracteristica";
         $valor = (int)$this->idTipo;
+
         $tipo = TipoCaracteristicasController::ctrMostrarTipoCaracteristicas($item, $valor);
+
         if (!$tipo) {
             echo json_encode(["status" => "error", "message" => "No se encontró el registro"]);
             return;
         }
+
         $fechaFormateada = "";
         if (!empty($tipo["fechaCreacion"])) {
-            if ($tipo["fechaCreacion"] instanceof DateTime) $fechaFormateada = $tipo["fechaCreacion"]->format("d/m/Y");
-            else $fechaFormateada = date("d/m/Y", strtotime($tipo["fechaCreacion"]));
+            if ($tipo["fechaCreacion"] instanceof DateTime) {
+                $fechaFormateada = $tipo["fechaCreacion"]->format("d/m/Y");
+            } else {
+                $fechaFormateada = date("d/m/Y", strtotime($tipo["fechaCreacion"]));
+            }
         }
+
         $respuesta = [
             "idTipoCaracteristica" => intval($tipo["idTipoCaracteristica"]),
-            "descripcion" => $tipo["descripcion"] ?? "",
-            "idUsuarioRegistro" => $tipo["idUsuarioRegistro"] ?? "N/A",
-            "fechaCreacion" => $fechaFormateada
+            "descripcion"          => $tipo["descripcion"] ?? "",
+            "idUsuarioRegistro"    => $tipo["idUsuarioRegistro"] ?? "N/A",
+            "fechaCreacion"        => $fechaFormateada
         ];
+
         echo json_encode($respuesta);
     }
 
     /*=============================================
-    AGREGAR TIPO CARACTERISTICA
+    CREAR
     =============================================*/
     public function ajaxCrearTipoCaracteristica()
     {
@@ -39,32 +50,49 @@ class AjaxTipoCaracteristicas
         echo json_encode($respuesta);
     }
 
+    /*=============================================
+    EDITAR
+    =============================================*/
     public function ajaxEditarTipoCaracteristica()
     {
         $respuesta = TipoCaracteristicasController::ctrEditarTipoCaracteristica();
-        // Limpieza de buffer para evitar espacios en blanco antes del "ok"
         if (ob_get_length()) ob_clean();
-        echo $respuesta; // <--- Lo mismo aquí
+        echo json_encode($respuesta);
+    }
+
+    /*=============================================
+    ELIMINAR (lógico)
+    =============================================*/
+    public function ajaxEliminarTipoCaracteristica()
+    {
+        $respuesta = TipoCaracteristicasController::ctrEliminarTipoCaracteristica();
+        echo json_encode($respuesta);
     }
 }
 
-/* --- DISPARADORES --- */
+/* ── DISPARADORES ───────────────────────────────────────────── */
 
-// 1. CARGAR (Si solo viene el ID)
+// 1. CARGAR datos para modal editar
 if (isset($_POST["idTipoCaracteristica"]) && !isset($_POST["editarDescripcion"])) {
-    $mostrar = new AjaxTipoCaracteristicas();
-    $mostrar->idTipo = $_POST["idTipoCaracteristica"];
-    $mostrar->ajaxMostrarEditarTipoCaracteristica();
+    $obj        = new AjaxTipoCaracteristicas();
+    $obj->idTipo = $_POST["idTipoCaracteristica"];
+    $obj->ajaxMostrarEditarTipoCaracteristica();
 }
 
-// 2. EDITAR (Si viene el ID oculto del formulario de edición)
-else if (isset($_POST["editarIdTipoCaracteristica"])) {
-    $editar = new AjaxTipoCaracteristicas();
-    $editar->ajaxEditarTipoCaracteristica();
+// 2. EDITAR
+elseif (isset($_POST["editarIdTipoCaracteristica"])) {
+    $obj = new AjaxTipoCaracteristicas();
+    $obj->ajaxEditarTipoCaracteristica();
 }
 
-// 3. CREAR (Si viene la nueva descripción)
-else if (isset($_POST["nuevaDescripcion"])) {
-    $crear = new AjaxTipoCaracteristicas();
-    $crear->ajaxCrearTipoCaracteristica();
+// 3. CREAR
+elseif (isset($_POST["nuevaDescripcion"])) {
+    $obj = new AjaxTipoCaracteristicas();
+    $obj->ajaxCrearTipoCaracteristica();
+}
+
+// 4. ELIMINAR
+elseif (isset($_POST["eliminarIdTipoCaracteristica"])) {
+    $obj = new AjaxTipoCaracteristicas();
+    $obj->ajaxEliminarTipoCaracteristica();
 }

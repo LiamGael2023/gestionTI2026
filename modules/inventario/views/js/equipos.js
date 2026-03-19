@@ -672,4 +672,53 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    /* ── ELIMINAR EQUIPO ── */
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btnEliminarEquipo');
+        if (!btn) return;
+
+        const id      = btn.getAttribute('data-id');
+        const nombre  = btn.getAttribute('data-nombre') || 'este equipo';
+        const esPadre = btn.getAttribute('data-es-padre') === '1';
+
+        // Si es equipo padre (compuesto=1) avisar que primero debe quitar componentes
+        if (esPadre) {
+            mostrarToast('warning', 'Para eliminar un equipo compuesto, primero quita todos sus componentes desde "Armar Equipo".');
+            return;
+        }
+
+        document.getElementById('eliminarNombreEquipo').textContent = nombre;
+        document.getElementById('confirmarEliminarEquipo').setAttribute('data-id', id);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarEliminarEquipo')).show();
+    });
+
+    const btnConfirmarEq = document.getElementById('confirmarEliminarEquipo');
+    if (btnConfirmarEq) {
+        btnConfirmarEq.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const fd = new FormData();
+            fd.append('eliminarIdEquipo', id);
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...';
+
+            fetch('modules/inventario/ajax/equipos.ajax.php', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(json => {
+                    bootstrap.Modal.getInstance(document.getElementById('modalConfirmarEliminarEquipo')).hide();
+                    if (json.resultado === 'ok') {
+                        mostrarToast('success', json.mensaje || 'Equipo eliminado correctamente.');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        mostrarToast('error', json.mensaje || 'No se pudo eliminar.');
+                    }
+                })
+                .catch(() => mostrarToast('error', 'Error al comunicarse con el servidor.'))
+                .finally(() => {
+                    this.disabled = false;
+                    this.innerHTML = '<i class="ti ti-trash me-1"></i>Sí, eliminar';
+                });
+        });
+    }
+
 }); // fin DOMContentLoaded

@@ -4,7 +4,7 @@ require_once __DIR__ . "/../../../config/db.php";
 class EquipoModel
 {
     /*=============================================
-    CREAR EQUIPO  (llama a sp_CrearEquipo)
+    CREAR EQUIPO
     =============================================*/
     static public function mdlCrearEquipo($datos)
     {
@@ -12,15 +12,15 @@ class EquipoModel
         $sql  = "{call inventario.sp_CrearEquipo(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)}";
 
         $params = [
-            [$datos["idEquipo"],            SQLSRV_PARAM_IN],   // null para INSERT nuevo
+            [$datos["idEquipo"],            SQLSRV_PARAM_IN],
             [$datos["idActivo"],            SQLSRV_PARAM_IN],
-            [$datos["idEquipoPadre"],       SQLSRV_PARAM_IN],   // null
+            [$datos["idEquipoPadre"],       SQLSRV_PARAM_IN],
             [$datos["codigoPatrimonial"],   SQLSRV_PARAM_IN],
             [$datos["numeroSerie"],         SQLSRV_PARAM_IN],
             [$datos["fechaInicioGarantia"], SQLSRV_PARAM_IN],
             [$datos["fechaFinGarantia"],    SQLSRV_PARAM_IN],
             [$datos["fechaAdquisicion"],    SQLSRV_PARAM_IN],
-            [$datos["idCaracteristicas"],   SQLSRV_PARAM_IN],   // IDs separados por coma
+            [$datos["idCaracteristicas"],   SQLSRV_PARAM_IN],
             [$datos["idUsuario"],           SQLSRV_PARAM_IN],
         ];
 
@@ -36,7 +36,7 @@ class EquipoModel
     }
 
     /*=============================================
-    EDITAR EQUIPO  (llama a sp_EditarEquipo)
+    EDITAR EQUIPO
     =============================================*/
     static public function mdlEditarEquipo($datos)
     {
@@ -68,9 +68,7 @@ class EquipoModel
     }
 
     /*=============================================
-    MOSTRAR EQUIPO(S)
-    — Ahora incluye a.compuesto para mostrar
-      el botón "Armar Equipo" en la tabla
+    MOSTRAR EQUIPO(S) — solo activo = 1
     =============================================*/
     static public function mdlMostrarEquipo($tabla, $item, $valor)
     {
@@ -99,6 +97,7 @@ class EquipoModel
             LEFT  JOIN inventario.equipoCaracteristica ec ON e.idEquipo             = ec.idEquipo
             LEFT  JOIN inventario.caracteristicas      c  ON ec.idCaracteristica    = c.idCaracteristica
             LEFT  JOIN inventario.tipoCaracteristica   tc ON c.idTipoCaracteristica = tc.idTipoCaracteristica
+            WHERE e.activo = 1
         ";
 
         $groupBy = "
@@ -111,15 +110,15 @@ class EquipoModel
         ";
 
         if ($item != null) {
-            $sql    = $selectBase . " WHERE e.$item = ? " . $groupBy;
+            $sql    = $selectBase . " AND e.$item = ? " . $groupBy;
             $params = [[$valor, SQLSRV_PARAM_IN]];
             $stmt   = sqlsrv_query($conn, $sql, $params);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
+            if ($stmt === false) { sqlsrv_close($conn); return null; }
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
             $sql  = $selectBase . $groupBy . " ORDER BY e.idEquipo ASC";
             $stmt = sqlsrv_query($conn, $sql);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
+            if ($stmt === false) { sqlsrv_close($conn); return []; }
             $resultado = [];
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
                 $resultado[] = $row;
@@ -186,15 +185,13 @@ class EquipoModel
                    ).value('.','NVARCHAR(MAX)'), 1, 2, '') AS caracteristicas
             FROM inventario.equipo e
             INNER JOIN inventario.activos a ON e.idActivo = a.idActivos
-            WHERE e.idEquipoPadre = ?
+            WHERE e.idEquipoPadre = ? AND e.activo = 1
             ORDER BY a.descripcion ASC
         ";
         $stmt = sqlsrv_query($conn, $sql, [[$idEquipoPadre, SQLSRV_PARAM_IN]]);
         $rows = [];
         if ($stmt !== false) {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                $rows[] = $row;
-            }
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $rows[] = $row;
             sqlsrv_free_stmt($stmt);
         }
         sqlsrv_close($conn);
@@ -203,9 +200,6 @@ class EquipoModel
 
     /*=============================================
     EQUIPOS DISPONIBLES PARA SER COMPONENTES
-    — Sin padre asignado
-    — Distinto del equipo padre
-    — Activo con compuesto = 0
     =============================================*/
     static public function mdlEquiposDisponibles(int $idPadre)
     {
@@ -229,14 +223,13 @@ class EquipoModel
             WHERE e.idEquipoPadre IS NULL
               AND e.idEquipo      <> ?
               AND a.compuesto      = 0
+              AND e.activo         = 1
             ORDER BY a.descripcion ASC, e.idEquipo ASC
         ";
         $stmt = sqlsrv_query($conn, $sql, [[$idPadre, SQLSRV_PARAM_IN]]);
         $rows = [];
         if ($stmt !== false) {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                $rows[] = $row;
-            }
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $rows[] = $row;
             sqlsrv_free_stmt($stmt);
         }
         sqlsrv_close($conn);
@@ -244,7 +237,7 @@ class EquipoModel
     }
 
     /*=============================================
-    AGREGAR COMPONENTE — llama SP
+    AGREGAR COMPONENTE
     =============================================*/
     static public function mdlAgregarComponente(int $idPadre, int $idHijo)
     {
@@ -265,7 +258,7 @@ class EquipoModel
     }
 
     /*=============================================
-    QUITAR COMPONENTE — llama SP
+    QUITAR COMPONENTE
     =============================================*/
     static public function mdlQuitarComponente(int $idHijo)
     {
@@ -282,5 +275,28 @@ class EquipoModel
         sqlsrv_free_stmt($stmt);
         sqlsrv_close($conn);
         return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta del servidor."];
+    }
+
+    /*=============================================
+    ELIMINAR EQUIPO (lógico via SP)
+    =============================================*/
+    static public function mdlEliminarEquipo($datos)
+    {
+        $conn = Conexion::conectar();
+        $stmt = sqlsrv_query($conn,
+            "{call inventario.sp_EliminarEquipo(?, ?)}",
+            [
+                [$datos["idEquipo"],          SQLSRV_PARAM_IN],
+                [$datos["idUsuarioModifica"], SQLSRV_PARAM_IN],
+            ]
+        );
+        if ($stmt === false) {
+            sqlsrv_close($conn);
+            return ["resultado" => "error", "mensaje" => "Error al ejecutar el SP."];
+        }
+        $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $resultado ?? ["resultado" => "error", "mensaje" => "Sin respuesta del SP."];
     }
 }

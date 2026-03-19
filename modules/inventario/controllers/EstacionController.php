@@ -7,13 +7,13 @@ class EstacionController
     {
         if (!isset($_POST["nuevoNombreEstacion"])) return null;
         $datos = [
-            "nombreEstacion"    => trim($_POST["nuevoNombreEstacion"]),
+            "nombreEstacion"    => mb_strtoupper(trim($_POST["nuevoNombreEstacion"]), "UTF-8"),
             "idIp"              => !empty($_POST["nuevoIdIp"]) ? intval($_POST["nuevoIdIp"]) : null,
-            "codigoAnydesk"     => trim($_POST["nuevoCodigoAnydesk"]      ?? ''),
-            "contrasenaAnydesk" => trim($_POST["nuevoContrasenaAnydesk"]  ?? ''),
-            "principalId"       => trim($_POST["nuevoEquipoPrincipalId"]  ?? ''),
-            "perifericosIds"    => trim($_POST["nuevoPerifericosIds"]      ?? ''),
-            "softwareIds"       => trim($_POST["nuevoSoftwareIds"]         ?? ''),
+            "codigoAnydesk"     => trim($_POST["nuevoCodigoAnydesk"]     ?? ''),
+            "contrasenaAnydesk" => trim($_POST["nuevoContrasenaAnydesk"] ?? ''),
+            "principalId"       => trim($_POST["nuevoEquipoPrincipalId"] ?? ''),
+            "perifericosIds"    => trim($_POST["nuevoPerifericosIds"]     ?? ''),
+            "softwareIds"       => trim($_POST["nuevoSoftwareIds"]        ?? ''),
             "idUsuario"         => $_SESSION["usuario_id"],
         ];
         return EstacionModel::mdlCrearEstacion($datos);
@@ -26,13 +26,13 @@ class EstacionController
             return ["resultado" => "error", "mensaje" => "ID de estación no recibido."];
         $datos = [
             "idEstacion"        => intval($_POST["editarIdEstacion"]),
-            "nombreEstacion"    => trim($_POST["editarNombreEstacion"]),
+            "nombreEstacion"    => mb_strtoupper(trim($_POST["editarNombreEstacion"]), "UTF-8"),
             "idIp"              => !empty($_POST["editarIdIp"]) ? intval($_POST["editarIdIp"]) : null,
-            "codigoAnydesk"     => trim($_POST["editarCodigoAnydesk"]      ?? ''),
-            "contrasenaAnydesk" => trim($_POST["editarContrasenaAnydesk"]  ?? ''),
-            "principalId"       => trim($_POST["editarEquipoPrincipalId"]  ?? ''),
-            "perifericosIds"    => trim($_POST["editarPerifericosIds"]      ?? ''),
-            "softwareIds"       => trim($_POST["editarSoftwareIds"]         ?? ''),
+            "codigoAnydesk"     => trim($_POST["editarCodigoAnydesk"]     ?? ''),
+            "contrasenaAnydesk" => trim($_POST["editarContrasenaAnydesk"] ?? ''),
+            "principalId"       => trim($_POST["editarEquipoPrincipalId"] ?? ''),
+            "perifericosIds"    => trim($_POST["editarPerifericosIds"]     ?? ''),
+            "softwareIds"       => trim($_POST["editarSoftwareIds"]        ?? ''),
             "idUsuario"         => $_SESSION["usuario_id"],
         ];
         return EstacionModel::mdlEditarEstacion($datos);
@@ -41,6 +41,17 @@ class EstacionController
     static public function ctrMostrarEstacion($item, $valor)
     {
         return EstacionModel::mdlMostrarEstacion($item, $valor);
+    }
+
+    static public function ctrEliminarEstacion()
+    {
+        if (empty($_POST["eliminarIdEstacion"]))
+            return ["resultado" => "error", "mensaje" => "ID no recibido."];
+        $datos = [
+            "idEstacion"        => intval($_POST["eliminarIdEstacion"]),
+            "idUsuarioModifica" => intval($_SESSION["usuario_id"]),
+        ];
+        return EstacionModel::mdlEliminarEstacion($datos);
     }
 
     static public function ctrEquiposDeEstacionAgrupados(int $idEstacion)
@@ -61,5 +72,21 @@ class EstacionController
     static public function ctrListarIps(int $idEstacion = 0)
     {
         return EstacionModel::mdlListarIps($idEstacion);
+    }
+
+    static public function ctrCrearTerminal()
+    {
+        if (!isset($_POST['terminalNombre'])) return null;
+        $datos = [
+            'nombreEstacion' => mb_strtoupper(trim($_POST['terminalNombre'] ?? ''), "UTF-8"),
+            'idEquipo'       => intval($_POST['terminalIdEquipo'] ?? 0),
+            'idUsuario'      => $_SESSION['usuario_id'],
+        ];
+        return EstacionModel::mdlCrearTerminal($datos);
+    }
+
+    static public function ctrEquiposDisponibles()
+    {
+        return EstacionModel::mdlEquiposDisponibles();
     }
 }
