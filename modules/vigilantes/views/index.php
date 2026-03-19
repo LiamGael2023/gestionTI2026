@@ -21,149 +21,7 @@
             display: none !important;
         }
 
-        .btn-filtro {
-            color: white;
-            border: none;
-            font-weight: 500;
-            border-radius: 6px;
-            padding: 6px 14px;
-        }
 
-        .btn-filtro-1 {
-            background-color: #1e3a8a;
-        }
-
-        /* azul oscuro */
-        .btn-filtro-2 {
-            background-color: #2563eb;
-        }
-
-        /* azul medio */
-        .btn-filtro-3 {
-            background-color: #3b82f6;
-        }
-
-        /* azul */
-        .btn-filtro-4 {
-            background-color: #60a5fa;
-        }
-
-        /* azul claro */
-        .btn-filtro-5 {
-            background-color: #93c5fd;
-            color: #111;
-        }
-
-        /* muy claro */
-        .btn-filtro-6 {
-            background-color: #bfdbfe;
-            color: #111;
-        }
-
-        /* casi pastel */
-        .btn-filtro-7 {
-            background-color: #dbeafe;
-            color: #111;
-        }
-
-        /* extra suave */
-
-        .btn-filtro:hover {
-            opacity: 0.9;
-        }
-
-        .btn-filtro {
-            color: white;
-            border: none;
-            font-weight: 500;
-            border-radius: 6px;
-            padding: 6px 14px;
-        }
-
-        .btn-filtro-1 {
-            background-color: #1d4ed8;
-        }
-
-        /* azul fuerte */
-        .btn-filtro-2 {
-            background-color: #2563eb;
-        }
-
-        /* azul medio */
-        .btn-filtro-3 {
-            background-color: #3b82f6;
-        }
-
-        /* azul estándar */
-        .btn-filtro-4 {
-            background-color: #60a5fa;
-            color: #111;
-        }
-
-        /* azul claro */
-        .btn-filtro-5 {
-            background-color: #7dd3fc;
-            color: #111;
-        }
-
-        /* azul suave */
-        .btn-filtro-6 {
-            background-color: #38bdf8;
-            color: #111;
-        }
-
-        /* azul brillante */
-        .btn-filtro-7 {
-            background-color: #0ea5e9;
-        }
-
-        /* azul celeste */
-        /* extra suave */
-
-        .btn-filtro:hover {
-            opacity: 0.9;
-        }
-
-        .btn-filtro {
-            border: none;
-            font-weight: 500;
-            border-radius: 6px;
-            padding: 6px 14px;
-            color: white;
-        }
-
-        .btn-filtro-verde-1 {
-            background-color: #059669;
-        }
-
-        /* verde esmeralda */
-        .btn-filtro-verde-2 {
-            background-color: #10b981;
-        }
-
-        /* verde medio */
-        .btn-filtro-verde-3 {
-            background-color: #34d399;
-            color: #111;
-        }
-
-        /* verde claro */
-        .btn-filtro-verde-4 {
-            background-color: #6ee7b7;
-            color: #111;
-        }
-
-        /* verde pastel */
-        .btn-filtro-verde-5 {
-            background-color: #a7f3d0;
-            color: #111;
-        }
-
-        /* verde muy suave */
-
-        .btn-filtro:hover {
-            opacity: 0.9;
-        }
 
         /* Asegurarse de que el select tiene el borde correcto y la flecha se muestre */
         .select2-container--bootstrap-5 .select2-selection {
@@ -287,6 +145,65 @@
             /* texto negro */
         }
     </style>
+
+    <style>
+        /* Normal (AZUL SOLIDO) */
+        .btn-filtro-fecha {
+            background: #0d6efd;
+            /* azul bootstrap */
+            color: white;
+            border: 1px solid #0d6efd;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: s ease;
+            font-weight: 500;
+        }
+
+        /* Hover del normal */
+        .btn-filtro-fecha:hover {
+            background: #0b5ed7;
+            border-color: #0b5ed7;
+            color: white;
+        }
+
+        /* ACTIVO (OUTLINE AZUL) */
+        .btn-filtro-fecha.active {
+            background: white !important;
+            color: #0d6efd !important;
+            border: 2px solid #0d6efd !important;
+            font-weight: 600;
+        }
+    </style>
+
+
+    <style>
+        /* Normal: verde sólido */
+        .btn-filtro-firma {
+            background: #06c669;
+            /* Verde */
+            color: white;
+            border: 1px solid #06c669;
+            padding: 6px 14px;
+            border-radius: 6px;
+            transition: .25s ease;
+            font-weight: 500;
+        }
+
+        /* Hover → blanco + borde verde + texto verde */
+        .btn-filtro-firma:hover {
+            background: white !important;
+            color: #06c669 !important;
+            border: 2px solid #06c669 !important;
+        }
+
+        /* ACTIVO → igual que hover pero más marcado */
+        .btn-filtro-firma.active {
+            background: white !important;
+            color: #06c669 !important;
+            border: 2px solid #06c669 !important;
+            font-weight: 600;
+        }
+    </style>
     <div class="page-wrapper">
         <div class="page-body">
 
@@ -315,31 +232,114 @@
 
                                 </div>
                             </div>
-                            <div class="card-box">
-                                <h6 class="text-center mb-4">Filtros de Búsqueda</h6>
-                                <div class="container-fluid px-0">
-                                    <div class="row justify-content-center gx-2 gy-2">
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-1" data-filtro="TODOS">Todos</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-2" data-filtro="HOY">Hoy</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-3" data-filtro="AYER">Ayer</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-4" data-filtro="MANANA">Mañana</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-5" data-filtro="ESTE MES">Este Mes</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-6" data-filtro="MES ANTERIOR">Mes Anterior</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-fecha btn-filtro-7" data-filtro="ESTE ANIO">Este Año</button></div>
+
+
+                            <div class="accordion" id="accordionFecha">
+                                <div class="accordion-item">
+
+                                    <!-- ENCABEZADO -->
+                                    <h4 class="accordion-header" id="headingFecha">
+                                        <button class="accordion-button collapsed"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#collapseFecha"
+                                            aria-expanded="false"
+                                            aria-controls="collapseFecha">
+                                            Filtro por Fecha
+                                        </button>
+                                    </h4>
+
+                                    <!-- CONTENIDO (colapsado por defecto) -->
+                                    <div id="collapseFecha"
+                                        class="accordion-collapse collapse"
+                                        aria-labelledby="headingFecha"
+                                        data-bs-parent="#accordionFecha">
+
+                                        <div class="accordion-body">
+
+                                            <div class="row justify-content-center gx-2 gy-2">
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="TODOS">Todos</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="HOY">Hoy</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="AYER">Ayer</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="MANANA">Mañana</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="ESTE MES">Este Mes</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="MES ANTERIOR">Mes Anterior</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn-filtro-fecha" data-filtro="ESTE ANIO">Este Año</button>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+
                                     </div>
 
                                 </div>
                             </div>
-                            <div class="card-box">
-                                <h6 class="text-center mb-3">Filtros de Estados Pendientes</h6>
-                                <div class="container-fluid px-0">
-                                    <div class="row justify-content-center gx-2 gy-2">
-                                        <div class="col-auto"><button class="btn btn-filtro-cerrar btn-filtro-verde-2" data-filtro="1">Cerradas</button></div>
-                                        <div class="col-auto"><button class="btn btn-filtro-cerrar btn-filtro-verde-3" data-filtro="0">Sin Cerrar</button></div>
+                            <div class="accordion" id="accordionFirmas">
+                                <div class="accordion-item">
+
+                                    <!-- ENCABEZADO -->
+                                    <h4 class="accordion-header" id="headingFirma">
+                                        <button class="accordion-button collapsed"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#collapseEstados"
+                                            aria-expanded="false"
+                                            aria-controls="collapseEstados">
+                                            Filtros de Estados Pendientes </button>
+                                    </h4>
+
+                                    <!-- CONTENIDO (colapsado por defecto) -->
+                                    <div id="collapseEstados"
+                                        class="accordion-collapse collapse"
+                                        aria-labelledby="headingEstados"
+                                        data-bs-parent="#accordionEstados">
+
+                                        <div class="accordion-body">
+
+                                            <div class="row justify-content-center gx-2 gy-2">
+
+                                                <div class="col-auto">
+                                                    <button class="btn btn-filtro-cerrar" data-filtro=null>Todos</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn btn-filtro-cerrar" data-filtro="1">Cerradas</button>
+                                                </div>
+
+                                                <div class="col-auto">
+                                                    <button class="btn btn-filtro-cerrar" data-filtro="0">Sin cerrar</button>
+                                                </div>
+
+
+                                            </div>
+
+                                        </div>
+
                                     </div>
+
                                 </div>
                             </div>
-
                             <div class="card-box">
                                 <div class="container-fluid px-0">
                                     <div class="row justify-content-center gx-2 gy-2">
@@ -421,151 +421,148 @@
             </div>
 
         </div>
-        <!-- Modal para mostrar el código QR -->
-        <?php include __DIR__ . '/../../../fragments/modals/papeletas/papeleta-qr.php'; ?>
-        <?php include __DIR__ . '/../../../fragments/modals/papeletas/camara-qr.php'; ?>
+    </div>
+    <!-- Modal para mostrar el código QR -->
+    <?php include __DIR__ . '/../../../fragments/modals/papeletas/papeleta-qr.php'; ?>
+    <?php include __DIR__ . '/../../../fragments/modals/papeletas/camara-qr.php'; ?>
 
 
 
-        <script>
-            document.addEventListener('lazybeforeunveil', function(e) {
-                var bg = e.target.getAttribute('data-bg');
-                if (bg) {
-                    e.target.style.backgroundImage = 'url(' + bg + ')';
-                }
-            });
-        </script>
+    <script>
+        document.addEventListener('lazybeforeunveil', function(e) {
+            var bg = e.target.getAttribute('data-bg');
+            if (bg) {
+                e.target.style.backgroundImage = 'url(' + bg + ')';
+            }
+        });
+    </script>
 
 
-        <!-- MODAL PARA EL ID -->
-        <div id="modalId" class="modal" style="display:none;">
-            <div class="modal-content" style="max-width: 400px; margin: auto; padding: 20px; text-align: center;">
-                <h5>ID de Papeleta</h5>
-                <p id="idPapeletaText" style="font-weight: bold; font-size: 18px;"></p>
+    <!-- MODAL PARA EL ID -->
+    <div id="modalId" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 400px; margin: auto; padding: 20px; text-align: center;">
+            <h5>ID de Papeleta</h5>
+            <p id="idPapeletaText" style="font-weight: bold; font-size: 18px;"></p>
 
-                <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
-                    <button id="btnSalida" class="btn btn-success" style="flex:1; padding: 10px; font-weight: bold;">SALIDA</button>
-                    <button id="btnRetorno" class="btn btn-primary" style="flex:1; padding: 10px; font-weight: bold;">RETORNO</button>
-                </div>
+            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+                <button id="btnSalida" class="btn btn-success" style="flex:1; padding: 10px; font-weight: bold;">SALIDA</button>
+                <button id="btnRetorno" class="btn btn-primary" style="flex:1; padding: 10px; font-weight: bold;">RETORNO</button>
             </div>
         </div>
+    </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-        <script>
-            $(document).ready(function() {
+    <script>
+        $(document).ready(function() {
 
-                $("#btnSalida").on("click", function() {
-                    var idPapeleta = $("#idPapeletaText").text().trim();
+            $("#btnSalida").on("click", function() {
+                var idPapeleta = $("#idPapeletaText").text().trim();
 
-                    $.ajax({
-                        url: "modules/vigilantes/ajax/papeleta.ajax.php",
-                        type: "POST",
-                        data: {
-                            accion: "marcar_salida",
-                            id_papeleta: idPapeleta
-                        },
-                        success: function(resp) {
-                            console.log(resp);
+                $.ajax({
+                    url: "modules/vigilantes/ajax/papeleta.ajax.php",
+                    type: "POST",
+                    data: {
+                        accion: "marcar_salida",
+                        id_papeleta: idPapeleta
+                    },
+                    success: function(resp) {
+                        console.log(resp);
 
-                            if (resp.status === "success") {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Salida registrada',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                }).then(function() {
-                                    $('.tablaPapeletaVigilantes').DataTable().ajax.reload(null, false);
-                                    $("#modalId").hide();
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: resp.message || 'No se pudo registrar la salida.'
-                                });
-                            }
-                        },
-                        error: function(xhr, status, error) {
+                        if (resp.status === "success") {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Salida registrada',
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(function() {
+                                $('.tablaPapeletaVigilantes').DataTable().ajax.reload(null, false);
+                                $("#modalId").hide();
+                            });
+                        } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error AJAX',
-                                text: error
+                                title: 'Error',
+                                text: resp.message || 'No se pudo registrar la salida.'
                             });
                         }
-                    });
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error AJAX',
+                            text: error
+                        });
+                    }
                 });
+            });
 
-                $("#btnRetorno").on("click", function() {
-                    var idPapeleta = $("#idPapeletaText").text().trim();
+            $("#btnRetorno").on("click", function() {
+                var idPapeleta = $("#idPapeletaText").text().trim();
 
-                    $.ajax({
-                        url: "modules/vigilantes/ajax/papeleta.ajax.php",
-                        type: "POST",
-                        data: {
-                            accion: "marcar_retorno",
-                            id_papeleta: idPapeleta
-                        },
-                        success: function(resp) {
-                            console.log(resp);
+                $.ajax({
+                    url: "modules/vigilantes/ajax/papeleta.ajax.php",
+                    type: "POST",
+                    data: {
+                        accion: "marcar_retorno",
+                        id_papeleta: idPapeleta
+                    },
+                    success: function(resp) {
+                        console.log(resp);
 
-                            if (resp.status === "success") {
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Retorno registrado',
-                                    showConfirmButton: false,
-                                    timer: 1500
-                                }).then(function() {
-                                    $('.tablaPapeletaVigilantes').DataTable().ajax.reload(null, false);
-                                    $("#modalId").hide();
-                                });
-                            } else {
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Error',
-                                    text: resp.message || 'No se pudo registrar el retorno.'
-                                });
-                            }
-                        },
-                        error: function(xhr, status, error) {
+                        if (resp.status === "success") {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Retorno registrado',
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(function() {
+                                $('.tablaPapeletaVigilantes').DataTable().ajax.reload(null, false);
+                                $("#modalId").hide();
+                            });
+                        } else {
                             Swal.fire({
                                 icon: 'error',
-                                title: 'Error AJAX',
-                                text: error
+                                title: 'Error',
+                                text: resp.message || 'No se pudo registrar el retorno.'
                             });
                         }
-                    });
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error AJAX',
+                            text: error
+                        });
+                    }
                 });
-
-
             });
 
 
-            if (window.refreshFsLightbox) {
-                window.refreshFsLightbox();
-            }
-
-            $(document).on('click', '.avatar-lightbox', function(e) {
-                e.preventDefault(); // evita redirección
-                const src = $(this).attr('href'); // URL de la imagen
-                const caption = $(this).data('caption') || '';
-
-                // Crear un lightbox temporal
-                const tempFsLightbox = document.createElement('a');
-                tempFsLightbox.href = src;
-                tempFsLightbox.setAttribute('data-fslightbox', 'single');
-                tempFsLightbox.setAttribute('data-caption', caption);
-                document.body.appendChild(tempFsLightbox);
-
-                // Abrir lightbox
-                if (window.refreshFsLightbox) window.refreshFsLightbox();
-                tempFsLightbox.click();
-
-                // Limpiar elemento temporal
-                setTimeout(() => document.body.removeChild(tempFsLightbox), 100);
-            });
-            
+        });
 
 
-        </script>
-        
+        if (window.refreshFsLightbox) {
+            window.refreshFsLightbox();
+        }
+
+        $(document).on('click', '.avatar-lightbox', function(e) {
+            e.preventDefault(); // evita redirección
+            const src = $(this).attr('href'); // URL de la imagen
+            const caption = $(this).data('caption') || '';
+
+            // Crear un lightbox temporal
+            const tempFsLightbox = document.createElement('a');
+            tempFsLightbox.href = src;
+            tempFsLightbox.setAttribute('data-fslightbox', 'single');
+            tempFsLightbox.setAttribute('data-caption', caption);
+            document.body.appendChild(tempFsLightbox);
+
+            // Abrir lightbox
+            if (window.refreshFsLightbox) window.refreshFsLightbox();
+            tempFsLightbox.click();
+
+            // Limpiar elemento temporal
+            setTimeout(() => document.body.removeChild(tempFsLightbox), 100);
+        });
+    </script>

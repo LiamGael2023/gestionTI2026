@@ -31,21 +31,51 @@ $(document).ready(function () {
     let filtroCerrar = null;
 
     $(".btn-filtro-fecha").on("click", function () {
+      // Remover la clase del resto
+      $(".btn-filtro-fecha").removeClass("active");
+
+      // Agregar la clase al seleccionado
+      $(this).addClass("active");
+
+      // Guardar filtro
       filtroFecha = $(this).data("filtro");
+
+      // Recargar DataTable
       tablaAdmin.ajax.reload();
+
+      // 🕒 Esperar 1 segundo antes de cerrar
+      setTimeout(() => {
+        $("#collapseFecha").collapse("hide");
+      }, 1000);
     });
 
     $(".btn-filtro-cerrar").on("click", function () {
+      // Remover la clase del resto
+      $(".btn-filtro-cerrar").removeClass("active");
+
+      // Agregar la clase al seleccionado
+      $(this).addClass("active");
+
+      // Guardar filtro
       filtroCerrar = $(this).data("filtro");
+
+      // Recargar DataTable
       tablaAdmin.ajax.reload();
+
+      // 🕒 Esperar 1 segundo antes de cerrar
+      setTimeout(() => {
+        $("#collapseEstados").collapse("hide");
+      }, 1000);
     });
 
     // 🔹 BOTÓN RESTABLECER
-    $("#btn-restablecer-filtros").on("click", function () {
+    $("#btn-restablecer-filtros2").on("click", function () {
       filtroFecha = null;
       filtroCerrar = null;
       tablaAdmin.ajax.reload();
-
+      console.log("Restablecer:", filtroCerrar);
+      $(".btn-filtro-fecha").removeClass("active");
+      $(".btn-filtro-cerrar").removeClass("active");
       // 🔹 Opcional: remover estilos activos si los usas
       //$(".btn-filtro-fecha, .btn-filtro-cerrar").removeClass("active");
     });
