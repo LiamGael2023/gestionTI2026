@@ -5,96 +5,107 @@ require_once __DIR__ . "/../controllers/EquipoController.php";
 
 header('Content-Type: application/json; charset=utf-8');
 
-class AjaxEquipo
-{
-    /*=============================================
-    CREAR EQUIPO
-    =============================================*/
-    public function ajaxCrearEquipo()
-    {
-        $respuesta = EquipoController::ctrCrearEquipo();
-        echo json_encode($respuesta);
-    }
+function responder($data) { echo json_encode($data); exit; }
 
-    /*=============================================
-    EDITAR EQUIPO
-    =============================================*/
-    public function ajaxEditarEquipo()
-    {
-        $respuesta = EquipoController::ctrEditarEquipo();
-        echo json_encode($respuesta);
-    }
-
-    /*=============================================
-    CARGAR DATOS PARA MODAL EDITAR
-    Devuelve los datos del equipo + array de
-    características con sus IDs reales para que
-    el JS pueda reconstruir la lista editable.
-    =============================================*/
-    public $idEquipo;
-
-    public function ajaxMostrarEquipo()
-    {
-        $equipo = EquipoController::ctrMostrarEquipo("idEquipo", $this->idEquipo);
-
-        if (!$equipo) {
-            echo json_encode(["error" => "No se encontró el equipo."]);
-            return;
-        }
-
-        // Helper fechas DateTime de sqlsrv
-        $fmt = function ($fecha, $formato = "Y-m-d") {
-            if (!$fecha) return null;
-            if ($fecha instanceof DateTime) return $fecha->format($formato);
-            $ts = strtotime($fecha);
-            return $ts ? date($formato, $ts) : null;
-        };
-
-        // Traer características con sus IDs reales desde la BD
-        $caracteristicasDetalle = EquipoController::ctrMostrarCaracteristicasEquipo($this->idEquipo);
-
-        $respuesta = [
-            "idEquipo"            => intval($equipo["idEquipo"]),
-            "idActivo"            => intval($equipo["idActivo"]),
-            "idEquipoPadre"       => $equipo["idEquipoPadre"]       ?? null,
-            "codigoPatrimonial"   => $equipo["codigoPatrimonial"]   ?? "",
-            "numeroSerie"         => $equipo["numeroSerie"]         ?? "",
-            "fechaAdquisicion"    => $fmt($equipo["fechaAdquisicion"]    ?? null),
-            "fechaInicioGarantia" => $fmt($equipo["fechaInicioGarantia"] ?? null),
-            "fechaFinGarantia"    => $fmt($equipo["fechaFinGarantia"]    ?? null),
-            "idUsuarioRegistro"   => $equipo["idUsuarioRegistro"]   ?? "",
-            "fechaCreacion"       => $fmt($equipo["fechaCreacion"]       ?? null, "d/m/Y H:i:s"),
-            "idUsuarioModifica"   => $equipo["idUsuarioModifica"]   ?? "",
-            "fechaModificacion"   => $fmt($equipo["fechaModificacion"]   ?? null, "d/m/Y H:i:s"),
-            "nombreActivo"        => $equipo["nombreActivo"]        ?? "",
-            // Array con {idCaracteristica, tipo, valor} para reconstruir la tabla editable
-            "caracteristicasDetalle" => $caracteristicasDetalle,
-        ];
-
-        echo json_encode($respuesta);
-    }
+function fmtFecha($fecha, $formato = "Y-m-d") {
+    if (!$fecha) return null;
+    if ($fecha instanceof DateTime) return $fecha->format($formato);
+    $ts = strtotime($fecha);
+    return $ts ? date($formato, $ts) : null;
 }
 
-/* =============================================
-   DISPARADORES
-============================================= */
+/* ═══════════════════════════════════════════════
+   AGREGAR COMPONENTE  ← DEBE IR PRIMERO
+   porque su POST también contiene idEquipoPadre
+   y el bloque de abajo lo interceptaría antes
+   POST { accion:'agregarComponente', idEquipoPadre, idEquipoHijo }
+═══════════════════════════════════════════════ */
+if (isset($_POST["accion"]) && $_POST["accion"] === "agregarComponente") {
+    $idPadre = intval($_POST["idEquipoPadre"] ?? 0);
+    $idHijo  = intval($_POST["idEquipoHijo"]  ?? 0);
+    if (!$idPadre || !$idHijo) responder(["resultado" => "error", "mensaje" => "Datos incompletos."]);
+    responder(EquipoController::ctrAgregarComponente($idPadre, $idHijo));
+}
 
-// Crear equipo nuevo
+/* ═══════════════════════════════════════════════
+   QUITAR COMPONENTE  ← también antes de idEquipoPadre
+   POST { accion:'quitarComponente', idEquipoHijo }
+═══════════════════════════════════════════════ */
+if (isset($_POST["accion"]) && $_POST["accion"] === "quitarComponente") {
+    $idHijo = intval($_POST["idEquipoHijo"] ?? 0);
+    if (!$idHijo) responder(["resultado" => "error", "mensaje" => "ID de componente no recibido."]);
+    responder(EquipoController::ctrQuitarComponente($idHijo));
+}
+
+/* ═══════════════════════════════════════════════
+   CREAR EQUIPO
+═══════════════════════════════════════════════ */
 if (isset($_POST["nuevoIdActivo"])) {
-    (new AjaxEquipo())->ajaxCrearEquipo();
-    exit;
+    responder(EquipoController::ctrCrearEquipo());
 }
 
-// Editar equipo existente
+/* ═══════════════════════════════════════════════
+   EDITAR EQUIPO
+═══════════════════════════════════════════════ */
 if (isset($_POST["editarIdActivo"])) {
-    (new AjaxEquipo())->ajaxEditarEquipo();
-    exit;
+    responder(EquipoController::ctrEditarEquipo());
 }
 
-// Cargar datos para el modal editar
+/* ═══════════════════════════════════════════════
+   CARGAR DATOS PARA MODAL EDITAR
+═══════════════════════════════════════════════ */
 if (isset($_POST["idEquipo"])) {
-    $ajax           = new AjaxEquipo();
-    $ajax->idEquipo = intval($_POST["idEquipo"]);
-    $ajax->ajaxMostrarEquipo();
-    exit;
+    $equipo = EquipoController::ctrMostrarEquipo("idEquipo", intval($_POST["idEquipo"]));
+    if (!$equipo) responder(["error" => "No se encontró el equipo."]);
+
+    $caracteristicasDetalle = EquipoController::ctrMostrarCaracteristicasEquipo(intval($_POST["idEquipo"]));
+
+    responder([
+        "idEquipo"               => intval($equipo["idEquipo"]),
+        "idActivo"               => intval($equipo["idActivo"]),
+        "idEquipoPadre"          => $equipo["idEquipoPadre"]       ?? null,
+        "codigoPatrimonial"      => $equipo["codigoPatrimonial"]   ?? "",
+        "numeroSerie"            => $equipo["numeroSerie"]         ?? "",
+        "fechaAdquisicion"       => fmtFecha($equipo["fechaAdquisicion"]    ?? null),
+        "fechaInicioGarantia"    => fmtFecha($equipo["fechaInicioGarantia"] ?? null),
+        "fechaFinGarantia"       => fmtFecha($equipo["fechaFinGarantia"]    ?? null),
+        "idUsuarioRegistro"      => $equipo["idUsuarioRegistro"]   ?? "",
+        "fechaCreacion"          => fmtFecha($equipo["fechaCreacion"]       ?? null, "d/m/Y H:i:s"),
+        "idUsuarioModifica"      => $equipo["idUsuarioModifica"]   ?? "",
+        "fechaModificacion"      => fmtFecha($equipo["fechaModificacion"]   ?? null, "d/m/Y H:i:s"),
+        "nombreActivo"           => $equipo["nombreActivo"]        ?? "",
+        "caracteristicasDetalle" => $caracteristicasDetalle,
+    ]);
+}
+
+/* ═══════════════════════════════════════════════
+   CARGAR COMPONENTES ACTUALES DEL EQUIPO PADRE
+   POST { idEquipoPadre }
+═══════════════════════════════════════════════ */
+if (isset($_POST["idEquipoPadre"])) {
+    $componentes = EquipoController::ctrMostrarComponentes(intval($_POST["idEquipoPadre"]));
+    responder($componentes ?: []);
+}
+
+/* ═══════════════════════════════════════════════
+   CARGAR EQUIPOS DISPONIBLES (sin padre)
+   GET ?disponibles=1&idPadre=N
+═══════════════════════════════════════════════ */
+if (isset($_GET["disponibles"])) {
+    $idPadre     = intval($_GET["idPadre"] ?? 0);
+    $disponibles = EquipoController::ctrEquiposDisponibles($idPadre);
+    $result = [];
+    foreach (($disponibles ?: []) as $eq) {
+        $result[] = [
+            "idEquipo"          => intval($eq["idEquipo"]),
+            "label"             => ($eq["nombreActivo"] ?? 'Equipo')
+                                 . (!empty($eq["numeroSerie"])       ? ' — ' . $eq["numeroSerie"]       : '')
+                                 . (!empty($eq["codigoPatrimonial"]) ? ' [' . $eq["codigoPatrimonial"] . ']' : ''),
+            "icono"             => $eq["iconoActivo"]       ?? "ti-package",
+            "numeroSerie"       => $eq["numeroSerie"]       ?? "",
+            "codigoPatrimonial" => $eq["codigoPatrimonial"] ?? "",
+            "caracteristicas"   => $eq["caracteristicas"]   ?? "",
+        ];
+    }
+    responder($result);
 }

@@ -61,6 +61,11 @@
                                      <i class="ti ti-map-pin me-1"></i> Ubicaciones
                                  </a>
                              </li>
+                             <li class="nav-item">
+                                 <a class="nav-link" href="?module=inventario&action=ips">
+                                     <i class="ti ti-network me-1"></i>IPs
+                                 </a>
+                             </li>
                          </ul>
                      </div>
 

@@ -33,32 +33,24 @@ function mostrarToast(tipo, mensaje) {
 
 /* ─────────────────────────────────────────────────────────
    MANEJAR RESPUESTA DEL SP
-   El SP devuelve: { resultado, mensaje }
-   resultado puede ser: 'ok', 'error', 'error_duplicado_cp',
-   'error_fecha', u otro string de error
 ───────────────────────────────────────────────────────── */
 function manejarRespuestaSP(data, modalId, onSuccess) {
     if (!data || typeof data !== 'object') {
         mostrarToast('error', 'Respuesta inesperada del servidor.'); return;
     }
-
     const resultado = (data.resultado ?? '').toString().trim();
     const mensaje   = (data.mensaje   ?? '').toString().trim();
-
     switch (resultado) {
         case 'ok':
             mostrarToast('success', mensaje || 'Operación realizada correctamente.');
             if (onSuccess) onSuccess();
             break;
-
         case 'error_duplicado_cp':
             mostrarToast('warning', mensaje || 'El código patrimonial ya existe.');
             break;
-
         case 'error_fecha':
             mostrarToast('warning', mensaje || 'Error en las fechas ingresadas.');
             break;
-
         case 'error':
         default:
             mostrarToast('error', mensaje || 'Ocurrió un error. Intente nuevamente.');
@@ -194,7 +186,8 @@ function crearCustomSelect(selectId) {
             if (found) seleccionar(found.value, found.label);
         },
         getValue()  { return sel.value; },
-        reset()     { if (opciones.length) seleccionar(opciones[0].value, opciones[0].label); }
+        reset()     { if (opciones.length) seleccionar(opciones[0].value, opciones[0].label); },
+        getExtra(v) { return opciones.find(o => String(o.value) === String(v)) ?? null; }
     };
 }
 
@@ -265,17 +258,23 @@ function renderTabla(tablaId, lista, hiddenId) {
     }
     const hidden = document.getElementById(hiddenId);
     if (hidden) {
-        // Todos los IDs son reales (no más prefijo 'existing_')
         hidden.value = lista.map(c => c.idCaracteristica).join(',');
     }
 }
 
 /* ─────────────────────────────────────────────────────────
-   DOM READY
+   HELPER escapeHtml
 ───────────────────────────────────────────────────────── */
+function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DOM READY
+═══════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", function () {
 
-    /* Inicializar custom selects */
+    /* ── Inicializar custom selects ── */
     const csNuevoActivo  = crearCustomSelect('nuevoIdActivo');
     const csNuevoTipo    = crearCustomSelect('nuevoTipoCaracteristica');
     const csNuevoValor   = crearCustomSelect('nuevoValorCaracteristica');
@@ -283,7 +282,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const csEditarTipo   = crearCustomSelect('editarTipoCaracteristica');
     const csEditarValor  = crearCustomSelect('editarValorCaracteristica');
 
-    /* ── Abrir modal AGREGAR ── */
+    /* ── Custom select para el modal Armar Equipo ── */
+    const csComponente = crearCustomSelect('armarComponenteSelect');
+
+    /* ════════════════════════════════════════════════
+       MODAL AGREGAR EQUIPO
+    ════════════════════════════════════════════════ */
     document.getElementById('modalAgregarEquipo')
         ?.addEventListener('show.bs.modal', async () => {
             document.getElementById('formNuevoEquipo')?.reset();
@@ -354,7 +358,9 @@ document.addEventListener("DOMContentLoaded", function () {
         renderTabla(btn.dataset.tabla, lista, btn.dataset.hidden);
     });
 
-    /* ── Botón editar equipo en tabla ── */
+    /* ════════════════════════════════════════════════
+       BOTÓN EDITAR EQUIPO
+    ════════════════════════════════════════════════ */
     document.addEventListener('click', async function (e) {
         const boton = e.target.closest('.btnEditarEquipo');
         if (!boton) return;
@@ -380,19 +386,18 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('editarUsuarioModificacion').textContent = json.idUsuarioModifica ?? '--';
             document.getElementById('editarFechaModificacion').textContent   = json.fechaModificacion ?? '--';
 
-            // Reconstruir lista con IDs REALES de la BD
+            // Reconstruir lista de características con IDs reales de la BD
             caracteristicasEditar.length = 0;
             if (Array.isArray(json.caracteristicasDetalle) && json.caracteristicasDetalle.length) {
                 json.caracteristicasDetalle.forEach(c => {
                     caracteristicasEditar.push({
-                        idCaracteristica: String(c.idCaracteristica),  // ID real
+                        idCaracteristica: String(c.idCaracteristica),
                         tipo:  c.tipo,
                         valor: c.valor
                     });
                 });
             }
             renderTabla('tablaEditarEquipoCaracteristicas', caracteristicasEditar, 'editarCaracteristicasIds');
-            // El hidden ya queda lleno con los IDs reales gracias a renderTabla
             csEditarValor.setOptions([{ value: '', label: 'Seleccionar valor...' }]);
 
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarEquipo')).show();
@@ -402,7 +407,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    /* ── Guardar nuevo equipo ── */
+    /* ════════════════════════════════════════════════
+       GUARDAR NUEVO EQUIPO
+    ════════════════════════════════════════════════ */
     document.getElementById('formNuevoEquipo')
         ?.addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -420,7 +427,9 @@ document.addEventListener("DOMContentLoaded", function () {
             finally  { btnSubmit.disabled = false; }
         });
 
-    /* ── Actualizar equipo ── */
+    /* ════════════════════════════════════════════════
+       ACTUALIZAR EQUIPO
+    ════════════════════════════════════════════════ */
     document.getElementById('formEditarEquipo')
         ?.addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -438,7 +447,212 @@ document.addEventListener("DOMContentLoaded", function () {
             finally  { btnSubmit.disabled = false; }
         });
 
-    /* ── DataTable ── */
+    /* ════════════════════════════════════════════════
+       MODAL ARMAR EQUIPO — abrir
+    ════════════════════════════════════════════════ */
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.btnArmarEquipo');
+        if (!btn) return;
+
+        const idPadre = btn.getAttribute('data-id');
+        const nombre  = btn.getAttribute('data-nombre');
+        const icono   = btn.getAttribute('data-icono');
+
+        // Rellenar header del modal
+        document.getElementById('armarIdEquipoPadre').value       = idPadre;
+        document.getElementById('armarNombrePadre').textContent    = nombre;
+        document.getElementById('armarIconoPadre').className       = `ti ${icono} fs-2`;
+
+        // Resetear sección agregar
+        document.getElementById('armarComponenteInfo').style.display = 'none';
+        document.getElementById('btnAgregarComponente').disabled      = true;
+
+        // Abrir modal primero para que el DOM esté visible
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalArmarEquipo')).show();
+
+        // Cargar en paralelo: componentes actuales + equipos disponibles
+        await Promise.all([
+            cargarComponentesActuales(idPadre),
+            cargarEquiposDisponibles(idPadre),
+        ]);
+    });
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — cargar componentes actuales
+    ════════════════════════════════════════════════ */
+    async function cargarComponentesActuales(idPadre) {
+        const lista = document.getElementById('armarListaComponentes');
+        lista.innerHTML = `<div class="text-muted small text-center py-3">
+            <span class="spinner-border spinner-border-sm me-1"></span>Cargando...</div>`;
+
+        try {
+            const fd = new FormData();
+            fd.append('idEquipoPadre', idPadre);
+            const res  = await fetch('modules/inventario/ajax/equipos.ajax.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            renderComponentes(data, idPadre);
+        } catch {
+            lista.innerHTML = '<div class="text-danger small text-center py-3">Error al cargar componentes.</div>';
+        }
+    }
+
+    function renderComponentes(componentes, idPadre) {
+        const lista    = document.getElementById('armarListaComponentes');
+        const contador = document.getElementById('armarContador');
+
+        if (!componentes || componentes.length === 0) {
+            contador.textContent = '0';
+            lista.innerHTML = `
+                <div class="componentes-vacio">
+                    <i class="ti ti-inbox fs-2 d-block mb-1"></i>
+                    Sin componentes asignados
+                </div>`;
+            return;
+        }
+
+        contador.textContent = componentes.length;
+        lista.innerHTML = componentes.map(c => {
+            const icono = c.iconoActivo ?? 'ti-package';
+            const serie = c.numeroSerie
+                ? `<span class="text-muted small">S/N: ${escHtml(c.numeroSerie)}</span>` : '';
+            const caract = c.caracteristicas
+                ? `<div class="text-muted small text-truncate">${escHtml(c.caracteristicas)}</div>` : '';
+            return `
+            <div class="componente-card" data-id="${c.idEquipo}">
+                <div class="componente-icon">
+                    <i class="ti ${escHtml(icono)}"></i>
+                </div>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="fw-semibold small text-truncate">${escHtml(c.nombreActivo ?? 'Componente')}</div>
+                    ${serie}
+                    ${caract}
+                    ${c.codigoPatrimonial
+                        ? `<span class="badge badge-outline text-muted small">${escHtml(c.codigoPatrimonial)}</span>`
+                        : ''}
+                </div>
+                <button type="button"
+                    class="btn btn-sm btn-icon btn-outline-danger btnQuitarComponente flex-shrink-0"
+                    data-id-hijo="${c.idEquipo}"
+                    data-id-padre="${idPadre}"
+                    title="Quitar del equipo">
+                    <i class="ti ti-unlink"></i>
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — cargar equipos disponibles
+    ════════════════════════════════════════════════ */
+    async function cargarEquiposDisponibles(idPadre) {
+        try {
+            const res  = await fetch(
+                `modules/inventario/ajax/equipos.ajax.php?disponibles=1&idPadre=${idPadre}`
+            );
+            const data = await res.json();
+
+            const ops   = [{ value: '', label: 'Seleccionar componente...' }];
+            const extra = {};
+            data.forEach(eq => {
+                ops.push({ value: String(eq.idEquipo), label: eq.label });
+                extra[String(eq.idEquipo)] = eq;
+            });
+            csComponente.setOptions(ops);
+            csComponente._extra = extra;
+        } catch (e) { console.error('[cargarEquiposDisponibles]', e); }
+    }
+
+    /* ── Cambio en select componente → mostrar info ── */
+    document.getElementById('armarComponenteSelect')
+        ?.addEventListener('change', function () {
+            const val        = this.value;
+            const infoBox    = document.getElementById('armarComponenteInfo');
+            const btnAgregar = document.getElementById('btnAgregarComponente');
+
+            if (!val) {
+                infoBox.style.display = 'none';
+                btnAgregar.disabled   = true;
+                return;
+            }
+            const extra = csComponente._extra?.[val];
+            if (extra) {
+                document.getElementById('armarInfoSerie').textContent  = extra.numeroSerie       || '—';
+                document.getElementById('armarInfoCodigo').textContent = extra.codigoPatrimonial || '—';
+                document.getElementById('armarInfoCaract').textContent = extra.caracteristicas   || '—';
+                infoBox.style.display = 'block';
+            }
+            btnAgregar.disabled = false;
+        });
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — agregar componente
+    ════════════════════════════════════════════════ */
+    document.getElementById('btnAgregarComponente')
+        ?.addEventListener('click', async function () {
+            const idPadre = document.getElementById('armarIdEquipoPadre').value;
+            const idHijo  = csComponente.getValue();
+            if (!idHijo) { mostrarToast('warning', 'Seleccione un componente primero.'); return; }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Agregando...';
+            try {
+                const fd = new FormData();
+                fd.append('accion',        'agregarComponente');
+                fd.append('idEquipoPadre', idPadre);
+                fd.append('idEquipoHijo',  idHijo);
+                const res  = await fetch('modules/inventario/ajax/equipos.ajax.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                manejarRespuestaSP(data, null, async () => {
+                    csComponente.reset();
+                    document.getElementById('armarComponenteInfo').style.display = 'none';
+                    document.getElementById('btnAgregarComponente').disabled      = true;
+                    await Promise.all([
+                        cargarComponentesActuales(idPadre),
+                        cargarEquiposDisponibles(idPadre),
+                    ]);
+                });
+            } catch { mostrarToast('error', 'Error de servidor.'); }
+            finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="ti ti-plus me-1"></i>Agregar al equipo';
+            }
+        });
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — quitar componente (delegado)
+    ════════════════════════════════════════════════ */
+    document.getElementById('armarListaComponentes')
+        ?.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.btnQuitarComponente');
+            if (!btn) return;
+
+            const idHijo  = btn.getAttribute('data-id-hijo');
+            const idPadre = btn.getAttribute('data-id-padre');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const fd = new FormData();
+                fd.append('accion',       'quitarComponente');
+                fd.append('idEquipoHijo', idHijo);
+                const res  = await fetch('modules/inventario/ajax/equipos.ajax.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                manejarRespuestaSP(data, null, async () => {
+                    await Promise.all([
+                        cargarComponentesActuales(idPadre),
+                        cargarEquiposDisponibles(idPadre),
+                    ]);
+                });
+            } catch { mostrarToast('error', 'Error de servidor.'); }
+            finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-unlink"></i>';
+            }
+        });
+
+    /* ════════════════════════════════════════════════
+       DATATABLES
+    ════════════════════════════════════════════════ */
     if ($.fn.DataTable.isDataTable('#tablaEquipos')) $('#tablaEquipos').DataTable().destroy();
     $('#tablaEquipos').DataTable({
         responsive: true, pageLength: 10, autoWidth: false,

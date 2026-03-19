@@ -4,17 +4,12 @@
 <style>
 /* =============================================================
    CUSTOM SELECT  (.cs-*)
-   El panel usa position:absolute dentro del .cs-wrap.
-   z-index 1060 para estar sobre el modal (Bootstrap usa 1050).
-   No usa position:fixed → no causa saltos ni rompre scroll.
 ============================================================= */
 .cs-wrap {
     position: relative;
     width: 100%;
     font-size: 0.875rem;
 }
-
-/* Botón visible */
 .cs-display {
     display: flex;
     align-items: center;
@@ -35,7 +30,6 @@
     border-color: var(--tblr-primary, #0054a6);
     box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb,0,84,166),.15);
 }
-
 .cs-text {
     flex: 1;
     overflow: hidden;
@@ -44,15 +38,12 @@
     line-height: 1.4;
 }
 .cs-text.placeholder-text { color: #9ca3af; }
-
 .cs-arrow {
     flex-shrink: 0;
     color: #6c757d;
     transition: transform .2s;
 }
 .cs-wrap.cs-open .cs-arrow { transform: rotate(180deg); }
-
-/* Panel dropdown */
 .cs-panel {
     display: none;
     position: absolute;
@@ -66,8 +57,6 @@
     overflow: hidden;
 }
 .cs-wrap.cs-open .cs-panel { display: block; }
-
-/* Buscador */
 .cs-search-row {
     display: flex;
     align-items: center;
@@ -85,8 +74,6 @@
     padding: 0;
     color: #374151;
 }
-
-/* Lista de opciones */
 .cs-list {
     list-style: none;
     margin: 0;
@@ -115,14 +102,10 @@
 /* =============================================================
    LAYOUT MODAL
 ============================================================= */
-/* Sin modal-dialog-scrollable; el scroll lo maneja el modal-body */
 .modal-body-scroll {
     overflow-y: auto;
-    /* Altura máxima = viewport - header modal (~80px) - footer (~70px) - margen (~40px) */
     max-height: calc(100vh - 240px);
 }
-
-/* Secciones */
 .seccion-card {
     border: 1px solid var(--tblr-border-color, #e6ebf1);
     border-left: 4px solid var(--tblr-primary, #0054a6);
@@ -166,7 +149,47 @@
     overflow-y: auto;
 }
 
-/* En mobile las dos columnas se apilan */
+/* ── MODAL ARMAR EQUIPO ── */
+.componente-card {
+    border: 1px solid var(--tblr-border-color, #e6ebf1);
+    border-radius: .5rem;
+    background: #fff;
+    padding: .6rem .9rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    transition: box-shadow .15s;
+}
+.componente-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.componente-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: .35rem;
+    background: var(--tblr-primary-lt, #e7f0ff);
+    color: var(--tblr-primary, #0054a6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+.componentes-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    max-height: 320px;
+    overflow-y: auto;
+}
+.componentes-vacio {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 2rem 1rem;
+    font-size: .85rem;
+}
+
 @media (max-width: 991px) {
     .modal-body-scroll { max-height: calc(100vh - 180px); }
 }
@@ -231,6 +254,21 @@
                                 ? $value["fechaCreacion"]->format("d/m/Y")
                                 : date("d/m/Y", strtotime($value["fechaCreacion"])))
                             : "Sin fecha";
+
+                        // Botón "Armar Equipo" solo si compuesto = 1
+                        $btnArmar = '';
+                        if (!empty($value["compuesto"]) && intval($value["compuesto"]) === 1) {
+                            $btnArmar = '
+                            <button type="button"
+                              class="btn btn-sm btn-icon btn-outline-success btnArmarEquipo"
+                              data-id="' . $value["idEquipo"] . '"
+                              data-nombre="' . htmlspecialchars($value["nombreActivo"] ?? '') . '"
+                              data-icono="' . $icono . '"
+                              title="Armar equipo / componentes">
+                              <i class="ti ti-tools"></i>
+                            </button>';
+                        }
+
                         echo '
                         <tr>
                           <td>
@@ -247,11 +285,14 @@
                             <span class="badge badge-outline text-muted">ID: ' . $value["idUsuarioRegistro"] . '</span>
                           </td>
                           <td class="text-end">
-                            <button type="button"
-                              class="btn btn-sm btn-icon btn-outline-primary btnEditarEquipo"
-                              data-id="' . $value["idEquipo"] . '" title="Editar">
-                              <i class="ti ti-edit"></i>
-                            </button>
+                            <div class="d-flex justify-content-end gap-1">
+                              ' . $btnArmar . '
+                              <button type="button"
+                                class="btn btn-sm btn-icon btn-outline-primary btnEditarEquipo"
+                                data-id="' . $value["idEquipo"] . '" title="Editar">
+                                <i class="ti ti-edit"></i>
+                              </button>
+                            </div>
                           </td>
                         </tr>';
                     }
@@ -271,13 +312,11 @@
 
 <!-- ============================================================
      MODAL AGREGAR EQUIPO
-     Sin modal-dialog-scrollable — el scroll está en modal-body
 ============================================================ -->
 <div class="modal modal-blur fade" id="modalAgregarEquipo" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content border-0 shadow-lg rounded-4">
 
-      <!-- Header -->
       <div class="modal-header px-4 pt-4 pb-3"
            style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
@@ -294,14 +333,11 @@
       </div>
 
       <form id="formNuevoEquipo" novalidate>
-
-        <!-- Body con scroll propio -->
         <div class="modal-body-scroll px-4 py-3">
           <div class="row g-3">
 
-            <!-- ── IZQUIERDA ── -->
+            <!-- IZQUIERDA -->
             <div class="col-lg-6 d-flex flex-column gap-3">
-
               <div class="seccion-card">
                 <div class="seccion-header">
                   <i class="ti ti-info-circle text-primary"></i>
@@ -309,28 +345,20 @@
                 </div>
                 <div class="seccion-body">
                   <div class="row g-3">
-
                     <div class="col-12">
-                      <label class="form-label small fw-semibold">
-                        Activo <span class="text-danger">*</span>
-                      </label>
+                      <label class="form-label small fw-semibold">Activo <span class="text-danger">*</span></label>
                       <select id="nuevoIdActivo" name="nuevoIdActivo" required style="display:none">
                         <option value="">Seleccionar activo...</option>
                       </select>
                     </div>
-
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Código Patrimonial</label>
-                      <input id="nuevoCodigoPatrimonial" name="nuevoCodigoPatrimonial"
-                             type="text" class="form-control" placeholder="CP-2024-001">
+                      <input id="nuevoCodigoPatrimonial" name="nuevoCodigoPatrimonial" type="text" class="form-control" placeholder="CP-2024-001">
                     </div>
-
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Número de Serie</label>
-                      <input id="nuevoNumeroSerie" name="nuevoNumeroSerie"
-                             type="text" class="form-control" placeholder="SN-XJK9201LH">
+                      <input id="nuevoNumeroSerie" name="nuevoNumeroSerie" type="text" class="form-control" placeholder="SN-XJK9201LH">
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -363,28 +391,15 @@
                   <i class="ti ti-shield-check me-1"></i>Auditoría
                 </div>
                 <div class="row g-2 small">
-                  <div class="col-6">
-                    <div class="text-muted">Usuario Creación</div>
-                    <div class="fw-semibold" id="nuevoUsuarioCreacion">--</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-muted">Fecha Creación</div>
-                    <div class="fw-semibold" id="nuevoFechaCreacion">--</div>
-                  </div>
-                  <div class="col-6 mt-1">
-                    <div class="text-muted">Últ. Modificación</div>
-                    <div class="fw-semibold" id="nuevoUsuarioModificacion">--</div>
-                  </div>
-                  <div class="col-6 mt-1">
-                    <div class="text-muted">Fecha Modificación</div>
-                    <div class="fw-semibold" id="nuevoFechaModificacion">--</div>
-                  </div>
+                  <div class="col-6"><div class="text-muted">Usuario Creación</div><div class="fw-semibold" id="nuevoUsuarioCreacion">--</div></div>
+                  <div class="col-6"><div class="text-muted">Fecha Creación</div><div class="fw-semibold" id="nuevoFechaCreacion">--</div></div>
+                  <div class="col-6 mt-1"><div class="text-muted">Últ. Modificación</div><div class="fw-semibold" id="nuevoUsuarioModificacion">--</div></div>
+                  <div class="col-6 mt-1"><div class="text-muted">Fecha Modificación</div><div class="fw-semibold" id="nuevoFechaModificacion">--</div></div>
                 </div>
               </div>
+            </div>
 
-            </div><!-- /izquierda -->
-
-            <!-- ── DERECHA — CARACTERÍSTICAS ── -->
+            <!-- DERECHA -->
             <div class="col-lg-6 d-flex flex-column">
               <div class="seccion-card flex-grow-1 d-flex flex-column">
                 <div class="seccion-header">
@@ -392,30 +407,23 @@
                   <span class="seccion-titulo text-primary">Características Técnicas</span>
                 </div>
                 <div class="seccion-body d-flex flex-column gap-3 flex-grow-1">
-
                   <div class="panel-caract">
                     <div class="row g-2 align-items-end">
                       <div class="col-md-4">
                         <label class="form-label small fw-semibold mb-1">Tipo</label>
-                        <select id="nuevoTipoCaracteristica" style="display:none">
-                          <option value="">Seleccionar tipo...</option>
-                        </select>
+                        <select id="nuevoTipoCaracteristica" style="display:none"><option value="">Seleccionar tipo...</option></select>
                       </div>
                       <div class="col-md-5">
                         <label class="form-label small fw-semibold mb-1">Valor</label>
-                        <select id="nuevoValorCaracteristica" style="display:none">
-                          <option value="">Seleccionar valor...</option>
-                        </select>
+                        <select id="nuevoValorCaracteristica" style="display:none"><option value="">Seleccionar valor...</option></select>
                       </div>
                       <div class="col-md-3">
-                        <button id="btnAgregarNuevaCaracteristica" type="button"
-                                class="btn btn-primary w-100">
+                        <button id="btnAgregarNuevaCaracteristica" type="button" class="btn btn-primary w-100">
                           <i class="ti ti-plus me-1"></i>Agregar
                         </button>
                       </div>
                     </div>
                   </div>
-
                   <div class="tabla-caract-wrap flex-grow-1">
                     <table id="tablaNuevoEquipoCaracteristicas" class="table table-hover align-middle mb-0">
                       <thead class="table-light">
@@ -428,16 +436,14 @@
                       <tbody></tbody>
                     </table>
                   </div>
-
                 </div>
               </div>
-            </div><!-- /derecha -->
+            </div>
 
           </div>
-        </div><!-- /modal-body-scroll -->
+        </div>
 
-        <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+        <div class="modal-footer px-4 pb-4 pt-2" style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <input type="hidden" id="nuevoCaracteristicasIds" name="nuevoCaracteristicasIds">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
             <i class="ti ti-x me-1"></i>Cancelar
@@ -447,14 +453,13 @@
           </button>
         </div>
       </form>
-
     </div>
   </div>
 </div>
 
 
 <!-- ============================================================
-     MODAL EDITAR EQUIPO  (mismo azul)
+     MODAL EDITAR EQUIPO
 ============================================================ -->
 <div class="modal modal-blur fade" id="modalEditarEquipo" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-centered">
@@ -476,13 +481,10 @@
       </div>
 
       <form id="formEditarEquipo" novalidate>
-
         <div class="modal-body-scroll px-4 py-3">
           <div class="row g-3">
 
-            <!-- IZQUIERDA -->
             <div class="col-lg-6 d-flex flex-column gap-3">
-
               <div class="seccion-card">
                 <div class="seccion-header">
                   <i class="ti ti-info-circle text-primary"></i>
@@ -490,26 +492,20 @@
                 </div>
                 <div class="seccion-body">
                   <div class="row g-3">
-
                     <div class="col-12">
-                      <label class="form-label small fw-semibold">
-                        Activo <span class="text-danger">*</span>
-                      </label>
+                      <label class="form-label small fw-semibold">Activo <span class="text-danger">*</span></label>
                       <select id="editarIdActivo" name="editarIdActivo" required style="display:none">
                         <option value="">Seleccionar activo...</option>
                       </select>
                     </div>
-
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Código Patrimonial</label>
                       <input id="editarCodigoPatrimonial" name="editarCodigoPatrimonial" type="text" class="form-control">
                     </div>
-
                     <div class="col-md-6">
                       <label class="form-label small fw-semibold">Número de Serie</label>
                       <input id="editarNumeroSerie" name="editarNumeroSerie" type="text" class="form-control">
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -542,28 +538,14 @@
                   <i class="ti ti-shield-check me-1"></i>Auditoría
                 </div>
                 <div class="row g-2 small">
-                  <div class="col-6">
-                    <div class="text-muted">Usuario Creación</div>
-                    <div class="fw-semibold" id="editarUsuarioCreacion">--</div>
-                  </div>
-                  <div class="col-6">
-                    <div class="text-muted">Fecha Creación</div>
-                    <div class="fw-semibold" id="editarFechaCreacion">--</div>
-                  </div>
-                  <div class="col-6 mt-1">
-                    <div class="text-muted">Últ. Modificación</div>
-                    <div class="fw-semibold" id="editarUsuarioModificacion">--</div>
-                  </div>
-                  <div class="col-6 mt-1">
-                    <div class="text-muted">Fecha Modificación</div>
-                    <div class="fw-semibold" id="editarFechaModificacion">--</div>
-                  </div>
+                  <div class="col-6"><div class="text-muted">Usuario Creación</div><div class="fw-semibold" id="editarUsuarioCreacion">--</div></div>
+                  <div class="col-6"><div class="text-muted">Fecha Creación</div><div class="fw-semibold" id="editarFechaCreacion">--</div></div>
+                  <div class="col-6 mt-1"><div class="text-muted">Últ. Modificación</div><div class="fw-semibold" id="editarUsuarioModificacion">--</div></div>
+                  <div class="col-6 mt-1"><div class="text-muted">Fecha Modificación</div><div class="fw-semibold" id="editarFechaModificacion">--</div></div>
                 </div>
               </div>
+            </div>
 
-            </div><!-- /izquierda -->
-
-            <!-- DERECHA -->
             <div class="col-lg-6 d-flex flex-column">
               <div class="seccion-card flex-grow-1 d-flex flex-column">
                 <div class="seccion-header">
@@ -571,30 +553,23 @@
                   <span class="seccion-titulo text-primary">Características Técnicas</span>
                 </div>
                 <div class="seccion-body d-flex flex-column gap-3 flex-grow-1">
-
                   <div class="panel-caract">
                     <div class="row g-2 align-items-end">
                       <div class="col-md-4">
                         <label class="form-label small fw-semibold mb-1">Tipo</label>
-                        <select id="editarTipoCaracteristica" style="display:none">
-                          <option value="">Seleccionar tipo...</option>
-                        </select>
+                        <select id="editarTipoCaracteristica" style="display:none"><option value="">Seleccionar tipo...</option></select>
                       </div>
                       <div class="col-md-5">
                         <label class="form-label small fw-semibold mb-1">Valor</label>
-                        <select id="editarValorCaracteristica" style="display:none">
-                          <option value="">Seleccionar valor...</option>
-                        </select>
+                        <select id="editarValorCaracteristica" style="display:none"><option value="">Seleccionar valor...</option></select>
                       </div>
                       <div class="col-md-3">
-                        <button id="btnAgregarEditarCaracteristica" type="button"
-                                class="btn btn-primary w-100">
+                        <button id="btnAgregarEditarCaracteristica" type="button" class="btn btn-primary w-100">
                           <i class="ti ti-plus me-1"></i>Agregar
                         </button>
                       </div>
                     </div>
                   </div>
-
                   <div class="tabla-caract-wrap flex-grow-1">
                     <table id="tablaEditarEquipoCaracteristicas" class="table table-hover align-middle mb-0">
                       <thead class="table-light">
@@ -607,16 +582,14 @@
                       <tbody></tbody>
                     </table>
                   </div>
-
                 </div>
               </div>
-            </div><!-- /derecha -->
+            </div>
 
           </div>
-        </div><!-- /modal-body-scroll -->
+        </div>
 
-        <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+        <div class="modal-footer px-4 pb-4 pt-2" style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <input type="hidden" id="editarIdEquipo" name="editarIdEquipo">
           <input type="hidden" id="editarCaracteristicasIds" name="editarCaracteristicasIds">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
@@ -627,10 +600,119 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     MODAL ARMAR EQUIPO (agregar / quitar componentes)
+============================================================ -->
+<div class="modal modal-blur fade" id="modalArmarEquipo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+
+      <!-- Header dinámico — se llena por JS con nombre e ícono del equipo padre -->
+      <div class="modal-header px-4 pt-4 pb-3"
+           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
+               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            <i id="armarIconoPadre" class="ti ti-tools fs-2"></i>
+          </div>
+          <div>
+            <h5 class="mb-0 fw-bold">Armar Equipo</h5>
+            <small class="text-muted">
+              <span id="armarNombrePadre" class="fw-semibold text-primary"></span>
+              — Gestión de componentes
+            </small>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body px-4 py-3">
+        <div class="row g-3">
+
+          <!-- IZQUIERDA: agregar componente -->
+          <div class="col-lg-5">
+            <div class="seccion-card h-100">
+              <div class="seccion-header">
+                <i class="ti ti-search text-primary"></i>
+                <span class="seccion-titulo text-primary">Agregar Componente</span>
+              </div>
+              <div class="seccion-body d-flex flex-column gap-3">
+                <div>
+                  <label class="form-label small fw-semibold">
+                    Buscar equipo disponible
+                    <span class="text-muted fw-normal">(sin padre asignado)</span>
+                  </label>
+                  <select id="armarComponenteSelect" style="display:none">
+                    <option value="">Seleccionar componente...</option>
+                  </select>
+                </div>
+                <button type="button" id="btnAgregarComponente" class="btn btn-primary w-100" disabled>
+                  <i class="ti ti-plus me-1"></i>Agregar al equipo
+                </button>
+
+                <!-- info del componente seleccionado -->
+                <div id="armarComponenteInfo" style="display:none">
+                  <div class="auditoria-box">
+                    <div class="small fw-bold text-muted text-uppercase mb-2">
+                      <i class="ti ti-info-circle me-1"></i>Componente seleccionado
+                    </div>
+                    <div class="small">
+                      <div class="text-muted">Serie</div>
+                      <div class="fw-semibold" id="armarInfoSerie">—</div>
+                    </div>
+                    <div class="small mt-1">
+                      <div class="text-muted">Código Patrimonial</div>
+                      <div class="fw-semibold" id="armarInfoCodigo">—</div>
+                    </div>
+                    <div class="small mt-1">
+                      <div class="text-muted">Características</div>
+                      <div class="fw-semibold" id="armarInfoCaract">—</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DERECHA: componentes actuales -->
+          <div class="col-lg-7">
+            <div class="seccion-card h-100">
+              <div class="seccion-header">
+                <i class="ti ti-list text-primary"></i>
+                <span class="seccion-titulo text-primary">Componentes actuales</span>
+                <span class="badge bg-primary-lt text-primary ms-auto" id="armarContador">0</span>
+              </div>
+              <div class="seccion-body">
+                <div id="armarListaComponentes" class="componentes-lista">
+                  <div class="componentes-vacio">
+                    <i class="ti ti-inbox fs-2 d-block mb-1"></i>
+                    Sin componentes asignados
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer px-4 pb-4 pt-2"
+           style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+        <input type="hidden" id="armarIdEquipoPadre">
+        <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
+          <i class="ti ti-x me-1"></i>Cerrar
+        </button>
+      </div>
 
     </div>
   </div>
 </div>
+
 
 <div id="toastContainerEquipos" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 <script src="modules/inventario/views/js/equipos.js"></script>

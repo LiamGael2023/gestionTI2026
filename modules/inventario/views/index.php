@@ -121,25 +121,25 @@
                 <div class="card shadow-sm card-modern h-100">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="icon-box bg-warning-lt text-warning">
-                                <i class="ti ti-license"></i>
+                            <div class="icon-box bg-primary-lt text-primary">
+                                <i class="ti ti-device-desktop"></i>
                             </div>
-                            <div class="h2 mb-0 fw-bold">28</div>
+                            <div class="h2 mb-0 fw-bold">124</div>
                         </div>
 
-                        <div class="fw-semibold">Registro de Software</div>
+                        <div class="fw-semibold">Gestión de Equipos</div>
                         <div class="text-muted small">
-                            Control de licencias y suscripciones SaaS.
+                            Administración y control de los equipos registrados.
                         </div>
 
                         <hr>
 
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-uppercase text-muted small fw-semibold">
-                                Licencias Activas
+                                Estaciones Totales
                             </span>
 
-                            <a href="software.php" class="arrow-link">
+                            <a href="?module=inventario&action=estaciones" class="arrow-link">
                                 <i class="ti ti-arrow-right"></i>
                             </a>
                         </div>
@@ -147,31 +147,30 @@
                 </div>
             </div>
 
-
             <!-- Card 4 -->
             <div class="col-12 col-md-6 col-lg-3">
                 <div class="card shadow-sm card-modern h-100">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div class="icon-box bg-danger-lt text-danger">
-                                <i class="ti ti-tool"></i>
+                            <div class="icon-box bg-primary-lt text-primary">
+                                <i class="ti ti-device-desktop"></i>
                             </div>
-                            <div class="h2 mb-0 fw-bold">8</div>
+                            <div class="h2 mb-0 fw-bold">124</div>
                         </div>
 
-                        <div class="fw-semibold">Mantenimiento Técnico</div>
+                        <div class="fw-semibold">Gestión de Equipos</div>
                         <div class="text-muted small">
-                            Reparaciones preventivas y correctivas.
+                            Administración y control de los equipos registrados.
                         </div>
 
                         <hr>
 
                         <div class="d-flex justify-content-between align-items-center">
                             <span class="text-uppercase text-muted small fw-semibold">
-                                Tareas Pendientes
+                                Estaciones Totales
                             </span>
 
-                            <a href="mantenimiento.php" class="arrow-link">
+                            <a href="?module=inventario&action=asignaciones" class="arrow-link">
                                 <i class="ti ti-arrow-right"></i>
                             </a>
                         </div>
