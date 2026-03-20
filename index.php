@@ -54,6 +54,12 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
 
 Auth::check(); 
 
+// Evita contaminar respuestas JSON/PDF de adquisiciones con el layout global.
+if ($module === 'adquisiciones' && preg_match('/Ajax$/', (string) $action)) {
+    include 'modules/adquisiciones/controllers/AdquisicionesController.php';
+    exit();
+}
+
 include 'public/header.php'; 
 
 // Módulos que siempre deben estar presentes o tienen lógica manual
