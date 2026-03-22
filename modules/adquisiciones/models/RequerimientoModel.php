@@ -268,6 +268,212 @@ class RequerimientoModel
 		];
 	}
 
+	private function fetchAll($sql, $params = [])
+	{
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = $row;
+		}
+
+		sqlsrv_free_stmt($stmt);
+		return $data;
+	}
+
+	private function fetchOne($sql, $params = [])
+	{
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		sqlsrv_free_stmt($stmt);
+
+		return $row ? $row : [];
+	}
+
+	public function obtenerDashboardResumenGeneral($anio)
+	{
+		$sql = "
+			SELECT
+				COUNT(DISTINCT r.Id)                                          AS TotalRequerimientos,
+				COUNT(DISTINCT CASE WHEN r.Estado = 1 THEN r.Id END)         AS Completos,
+				COUNT(DISTINCT CASE WHEN r.Estado = 0 THEN r.Id END)         AS Pendientes,
+				COUNT(DISTINCT dr.Id)                                         AS TotalItems,
+				COUNT(DISTINCT CASE WHEN dr.IdCatalogoTecnologico = 1000010
+										THEN dr.Id END)           AS SinHomologar
+			FROM adquisiciones.Requerimiento r
+			LEFT JOIN adquisiciones.DetalleRequerimiento dr
+				ON dr.IdRequerimiento = r.Id
+			WHERE r.Anio = ?
+		";
+
+		$resumen = $this->fetchOne($sql, [$anio]);
+
+		return [
+			'TotalRequerimientos' => (int) ($resumen['TotalRequerimientos'] ?? 0),
+			'Completos' => (int) ($resumen['Completos'] ?? 0),
+			'Pendientes' => (int) ($resumen['Pendientes'] ?? 0),
+			'TotalItems' => (int) ($resumen['TotalItems'] ?? 0),
+			'SinHomologar' => (int) ($resumen['SinHomologar'] ?? 0),
+		];
+	}
+
+	public function obtenerDashboardItemsPorTipo($anio)
+	{
+		$sql = "
+			SELECT
+				ct.Codigo        AS Tipo,
+				ct.NombreGenerico,
+				SUM(dr.Cantidad) AS TotalCantidad,
+				COUNT(dr.Id)     AS TotalItems
+			FROM adquisiciones.DetalleRequerimiento dr
+			INNER JOIN adquisiciones.Requerimiento r
+				ON r.Id = dr.IdRequerimiento
+			INNER JOIN adquisiciones.CatalogoTecnologico ct
+				ON ct.Id = dr.IdCatalogoTecnologico
+			WHERE r.Anio = ?
+			  AND dr.IdCatalogoTecnologico <> 1000010
+			GROUP BY ct.Codigo, ct.NombreGenerico
+			ORDER BY TotalCantidad DESC
+		";
+
+		$filas = $this->fetchAll($sql, [$anio]);
+		foreach ($filas as &$fila) {
+			$fila['TotalCantidad'] = (int) ($fila['TotalCantidad'] ?? 0);
+			$fila['TotalItems'] = (int) ($fila['TotalItems'] ?? 0);
+		}
+
+		return $filas;
+	}
+
+	public function obtenerDashboardCentroCosto($anio)
+	{
+		$sql = "
+			SELECT
+				cc.Siglas,
+				cc.NombreCentroCosto,
+				COUNT(DISTINCT r.Id)  AS TotalRequerimientos,
+				COUNT(DISTINCT dr.Id) AS TotalItems
+			FROM adquisiciones.CentroCosto cc
+			LEFT JOIN adquisiciones.Requerimiento r
+				ON r.IdCentroCosto = cc.Id AND r.Anio = ?
+			LEFT JOIN adquisiciones.DetalleRequerimiento dr
+				ON dr.IdRequerimiento = r.Id
+			GROUP BY cc.Siglas, cc.NombreCentroCosto
+			ORDER BY TotalRequerimientos DESC
+		";
+
+		$filas = $this->fetchAll($sql, [$anio]);
+		foreach ($filas as &$fila) {
+			$fila['TotalRequerimientos'] = (int) ($fila['TotalRequerimientos'] ?? 0);
+			$fila['TotalItems'] = (int) ($fila['TotalItems'] ?? 0);
+		}
+
+		return $filas;
+	}
+
+	public function obtenerDashboardEstadoDocumental($anio)
+	{
+		$sql = "
+			SELECT
+				COUNT(DISTINCT ct.Id)                                             AS TotalTecnologias,
+				COUNT(DISTINCT CASE WHEN ft.TotalFichas >= 4 THEN ct.Id END)      AS ConFichas,
+				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL THEN ct.Id END)         AS ConEspecificacion,
+				COUNT(DISTINCT CASE WHEN oc.Id IS NOT NULL THEN ct.Id END)         AS ConOrdenCompra,
+				COUNT(DISTINCT CASE WHEN vt.Id IS NOT NULL THEN ct.Id END)         AS ConVerificacion,
+				COUNT(DISTINCT CASE WHEN cf.Id IS NOT NULL THEN ct.Id END)         AS ConConformidad,
+				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL
+												 AND oc.Id IS NOT NULL
+												 AND vt.Id IS NOT NULL
+												 AND cf.Id IS NOT NULL
+												 AND ft.TotalFichas >= 4
+								 THEN ct.Id END)              AS Completas
+			FROM adquisiciones.CatalogoTecnologico ct
+			LEFT JOIN adquisiciones.EspecificacionTecnica et
+				ON et.IdCatalogoTecnologico = ct.Id AND et.Anio = ?
+			LEFT JOIN adquisiciones.OrdenCompra oc
+				ON oc.IdCatalogoTecnologico = ct.Id AND oc.Anio = ?
+			LEFT JOIN adquisiciones.VerificacionTecnica vt
+				ON vt.IdCatalogoTecnologico = ct.Id AND vt.Anio = ?
+			LEFT JOIN adquisiciones.Conformidad cf
+				ON cf.IdCatalogoTecnologico = ct.Id AND cf.Anio = ?
+			LEFT JOIN (
+				SELECT IdCatalogoTecnologico, COUNT(*) AS TotalFichas
+				FROM adquisiciones.FichaTecnica
+				WHERE Anio = ?
+				GROUP BY IdCatalogoTecnologico
+			) ft ON ft.IdCatalogoTecnologico = ct.Id
+			WHERE ct.Activo = 1
+		";
+
+		$resumen = $this->fetchOne($sql, [$anio, $anio, $anio, $anio, $anio]);
+
+		return [
+			'TotalTecnologias' => (int) ($resumen['TotalTecnologias'] ?? 0),
+			'ConFichas' => (int) ($resumen['ConFichas'] ?? 0),
+			'ConEspecificacion' => (int) ($resumen['ConEspecificacion'] ?? 0),
+			'ConOrdenCompra' => (int) ($resumen['ConOrdenCompra'] ?? 0),
+			'ConVerificacion' => (int) ($resumen['ConVerificacion'] ?? 0),
+			'ConConformidad' => (int) ($resumen['ConConformidad'] ?? 0),
+			'Completas' => (int) ($resumen['Completas'] ?? 0),
+		];
+	}
+
+	public function obtenerDashboardOrdenesProximas($anio, $diasVentana = 30, $limite = 5)
+	{
+		$diasVentana = max(1, (int) $diasVentana);
+		$limite = max(1, (int) $limite);
+
+		$sql = "
+			SELECT TOP {$limite}
+				oc.Id,
+				oc.NumeroOrden,
+				oc.FechaEntrega,
+				ct.Codigo,
+				ct.NombreGenerico,
+				DATEDIFF(DAY, CAST(GETDATE() AS DATE), CAST(oc.FechaEntrega AS DATE)) AS DiasRestantes
+			FROM adquisiciones.OrdenCompra oc
+			INNER JOIN adquisiciones.CatalogoTecnologico ct
+				ON ct.Id = oc.IdCatalogoTecnologico
+			WHERE oc.Anio = ?
+			  AND oc.FechaEntrega IS NOT NULL
+			  AND CAST(oc.FechaEntrega AS DATE) >= CAST(GETDATE() AS DATE)
+			  AND CAST(oc.FechaEntrega AS DATE) <= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+			ORDER BY oc.FechaEntrega ASC
+		";
+
+		$filas = $this->fetchAll($sql, [$anio, $diasVentana]);
+		foreach ($filas as &$fila) {
+			$fila['DiasRestantes'] = (int) ($fila['DiasRestantes'] ?? 0);
+			if (isset($fila['FechaEntrega']) && $fila['FechaEntrega'] instanceof DateTime) {
+				$fila['FechaEntrega'] = $fila['FechaEntrega']->format('Y-m-d');
+			}
+		}
+
+		$sqlTotal = "
+			SELECT COUNT(*) AS Total
+			FROM adquisiciones.OrdenCompra oc
+			WHERE oc.Anio = ?
+			  AND oc.FechaEntrega IS NOT NULL
+			  AND CAST(oc.FechaEntrega AS DATE) >= CAST(GETDATE() AS DATE)
+			  AND CAST(oc.FechaEntrega AS DATE) <= DATEADD(DAY, ?, CAST(GETDATE() AS DATE))
+		";
+
+		$resumen = $this->fetchOne($sqlTotal, [$anio, $diasVentana]);
+
+		return [
+			'total' => (int) ($resumen['Total'] ?? 0),
+			'diasVentana' => $diasVentana,
+			'ordenes' => $filas,
+		];
+	}
+
 	public function buscarPedidosSiga(int $anio): array
 	{
 		$sql = "

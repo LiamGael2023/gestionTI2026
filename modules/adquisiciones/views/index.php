@@ -1,7 +1,8 @@
 <?php
-$vistaActual = $vistaActual ?? 'requerimientos';
+$vistaActual = $vistaActual ?? 'dashboard';
 
 $vistas = [
+	'dashboard' => 'modules/adquisiciones/views/dashboard/index.php',
 	'requerimientos' => 'modules/adquisiciones/views/requerimientos/index.php',
 	'detalle' => 'modules/adquisiciones/views/requerimientos/detalle.php',
 	'tecnologias' => 'modules/adquisiciones/views/tecnologias/index.php',
@@ -28,6 +29,11 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['req
 		<div class="card">
 			<div class="card-header" id="adquisiciones-nav-container">
 				<ul class="nav nav-pills card-header-pills">
+					<li class="nav-item">
+						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'dashboard' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=dashboard">
+							Dashboard
+						</a>
+					</li>
 					<li class="nav-item">
 						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'requerimientos' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=requerimientos">
 							Requerimientos

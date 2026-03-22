@@ -51,6 +51,11 @@ $requerimientos = [];
 $centrosCosto = [];
 $aniosDisponibles = [];
 $anioFiltro = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
+$dashboardResumenGeneral = [];
+$dashboardItemsPorTipo = [];
+$dashboardCentroCosto = [];
+$dashboardEstadoDocumental = [];
+$dashboardOrdenesProximas = [];
 $accionesDetalle = ['guardarDetalleAjax', 'actualizarDetalleAjax', 'eliminarDetalleAjax', 'actualizarEstadoAjax', 'guardarDetalleForm'];
 $accionesTecnologia = [
 	'tecnologia',
@@ -107,6 +112,17 @@ switch ($action) {
 		$aniosDisponibles = $model->obtenerAniosDisponibles();
 		$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
 		$consolidado = $model->obtenerConsolidado($anioFiltro);
+		break;
+
+	case 'dashboard':
+		$vistaActual = 'dashboard';
+		$aniosDisponibles = $model->obtenerAniosDisponibles();
+		$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
+		$dashboardResumenGeneral = $model->obtenerDashboardResumenGeneral($anioFiltro);
+		$dashboardItemsPorTipo = $model->obtenerDashboardItemsPorTipo($anioFiltro);
+		$dashboardCentroCosto = $model->obtenerDashboardCentroCosto($anioFiltro);
+		$dashboardEstadoDocumental = $model->obtenerDashboardEstadoDocumental($anioFiltro);
+		$dashboardOrdenesProximas = $model->obtenerDashboardOrdenesProximas($anioFiltro, 30, 6);
 		break;
 
 	case 'guardarAjax':
