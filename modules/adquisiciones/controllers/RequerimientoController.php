@@ -185,6 +185,21 @@ switch ($action) {
 		}
 		exit;
 
+	case 'sincronizarHomologacionAjax':
+		header('Content-Type: application/json');
+		try {
+			$catalogoModel = new CatalogoTecnologicoModel($conn);
+			$resultado     = $catalogoModel->sincronizarHomologacion();
+			echo json_encode([
+				'success'      => true,
+				'nuevos'       => $resultado['nuevos'],
+				'actualizados' => $resultado['actualizados'],
+			]);
+		} catch (Exception $e) {
+			echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+		}
+		exit;
+
 	default:
 		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles);
 		break;

@@ -141,4 +141,56 @@ class CatalogoTecnologicoModel
 
 		return $data;
 	}
+
+    // Sincronizar HomologacionSiga con lo homologado
+    // Inserta nuevos y actualiza los que cambiaron de tipo
+	
+    public function sincronizarHomologacion(): array
+    {
+        // 1. Insertar códigos nuevos que no están en HomologacionSiga
+        $sqlInsert = "
+            INSERT INTO adquisiciones.HomologacionSiga (CodigoSiga, IdCatalogoTecnologico)
+            SELECT DISTINCT
+                dr.CodigoSiga,
+                dr.IdCatalogoTecnologico
+            FROM adquisiciones.DetalleRequerimiento dr
+            WHERE dr.IdCatalogoTecnologico <> 1000010
+              AND NOT EXISTS (
+                SELECT 1 FROM adquisiciones.HomologacionSiga h
+                WHERE h.CodigoSiga = dr.CodigoSiga
+              )
+        ";
+
+        $stmtInsert = sqlsrv_query($this->db, $sqlInsert);
+        if ($stmtInsert === false) {
+            $errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+            throw new Exception('Error insertando homologaciones: ' . $errors[0]['message']);
+        }
+        $nuevos = sqlsrv_rows_affected($stmtInsert);
+
+        // 2. Actualizar los que cambiaron de tipo
+        $sqlUpdate = "
+            UPDATE h
+            SET h.IdCatalogoTecnologico = dr.IdCatalogoTecnologico
+            FROM adquisiciones.HomologacionSiga h
+            INNER JOIN (
+                SELECT DISTINCT CodigoSiga, IdCatalogoTecnologico
+                FROM adquisiciones.DetalleRequerimiento
+                WHERE IdCatalogoTecnologico <> 1000010
+            ) dr ON dr.CodigoSiga = h.CodigoSiga
+            WHERE h.IdCatalogoTecnologico <> dr.IdCatalogoTecnologico
+        ";
+
+        $stmtUpdate = sqlsrv_query($this->db, $sqlUpdate);
+        if ($stmtUpdate === false) {
+            $errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+            throw new Exception('Error actualizando homologaciones: ' . $errors[0]['message']);
+        }
+        $actualizados = sqlsrv_rows_affected($stmtUpdate);
+
+        return [
+            'nuevos'       => (int) $nuevos,
+            'actualizados' => (int) $actualizados,
+        ];
+    }
 }

@@ -11,6 +11,11 @@
 			<?php endforeach; ?>
 		</select>
 	</div>
+	<div class="col-auto ms-auto">
+		<button class="btn btn-success" id="btn-sincronizar-homologacion">
+			Sincronizar de SIGA
+		</button>
+	</div>
 </div>
 
 <div class="table-responsive">
@@ -87,4 +92,35 @@
 		}
 		window.location.href = url;
 	}
+
+	document.getElementById('btn-sincronizar-homologacion').addEventListener('click', function() {
+		const btn = this;
+		btn.disabled = true;
+		btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Sincronizando...';
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=sincronizarHomologacionAjax',
+			type: 'POST',
+			dataType: 'json',
+			success: function(response) {
+				btn.disabled = false;
+				btn.innerHTML = 'Sincronizar Homologación';
+
+				if (response.success) {
+					alert(
+						'Sincronización completada.\n' +
+						'Nuevos: ' + response.nuevos + '\n' +
+						'Actualizados: ' + response.actualizados
+					);
+				} else {
+					alert('Error: ' + (response.message || 'No se pudo sincronizar.'));
+				}
+			},
+			error: function() {
+				btn.disabled = false;
+				btn.innerHTML = 'Sincronizar Homologación';
+				alert('Ocurrió un error al conectar con el servidor.');
+			}
+		});
+	});
 </script>
