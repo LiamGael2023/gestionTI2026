@@ -200,6 +200,24 @@ switch ($action) {
 		}
 		exit;
 
+	case 'agregarTecnologiaAjax':
+		header('Content-Type: application/json');
+		$codigo = isset($_POST['codigo']) ? trim((string) $_POST['codigo']) : '';
+		$nombreGenerico = isset($_POST['nombreGenerico']) ? trim((string) $_POST['nombreGenerico']) : '';
+
+		if ($codigo === '' || $nombreGenerico === '') {
+			echo json_encode([
+				'success' => false,
+				'message' => 'Debe completar codigo y nombre generico.',
+			]);
+			exit;
+		}
+
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		$resultado = $catalogoModel->agregarTecnologia($codigo, $nombreGenerico);
+		echo json_encode($resultado);
+		exit;
+
 	default:
 		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles);
 		break;

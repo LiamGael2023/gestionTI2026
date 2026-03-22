@@ -103,6 +103,74 @@ class CatalogoTecnologicoModel
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
 	}
 
+	public function existeDuplicado($codigo, $nombreGenerico)
+	{
+		$sql = "
+			SELECT TOP 1 Id, Codigo, NombreGenerico
+			FROM adquisiciones.CatalogoTecnologico
+			WHERE Activo = 1
+			  AND UPPER(LTRIM(RTRIM(Codigo))) = UPPER(LTRIM(RTRIM(?)))
+			  AND UPPER(LTRIM(RTRIM(NombreGenerico))) = UPPER(LTRIM(RTRIM(?)))
+		";
+
+		$params = [$codigo, $nombreGenerico];
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if ($stmt === false) {
+			return null;
+		}
+
+		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
+	}
+
+	public function agregarTecnologia($codigo, $nombreGenerico)
+	{
+		$codigoLimpio = trim((string) $codigo);
+		$nombreLimpio = trim((string) $nombreGenerico);
+
+		if ($codigoLimpio === '' || $nombreLimpio === '') {
+			return [
+				'success' => false,
+				'message' => 'Debe ingresar codigo y nombre generico.',
+			];
+		}
+
+		$duplicado = $this->existeDuplicado($codigoLimpio, $nombreLimpio);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'duplicado' => true,
+				'tipoConflicto' => 'exacto',
+				'message' => 'La tecnologia ya existe en el catalogo con el mismo codigo y nombre generico.',
+				'existente' => [
+					'Id' => (int) ($duplicado['Id'] ?? 0),
+					'Codigo' => (string) ($duplicado['Codigo'] ?? ''),
+					'NombreGenerico' => (string) ($duplicado['NombreGenerico'] ?? ''),
+				],
+			];
+		}
+
+		$sql = "
+			INSERT INTO adquisiciones.CatalogoTecnologico (Codigo, NombreGenerico, Activo)
+			VALUES (?, ?, 1)
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$codigoLimpio, $nombreLimpio]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo registrar la tecnologia' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tecnologia registrada correctamente.',
+		];
+	}
+
 	public function obtenerPedidosPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');

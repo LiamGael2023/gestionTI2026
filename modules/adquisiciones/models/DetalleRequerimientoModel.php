@@ -99,7 +99,7 @@ class DetalleRequerimientoModel
 
 	public function listarOpcionesCatalogoTecnologico()
 	{
-		$sql = "SELECT Id, Codigo, NombreGenerico FROM adquisiciones.CatalogoTecnologico WHERE Activo = 1 ORDER BY Codigo, NombreGenerico";
+		$sql = "SELECT Id, Codigo, NombreGenerico FROM adquisiciones.CatalogoTecnologico WHERE Activo = 1";
 		$stmt = sqlsrv_query($this->db, $sql);
 		if ($stmt === false) {
 			return [];
@@ -113,6 +113,15 @@ class DetalleRequerimientoModel
 				'NombreGenerico' => (string) $row['NombreGenerico'],
 			];
 		}
+
+		usort($data, static function ($a, $b) {
+			$comparacionCodigo = strnatcasecmp($a['Codigo'], $b['Codigo']);
+			if ($comparacionCodigo !== 0) {
+				return $comparacionCodigo;
+			}
+
+			return strcasecmp($a['NombreGenerico'], $b['NombreGenerico']);
+		});
 
 		return $data;
 	}

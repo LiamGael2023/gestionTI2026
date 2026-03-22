@@ -12,6 +12,9 @@
 		</select>
 	</div>
 	<div class="col-auto ms-auto">
+		<button class="btn btn-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#modalNuevaTecnologia">
+			Nueva tecnologia
+		</button>
 		<button class="btn btn-success" id="btn-sincronizar-homologacion">
 			Sincronizar de SIGA
 		</button>
@@ -72,6 +75,33 @@
 	</table>
 </div>
 
+<div class="modal fade" id="modalNuevaTecnologia" tabindex="-1" aria-labelledby="modalNuevaTecnologiaLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalNuevaTecnologiaLabel">Agregar nueva tecnologia</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="formNuevaTecnologia">
+				<div class="modal-body">
+					<div class="mb-3">
+						<label for="nuevaTecnologiaCodigo" class="form-label">Codigo</label>
+						<input type="text" class="form-control" id="nuevaTecnologiaCodigo" name="codigo" maxlength="50" required>
+					</div>
+					<div class="mb-0">
+						<label for="nuevaTecnologiaNombre" class="form-label">Nombre generico</label>
+						<input type="text" class="form-control" id="nuevaTecnologiaNombre" name="nombreGenerico" maxlength="255" required>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-primary" id="btn-guardar-tecnologia">Guardar</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
 <script>
 	function filtrarTecnologiasPorAnio() {
 		const anio = document.getElementById('filtroAnioTec').value;
@@ -104,7 +134,7 @@
 			dataType: 'json',
 			success: function(response) {
 				btn.disabled = false;
-				btn.innerHTML = 'Sincronizar Homologación';
+				btn.innerHTML = 'Sincronizar de SIGA';
 
 				if (response.success) {
 					alert(
@@ -118,9 +148,78 @@
 			},
 			error: function() {
 				btn.disabled = false;
-				btn.innerHTML = 'Sincronizar Homologación';
+				btn.innerHTML = 'Sincronizar de SIGA';
 				alert('Ocurrió un error al conectar con el servidor.');
 			}
 		});
+	});
+
+	document.getElementById('formNuevaTecnologia').addEventListener('submit', function(event) {
+		event.preventDefault();
+
+		const form = this;
+		const btnGuardar = document.getElementById('btn-guardar-tecnologia');
+		const codigoInput = document.getElementById('nuevaTecnologiaCodigo');
+		const nombreInput = document.getElementById('nuevaTecnologiaNombre');
+		const codigo = codigoInput.value.trim();
+		const nombreGenerico = nombreInput.value.trim();
+
+		if (!codigo || !nombreGenerico) {
+			alert('Debe completar codigo y nombre generico.');
+			return;
+		}
+
+		btnGuardar.disabled = true;
+		btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=agregarTecnologiaAjax',
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				codigo: codigo,
+				nombreGenerico: nombreGenerico
+			},
+			success: function(response) {
+				btnGuardar.disabled = false;
+				btnGuardar.innerHTML = 'Guardar';
+
+				if (response && response.success) {
+					alert(response.message || 'Tecnologia registrada correctamente.');
+
+					const modalElement = document.getElementById('modalNuevaTecnologia');
+					const modalInstance = bootstrap.Modal.getInstance(modalElement);
+					if (modalInstance) {
+						modalInstance.hide();
+					}
+
+					form.reset();
+					filtrarTecnologiasPorAnio();
+					return;
+				}
+
+				if (response && response.duplicado && response.existente) {
+					alert(
+						'Tecnologia duplicada.\n' +
+						'Codigo existente: ' + (response.existente.Codigo || '') + '\n' +
+						'Nombre existente: ' + (response.existente.NombreGenerico || '')
+					);
+					return;
+				}
+
+				alert((response && response.message) ? response.message : 'No se pudo registrar la tecnologia.');
+			},
+			error: function() {
+				btnGuardar.disabled = false;
+				btnGuardar.innerHTML = 'Guardar';
+				alert('Ocurrió un error al conectar con el servidor.');
+			}
+		});
+	});
+
+	document.getElementById('modalNuevaTecnologia').addEventListener('hidden.bs.modal', function() {
+		document.getElementById('formNuevaTecnologia').reset();
+		document.getElementById('btn-guardar-tecnologia').disabled = false;
+		document.getElementById('btn-guardar-tecnologia').innerHTML = 'Guardar';
 	});
 </script>
