@@ -74,7 +74,7 @@
 			</div>
 		<?php else: ?>
 			<div class="alert alert-warning mt-3 mb-0" role="alert">
-				Debe registrar primero la especificación técnica antes de cargar la verificación técnica.
+				Debe registrar primero la orden de compra antes de cargar la verificación técnica.
 			</div>
 		<?php endif; ?>
 	<?php endif; ?>

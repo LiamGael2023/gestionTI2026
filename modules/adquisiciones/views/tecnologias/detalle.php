@@ -29,10 +29,12 @@ $minimoFichasRequeridas = 4;
 $totalFichas = count($fichasTecnicas);
 $tieneFichas = $totalFichas >= $minimoFichasRequeridas;
 $tieneEspecificacion = !empty($especificacionTecnica);
+$tieneOrdenCompra = !empty($ordenCompra);
 $tieneVerificacion = !empty($verificacionTecnica);
 $tieneConformidad = !empty($conformidad);
 $puedeRegistrarEspecificacion = $tieneFichas;
-$puedeRegistrarVerificacion = $tieneFichas && $tieneEspecificacion;
+$puedeRegistrarOrdenCompra = $tieneFichas && $tieneEspecificacion;
+$puedeRegistrarVerificacion = $tieneFichas && $tieneEspecificacion && $tieneOrdenCompra;
 $puedeRegistrarConformidad = $tieneFichas && $tieneEspecificacion && $tieneVerificacion;
 $formatearFecha = static function ($fecha) {
 	if (empty($fecha)) {
@@ -223,6 +225,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 </div>
 
 <?php require __DIR__ . '/partials/especificacion.php'; ?>
+<?php require __DIR__ . '/partials/orden.php'; ?>
 <?php require __DIR__ . '/partials/verificacion.php'; ?>
 <?php require __DIR__ . '/partials/conformidad.php'; ?>
 
@@ -447,6 +450,103 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			await recargarVistaTecnologia();
 		} catch (error) {
 			alert(error.message || 'Error al eliminar la especificación técnica.');
+		}
+	}
+
+	function validarNumeroOrden(numeroOrden) {
+		if (!numeroOrden) {
+			throw new Error('El número de orden es obligatorio.');
+		}
+		if (numeroOrden.length > 25) {
+			throw new Error('El número de orden no puede exceder 25 caracteres.');
+		}
+	}
+
+	function normalizarFechaEntrega(valor) {
+		const fecha = (valor || '').trim();
+		return fecha !== '' ? fecha : null;
+	}
+
+	async function guardarOrdenCompra(e) {
+		e.preventDefault();
+
+		try {
+			const numeroOrden = document.getElementById('oc_numero_orden').value.trim();
+			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega').value);
+			const file = document.getElementById('oc_documento').files[0];
+
+			validarNumeroOrden(numeroOrden);
+			validarPdf(file);
+			const documentoBase64 = await fileToBase64(file);
+			const data = await enviarJson('index.php?module=adquisiciones&action=guardarOrdenCompraAjax', {
+				IdCatalogoTecnologico: idTecnologia,
+				NumeroOrden: numeroOrden,
+				FechaEntrega: fechaEntrega,
+				Anio: anioActual,
+				Documento: documentoBase64
+			});
+
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo guardar la orden de compra.');
+			}
+
+			await recargarVistaTecnologia();
+		} catch (error) {
+			alert(error.message || 'Error al guardar la orden de compra.');
+		}
+
+		return false;
+	}
+
+	async function actualizarOrdenCompra(e) {
+		e.preventDefault();
+
+		try {
+			const idOrden = parseInt(document.getElementById('oc_id').value, 10);
+			const numeroOrden = document.getElementById('oc_numero_orden_upd').value.trim();
+			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_upd').value);
+			const file = document.getElementById('oc_documento_upd').files[0];
+
+			if (!idOrden) {
+				throw new Error('Faltan datos para actualizar la orden de compra.');
+			}
+			validarNumeroOrden(numeroOrden);
+			validarPdf(file);
+			const documentoBase64 = await fileToBase64(file);
+			const data = await enviarJson('index.php?module=adquisiciones&action=actualizarOrdenCompraAjax', {
+				Id: idOrden,
+				NumeroOrden: numeroOrden,
+				FechaEntrega: fechaEntrega,
+				Documento: documentoBase64
+			});
+
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo actualizar la orden de compra.');
+			}
+
+			await recargarVistaTecnologia();
+		} catch (error) {
+			alert(error.message || 'Error al actualizar la orden de compra.');
+		}
+
+		return false;
+	}
+
+	async function eliminarOrdenCompra(id) {
+		if (!confirm('¿Desea eliminar esta orden de compra?')) {
+			return;
+		}
+
+		try {
+			const data = await enviarJson('index.php?module=adquisiciones&action=eliminarOrdenCompraAjax', {
+				Id: id
+			});
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo eliminar la orden de compra.');
+			}
+			await recargarVistaTecnologia();
+		} catch (error) {
+			alert(error.message || 'Error al eliminar la orden de compra.');
 		}
 	}
 

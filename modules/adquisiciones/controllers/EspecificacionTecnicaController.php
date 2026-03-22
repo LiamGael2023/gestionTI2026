@@ -2,6 +2,7 @@
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
 require_once 'modules/adquisiciones/models/EspecificacionTecnicaModel.php';
 require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
+require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
 require_once 'modules/adquisiciones/models/ConformidadModel.php';
 
@@ -15,6 +16,7 @@ if (!isset($conn) || $conn === null) {
 $catalogoModel = new CatalogoTecnologicoModel($conn);
 $especificacionModel = new EspecificacionTecnicaModel($conn);
 $fichaTecnicaModel = new FichaTecnicaModel($conn);
+$ordenCompraModel = new OrdenCompraModel($conn);
 $verificacionTecnicaModel = new VerificacionTecnicaModel($conn);
 $conformidadModel = new ConformidadModel($conn);
 $action = $_GET['action'] ?? 'tecnologia';
@@ -121,6 +123,21 @@ function normalizarTextoNullable($texto)
 	return $texto !== '' ? $texto : null;
 }
 
+function normalizarFechaNullable($fecha)
+{
+	$fecha = trim((string) $fecha);
+	if ($fecha === '') {
+		return null;
+	}
+
+	$timestamp = strtotime($fecha);
+	if ($timestamp === false) {
+		return false;
+	}
+
+	return date('Y-m-d', $timestamp);
+}
+
 function responderErrorSql($mensajeBase, $mensajeTruncamiento = null)
 {
 	$mensaje = $mensajeBase;
@@ -174,12 +191,13 @@ function enviarDocumentoPdf($conn, $tabla, $id, $camposNombre)
 	exit;
 }
 
-function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTecnicaModel, $especificacionModel, $verificacionTecnicaModel, $etapa)
+function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTecnicaModel, $especificacionModel, $ordenCompraModel, $verificacionTecnicaModel, $etapa)
 {
 	$minimoFichas = 4;
 	$totalFichas = $fichaTecnicaModel->contarPorTecnologia($idCatalogoTecnologico, $anio);
 	$tieneFichasMinimas = $totalFichas >= $minimoFichas;
 	$tieneEspecificacion = !empty($especificacionModel->obtenerPorTecnologia($idCatalogoTecnologico, $anio));
+	$tieneOrdenCompra = !empty($ordenCompraModel->obtenerPorTecnologia($idCatalogoTecnologico, $anio));
 	$tieneVerificacion = !empty($verificacionTecnicaModel->obtenerPorTecnologia($idCatalogoTecnologico, $anio));
 
 	switch ($etapa) {
@@ -187,6 +205,17 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 			return $tieneFichasMinimas ? null : 'Primero debe registrar al menos 4 fichas técnicas.';
 
 		case 'verificacion':
+			if (!$tieneFichasMinimas) {
+				return 'Primero debe registrar al menos 4 fichas técnicas.';
+			}
+
+			if (!$tieneEspecificacion) {
+				return 'Primero debe registrar la especificación técnica.';
+			}
+
+			return $tieneOrdenCompra ? null : 'Primero debe registrar la orden de compra.';
+
+		case 'orden':
 			if (!$tieneFichasMinimas) {
 				return 'Primero debe registrar al menos 4 fichas técnicas.';
 			}
@@ -223,6 +252,7 @@ switch ($action) {
 		$pedidos = $catalogoModel->obtenerPedidosPorTecnologia($id, $anioFiltro);
 		$especificacionTecnica = $especificacionModel->obtenerPorTecnologia($id, $anioFiltro);
 		$fichasTecnicas = $fichaTecnicaModel->listarPorTecnologia($id, $anioFiltro);
+		$ordenCompra = $ordenCompraModel->obtenerPorTecnologia($id, $anioFiltro);
 		$verificacionTecnica = $verificacionTecnicaModel->obtenerPorTecnologia($id, $anioFiltro);
 		$conformidad = $conformidadModel->obtenerPorTecnologia($id, $anioFiltro);
 		break;
@@ -235,6 +265,9 @@ switch ($action) {
 
 	case 'verVerificacionTecnicaAjax':
 		enviarDocumentoPdf($conn, 'adquisiciones.VerificacionTecnica', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Observacion']);
+
+	case 'verOrdenCompraAjax':
+		enviarDocumentoPdf($conn, 'adquisiciones.OrdenCompra', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['NumeroOrden']);
 
 	case 'verConformidadAjax':
 		enviarDocumentoPdf($conn, 'adquisiciones.Conformidad', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Observacion']);
@@ -262,6 +295,7 @@ switch ($action) {
 			$anio,
 			$fichaTecnicaModel,
 			$especificacionModel,
+			$ordenCompraModel,
 			$verificacionTecnicaModel,
 			'especificacion'
 		);
@@ -320,6 +354,100 @@ switch ($action) {
 		$ok = $especificacionModel->eliminar($idEspecificacion);
 		responderJson(['ok' => $ok]);
 
+	case 'guardarOrdenCompraAjax':
+		$input = obtenerInputJsonPost();
+		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
+		$numeroOrden = obtenerTextoInput($input, 'NumeroOrden');
+		$fechaEntrega = normalizarFechaNullable(obtenerTextoInput($input, 'FechaEntrega'));
+		$anio = obtenerEnteroInput($input, 'Anio');
+		$pdfBase64 = obtenerDocumentoInput($input);
+		if ($idCat <= 0 || $numeroOrden === '' || $anio <= 0 || $pdfBase64 === '') {
+			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
+		}
+		if (longitudTexto($numeroOrden) > OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH) {
+			responderJson([
+				'ok' => false,
+				'error' => 'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
+			]);
+		}
+		if ($fechaEntrega === false) {
+			responderJson(['ok' => false, 'error' => 'La fecha de entrega es inválida.']);
+		}
+		if (!validarPdfBase64($pdfBase64)) {
+			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
+		}
+		$errorSecuencia = obtenerErrorSecuenciaDocumental(
+			$idCat,
+			$anio,
+			$fichaTecnicaModel,
+			$especificacionModel,
+			$ordenCompraModel,
+			$verificacionTecnicaModel,
+			'orden'
+		);
+		if ($errorSecuencia !== null) {
+			responderJson(['ok' => false, 'error' => $errorSecuencia]);
+		}
+		$resultado = $ordenCompraModel->guardar([
+			'IdCatalogoTecnologico' => $idCat,
+			'NumeroOrden' => $numeroOrden,
+			'FechaEntrega' => $fechaEntrega,
+			'Anio' => $anio,
+			'Documento' => $pdfBase64
+		]);
+		if ($resultado) {
+			responderJson(['ok' => true, 'id' => $resultado]);
+		}
+
+		responderErrorSql(
+			'Ya existe una orden de compra para este año o error al guardar.',
+			'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
+		);
+
+	case 'actualizarOrdenCompraAjax':
+		$input = obtenerInputJsonPost();
+		$idDocumento = obtenerEnteroInput($input, 'Id');
+		$numeroOrden = obtenerTextoInput($input, 'NumeroOrden');
+		$fechaEntrega = normalizarFechaNullable(obtenerTextoInput($input, 'FechaEntrega'));
+		$pdfBase64 = obtenerDocumentoInput($input);
+		if ($idDocumento <= 0 || $numeroOrden === '' || $pdfBase64 === '') {
+			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
+		}
+		if (longitudTexto($numeroOrden) > OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH) {
+			responderJson([
+				'ok' => false,
+				'error' => 'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
+			]);
+		}
+		if ($fechaEntrega === false) {
+			responderJson(['ok' => false, 'error' => 'La fecha de entrega es inválida.']);
+		}
+		if (!validarPdfBase64($pdfBase64)) {
+			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
+		}
+		$ok = $ordenCompraModel->actualizar($idDocumento, [
+			'NumeroOrden' => $numeroOrden,
+			'FechaEntrega' => $fechaEntrega,
+			'Documento' => $pdfBase64
+		]);
+		if ($ok) {
+			responderJson(['ok' => true]);
+		}
+
+		responderErrorSql(
+			'No se pudo actualizar la orden de compra.',
+			'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
+		);
+
+	case 'eliminarOrdenCompraAjax':
+		$input = obtenerInputJsonPost();
+		$idDocumento = obtenerEnteroInput($input, 'Id');
+		if ($idDocumento <= 0) {
+			responderJson(['ok' => false, 'error' => 'ID inválido']);
+		}
+		$ok = $ordenCompraModel->eliminar($idDocumento);
+		responderJson(['ok' => $ok]);
+
 	case 'guardarVerificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -337,6 +465,7 @@ switch ($action) {
 			$anio,
 			$fichaTecnicaModel,
 			$especificacionModel,
+			$ordenCompraModel,
 			$verificacionTecnicaModel,
 			'verificacion'
 		);
@@ -398,6 +527,7 @@ switch ($action) {
 			$anio,
 			$fichaTecnicaModel,
 			$especificacionModel,
+			$ordenCompraModel,
 			$verificacionTecnicaModel,
 			'conformidad'
 		);
