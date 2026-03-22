@@ -244,6 +244,7 @@ function formatearFechaEntregaDashboard($fecha)
 					<?php if (empty($listaOrdenesProximas)): ?>
 						<div class="text-secondary">No hay entregas programadas para la ventana seleccionada.</div>
 					<?php else: ?>
+						<?php $filasMinimasProximas = 3; ?>
 						<div class="list-group list-group-flush">
 							<?php foreach ($listaOrdenesProximas as $orden): ?>
 								<?php
@@ -270,6 +271,13 @@ function formatearFechaEntregaDashboard($fecha)
 									</div>
 								</div>
 							<?php endforeach; ?>
+							<?php if (count($listaOrdenesProximas) < $filasMinimasProximas): ?>
+								<?php for ($i = count($listaOrdenesProximas); $i < $filasMinimasProximas; $i++): ?>
+									<div class="list-group-item px-0 text-secondary small">
+										Sin más órdenes próximas dentro de <?php echo $diasVentanaEntrega; ?> días.
+									</div>
+								<?php endfor; ?>
+							<?php endif; ?>
 						</div>
 					<?php endif; ?>
 				</div>
