@@ -238,17 +238,46 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 	}
 }
 
+function resolverAnioFiltroLocal($anioSolicitado, array $aniosDisponibles)
+{
+	if ($anioSolicitado !== null && $anioSolicitado > 0) {
+		return $anioSolicitado;
+	}
+
+	$anioActual = (int) date('Y');
+	if (in_array($anioActual, $aniosDisponibles, true)) {
+		return $anioActual;
+	}
+
+	if (!empty($aniosDisponibles)) {
+		return (int) $aniosDisponibles[0];
+	}
+
+	return $anioActual;
+}
+
+function validarPedidosTecnologiaPorAnio($catalogoModel, $idCatalogoTecnologico, $anio)
+{
+	if (!$catalogoModel->tienePedidosPorTecnologiaEnAnio($idCatalogoTecnologico, $anio)) {
+		responderJson([
+			'ok' => false,
+			'error' => 'No existen requerimientos para esta tecnologia en el año seleccionado.'
+		]);
+	}
+}
+
 switch ($action) {
 	case 'tecnologia':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$anioFiltro = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : (int) date('Y');
+		$anioSolicitado = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
 
 		$tecnologia = $catalogoModel->obtenerPorId($id);
 		if (!$tecnologia) {
 			redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
 		}
 
-		$aniosDisponiblesTec = $catalogoModel->obtenerAniosDisponibles();
+		$aniosDisponiblesTec = $catalogoModel->obtenerAniosDisponiblesPorTecnologia($id);
+		$anioFiltro = resolverAnioFiltroLocal($anioSolicitado, $aniosDisponiblesTec);
 		$pedidos = $catalogoModel->obtenerPedidosPorTecnologia($id, $anioFiltro);
 		$especificacionTecnica = $especificacionModel->obtenerPorTecnologia($id, $anioFiltro);
 		$fichasTecnicas = $fichaTecnicaModel->listarPorTecnologia($id, $anioFiltro);
@@ -281,6 +310,7 @@ switch ($action) {
 		if ($idCat <= 0 || $codigo === '' || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
 		if (longitudTexto($codigo) > EspecificacionTecnicaModel::CODIGO_MAX_LENGTH) {
 			responderJson([
 				'ok' => false,
@@ -364,6 +394,7 @@ switch ($action) {
 		if ($idCat <= 0 || $numeroOrden === '' || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
 		if (longitudTexto($numeroOrden) > OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH) {
 			responderJson([
 				'ok' => false,
@@ -457,6 +488,7 @@ switch ($action) {
 		if ($idCat <= 0 || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
 		if (!validarPdfBase64($pdfBase64)) {
 			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
 		}
@@ -519,6 +551,7 @@ switch ($action) {
 		if ($idCat <= 0 || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
 		if (!validarPdfBase64($pdfBase64)) {
 			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
 		}
@@ -582,6 +615,7 @@ switch ($action) {
 		if ($idCat <= 0 || $marca === '' || $modelo === '' || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
 		if (!validarPdfBase64($pdfBase64)) {
 			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
 		}

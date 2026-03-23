@@ -270,14 +270,28 @@
 		}
 	}
 
-	const inputAnioImportar = document.getElementById('anio-importar');
+	var debeRecargarRequerimientos = false;
+
+	var modalImportarSiga = document.getElementById('modal-importar-siga');
+	if (modalImportarSiga) {
+		modalImportarSiga.addEventListener('hidden.bs.modal', function() {
+			if (!debeRecargarRequerimientos) {
+				return;
+			}
+
+			debeRecargarRequerimientos = false;
+			filtrarPorAnio();
+		});
+	}
+
+	var inputAnioImportar = document.getElementById('anio-importar');
 	if (inputAnioImportar) {
 		inputAnioImportar.addEventListener('input', function() {
 			this.value = this.value.replace(/\D/g, '').slice(0, 4);
 		});
 	}
 
-	const inputAnioRequerimiento = document.getElementById('Anio');
+	var inputAnioRequerimiento = document.getElementById('Anio');
 	if (inputAnioRequerimiento) {
 		inputAnioRequerimiento.addEventListener('input', function() {
 			this.value = this.value.replace(/\D/g, '').slice(0, 4);
@@ -285,7 +299,7 @@
 	}
 
 	// Buscar pedidos en SIGA
-	const btnBuscarSiga = document.getElementById('btn-buscar-siga');
+	var btnBuscarSiga = document.getElementById('btn-buscar-siga');
 	if (btnBuscarSiga) {
 		btnBuscarSiga.addEventListener('click', function() {
 		const anio = document.getElementById('anio-importar').value.trim();
@@ -395,6 +409,7 @@
 			})
 			.then(function(response) {
 				if (response.success) {
+					debeRecargarRequerimientos = true;
 					// Reemplazar botón por badge
 					const fila = document.getElementById('fila-' + nroPedido);
 					if (fila && fila.lastElementChild) {
@@ -413,7 +428,7 @@
 			});
 	}
 
-	const formRequerimiento = document.getElementById('form-requerimiento');
+	var formRequerimiento = document.getElementById('form-requerimiento');
 	if (formRequerimiento) {
 		formRequerimiento.addEventListener('submit', function(e) {
 			e.preventDefault();

@@ -69,14 +69,12 @@ class CatalogoTecnologicoModel
 			SELECT DISTINCT r.Anio
 			FROM adquisiciones.Requerimiento r
 			INNER JOIN adquisiciones.DetalleRequerimiento d ON d.IdRequerimiento = r.Id
-			UNION
-			SELECT YEAR(GETDATE()) AS Anio
 			ORDER BY Anio DESC
 		";
 
 		$stmt = sqlsrv_query($this->db, $sql);
 		if ($stmt === false) {
-			return [(int) date('Y')];
+			return [];
 		}
 
 		$data = [];
@@ -85,6 +83,47 @@ class CatalogoTecnologicoModel
 		}
 
 		return $data;
+	}
+
+	public function obtenerAniosDisponiblesPorTecnologia($idCatalogoTecnologico)
+	{
+		$sql = "
+			SELECT DISTINCT r.Anio
+			FROM adquisiciones.Requerimiento r
+			INNER JOIN adquisiciones.DetalleRequerimiento d ON d.IdRequerimiento = r.Id
+			WHERE d.IdCatalogoTecnologico = ?
+			ORDER BY r.Anio DESC
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $idCatalogoTecnologico]);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = (int) $row['Anio'];
+		}
+
+		return $data;
+	}
+
+	public function tienePedidosPorTecnologiaEnAnio($idCatalogoTecnologico, $anio)
+	{
+		$sql = "
+			SELECT TOP 1 1 AS Existe
+			FROM adquisiciones.DetalleRequerimiento d
+			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
+			WHERE d.IdCatalogoTecnologico = ? AND r.Anio = ?
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $idCatalogoTecnologico, (int) $anio]);
+		if ($stmt === false) {
+			return false;
+		}
+
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		return !empty($row);
 	}
 
 	public function obtenerPorId($id)

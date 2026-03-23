@@ -113,9 +113,10 @@ switch ($action) {
 	case 'tecnologias':
 		$vistaActual = 'tecnologias';
 		$catalogoModel = new CatalogoTecnologicoModel($conn);
-		$anioTecnologias = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : (int) date('Y');
-		$tecnologias = $catalogoModel->listarConEstadoFicha($anioTecnologias);
 		$aniosTecnologias = $catalogoModel->obtenerAniosDisponibles();
+		$anioTecnologiasSolicitado = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
+		$anioTecnologias = resolverAnioFiltro($anioTecnologiasSolicitado, $aniosTecnologias);
+		$tecnologias = $catalogoModel->listarConEstadoFicha($anioTecnologias);
 		break;
 
 	case 'consolidado':
