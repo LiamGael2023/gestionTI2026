@@ -79,7 +79,24 @@ function formatearFechaEntregaDashboard($fecha)
 	return $timestamp ? date('d/m/Y', $timestamp) : $fechaTexto;
 }
 ?>
-<div>
+<style>
+	.adq-dashboard .card {
+		border: 1px solid rgba(98, 105, 118, 0.12);
+		border-radius: 0.9rem;
+		box-shadow: 0 1px 2px rgba(31, 41, 55, 0.04), 0 8px 24px -14px rgba(31, 41, 55, 0.22);
+		transition: box-shadow 0.2s ease, border-color 0.2s ease;
+	}
+
+	.adq-dashboard .card:hover {
+		border-color: rgba(98, 105, 118, 0.2);
+		box-shadow: 0 2px 6px rgba(31, 41, 55, 0.08), 0 10px 24px -14px rgba(31, 41, 55, 0.28);
+	}
+
+	.adq-dashboard .card .card-header {
+		border-bottom-color: rgba(98, 105, 118, 0.12);
+	}
+</style>
+<div class="adq-dashboard">
 	<form method="GET" action="index.php" class="mb-3">
 		<input type="hidden" name="module" value="adquisiciones">
 		<input type="hidden" name="action" value="dashboard">
@@ -292,7 +309,7 @@ function formatearFechaEntregaDashboard($fecha)
 					<h3 class="card-title">Items por Tipo de Equipo</h3>
 				</div>
 				<div class="table-responsive">
-					<table class="table table-vcenter card-table table-sm mb-0">
+					<table class="table table-vcenter card-table mb-0">
 						<thead>
 							<tr>
 								<th class="text-secondary text-uppercase small">Código</th>
@@ -328,7 +345,7 @@ function formatearFechaEntregaDashboard($fecha)
 					<h3 class="card-title">Requerimientos por Centro de Costo</h3>
 				</div>
 				<div class="table-responsive">
-					<table class="table table-vcenter card-table table-sm mb-0">
+					<table class="table table-vcenter card-table mb-0">
 						<thead>
 							<tr>
 								<th class="text-secondary text-uppercase small">Siglas</th>

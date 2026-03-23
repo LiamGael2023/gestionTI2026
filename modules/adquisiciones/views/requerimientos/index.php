@@ -65,30 +65,6 @@
 	</table>
 </div>
 
-<!-- Modal Confirmar Eliminacion -->
-<div class="modal modal-blur fade" id="modal-eliminar-requerimiento" tabindex="-1" role="dialog" aria-hidden="true">
-	<div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-		<div class="modal-content">
-			<div class="modal-body text-center py-4">
-				<h3>Confirmar eliminacion</h3>
-				<div class="text-secondary">Se eliminara el requerimiento y todos sus detalles.</div>
-			</div>
-			<div class="modal-footer">
-				<div class="w-100">
-					<div class="row">
-						<div class="col">
-							<button type="button" class="btn btn-ghost-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
-						</div>
-						<div class="col">
-							<button type="button" id="btn-confirmar-eliminar" class="btn btn-danger w-100">Eliminar</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</div>
-
 <!-- Modal Nuevo Requerimiento -->
 <div class="modal modal-blur fade" id="modal-requerimiento" tabindex="-1" role="dialog" aria-hidden="true">
 	<div class="modal-dialog modal-dialog-centered" role="document">
@@ -97,7 +73,7 @@
 				<h5 class="modal-title">Nuevo Requerimiento</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
-			<form id="form-requerimiento">
+			<form id="form-requerimiento" method="post" action="index.php?module=adquisiciones&action=guardarForm">
 				<div class="modal-body">
 					<div class="mb-3">
 						<label class="form-label">Centro de Costo</label>
@@ -200,8 +176,6 @@
 </div>
 
 <script>
-	let idRequerimientoAEliminar = null;
-
 	function escapeHtml(texto) {
 		return String(texto)
 			.replace(/&/g, '&amp;')
@@ -322,7 +296,7 @@
 		const tbody = document.getElementById('siga-tbody');
 
 		if (!/^\d{1,4}$/.test(anio)) {
-			alert('Ingrese solo números (máximo 4 dígitos).');
+			window.adqNotifySafe('warning', 'Validacion', 'Ingrese solo numeros (maximo 4 digitos).');
 			return;
 		}
 
@@ -351,7 +325,7 @@
 				if (loading) loading.style.display = 'none';
 
 				if (!response.success) {
-					alert('Error: ' + (response.message || 'No se pudo consultar SIGA.'));
+					window.adqNotifySafe('danger', 'Error al consultar SIGA', response.message || 'No se pudo consultar SIGA.');
 					return;
 				}
 
@@ -395,7 +369,7 @@
 				btn.disabled = false;
 				btn.innerHTML = 'Buscar';
 				if (loading) loading.style.display = 'none';
-				alert('Ocurrió un error al conectar con el servidor.');
+				window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
 			},
 		);
 		});
@@ -429,13 +403,13 @@
 				} else {
 					btn.disabled = false;
 					btn.innerHTML = 'Importar';
-					alert('Error: ' + (response.message || 'No se pudo importar el pedido.'));
+					window.adqNotifySafe('danger', 'Error al importar pedido', response.message || 'No se pudo importar el pedido.');
 				}
 			})
 			.catch(function() {
 				btn.disabled = false;
 				btn.innerHTML = 'Importar';
-				alert('Ocurrió un error al conectar con el servidor.');
+				window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
 			});
 	}
 
@@ -477,11 +451,11 @@
 					if (anioEl) anioEl.value = String(new Date().getFullYear());
 					if (idCentroCostoEl) idCentroCostoEl.value = idCentroCosto;
 				} else {
-					alert(response.message || 'No se pudo guardar el requerimiento.');
+					window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el requerimiento.');
 				}
 				})
 				.catch(function() {
-				alert('Ocurrio un error al procesar la solicitud.');
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 				});
 		});
 	}
@@ -495,48 +469,45 @@
 		window.location.href = url;
 	}
 
-	function eliminarRequerimiento(id) {
-		idRequerimientoAEliminar = id;
-		bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-eliminar-requerimiento')).show();
-	}
-
-	const btnConfirmarEliminar = document.getElementById('btn-confirmar-eliminar');
-	if (btnConfirmarEliminar) {
-		btnConfirmarEliminar.addEventListener('click', function() {
-			if (!idRequerimientoAEliminar) return;
-
-			fetch('index.php?module=adquisiciones&action=eliminarAjax', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-				},
-				body: new URLSearchParams({ id: idRequerimientoAEliminar }).toString()
-			})
-				.then(function(resp) {
-					if (!resp.ok) {
-						throw new Error('Error HTTP');
-					}
-					return resp.json();
-				})
-				.then(function(response) {
-				if (response.success) {
-					const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modal-eliminar-requerimiento'));
-					modal.hide();
-
-					const fila = document.querySelector('tr[data-id="' + idRequerimientoAEliminar + '"]');
-					if (fila) {
-						fila.remove();
-						asegurarEstadoVacioTablaRequerimientos();
-					}
-
-					idRequerimientoAEliminar = null;
-				} else {
-					alert(response.message || 'No se pudo eliminar el requerimiento.');
-				}
-				})
-				.catch(function() {
-				alert('Ocurrio un error al procesar la solicitud.');
-				});
+	async function eliminarRequerimiento(id) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: 'Se eliminara el requerimiento y todos sus detalles.',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
 		});
+
+		if (!confirmado) {
+			return;
+		}
+
+		fetch('index.php?module=adquisiciones&action=eliminarAjax', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+			},
+			body: new URLSearchParams({ id: id }).toString()
+		})
+			.then(function(resp) {
+				if (!resp.ok) {
+					throw new Error('Error HTTP');
+				}
+				return resp.json();
+			})
+			.then(function(response) {
+			if (response.success) {
+				const fila = document.querySelector('tr[data-id="' + id + '"]');
+				if (fila) {
+					fila.remove();
+					asegurarEstadoVacioTablaRequerimientos();
+				}
+			} else {
+				window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el requerimiento.');
+			}
+			})
+			.catch(function() {
+			window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
+			});
 	}
 </script>

@@ -2,7 +2,11 @@ function exportarConsolidado() {
 	// Obtener la tabla
 	const tabla = document.getElementById('tabla-consolidado');
 	if (!tabla) {
-		alert('No hay datos para exportar');
+		if (typeof window.adqNotifySafe === 'function') {
+			window.adqNotifySafe('info', 'Sin datos para exportar', 'No hay datos para exportar.');
+		} else {
+			console.warn('No hay datos para exportar.');
+		}
 		return;
 	}
 	

@@ -37,6 +37,17 @@ function delegarControladorAdquisiciones($ruta)
 	exit;
 }
 
+function redireccionarAdquisiciones($url)
+{
+	if (!headers_sent()) {
+		header('Location: ' . $url);
+		exit;
+	}
+
+	echo '<script>window.location.href=' . json_encode($url) . ';</script>';
+	exit;
+}
+
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
 		require_once 'config/db.php';
@@ -150,6 +161,24 @@ switch ($action) {
 			echo json_encode(['success' => false, 'message' => 'Datos incompletos']);
 		}
 		exit;
+
+	case 'guardarForm':
+		$datos = [
+			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
+			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
+		];
+
+		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
+		$urlRedirect = 'index.php?module=adquisiciones&action=requerimientos&anio=' . $anioRedirect;
+
+		if ($datos['IdCentroCosto'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
+			redireccionarAdquisiciones($urlRedirect);
+		}
+
+		$model->guardarRequerimiento($datos);
+		redireccionarAdquisiciones($urlRedirect);
+		break;
 
 	case 'eliminarAjax':
 		header('Content-Type: application/json');

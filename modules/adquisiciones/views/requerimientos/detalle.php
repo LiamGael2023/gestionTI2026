@@ -162,40 +162,9 @@
 	</div>
 </div>
 
-<!-- Modal Confirmar Eliminacion -->
-<div class="modal modal-blur fade" id="modal-eliminar-detalle" tabindex="-1" role="dialog" aria-hidden="true">
-	<div class="modal-dialog modal-sm modal-dialog-centered" role="document">
-		<div class="modal-content">
-			<div class="modal-body text-center py-4">
-				<svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-danger icon-lg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-					<path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-					<path d="M12 9v4"></path>
-					<path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"></path>
-					<path d="M12 16h.01"></path>
-				</svg>
-				<h3>Confirmar eliminación</h3>
-				<div class="text-secondary">Se eliminará este ítem del requerimiento.</div>
-			</div>
-			<div class="modal-footer">
-				<div class="w-100">
-					<div class="row">
-						<div class="col">
-							<button type="button" class="btn btn-ghost-secondary w-100" data-bs-dismiss="modal">Cancelar</button>
-						</div>
-						<div class="col">
-							<button type="button" id="btn-confirmar-eliminar-detalle" class="btn btn-danger w-100">Eliminar</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-</div>
-
 <script>
 	const idRequerimiento = <?php echo (int) $requerimiento['Id']; ?>;
 	const nroPedidoCompra = <?php echo json_encode((string) $requerimiento['NroPedidoCompra']); ?>;
-	let idDetalleAEliminar = null;
 	let modoEdicion = false;
 	let estadoActualRequerimiento = <?php echo (int) $requerimiento['Estado']; ?>;
 
@@ -457,17 +426,48 @@
 						setValue('detalle-IdCatalogoTecnologico', '');
 					}
 				} else {
-					alert(response.message || 'No se pudo guardar el ítem.');
+					window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el item.');
 				}
 			})
 			.catch(function() {
-				alert('Ocurrió un error al procesar la solicitud.');
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 			});
 	}
 
-	function eliminarDetalle(id) {
-		idDetalleAEliminar = id;
-		showModalById('modal-eliminar-detalle');
+	async function eliminarDetalle(id) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: 'Se eliminara este item del requerimiento.',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
+			return;
+		}
+
+		postData('eliminarDetalleAjax', {
+				id: id
+			})
+			.then(function(response) {
+				if (response.success) {
+					const fila = document.querySelector('tr[data-id="' + id + '"]');
+					if (fila) {
+						fila.remove();
+					}
+
+					const tablaBody = document.getElementById('tabla-detalles');
+					if (tablaBody && tablaBody.querySelectorAll('tr[data-id]').length === 0) {
+						tablaBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay ítems registrados.</td></tr>';
+					}
+				} else {
+					window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el item.');
+				}
+			})
+			.catch(function() {
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
+			});
 	}
 
 	function marcarComoCompleto() {
@@ -480,11 +480,11 @@
 					estadoActualRequerimiento = 1;
 					renderEstadoRequerimiento();
 				} else {
-					alert(response.message || 'No se pudo actualizar el estado.');
+					window.adqNotifySafe('danger', 'No se pudo actualizar', response.message || 'No se pudo actualizar el estado.');
 				}
 			})
 			.catch(function() {
-				alert('Ocurrió un error al procesar la solicitud.');
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 			});
 	}
 
@@ -498,18 +498,17 @@
 					estadoActualRequerimiento = 0;
 					renderEstadoRequerimiento();
 				} else {
-					alert(response.message || 'No se pudo actualizar el estado.');
+					window.adqNotifySafe('danger', 'No se pudo actualizar', response.message || 'No se pudo actualizar el estado.');
 				}
 			})
 			.catch(function() {
-				alert('Ocurrió un error al procesar la solicitud.');
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 			});
 	}
 
 	function inicializarVistaDetalleRequerimiento() {
 		const btnAgregar = document.getElementById('btn-agregar-item');
 		const formDetalle = document.getElementById('form-detalle');
-		const btnConfirmarEliminar = document.getElementById('btn-confirmar-eliminar-detalle');
 
 		if (btnAgregar && !btnAgregar.dataset.inicializado) {
 			btnAgregar.addEventListener('click', nuevoDetalle);
@@ -518,39 +517,6 @@
 		if (formDetalle && !formDetalle.dataset.inicializado) {
 			formDetalle.addEventListener('submit', guardarDetalle);
 			formDetalle.dataset.inicializado = '1';
-		}
-		if (btnConfirmarEliminar && !btnConfirmarEliminar.dataset.inicializado) {
-			btnConfirmarEliminar.addEventListener('click', function() {
-				if (!idDetalleAEliminar) {
-					return;
-				}
-
-				postData('eliminarDetalleAjax', {
-						id: idDetalleAEliminar
-					})
-					.then(function(response) {
-						if (response.success) {
-							hideModalById('modal-eliminar-detalle');
-							const fila = document.querySelector('tr[data-id="' + idDetalleAEliminar + '"]');
-							if (fila) {
-								fila.remove();
-							}
-
-							const tablaBody = document.getElementById('tabla-detalles');
-							if (tablaBody && tablaBody.querySelectorAll('tr[data-id]').length === 0) {
-								tablaBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay ítems registrados.</td></tr>';
-							}
-
-							idDetalleAEliminar = null;
-						} else {
-							alert(response.message || 'No se pudo eliminar el ítem.');
-						}
-					})
-					.catch(function() {
-						alert('Ocurrió un error al procesar la solicitud.');
-					});
-			});
-			btnConfirmarEliminar.dataset.inicializado = '1';
 		}
 		configurarBotonesModalFallback();
 	}

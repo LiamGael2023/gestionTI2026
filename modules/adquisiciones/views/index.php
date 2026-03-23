@@ -26,6 +26,9 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['req
 
 <div class="page-body">
 	<div class="container-xl">
+		<?php include __DIR__ . '/alerts/alertas.php'; ?>
+		<?php include __DIR__ . '/alerts/confirmacion.php'; ?>
+
 		<div class="card">
 			<div class="card-header" id="adquisiciones-nav-container">
 				<ul class="nav nav-pills card-header-pills">

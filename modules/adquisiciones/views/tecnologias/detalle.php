@@ -324,14 +324,22 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al guardar la ficha técnica.');
+			window.adqNotifySafe('danger', 'Error al guardar ficha tecnica', error.message || 'Error al guardar la ficha tecnica.');
 		}
 
 		return false;
 	}
 
 	async function eliminarFichaTecnica(id) {
-		if (!confirm('¿Desea eliminar esta ficha técnica?')) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: '¿Desea eliminar esta ficha técnica?',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
 			return;
 		}
 
@@ -344,7 +352,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al eliminar la ficha técnica.');
+			window.adqNotifySafe('danger', 'Error al eliminar ficha tecnica', error.message || 'Error al eliminar la ficha tecnica.');
 		}
 	}
 
@@ -361,7 +369,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al cambiar el estado.');
+			window.adqNotifySafe('danger', 'Error al cambiar estado', error.message || 'Error al cambiar el estado.');
 		}
 	}
 
@@ -394,7 +402,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al guardar la especificación técnica.');
+			window.adqNotifySafe('danger', 'Error al guardar especificacion', error.message || 'Error al guardar la especificacion tecnica.');
 		}
 
 		return false;
@@ -429,14 +437,22 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al actualizar la especificación técnica.');
+			window.adqNotifySafe('danger', 'Error al actualizar especificacion', error.message || 'Error al actualizar la especificacion tecnica.');
 		}
 
 		return false;
 	}
 
 	async function eliminarEspecificacionTecnica(id) {
-		if (!confirm('¿Desea eliminar esta especificación técnica?')) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: '¿Desea eliminar esta especificación técnica?',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
 			return;
 		}
 
@@ -449,7 +465,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al eliminar la especificación técnica.');
+			window.adqNotifySafe('danger', 'Error al eliminar especificacion', error.message || 'Error al eliminar la especificacion tecnica.');
 		}
 	}
 
@@ -492,7 +508,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al guardar la orden de compra.');
+			window.adqNotifySafe('danger', 'Error al guardar orden de compra', error.message || 'Error al guardar la orden de compra.');
 		}
 
 		return false;
@@ -526,14 +542,22 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al actualizar la orden de compra.');
+			window.adqNotifySafe('danger', 'Error al actualizar orden de compra', error.message || 'Error al actualizar la orden de compra.');
 		}
 
 		return false;
 	}
 
 	async function eliminarOrdenCompra(id) {
-		if (!confirm('¿Desea eliminar esta orden de compra?')) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: '¿Desea eliminar esta orden de compra?',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
 			return;
 		}
 
@@ -546,7 +570,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || 'Error al eliminar la orden de compra.');
+			window.adqNotifySafe('danger', 'Error al eliminar orden de compra', error.message || 'Error al eliminar la orden de compra.');
 		}
 	}
 
@@ -572,7 +596,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || options.errorGuardar);
+			window.adqNotifySafe('danger', 'Error al guardar documento', error.message || options.errorGuardar);
 		}
 
 		return false;
@@ -604,14 +628,22 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || options.errorActualizar);
+			window.adqNotifySafe('danger', 'Error al actualizar documento', error.message || options.errorActualizar);
 		}
 
 		return false;
 	}
 
 	async function eliminarDocumentoSimple(id, options) {
-		if (!confirm(options.confirmacion)) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: options.confirmacion,
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
 			return;
 		}
 
@@ -624,7 +656,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 			await recargarVistaTecnologia();
 		} catch (error) {
-			alert(error.message || options.errorEliminar);
+			window.adqNotifySafe('danger', 'Error al eliminar documento', error.message || options.errorEliminar);
 		}
 	}
 

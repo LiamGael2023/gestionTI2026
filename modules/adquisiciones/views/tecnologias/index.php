@@ -137,19 +137,19 @@
 				btn.innerHTML = 'Sincronizar de SIGA';
 
 				if (response.success) {
-					alert(
-						'Sincronización completada.\n' +
-						'Nuevos: ' + response.nuevos + '\n' +
-						'Actualizados: ' + response.actualizados
+					window.adqNotifySafe(
+						'success',
+						'Sincronizacion completada',
+						'Nuevos: ' + response.nuevos + '\nActualizados: ' + response.actualizados
 					);
 				} else {
-					alert('Error: ' + (response.message || 'No se pudo sincronizar.'));
+					window.adqNotifySafe('danger', 'Error al sincronizar', response.message || 'No se pudo sincronizar.');
 				}
 			},
 			error: function() {
 				btn.disabled = false;
 				btn.innerHTML = 'Sincronizar de SIGA';
-				alert('Ocurrió un error al conectar con el servidor.');
+				window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
 			}
 		});
 	});
@@ -165,7 +165,7 @@
 		const nombreGenerico = nombreInput.value.trim();
 
 		if (!codigo || !nombreGenerico) {
-			alert('Debe completar codigo y nombre generico.');
+			window.adqNotifySafe('warning', 'Campos obligatorios', 'Debe completar codigo y nombre generico.');
 			return;
 		}
 
@@ -185,7 +185,7 @@
 				btnGuardar.innerHTML = 'Guardar';
 
 				if (response && response.success) {
-					alert(response.message || 'Tecnologia registrada correctamente.');
+					window.adqNotifySafe('success', 'Registro exitoso', response.message || 'Tecnologia registrada correctamente.');
 
 					const modalElement = document.getElementById('modalNuevaTecnologia');
 					const modalInstance = bootstrap.Modal.getInstance(modalElement);
@@ -199,20 +199,20 @@
 				}
 
 				if (response && response.duplicado && response.existente) {
-					alert(
-						'Tecnologia duplicada.\n' +
-						'Codigo existente: ' + (response.existente.Codigo || '') + '\n' +
-						'Nombre existente: ' + (response.existente.NombreGenerico || '')
+					window.adqNotifySafe(
+						'warning',
+						'Tecnologia duplicada',
+						'Codigo existente: ' + (response.existente.Codigo || '') + '\nNombre existente: ' + (response.existente.NombreGenerico || '')
 					);
 					return;
 				}
 
-				alert((response && response.message) ? response.message : 'No se pudo registrar la tecnologia.');
+				window.adqNotifySafe('danger', 'No se pudo registrar', (response && response.message) ? response.message : 'No se pudo registrar la tecnologia.');
 			},
 			error: function() {
 				btnGuardar.disabled = false;
 				btnGuardar.innerHTML = 'Guardar';
-				alert('Ocurrió un error al conectar con el servidor.');
+				window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
 			}
 		});
 	});
