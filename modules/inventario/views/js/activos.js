@@ -19,7 +19,7 @@ function mostrarToast(tipo, mensaje) {
     if (!container) return;
 
     const html = `
-    <div class="toast align-items-center text-white ${colores[tipo]} border-0 mb-2" role="alert">
+    <div class="toast align-items-center text-white ${colores[tipo] || 'bg-secondary'} border-0 mb-2" role="alert">
         <div class="d-flex">
             <div class="toast-body">${mensaje}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
@@ -30,6 +30,19 @@ function mostrarToast(tipo, mensaje) {
     const toast = new bootstrap.Toast(container.lastElementChild, { delay: 3500 });
     container.lastElementChild.addEventListener('hidden.bs.toast', function () { this.remove(); });
     toast.show();
+}
+
+// Normaliza cualquier respuesta del servidor a un string limpio
+function getResultado(res) {
+    if (res === null || res === undefined) return "error";
+    if (typeof res === "string") return res.trim();
+    if (typeof res === "object") return String(res.resultado ?? "error").trim();
+    return String(res).trim();
+}
+
+function getMensaje(res) {
+    if (typeof res === "object" && res !== null) return res.mensaje || "";
+    return "";
 }
 
 function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = null) {
@@ -61,7 +74,7 @@ function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = nul
 ===================================== */
 document.addEventListener("DOMContentLoaded", function () {
 
-    /* --- MAYÚSCULAS en tiempo real sobre los inputs de descripción --- */
+    /* --- MAYÚSCULAS en tiempo real --- */
     ["nuevaDescripcion", "editarDescripcion"].forEach(id => {
         const input = document.getElementById(id);
         if (!input) return;
@@ -72,12 +85,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    /* --- Lógica de Iconos (Cambio de Categoría) --- */
+    /* --- Iconos: Cambio de Categoría --- */
     const tipoIcono = document.getElementById("tipoIcono");
     if (tipoIcono) {
         tipoIcono.addEventListener("change", function () {
-            generarIconos(
-                this.value,
+            generarIconos(this.value,
                 document.getElementById("listaIconos"),
                 document.getElementById("previewIcon"),
                 document.getElementById("iconoActivo")
@@ -89,8 +101,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (editarTipoIcono) {
         editarTipoIcono.addEventListener("change", function () {
             const inputIcono = document.getElementById("editarIconoActivo");
-            generarIconos(
-                this.value,
+            generarIconos(this.value,
                 document.getElementById("editarListaIconos"),
                 document.getElementById("editarPreviewIcon"),
                 inputIcono,
@@ -126,21 +137,22 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!boton) return;
 
         const idActivo = boton.getAttribute("data-id");
-        const datos = new FormData();
+        const datos    = new FormData();
         datos.append("idActivo", idActivo);
 
         fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: datos })
             .then(res => res.json())
             .then(json => {
-                if (json.error) return mostrarToast("error", json.error);
+                if (json.resultado === "error") return mostrarToast("error", json.mensaje || "Error al cargar datos.");
 
-                document.getElementById("editarIdActivo").value           = json.idActivos;
-                document.getElementById("editarDescripcion").value        = json.descripcion;
-                document.getElementById("editarIconoActivo").value        = json.icono;
-                document.getElementById("editarCompuesto").checked        = (json.compuesto == 1);
+                document.getElementById("editarIdActivo").value              = json.idActivos;
+                document.getElementById("editarDescripcion").value           = json.descripcion;
+                document.getElementById("editarIconoActivo").value           = json.icono;
+                document.getElementById("editarCompuesto").checked           = (json.compuesto == 1);
+                document.getElementById("editarEsPeriferico").checked        = (json.esPeriferico == 1);
                 document.getElementById("editarUsuarioCreacion").textContent = json.idUsuarioRegistro;
                 document.getElementById("editarFechaCreacion").textContent   = json.fechaCreacion;
-                document.getElementById("editarPreviewIcon").innerHTML    = `<i class="ti ${json.icono}"></i>`;
+                document.getElementById("editarPreviewIcon").innerHTML       = `<i class="ti ${json.icono}"></i>`;
 
                 bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarActivo")).show();
             })
@@ -153,26 +165,35 @@ document.addEventListener("DOMContentLoaded", function () {
         formAgregar.addEventListener("submit", function (e) {
             e.preventDefault();
 
-            if (!document.getElementById("iconoActivo").value ||
-                document.getElementById("iconoActivo").value === "ti ti-help") {
+            if (!document.getElementById("iconoActivo").value) {
                 return mostrarToast("warning", "Selecciona un icono válido.");
             }
+
+            const btn = this.querySelector('[type="submit"]');
+            btn.disabled = true;
 
             fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
                 .then(res => {
-                    const r = String(res).trim();
+                    const r = getResultado(res);
+                    const m = getMensaje(res);
+
                     if (r === "ok") {
                         bootstrap.Modal.getInstance(document.getElementById("modalAgregarActivo")).hide();
                         mostrarToast("success", "Activo guardado correctamente.");
                         setTimeout(() => location.reload(), 1500);
                     } else if (r === "error_duplicado") {
                         mostrarToast("warning", "¡Atención! Ya existe un activo con este nombre.");
+                        btn.disabled = false;
                     } else {
-                        mostrarToast("error", "Error: " + r);
+                        mostrarToast("error", m || "Error al guardar: " + r);
+                        btn.disabled = false;
                     }
                 })
-                .catch(() => mostrarToast("error", "Error de servidor."));
+                .catch(err => {
+                    mostrarToast("error", "Error de servidor.");
+                    btn.disabled = false;
+                });
         });
     }
 
@@ -182,33 +203,42 @@ document.addEventListener("DOMContentLoaded", function () {
         formEditar.addEventListener("submit", function (e) {
             e.preventDefault();
 
+            const btn = this.querySelector('[type="submit"]');
+            btn.disabled = true;
+
             fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
                 .then(res => {
-                    const r = String(res).trim();
+                    const r = getResultado(res);
+                    const m = getMensaje(res);
+
                     if (r === "ok") {
                         bootstrap.Modal.getInstance(document.getElementById("modalEditarActivo")).hide();
                         mostrarToast("success", "Activo actualizado correctamente.");
                         setTimeout(() => location.reload(), 1500);
                     } else if (r === "error_duplicado") {
                         mostrarToast("warning", "¡Atención! El nombre ya existe en otro registro.");
+                        btn.disabled = false;
                     } else {
-                        mostrarToast("error", "No se pudo actualizar: " + r);
+                        mostrarToast("error", m || "No se pudo actualizar: " + r);
+                        btn.disabled = false;
                     }
                 })
-                .catch(() => mostrarToast("error", "Error al comunicarse con el servidor."));
+                .catch(() => {
+                    mostrarToast("error", "Error al comunicarse con el servidor.");
+                    btn.disabled = false;
+                });
         });
     }
 
-    /* --- 4. ELIMINAR ACTIVO (lógico) con confirmación --- */
+    /* --- 4. ELIMINAR ACTIVO (lógico) --- */
     document.addEventListener("click", function (e) {
         const boton = e.target.closest(".btnEliminarActivo");
         if (!boton) return;
 
-        const idActivo     = boton.getAttribute("data-id");
-        const descripcion  = boton.getAttribute("data-descripcion") || "este activo";
+        const idActivo    = boton.getAttribute("data-id");
+        const descripcion = boton.getAttribute("data-descripcion") || "este activo";
 
-        // Mostrar modal de confirmación
         document.getElementById("eliminarNombreActivo").textContent = descripcion;
         document.getElementById("confirmarEliminarActivo").setAttribute("data-id", idActivo);
 
@@ -222,7 +252,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const datos    = new FormData();
             datos.append("eliminarIdActivo", idActivo);
 
-            // Deshabilitar botón mientras procesa
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...';
 
@@ -230,7 +259,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(res => res.json())
                 .then(json => {
                     bootstrap.Modal.getInstance(document.getElementById("modalConfirmarEliminar")).hide();
-
                     if (json.resultado === "ok") {
                         mostrarToast("success", json.mensaje || "Activo eliminado correctamente.");
                         setTimeout(() => location.reload(), 1500);
@@ -246,7 +274,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /* --- 5. CONFIGURACIÓN DATATABLE --- */
+    /* --- 5. DATATABLE --- */
     if ($.fn.DataTable.isDataTable('#tablaActivos')) {
         $('#tablaActivos').DataTable().destroy();
     }

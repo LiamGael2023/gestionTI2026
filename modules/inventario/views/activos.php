@@ -1,8 +1,6 @@
 <body>
   <?php
-  if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-  }
+  if (session_status() == PHP_SESSION_NONE) { session_start(); }
   ?>
   <div class="page">
 <?php include __DIR__ . '/_submenu.php'; ?>
@@ -15,14 +13,11 @@
           <div class="row align-items-center">
             <div class="col">
               <h2 class="page-title">Configuraciones</h2>
-              <div class="text-muted mt-1">
-                Gestión de datos base del sistema de inventario.
-              </div>
+              <div class="text-muted mt-1">Gestión de datos base del sistema de inventario.</div>
             </div>
             <div class="col-auto ms-auto">
               <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarActivo">
-                <i class="ti ti-plus me-1"></i>
-                Agregar Activos
+                <i class="ti ti-plus me-1"></i> Agregar Activos
               </button>
             </div>
           </div>
@@ -67,6 +62,7 @@
                 <thead>
                   <tr>
                     <th>Nombre</th>
+                    <th>Tipo</th>
                     <th>Fecha de Creación</th>
                     <th class="d-none d-sm-table-cell">Registrado Por</th>
                     <th class="text-end">Acciones</th>
@@ -74,51 +70,68 @@
                 </thead>
                 <tbody>
                   <?php
-                  $item   = null;
-                  $valor  = null;
-                  $activos = ActivosController::ctrMostrarActivos($item, $valor);
+                  $activos = ActivosController::ctrMostrarActivos(null, null);
+                  if (!is_array($activos)) $activos = [];
 
-                  foreach ($activos as $key => $value) {
-                    $descripcion = htmlspecialchars($value["descripcion"], ENT_QUOTES, 'UTF-8');
-                    $icono       = $value["icono"] ?: 'ti-package';
-                    $fecha       = $value["fechaCreacion"] instanceof DateTime
-                                    ? $value["fechaCreacion"]->format('d/m/Y')
-                                    : "Sin fecha";
-                    echo '
-                    <tr>
-                      <td data-label="Nombre">
-                        <div class="d-flex align-items-center">
-                          <i class="ti ' . $icono . ' text-primary me-2 fs-3"></i>
-                          <div class="font-weight-medium">' . $descripcion . '</div>
-                        </div>
-                      </td>
-                      <td data-label="Fecha" class="text-muted small">' . $fecha . '</td>
-                      <td data-label="Usuario" class="d-none d-sm-table-cell">
-                        <span class="badge badge-outline text-muted fw-normal">ID: ' . $value["idUsuarioRegistro"] . '</span>
-                      </td>
-                      <td class="text-end">
-                        <div class="btn-list justify-content-end">
-                          <button class="btn btn-sm btn-icon btn-outline-primary btnEditarActivo"
-                                  data-id="' . $value["idActivos"] . '"
-                                  title="Editar">
-                            <i class="ti ti-edit"></i>
-                          </button>
-                          <button class="btn btn-sm btn-icon btn-outline-danger btnEliminarActivo"
-                                  data-id="' . $value["idActivos"] . '"
-                                  data-descripcion="' . $descripcion . '"
-                                  title="Eliminar">
-                            <i class="ti ti-trash"></i>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>';
+                  foreach ($activos as $value) {
+                      $descripcion  = htmlspecialchars($value["descripcion"], ENT_QUOTES, 'UTF-8');
+                      $icono        = $value["icono"] ?: 'ti-package';
+                      $fecha        = $value["fechaCreacion"] instanceof DateTime
+                                      ? $value["fechaCreacion"]->format('d/m/Y')
+                                      : "Sin fecha";
+                      $compuesto    = !empty($value["compuesto"])    && intval($value["compuesto"])    === 1;
+                      $esPeriferico = !empty($value["esPeriferico"]) && intval($value["esPeriferico"]) === 1;
+
+                      // Badge de tipo
+                      if ($esPeriferico) {
+                          $tipoBadge = '<span class="badge bg-green-lt text-green">
+                                          <i class="ti ti-mouse me-1"></i>Periférico
+                                        </span>';
+                      } elseif ($compuesto) {
+                          $tipoBadge = '<span class="badge bg-blue-lt text-blue">
+                                          <i class="ti ti-cpu me-1"></i>Compuesto
+                                        </span>';
+                      } else {
+                          $tipoBadge = '<span class="badge bg-azure-lt text-azure">
+                                          <i class="ti ti-package me-1"></i>Simple
+                                        </span>';
+                      }
+
+                      echo '
+                      <tr>
+                        <td data-label="Nombre">
+                          <div class="d-flex align-items-center">
+                            <i class="ti ' . $icono . ' text-primary me-2 fs-3"></i>
+                            <div class="font-weight-medium">' . $descripcion . '</div>
+                          </div>
+                        </td>
+                        <td data-label="Tipo">' . $tipoBadge . '</td>
+                        <td data-label="Fecha" class="text-muted small">' . $fecha . '</td>
+                        <td data-label="Usuario" class="d-none d-sm-table-cell">
+                          <span class="badge badge-outline text-muted fw-normal">ID: ' . $value["idUsuarioRegistro"] . '</span>
+                        </td>
+                        <td class="text-end">
+                          <div class="btn-list justify-content-end">
+                            <button class="btn btn-sm btn-icon btn-outline-primary btnEditarActivo"
+                                    data-id="' . $value["idActivos"] . '"
+                                    title="Editar">
+                              <i class="ti ti-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-icon btn-outline-danger btnEliminarActivo"
+                                    data-id="' . $value["idActivos"] . '"
+                                    data-descripcion="' . $descripcion . '"
+                                    title="Eliminar">
+                              <i class="ti ti-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>';
                   }
                   ?>
                 </tbody>
               </table>
             </div>
           </div>
-
         </div>
 
         <!-- INFO CARDS -->
@@ -130,9 +143,7 @@
                   <i class="ti ti-info-circle text-primary me-2"></i>
                   <strong>Información del Sistema</strong>
                 </div>
-                <p class="text-muted mt-2 mb-0">
-                  Las categorías afectan a todos los equipos vinculados.
-                </p>
+                <p class="text-muted mt-2 mb-0">Las categorías afectan a todos los equipos vinculados.</p>
               </div>
             </div>
           </div>
@@ -152,8 +163,7 @@
               <div class="card-body">
                 <strong>Resumen</strong>
                 <div class="mt-2">
-                  <div>Total Categorías: <strong>12</strong></div>
-                  <div>Bajo Uso: <strong class="text-warning">3</strong></div>
+                  <div>Total Activos: <strong><?= is_array($activos) ? count($activos) : 0 ?></strong></div>
                 </div>
               </div>
             </div>
@@ -186,28 +196,32 @@
 
         <div class="modal-body pt-3">
           <div class="row g-3">
+
+            <!-- Descripción -->
             <div class="col-12">
               <label class="form-label">Descripción</label>
               <input type="text" class="form-control" id="nuevaDescripcion" name="nuevaDescripcion"
-                     maxlength="150" placeholder="Describa el activo..." required
-                     style="text-transform:uppercase">
+                     maxlength="150" placeholder="Describa el activo..."
+                     style="text-transform:uppercase" required>
             </div>
 
+            <!-- Iconos -->
             <div class="col-md-7">
               <label class="form-label">Tipo de Activo</label>
               <select class="form-select mb-2" id="tipoIcono">
                 <option value="">Seleccione</option>
                 <option value="equipos">Equipos</option>
                 <option value="componentes">Componentes</option>
-                <option value="perifericos">Perifericos</option>
+                <option value="perifericos">Periféricos</option>
                 <option value="pantallas">Pantallas</option>
-                <option value="impresion">Impresion</option>
+                <option value="impresion">Impresión</option>
                 <option value="red">Red</option>
               </select>
               <input type="hidden" name="iconoActivo" id="iconoActivo" value="">
               <div id="listaIconos" class="row g-2 border rounded-3 p-2" style="max-height:160px; overflow-y:auto;"></div>
             </div>
 
+            <!-- Preview -->
             <div class="col-md-5">
               <label class="form-label">Vista previa</label>
               <div class="card card-sm text-center">
@@ -220,22 +234,51 @@
               </div>
             </div>
 
+            <!-- Switches -->
             <div class="col-12">
-              <div class="card card-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-components text-primary"></i>
-                    <div>
-                      <div class="fw-semibold small">Equipo compuesto</div>
-                      <div class="text-muted small">Contiene sub-componentes</div>
+              <div class="row g-2">
+
+                <!-- Compuesto -->
+                <div class="col-md-6">
+                  <div class="card card-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-components text-primary"></i>
+                        <div>
+                          <div class="fw-semibold small">Equipo compuesto</div>
+                          <div class="text-muted small">Contiene sub-componentes</div>
+                        </div>
+                      </div>
+                      <label class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox"
+                               name="nuevoCompuesto" id="nuevoCompuesto" value="1">
+                      </label>
                     </div>
                   </div>
-                  <label class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" name="nuevoCompuesto" value="1">
-                  </label>
                 </div>
+
+                <!-- Es Periférico -->
+                <div class="col-md-6">
+                  <div class="card card-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-mouse text-green"></i>
+                        <div>
+                          <div class="fw-semibold small">Es periférico</div>
+                          <div class="text-muted small">Mouse, teclado, monitor…</div>
+                        </div>
+                      </div>
+                      <label class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox"
+                               name="nuevoEsPeriferico" id="nuevoEsPeriferico" value="1">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
+
           </div>
         </div>
 
@@ -274,12 +317,15 @@
           <input type="hidden" id="editarIdActivo" name="editarIdActivo">
 
           <div class="row g-3">
+
+            <!-- Descripción -->
             <div class="col-12">
               <label class="form-label">Descripción</label>
               <input type="text" class="form-control" id="editarDescripcion" name="editarDescripcion"
-                     maxlength="150" required style="text-transform:uppercase">
+                     maxlength="150" style="text-transform:uppercase" required>
             </div>
 
+            <!-- Iconos -->
             <div class="col-md-7">
               <label class="form-label">Tipo de Activo</label>
               <select class="form-select mb-2" id="editarTipoIcono">
@@ -295,6 +341,7 @@
               <div id="editarListaIconos" class="row g-2 border rounded-3 p-2" style="max-height:160px; overflow-y:auto;"></div>
             </div>
 
+            <!-- Preview -->
             <div class="col-md-5">
               <label class="form-label">Vista previa</label>
               <div class="card card-sm text-center">
@@ -307,23 +354,52 @@
               </div>
             </div>
 
+            <!-- Switches -->
             <div class="col-12">
-              <div class="card card-sm">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                  <div class="d-flex align-items-center gap-2">
-                    <i class="ti ti-components text-primary"></i>
-                    <div>
-                      <div class="fw-semibold small">Equipo compuesto</div>
-                      <div class="text-muted small">Contiene sub-componentes</div>
+              <div class="row g-2">
+
+                <!-- Compuesto -->
+                <div class="col-md-6">
+                  <div class="card card-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-components text-primary"></i>
+                        <div>
+                          <div class="fw-semibold small">Equipo compuesto</div>
+                          <div class="text-muted small">Contiene sub-componentes</div>
+                        </div>
+                      </div>
+                      <label class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox"
+                               id="editarCompuesto" name="editarCompuesto" value="1">
+                      </label>
                     </div>
                   </div>
-                  <label class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" id="editarCompuesto" name="editarCompuesto" value="1">
-                  </label>
                 </div>
+
+                <!-- Es Periférico -->
+                <div class="col-md-6">
+                  <div class="card card-sm">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="ti ti-mouse text-green"></i>
+                        <div>
+                          <div class="fw-semibold small">Es periférico</div>
+                          <div class="text-muted small">Mouse, teclado, monitor…</div>
+                        </div>
+                      </div>
+                      <label class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox"
+                               id="editarEsPeriferico" name="editarEsPeriferico" value="1">
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
+            <!-- Auditoría -->
             <div class="col-12">
               <div class="row g-2">
                 <div class="col-md-6">
@@ -346,6 +422,7 @@
                 </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -368,15 +445,12 @@
 <div class="modal modal-blur fade" id="modalConfirmarEliminar" tabindex="-1">
   <div class="modal-dialog modal-sm modal-dialog-centered">
     <div class="modal-content">
-
       <div class="modal-header">
         <h5 class="modal-title d-flex align-items-center gap-2 text-danger">
-          <i class="ti ti-alert-triangle"></i>
-          Confirmar eliminación
+          <i class="ti ti-alert-triangle"></i> Confirmar eliminación
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-
       <div class="modal-body">
         <p class="text-muted mb-1">¿Estás seguro de que deseas eliminar el activo:</p>
         <p class="fw-bold mb-0" id="eliminarNombreActivo"></p>
@@ -385,14 +459,12 @@
           Si tiene equipos asociados, no podrá eliminarse.
         </p>
       </div>
-
       <div class="modal-footer py-2">
         <button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-danger" id="confirmarEliminarActivo">
           <i class="ti ti-trash me-1"></i>Sí, eliminar
         </button>
       </div>
-
     </div>
   </div>
 </div>
