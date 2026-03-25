@@ -32,6 +32,20 @@
 					<div class="col-md-6">
 						<strong>Fecha de Entrega:</strong><br>
 						<?php echo htmlspecialchars($formatearFecha($ordenCompra['FechaEntrega'] ?? '')); ?>
+						<div class="mt-2">
+							<button type="button" class="btn btn-outline-primary btn-sm" onclick="mostrarFormularioFechaOrdenCompra()">Modificar fecha</button>
+						</div>
+					</div>
+				</div>
+
+				<div id="oc-form-fecha" class="row g-2 align-items-end mt-3" style="display: none;">
+					<div class="col-md-4">
+						<label class="form-label mb-1">Nueva fecha de entrega</label>
+						<input type="date" class="form-control" id="oc_fecha_entrega_only" value="<?php echo htmlspecialchars($ordenCompra['FechaEntrega'] ?? ''); ?>">
+					</div>
+					<div class="col-md-3 d-flex gap-2">
+						<button type="button" class="btn btn-primary" onclick="actualizarFechaOrdenCompra()">Guardar fecha</button>
+						<button type="button" class="btn btn-outline-secondary" onclick="ocultarFormularioFechaOrdenCompra()">Cancelar</button>
 					</div>
 				</div>
 			</div>

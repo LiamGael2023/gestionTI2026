@@ -503,6 +503,44 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return fecha !== '' ? fecha : null;
 	}
 
+	function mostrarFormularioFechaOrdenCompra() {
+		const formulario = document.getElementById('oc-form-fecha');
+		if (formulario) {
+			formulario.style.display = 'flex';
+		}
+	}
+
+	function ocultarFormularioFechaOrdenCompra() {
+		const formulario = document.getElementById('oc-form-fecha');
+		if (formulario) {
+			formulario.style.display = 'none';
+		}
+	}
+
+	async function actualizarFechaOrdenCompra() {
+		try {
+			const idOrden = parseInt(document.getElementById('oc_id').value, 10);
+			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_only').value);
+
+			if (!idOrden) {
+				throw new Error('Faltan datos para actualizar la fecha de la orden de compra.');
+			}
+
+			const data = await enviarJson('index.php?module=adquisiciones&action=actualizarFechaOrdenCompraAjax', {
+				Id: idOrden,
+				FechaEntrega: fechaEntrega
+			});
+
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo actualizar la fecha de entrega.');
+			}
+
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error al actualizar fecha', error.message || 'Error al actualizar la fecha de entrega.');
+		}
+	}
+
 	async function guardarOrdenCompra(e) {
 		e.preventDefault();
 

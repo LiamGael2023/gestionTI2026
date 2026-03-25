@@ -67,6 +67,7 @@ $dashboardItemsPorTipo = [];
 $dashboardCentroCosto = [];
 $dashboardEstadoDocumental = [];
 $dashboardOrdenesProximas = [];
+$idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 $accionesDetalle = ['guardarDetalleAjax', 'actualizarDetalleAjax', 'eliminarDetalleAjax', 'actualizarEstadoAjax', 'guardarDetalleForm'];
 $accionesTecnologia = [
 	'tecnologia',
@@ -143,7 +144,8 @@ switch ($action) {
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
-			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0
+			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
 		if ($datos['IdCentroCosto'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
@@ -168,6 +170,7 @@ switch ($action) {
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
+			'idUsuarioRegistro' => $idUsuarioSesion,
 		];
 
 		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
@@ -225,7 +228,7 @@ switch ($action) {
 		}
 
 		try {
-			$resultado = $model->importarPedidoSiga($nroPedido, $anio);
+			$resultado = $model->importarPedidoSiga($nroPedido, $anio, $idUsuarioSesion);
 			echo json_encode([
 				'success' => true,
 				'items'   => $resultado['items'],

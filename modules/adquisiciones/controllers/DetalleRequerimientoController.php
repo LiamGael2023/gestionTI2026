@@ -16,6 +16,7 @@ $vistaActual = 'detalle';
 $requerimiento = null;
 $detalles = [];
 $catalogoOpciones = [];
+$idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 
 switch ($action) {
 	case 'requerimiento':
@@ -41,7 +42,8 @@ switch ($action) {
 			'CodigoSiga' => isset($_POST['CodigoSiga']) ? trim($_POST['CodigoSiga']) : '',
 			'DescripcionDetallada' => isset($_POST['DescripcionDetallada']) ? trim($_POST['DescripcionDetallada']) : '',
 			'Cantidad' => isset($_POST['Cantidad']) ? (int) $_POST['Cantidad'] : 0,
-			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND'
+			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND',
+			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
 		if ($datos['IdRequerimiento'] > 0 && $datos['IdCatalogoTecnologico'] > 0 && !empty($datos['CodigoSiga']) && !empty($datos['DescripcionDetallada']) && $datos['Cantidad'] > 0) {
@@ -70,7 +72,8 @@ switch ($action) {
 			'CodigoSiga' => isset($_POST['CodigoSiga']) ? trim($_POST['CodigoSiga']) : '',
 			'DescripcionDetallada' => isset($_POST['DescripcionDetallada']) ? trim($_POST['DescripcionDetallada']) : '',
 			'Cantidad' => isset($_POST['Cantidad']) ? (int) $_POST['Cantidad'] : 0,
-			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND'
+			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND',
+			'idUsuarioModifica' => $idUsuarioSesion
 		];
 
 		if ($id > 0 && $datos['IdCatalogoTecnologico'] > 0 && !empty($datos['CodigoSiga']) && !empty($datos['DescripcionDetallada']) && $datos['Cantidad'] > 0) {
@@ -108,8 +111,10 @@ switch ($action) {
 
 		if ($esValido) {
 			if ($id > 0) {
+				$datos['idUsuarioModifica'] = $idUsuarioSesion;
 				$model->actualizarDetalle($id, $datos);
 			} else {
+				$datos['idUsuarioRegistro'] = $idUsuarioSesion;
 				$model->guardarDetalle($datos);
 			}
 		}
@@ -133,7 +138,7 @@ switch ($action) {
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$estado = isset($_POST['estado']) ? (int) $_POST['estado'] : 0;
 		
-		if ($id > 0 && $requerimientoModel->actualizarEstado($id, $estado)) {
+		if ($id > 0 && $requerimientoModel->actualizarEstado($id, $estado, $idUsuarioSesion)) {
 			echo json_encode(['success' => true, 'message' => 'Estado actualizado correctamente']);
 		} else {
 			echo json_encode(['success' => false, 'message' => 'No se pudo actualizar el estado']);

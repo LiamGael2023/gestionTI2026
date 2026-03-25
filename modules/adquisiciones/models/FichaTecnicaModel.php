@@ -58,8 +58,8 @@ class FichaTecnicaModel
 	public function guardar($datos)
 	{
 		$sql = "
-			INSERT INTO adquisiciones.FichaTecnica (IdCatalogoTecnologico, Marca, Modelo, Anio, Estado, Documento, FechaRegistro)
-			VALUES (?, ?, ?, ?, 0, ?, GETDATE());
+			INSERT INTO adquisiciones.FichaTecnica (IdCatalogoTecnologico, Marca, Modelo, Anio, Estado, Documento, FechaRegistro, idUsuarioRegistro)
+			VALUES (?, ?, ?, ?, 0, ?, GETDATE(), ?);
 			SELECT SCOPE_IDENTITY() AS Id;
 		";
 
@@ -68,7 +68,8 @@ class FichaTecnicaModel
 			$datos['Marca'],
 			$datos['Modelo'],
 			$datos['Anio'],
-			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')]
+			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
+			$datos['idUsuarioRegistro'] ?? null
 		];
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
@@ -81,10 +82,10 @@ class FichaTecnicaModel
 		return $row ? (int) $row['Id'] : false;
 	}
 
-	public function cambiarEstado($id, $estado)
+	public function cambiarEstado($id, $estado, $idUsuarioModifica = null)
 	{
-		$sql = "UPDATE adquisiciones.FichaTecnica SET Estado = ? WHERE Id = ?";
-		$stmt = sqlsrv_query($this->db, $sql, [$estado, $id]);
+		$sql = "UPDATE adquisiciones.FichaTecnica SET Estado = ?, idUsuarioModifica = ?, FechaModifica = GETDATE() WHERE Id = ?";
+		$stmt = sqlsrv_query($this->db, $sql, [$estado, $idUsuarioModifica, $id]);
 		return $stmt !== false;
 	}
 

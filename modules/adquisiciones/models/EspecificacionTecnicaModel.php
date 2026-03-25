@@ -42,8 +42,8 @@ class EspecificacionTecnicaModel
 		}
 
 		$sql = "
-			INSERT INTO adquisiciones.EspecificacionTecnica (IdCatalogoTecnologico, Codigo, Anio, Documento, FechaRegistro)
-			VALUES (?, ?, ?, ?, GETDATE());
+			INSERT INTO adquisiciones.EspecificacionTecnica (IdCatalogoTecnologico, Codigo, Anio, Documento, FechaRegistro, idUsuarioRegistro)
+			VALUES (?, ?, ?, ?, GETDATE(), ?);
 			SELECT SCOPE_IDENTITY() AS Id;
 		";
 
@@ -51,7 +51,8 @@ class EspecificacionTecnicaModel
 			$datos['IdCatalogoTecnologico'],
 			$datos['Codigo'],
 			$datos['Anio'],
-			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')]
+			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
+			$datos['idUsuarioRegistro'] ?? null
 		];
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
@@ -68,13 +69,14 @@ class EspecificacionTecnicaModel
 	{
 		$sql = "
 			UPDATE adquisiciones.EspecificacionTecnica
-			SET Codigo = ?, Documento = ?, FechaRegistro = GETDATE()
+			SET Codigo = ?, Documento = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
 			WHERE Id = ?
 		";
 
 		$stmt = sqlsrv_query($this->db, $sql, [
 			$datos['Codigo'],
 			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
+			$datos['idUsuarioModifica'] ?? null,
 			$id
 		]);
 		return $stmt !== false;

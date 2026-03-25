@@ -45,8 +45,8 @@ class OrdenCompraModel
 		}
 
 		$sql = "
-			INSERT INTO adquisiciones.OrdenCompra (IdCatalogoTecnologico, NumeroOrden, Anio, FechaEntrega, Documento, FechaRegistro)
-			VALUES (?, ?, ?, ?, ?, GETDATE());
+			INSERT INTO adquisiciones.OrdenCompra (IdCatalogoTecnologico, NumeroOrden, Anio, FechaEntrega, Documento, FechaRegistro, idUsuarioRegistro)
+			VALUES (?, ?, ?, ?, ?, GETDATE(), ?);
 			SELECT SCOPE_IDENTITY() AS Id;
 		";
 
@@ -55,7 +55,8 @@ class OrdenCompraModel
 			$datos['NumeroOrden'],
 			$datos['Anio'],
 			$datos['FechaEntrega'],
-			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')]
+			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
+			$datos['idUsuarioRegistro'] ?? null
 		];
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
@@ -72,7 +73,7 @@ class OrdenCompraModel
 	{
 		$sql = "
 			UPDATE adquisiciones.OrdenCompra
-			SET NumeroOrden = ?, FechaEntrega = ?, Documento = ?, FechaRegistro = GETDATE()
+			SET NumeroOrden = ?, FechaEntrega = ?, Documento = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
 			WHERE Id = ?
 		";
 
@@ -80,6 +81,7 @@ class OrdenCompraModel
 			$datos['NumeroOrden'],
 			$datos['FechaEntrega'],
 			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
+			$datos['idUsuarioModifica'] ?? null,
 			$id
 		]);
 
@@ -90,6 +92,23 @@ class OrdenCompraModel
 	{
 		$sql = "DELETE FROM adquisiciones.OrdenCompra WHERE Id = ?";
 		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		return $stmt !== false;
+	}
+
+	public function actualizarFechaEntrega($id, $fechaEntrega, $idUsuarioModifica = null)
+	{
+		$sql = "
+			UPDATE adquisiciones.OrdenCompra
+			SET FechaEntrega = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
+			WHERE Id = ?
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [
+			$fechaEntrega,
+			$idUsuarioModifica,
+			$id
+		]);
+
 		return $stmt !== false;
 	}
 }

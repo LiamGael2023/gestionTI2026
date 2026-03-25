@@ -138,6 +138,11 @@ function normalizarFechaNullable($fecha)
 	return date('Y-m-d', $timestamp);
 }
 
+function obtenerIdUsuarioSesion()
+{
+	return isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
+}
+
 function responderErrorSql($mensajeBase, $mensajeTruncamiento = null)
 {
 	$mensaje = $mensajeBase;
@@ -267,6 +272,8 @@ function validarPedidosTecnologiaPorAnio($catalogoModel, $idCatalogoTecnologico,
 	}
 }
 
+$idUsuarioSesion = obtenerIdUsuarioSesion();
+
 switch ($action) {
 	case 'tecnologia':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
@@ -337,7 +344,8 @@ switch ($action) {
 			'IdCatalogoTecnologico' => $idCat,
 			'Codigo' => $codigo,
 			'Anio' => $anio,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		]);
 		if ($resultado) {
 			responderJson(['ok' => true, 'id' => $resultado]);
@@ -366,7 +374,8 @@ switch ($action) {
 		}
 		$ok = $especificacionModel->actualizar($idEspecificacion, [
 			'Codigo' => $codigo,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioModifica' => $idUsuarioSesion
 		]);
 		if ($ok) {
 			responderJson(['ok' => true]);
@@ -425,7 +434,8 @@ switch ($action) {
 			'NumeroOrden' => $numeroOrden,
 			'FechaEntrega' => $fechaEntrega,
 			'Anio' => $anio,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		]);
 		if ($resultado) {
 			responderJson(['ok' => true, 'id' => $resultado]);
@@ -460,7 +470,8 @@ switch ($action) {
 		$ok = $ordenCompraModel->actualizar($idDocumento, [
 			'NumeroOrden' => $numeroOrden,
 			'FechaEntrega' => $fechaEntrega,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioModifica' => $idUsuarioSesion
 		]);
 		if ($ok) {
 			responderJson(['ok' => true]);
@@ -470,6 +481,24 @@ switch ($action) {
 			'No se pudo actualizar la orden de compra.',
 			'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
 		);
+
+	case 'actualizarFechaOrdenCompraAjax':
+		$input = obtenerInputJsonPost();
+		$idDocumento = obtenerEnteroInput($input, 'Id');
+		$fechaEntrega = normalizarFechaNullable(obtenerTextoInput($input, 'FechaEntrega'));
+		if ($idDocumento <= 0) {
+			responderJson(['ok' => false, 'error' => 'ID inválido']);
+		}
+		if ($fechaEntrega === false) {
+			responderJson(['ok' => false, 'error' => 'La fecha de entrega es inválida.']);
+		}
+
+		$ok = $ordenCompraModel->actualizarFechaEntrega($idDocumento, $fechaEntrega, $idUsuarioSesion);
+		if ($ok) {
+			responderJson(['ok' => true]);
+		}
+
+		responderJson(['ok' => false, 'error' => 'No se pudo actualizar la fecha de entrega.']);
 
 	case 'eliminarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
@@ -509,7 +538,8 @@ switch ($action) {
 			'IdCatalogoTecnologico' => $idCat,
 			'Observacion' => normalizarTextoNullable($observacion),
 			'Anio' => $anio,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		]);
 		if ($resultado) {
 			responderJson(['ok' => true, 'id' => $resultado]);
@@ -530,7 +560,8 @@ switch ($action) {
 		}
 		$ok = $verificacionTecnicaModel->actualizar($idDocumento, [
 			'Observacion' => normalizarTextoNullable($observacion),
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioModifica' => $idUsuarioSesion
 		]);
 		responderJson(['ok' => $ok]);
 
@@ -572,7 +603,8 @@ switch ($action) {
 			'IdCatalogoTecnologico' => $idCat,
 			'Observacion' => normalizarTextoNullable($observacion),
 			'Anio' => $anio,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		]);
 		if ($resultado) {
 			responderJson(['ok' => true, 'id' => $resultado]);
@@ -593,7 +625,8 @@ switch ($action) {
 		}
 		$ok = $conformidadModel->actualizar($idDocumento, [
 			'Observacion' => normalizarTextoNullable($observacion),
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioModifica' => $idUsuarioSesion
 		]);
 		responderJson(['ok' => $ok]);
 
@@ -625,7 +658,8 @@ switch ($action) {
 			'Marca' => $marca,
 			'Modelo' => $modelo,
 			'Anio' => $anio,
-			'Documento' => $pdfBase64
+			'Documento' => $pdfBase64,
+			'idUsuarioRegistro' => $idUsuarioSesion
 		]);
 		if ($resultado) {
 			responderJson(['ok' => true, 'id' => $resultado]);
@@ -648,7 +682,7 @@ switch ($action) {
 		if ($idFicha <= 0 || !in_array($estado, [0, 1], true)) {
 			responderJson(['ok' => false, 'error' => 'Datos inválidos']);
 		}
-		$ok = $fichaTecnicaModel->cambiarEstado($idFicha, $estado);
+		$ok = $fichaTecnicaModel->cambiarEstado($idFicha, $estado, $idUsuarioSesion);
 		responderJson(['ok' => $ok]);
 
 	default:

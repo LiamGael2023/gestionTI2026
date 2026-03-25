@@ -92,15 +92,16 @@ class RequerimientoModel
 	{
 		$sql = "
 			INSERT INTO adquisiciones.Requerimiento
-				(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado)
+				(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 			OUTPUT INSERTED.Id
-			VALUES (?, ?, ?, GETDATE(), 0)
+			VALUES (?, ?, ?, GETDATE(), 0, ?)
 		";
 
 		$params = [
 			$datos['IdCentroCosto'],
 			$datos['NroPedidoCompra'],
-			$datos['Anio']
+			$datos['Anio'],
+			$datos['idUsuarioRegistro'] ?? null
 		];
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
@@ -140,10 +141,10 @@ class RequerimientoModel
 		return $row ? $row : null;
 	}
 
-	public function actualizarEstado($id, $estado)
+	public function actualizarEstado($id, $estado, $idUsuarioModifica = null)
 	{
-		$sql = "UPDATE adquisiciones.Requerimiento SET Estado = ? WHERE Id = ?";
-		$stmt = sqlsrv_query($this->db, $sql, [$estado, $id]);
+		$sql = "UPDATE adquisiciones.Requerimiento SET Estado = ?, idUsuarioModifica = ?, FechaModifica = GETDATE() WHERE Id = ?";
+		$stmt = sqlsrv_query($this->db, $sql, [$estado, $idUsuarioModifica, $id]);
 		return $stmt !== false;
 	}
 
@@ -533,7 +534,7 @@ class RequerimientoModel
 		return $data;
 	}
 
-	public function importarPedidoSiga(string $nroPedido, int $anio): array
+	public function importarPedidoSiga(string $nroPedido, int $anio, ?int $idUsuarioRegistro = null): array
 	{
 		// 1. Traer ítems del pedido desde SIGA
 		$sql = "
@@ -623,10 +624,10 @@ class RequerimientoModel
 		if (!$idReq) {
 			$stmtIns = sqlsrv_query($this->db, "
 				INSERT INTO adquisiciones.Requerimiento
-					(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado)
+					(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 				OUTPUT INSERTED.Id
-				VALUES (?, ?, ?, GETDATE(), 0)
-			", [$idCentro, $nroPedido, $anio]);
+				VALUES (?, ?, ?, GETDATE(), 0, ?)
+			", [$idCentro, $nroPedido, $anio, $idUsuarioRegistro]);
 
 			if ($stmtIns === false) {
 				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
@@ -652,15 +653,16 @@ class RequerimientoModel
 				$stmtInsItem = sqlsrv_query($this->db, "
 					INSERT INTO adquisiciones.DetalleRequerimiento
 						(IdRequerimiento, IdCatalogoTecnologico, CodigoSiga,
-						 DescripcionDetallada, Cantidad, UnidadMedida)
-					VALUES (?, ?, ?, ?, ?, ?)
+						 DescripcionDetallada, Cantidad, UnidadMedida, idUsuarioRegistro)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
 				", [
 					$idReq,
 					$idCatalogo,
 					$item['CODIGO_SIGA'],
 					$item['DESCRIPCION'],
 					$item['CANTIDAD'],
-					$item['UNIDAD_MEDIDA']
+					$item['UNIDAD_MEDIDA'],
+					$idUsuarioRegistro
 				]);
 
 				if ($stmtInsItem === false) {

@@ -42,8 +42,8 @@ class DetalleRequerimientoModel
 	public function guardarDetalle($datos)
 	{
 		$sql = "INSERT INTO adquisiciones.DetalleRequerimiento 
-		        (IdRequerimiento, IdCatalogoTecnologico, CodigoSiga, DescripcionDetallada, Cantidad, UnidadMedida) 
-		        VALUES (?, ?, ?, ?, ?, ?); 
+		        (IdRequerimiento, IdCatalogoTecnologico, CodigoSiga, DescripcionDetallada, Cantidad, UnidadMedida, idUsuarioRegistro) 
+		        VALUES (?, ?, ?, ?, ?, ?, ?); 
 		        SELECT SCOPE_IDENTITY() AS Id;";
 		
 		$params = [
@@ -52,7 +52,8 @@ class DetalleRequerimientoModel
 			$datos['CodigoSiga'],
 			$datos['DescripcionDetallada'],
 			$datos['Cantidad'],
-			$datos['UnidadMedida']
+			$datos['UnidadMedida'],
+			$datos['idUsuarioRegistro'] ?? null
 		];
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
@@ -74,7 +75,9 @@ class DetalleRequerimientoModel
 		            CodigoSiga = ?, 
 		            DescripcionDetallada = ?, 
 		            Cantidad = ?, 
-		            UnidadMedida = ?
+		            UnidadMedida = ?,
+		            idUsuarioModifica = ?,
+		            FechaModifica = GETDATE()
 		        WHERE Id = ?";
 		
 		$params = [
@@ -83,6 +86,7 @@ class DetalleRequerimientoModel
 			$datos['DescripcionDetallada'],
 			$datos['Cantidad'],
 			$datos['UnidadMedida'],
+			$datos['idUsuarioModifica'] ?? null,
 			$id
 		];
 
