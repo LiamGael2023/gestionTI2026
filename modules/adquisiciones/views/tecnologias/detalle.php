@@ -173,7 +173,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 							<td>
 								<?php if (!empty($ficha['Documento'])): ?>
 									<a href="index.php?module=adquisiciones&action=verFichaTecnicaAjax&id=<?php echo (int) $ficha['Id']; ?>"
-										target="_blank"
+										onclick="return abrirPdfEnModal(this.href);"
 										class="text-decoration-none text-reset"
 										title="Ver PDF">
 										<i class="ti ti-file-text icon-action"></i>
@@ -254,6 +254,20 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 </div>
 
+<div class="modal fade" id="modalVisorPdf" tabindex="-1" aria-labelledby="modalVisorPdfLabel" aria-hidden="true">
+	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalVisorPdfLabel">Vista previa de PDF</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+			</div>
+			<div class="modal-body p-0" style="height: 80vh;">
+				<iframe id="iframeVisorPdf" src="" title="Visor PDF" style="width: 100%; height: 100%; border: 0;"></iframe>
+			</div>
+		</div>
+	</div>
+</div>
+
 <script>
 	const idTecnologia = <?php echo $idTec; ?>;
 	const anioActual = <?php echo $anioActual; ?>;
@@ -315,6 +329,35 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			throw new Error('Solo se permiten archivos PDF.');
 		}
 	}
+
+	function abrirPdfEnModal(url) {
+		const iframe = document.getElementById('iframeVisorPdf');
+		const modalElement = document.getElementById('modalVisorPdf');
+
+		if (!iframe || !modalElement || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+			window.adqNotifySafe('warning', 'No se pudo abrir el visor', 'El visor de PDF no está disponible en este momento.');
+			return false;
+		}
+
+		iframe.src = url;
+		const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+		modalInstance.show();
+		return false;
+	}
+
+	document.addEventListener('DOMContentLoaded', function() {
+		const modalElement = document.getElementById('modalVisorPdf');
+		if (!modalElement) {
+			return;
+		}
+
+		modalElement.addEventListener('hidden.bs.modal', function() {
+			const iframe = document.getElementById('iframeVisorPdf');
+			if (iframe) {
+				iframe.src = '';
+			}
+		});
+	});
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();

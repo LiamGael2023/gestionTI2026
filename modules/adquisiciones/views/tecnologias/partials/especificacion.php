@@ -20,7 +20,7 @@
 								<div class="acciones-iconos">
 									<?php if (!empty($especificacionTecnica['Documento'])): ?>
 										<a href="index.php?module=adquisiciones&action=verEspecificacionTecnicaAjax&id=<?php echo (int) $especificacionTecnica['Id']; ?>"
-											target="_blank"
+											onclick="return abrirPdfEnModal(this.href);"
 											class="text-decoration-none text-reset"
 											title="Ver PDF">
 											<i class="ti ti-file-text icon-action"></i>

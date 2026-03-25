@@ -12,7 +12,7 @@
 						<div class="acciones-iconos">
 							<?php if (!empty($conformidad['Documento'])): ?>
 								<a href="index.php?module=adquisiciones&action=verConformidadAjax&id=<?php echo (int) $conformidad['Id']; ?>"
-									target="_blank"
+									onclick="return abrirPdfEnModal(this.href);"
 									class="text-decoration-none text-reset"
 									title="Ver PDF">
 									<i class="ti ti-file-text icon-action"></i>
