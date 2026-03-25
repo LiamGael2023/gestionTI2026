@@ -86,6 +86,66 @@ function longitudTexto($texto)
 	return strlen($texto);
 }
 
+function normalizarTextoAsciiMayuscula($texto)
+{
+	$texto = strtoupper(trim((string) $texto));
+
+	if (function_exists('iconv')) {
+		$convertido = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+		if ($convertido !== false) {
+			$texto = $convertido;
+		}
+	}
+
+	$texto = preg_replace('/[^A-Z0-9]+/', ' ', (string) $texto);
+	$texto = trim((string) $texto);
+
+	return $texto;
+}
+
+function obtenerTokenCodigoTecnologiaOrden($codigo, $idCatalogoTecnologico)
+{
+	$codigoNormalizado = normalizarTextoAsciiMayuscula($codigo);
+	if ($codigoNormalizado !== '' && preg_match('/\b(T\d+)\b/', $codigoNormalizado, $match)) {
+		return $match[1];
+	}
+
+	$tokens = preg_split('/\s+/', $codigoNormalizado);
+	$primerToken = isset($tokens[0]) ? (string) $tokens[0] : '';
+	if ($primerToken === '') {
+		return 'T' . (int) $idCatalogoTecnologico;
+	}
+
+	return strpos($primerToken, 'T') === 0 ? $primerToken : ('T' . $primerToken);
+}
+
+function obtenerPrimeraPalabraDescripcionOrden($descripcion)
+{
+	$descripcionNormalizada = normalizarTextoAsciiMayuscula($descripcion);
+	$tokens = preg_split('/\s+/', $descripcionNormalizada);
+	$primeraPalabra = isset($tokens[0]) ? (string) $tokens[0] : '';
+
+	return $primeraPalabra !== '' ? $primeraPalabra : 'TECNOLOGIA';
+}
+
+function generarNumeroOrdenCompra($tecnologia, $anio)
+{
+	$idCatalogo = isset($tecnologia['Id']) ? (int) $tecnologia['Id'] : 0;
+	$tokenTecnologia = obtenerTokenCodigoTecnologiaOrden($tecnologia['Codigo'] ?? '', $idCatalogo);
+	$primeraPalabra = obtenerPrimeraPalabraDescripcionOrden($tecnologia['NombreGenerico'] ?? '');
+	$anioNumero = (int) $anio;
+	$prefijo = 'OC_' . $tokenTecnologia . '_';
+	$sufijo = '_' . $anioNumero;
+	$maxPalabra = OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH - longitudTexto($prefijo) - longitudTexto($sufijo);
+	if ($maxPalabra < 1) {
+		$maxPalabra = 1;
+	}
+
+	$primeraPalabra = substr($primeraPalabra, 0, $maxPalabra);
+
+	return $prefijo . $primeraPalabra . $sufijo;
+}
+
 function obtenerEnteroInput($input, $clave)
 {
 	return isset($input[$clave]) ? (int) $input[$clave] : 0;
@@ -397,14 +457,18 @@ switch ($action) {
 	case 'guardarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
-		$numeroOrden = obtenerTextoInput($input, 'NumeroOrden');
 		$fechaEntrega = normalizarFechaNullable(obtenerTextoInput($input, 'FechaEntrega'));
 		$anio = obtenerEnteroInput($input, 'Anio');
 		$pdfBase64 = obtenerDocumentoInput($input);
-		if ($idCat <= 0 || $numeroOrden === '' || $anio <= 0 || $pdfBase64 === '') {
+		if ($idCat <= 0 || $anio <= 0 || $pdfBase64 === '') {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
 		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
+		$tecnologiaOrden = $catalogoModel->obtenerPorId($idCat);
+		if (!$tecnologiaOrden) {
+			responderJson(['ok' => false, 'error' => 'No se encontró la tecnología para generar la orden de compra.']);
+		}
+		$numeroOrden = generarNumeroOrdenCompra($tecnologiaOrden, $anio);
 		if (longitudTexto($numeroOrden) > OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH) {
 			responderJson([
 				'ok' => false,
@@ -449,12 +513,20 @@ switch ($action) {
 	case 'actualizarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
-		$numeroOrden = obtenerTextoInput($input, 'NumeroOrden');
 		$fechaEntrega = normalizarFechaNullable(obtenerTextoInput($input, 'FechaEntrega'));
 		$pdfBase64 = obtenerDocumentoInput($input);
-		if ($idDocumento <= 0 || $numeroOrden === '' || $pdfBase64 === '') {
+		if ($idDocumento <= 0) {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
+		$ordenActual = $ordenCompraModel->obtenerPorId($idDocumento);
+		if (!$ordenActual) {
+			responderJson(['ok' => false, 'error' => 'No se encontró la orden de compra.']);
+		}
+		$tecnologiaOrden = $catalogoModel->obtenerPorId((int) $ordenActual['IdCatalogoTecnologico']);
+		if (!$tecnologiaOrden) {
+			responderJson(['ok' => false, 'error' => 'No se encontró la tecnología para generar la orden de compra.']);
+		}
+		$numeroOrden = generarNumeroOrdenCompra($tecnologiaOrden, (int) $ordenActual['Anio']);
 		if (longitudTexto($numeroOrden) > OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH) {
 			responderJson([
 				'ok' => false,
@@ -464,13 +536,14 @@ switch ($action) {
 		if ($fechaEntrega === false) {
 			responderJson(['ok' => false, 'error' => 'La fecha de entrega es inválida.']);
 		}
-		if (!validarPdfBase64($pdfBase64)) {
+		if ($pdfBase64 !== '' && !validarPdfBase64($pdfBase64)) {
 			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
 		}
+		$documentoActualizar = $pdfBase64 !== '' ? $pdfBase64 : null;
 		$ok = $ordenCompraModel->actualizar($idDocumento, [
 			'NumeroOrden' => $numeroOrden,
 			'FechaEntrega' => $fechaEntrega,
-			'Documento' => $pdfBase64,
+			'Documento' => $documentoActualizar,
 			'idUsuarioModifica' => $idUsuarioSesion
 		]);
 		if ($ok) {

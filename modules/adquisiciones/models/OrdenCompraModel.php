@@ -36,6 +36,30 @@ class OrdenCompraModel
 		return $row ?: null;
 	}
 
+	public function obtenerPorId($id)
+	{
+		$sql = "
+			SELECT TOP 1 Id, IdCatalogoTecnologico, NumeroOrden, Anio, FechaEntrega, Documento, FechaRegistro
+			FROM adquisiciones.OrdenCompra
+			WHERE Id = ?
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $id]);
+		if ($stmt === false) {
+			return null;
+		}
+
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		if ($row && $row['FechaRegistro'] instanceof DateTime) {
+			$row['FechaRegistro'] = $row['FechaRegistro']->format('d/m/Y H:i');
+		}
+		if ($row && $row['FechaEntrega'] instanceof DateTime) {
+			$row['FechaEntrega'] = $row['FechaEntrega']->format('Y-m-d');
+		}
+
+		return $row ?: null;
+	}
+
 	public function guardar($datos)
 	{
 		$sqlCheck = "SELECT Id FROM adquisiciones.OrdenCompra WHERE IdCatalogoTecnologico = ? AND Anio = ?";
@@ -73,17 +97,24 @@ class OrdenCompraModel
 	{
 		$sql = "
 			UPDATE adquisiciones.OrdenCompra
-			SET NumeroOrden = ?, FechaEntrega = ?, Documento = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
-			WHERE Id = ?
+			SET NumeroOrden = ?, FechaEntrega = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [
+		$params = [
 			$datos['NumeroOrden'],
 			$datos['FechaEntrega'],
-			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
-			$datos['idUsuarioModifica'] ?? null,
-			$id
-		]);
+			$datos['idUsuarioModifica'] ?? null
+		];
+
+		if (array_key_exists('Documento', $datos) && $datos['Documento'] !== null) {
+			$sql .= ", Documento = ?";
+			$params[] = [$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')];
+		}
+
+		$sql .= " WHERE Id = ?";
+		$params[] = $id;
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 
 		return $stmt !== false;
 	}

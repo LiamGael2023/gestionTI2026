@@ -221,6 +221,19 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return 'ET_' + tokenTecnologia + '_' + primeraPalabra + '_' + anioActual;
 	}
 
+	function generarNumeroOrdenCompra(anio) {
+		const tokenTecnologia = obtenerTokenCodigoTecnologia();
+		const primeraPalabra = obtenerPrimeraPalabraDescripcion();
+		const anioNumerico = parseInt(anio, 10) || anioActual;
+		const maxLength = 25;
+		const prefijo = 'OC_' + tokenTecnologia + '_';
+		const sufijo = '_' + anioNumerico;
+		const maxPalabra = Math.max(1, maxLength - prefijo.length - sufijo.length);
+		const palabraAjustada = primeraPalabra.slice(0, maxPalabra);
+
+		return prefijo + palabraAjustada + sufijo;
+	}
+
 	function formatearCodigoEspecificacionVisual(codigo) {
 		return String(codigo || '').replace(/_/g, ' ').trim();
 	}
@@ -615,9 +628,154 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
+	function abrirModalOrdenCompra(modo, idOrdenCompra, fechaEntrega) {
+		const modalElement = document.getElementById('modalOrdenCompra');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('oc_modal_modo');
+		const inputId = document.getElementById('oc_modal_id');
+		const inputNumero = document.getElementById('oc_numero_orden_modal');
+		const inputFecha = document.getElementById('oc_fecha_entrega_modal');
+		const inputDocumento = document.getElementById('oc_documento_modal');
+		const labelDocumento = document.getElementById('oc_documento_label');
+		const hintDocumento = document.getElementById('oc_documento_hint');
+		const titulo = document.getElementById('modalOrdenCompraLabel');
+		const botonSubmit = document.getElementById('oc_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idOrdenCompra, 10) || 0) : '0';
+		}
+		if (inputNumero) {
+			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+		}
+		if (inputFecha) {
+			inputFecha.value = modoFormulario === 'editar' ? String(fechaEntrega || '') : '';
+		}
+		if (inputDocumento) {
+			inputDocumento.required = modoFormulario !== 'editar';
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Orden de Compra' : 'Agregar Orden de Compra';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF (opcional)' : 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = modoFormulario === 'editar'
+				? 'Si no selecciona un archivo, se conservará el PDF actual.'
+				: '';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).show();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('show');
+			return false;
+		}
+
+		abrirModalFallback(modalElement);
+		return false;
+	}
+
+	function cerrarModalOrdenCompra() {
+		const modalElement = document.getElementById('modalOrdenCompra');
+		if (!modalElement) {
+			return false;
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).hide();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('hide');
+			return false;
+		}
+
+		cerrarModalFallback(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioOrdenCompra() {
+		const form = document.getElementById('form-orden-compra-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('oc_modal_modo');
+		const inputId = document.getElementById('oc_modal_id');
+		const inputNumero = document.getElementById('oc_numero_orden_modal');
+		const inputDocumento = document.getElementById('oc_documento_modal');
+		const labelDocumento = document.getElementById('oc_documento_label');
+		const hintDocumento = document.getElementById('oc_documento_hint');
+		const titulo = document.getElementById('modalOrdenCompraLabel');
+		const botonSubmit = document.getElementById('oc_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		if (inputNumero) {
+			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+		}
+		if (inputDocumento) {
+			inputDocumento.required = true;
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Orden de Compra';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = '';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalOrdenCompra() {
+		const modalElement = document.getElementById('modalOrdenCompra');
+		if (!modalElement) {
+			return;
+		}
+
+		if (modalElement.dataset.adqOcInit === '1') {
+			return;
+		}
+		modalElement.dataset.adqOcInit = '1';
+
+		limpiarFormularioOrdenCompra();
+		modalElement.addEventListener('hidden.bs.modal', limpiarFormularioOrdenCompra);
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).on('hidden.bs.modal', limpiarFormularioOrdenCompra);
+		}
+	}
+
 	inicializarModalVisorPdf();
 	inicializarModalAgregarFichaTecnica();
 	inicializarModalEspecificacionTecnica();
+	inicializarModalOrdenCompra();
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();
@@ -806,118 +964,77 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
-	function validarNumeroOrden(numeroOrden) {
-		if (!numeroOrden) {
-			throw new Error('El número de orden es obligatorio.');
-		}
-		if (numeroOrden.length > 25) {
-			throw new Error('El número de orden no puede exceder 25 caracteres.');
-		}
-	}
-
 	function normalizarFechaEntrega(valor) {
 		const fecha = (valor || '').trim();
 		return fecha !== '' ? fecha : null;
 	}
 
-	function mostrarFormularioFechaOrdenCompra() {
-		const formulario = document.getElementById('oc-form-fecha');
-		if (formulario) {
-			formulario.style.display = 'flex';
-		}
-	}
-
-	function ocultarFormularioFechaOrdenCompra() {
-		const formulario = document.getElementById('oc-form-fecha');
-		if (formulario) {
-			formulario.style.display = 'none';
-		}
-	}
-
-	async function actualizarFechaOrdenCompra() {
-		try {
-			const idOrden = parseInt(document.getElementById('oc_id').value, 10);
-			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_only').value);
-
-			if (!idOrden) {
-				throw new Error('Faltan datos para actualizar la fecha de la orden de compra.');
-			}
-
-			const data = await enviarJson('index.php?module=adquisiciones&action=actualizarFechaOrdenCompraAjax', {
-				Id: idOrden,
-				FechaEntrega: fechaEntrega
-			});
-
-			if (!data.ok) {
-				throw new Error(data.error || 'No se pudo actualizar la fecha de entrega.');
-			}
-
-			await recargarVistaTecnologia();
-		} catch (error) {
-			window.adqNotifySafe('danger', 'Error al actualizar fecha', error.message || 'Error al actualizar la fecha de entrega.');
-		}
-	}
-
-	async function guardarOrdenCompra(e) {
+	async function submitOrdenCompraModal(e) {
 		e.preventDefault();
 
 		try {
-			const numeroOrden = document.getElementById('oc_numero_orden').value.trim();
-			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega').value);
-			const file = document.getElementById('oc_documento').files[0];
+			const modo = document.getElementById('oc_modal_modo').value;
+			const idOrden = parseInt(document.getElementById('oc_modal_id').value, 10);
+			const numeroOrden = generarNumeroOrdenCompra(anioActual);
+			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_modal').value);
+			const file = document.getElementById('oc_documento_modal').files[0];
 
-			validarNumeroOrden(numeroOrden);
-			validarPdf(file);
-			const documentoBase64 = await fileToBase64(file);
-			const data = await enviarJson('index.php?module=adquisiciones&action=guardarOrdenCompraAjax', {
-				IdCatalogoTecnologico: idTecnologia,
-				NumeroOrden: numeroOrden,
-				FechaEntrega: fechaEntrega,
-				Anio: anioActual,
-				Documento: documentoBase64
-			});
+			if (!numeroOrden) {
+				throw new Error('No se pudo generar el número de orden.');
+			}
+			if (numeroOrden.length > 25) {
+				throw new Error('El número de orden generado excede 25 caracteres.');
+			}
+
+			let data = null;
+			let documentoBase64 = null;
+
+			if (modo === 'editar') {
+				if (!idOrden) {
+					throw new Error('Faltan datos para actualizar la orden de compra.');
+				}
+
+				if (file) {
+					validarPdf(file);
+					documentoBase64 = await fileToBase64(file);
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarOrdenCompraAjax', {
+					Id: idOrden,
+					NumeroOrden: numeroOrden,
+					FechaEntrega: fechaEntrega,
+					Documento: documentoBase64
+				});
+			} else {
+				validarPdf(file);
+				documentoBase64 = await fileToBase64(file);
+
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarOrdenCompraAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					NumeroOrden: numeroOrden,
+					FechaEntrega: fechaEntrega,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
 
 			if (!data.ok) {
-				throw new Error(data.error || 'No se pudo guardar la orden de compra.');
+				throw new Error(data.error || (modo === 'editar'
+					? 'No se pudo actualizar la orden de compra.'
+					: 'No se pudo guardar la orden de compra.'));
 			}
 
+			cerrarModalOrdenCompra();
 			await recargarVistaTecnologia();
 		} catch (error) {
-			window.adqNotifySafe('danger', 'Error al guardar orden de compra', error.message || 'Error al guardar la orden de compra.');
-		}
-
-		return false;
-	}
-
-	async function actualizarOrdenCompra(e) {
-		e.preventDefault();
-
-		try {
-			const idOrden = parseInt(document.getElementById('oc_id').value, 10);
-			const numeroOrden = document.getElementById('oc_numero_orden_upd').value.trim();
-			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_upd').value);
-			const file = document.getElementById('oc_documento_upd').files[0];
-
-			if (!idOrden) {
-				throw new Error('Faltan datos para actualizar la orden de compra.');
-			}
-			validarNumeroOrden(numeroOrden);
-			validarPdf(file);
-			const documentoBase64 = await fileToBase64(file);
-			const data = await enviarJson('index.php?module=adquisiciones&action=actualizarOrdenCompraAjax', {
-				Id: idOrden,
-				NumeroOrden: numeroOrden,
-				FechaEntrega: fechaEntrega,
-				Documento: documentoBase64
-			});
-
-			if (!data.ok) {
-				throw new Error(data.error || 'No se pudo actualizar la orden de compra.');
-			}
-
-			await recargarVistaTecnologia();
-		} catch (error) {
-			window.adqNotifySafe('danger', 'Error al actualizar orden de compra', error.message || 'Error al actualizar la orden de compra.');
+			const modo = (document.getElementById('oc_modal_modo') || {}).value || 'crear';
+			window.adqNotifySafe(
+				'danger',
+				modo === 'editar' ? 'Error al actualizar orden de compra' : 'Error al guardar orden de compra',
+				error.message || (modo === 'editar'
+					? 'Error al actualizar la orden de compra.'
+					: 'Error al guardar la orden de compra.')
+			);
 		}
 
 		return false;
