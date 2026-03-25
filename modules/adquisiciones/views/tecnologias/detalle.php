@@ -44,8 +44,10 @@
 
 <?php
 $idTec = (int) $tecnologia['Id'];
-$codigoTec = htmlspecialchars($tecnologia['Codigo']);
-$nombreTec = htmlspecialchars($tecnologia['NombreGenerico']);
+$codigoTecRaw = (string) ($tecnologia['Codigo'] ?? '');
+$nombreTecRaw = (string) ($tecnologia['NombreGenerico'] ?? '');
+$codigoTec = htmlspecialchars($codigoTecRaw);
+$nombreTec = htmlspecialchars($nombreTecRaw);
 $anioActual = isset($anioFiltro) ? (int) $anioFiltro : (int) date('Y');
 $minimoFichasRequeridas = 2;
 $totalFichas = count($fichasTecnicas);
@@ -180,7 +182,48 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 <script>
 	const idTecnologia = <?php echo $idTec; ?>;
 	const anioActual = <?php echo $anioActual; ?>;
+	const codigoTecnologia = <?php echo json_encode($codigoTecRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+	const nombreTecnologia = <?php echo json_encode($nombreTecRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 	let adqPdfBackdropFallback = null;
+
+	function normalizarTextoAscii(valor) {
+		return String(valor || '')
+			.normalize('NFD')
+			.replace(/[\u0300-\u036f]/g, '')
+			.toUpperCase()
+			.trim();
+	}
+
+	function obtenerTokenCodigoTecnologia() {
+		const codigoLimpio = normalizarTextoAscii(codigoTecnologia);
+		const match = codigoLimpio.match(/T\d+/);
+		if (match && match[0]) {
+			return match[0];
+		}
+
+		const primerToken = codigoLimpio.split(/[^A-Z0-9]+/).filter(Boolean)[0] || '';
+		if (!primerToken) {
+			return 'T' + idTecnologia;
+		}
+
+		return primerToken.startsWith('T') ? primerToken : ('T' + primerToken);
+	}
+
+	function obtenerPrimeraPalabraDescripcion() {
+		const descripcionLimpia = normalizarTextoAscii(nombreTecnologia);
+		const token = descripcionLimpia.split(/[^A-Z0-9]+/).filter(Boolean)[0];
+		return token || 'TECNOLOGIA';
+	}
+
+	function generarCodigoEspecificacion() {
+		const tokenTecnologia = obtenerTokenCodigoTecnologia();
+		const primeraPalabra = obtenerPrimeraPalabraDescripcion();
+		return 'ET_' + tokenTecnologia + '_' + primeraPalabra + '_' + anioActual;
+	}
+
+	function formatearCodigoEspecificacionVisual(codigo) {
+		return String(codigo || '').replace(/_/g, ' ').trim();
+	}
 
 	function obtenerBootstrapModal() {
 		if (typeof window !== 'undefined' && window.bootstrap && window.bootstrap.Modal) {
@@ -440,8 +483,141 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
+	function abrirModalEspecificacionTecnica(modo, idEspecificacion) {
+		const modalElement = document.getElementById('modalEspecificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('et_modal_modo');
+		const inputId = document.getElementById('et_modal_id');
+		const inputCodigo = document.getElementById('et_codigo_modal');
+		const inputCodigoVisual = document.getElementById('et_codigo_modal_visual');
+		const labelDocumento = document.getElementById('et_documento_label');
+		const titulo = document.getElementById('modalEspecificacionTecnicaLabel');
+		const botonSubmit = document.getElementById('et_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idEspecificacion, 10) || 0) : '0';
+		}
+		const codigoGenerado = generarCodigoEspecificacion();
+		if (inputCodigo) {
+			inputCodigo.value = codigoGenerado;
+		}
+		if (inputCodigoVisual) {
+			inputCodigoVisual.value = formatearCodigoEspecificacionVisual(codigoGenerado);
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Especificación Técnica' : 'Agregar Especificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF' : 'Documento PDF';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).show();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('show');
+			return false;
+		}
+
+		abrirModalFallback(modalElement);
+		return false;
+	}
+
+	function cerrarModalEspecificacionTecnica() {
+		const modalElement = document.getElementById('modalEspecificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).hide();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('hide');
+			return false;
+		}
+
+		cerrarModalFallback(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioEspecificacionTecnica() {
+		const form = document.getElementById('form-especificacion-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('et_modal_modo');
+		const inputId = document.getElementById('et_modal_id');
+		const inputCodigo = document.getElementById('et_codigo_modal');
+		const inputCodigoVisual = document.getElementById('et_codigo_modal_visual');
+		const titulo = document.getElementById('modalEspecificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('et_documento_label');
+		const botonSubmit = document.getElementById('et_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		const codigoGenerado = generarCodigoEspecificacion();
+		if (inputCodigo) {
+			inputCodigo.value = codigoGenerado;
+		}
+		if (inputCodigoVisual) {
+			inputCodigoVisual.value = formatearCodigoEspecificacionVisual(codigoGenerado);
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Especificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalEspecificacionTecnica() {
+		const modalElement = document.getElementById('modalEspecificacionTecnica');
+		if (!modalElement) {
+			return;
+		}
+
+		if (modalElement.dataset.adqEtInit === '1') {
+			return;
+		}
+		modalElement.dataset.adqEtInit = '1';
+
+		limpiarFormularioEspecificacionTecnica();
+		modalElement.addEventListener('hidden.bs.modal', limpiarFormularioEspecificacionTecnica);
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).on('hidden.bs.modal', limpiarFormularioEspecificacionTecnica);
+		}
+	}
+
 	inicializarModalVisorPdf();
 	inicializarModalAgregarFichaTecnica();
+	inicializarModalEspecificacionTecnica();
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();
@@ -543,12 +719,14 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
-	async function guardarEspecificacionTecnica(e) {
+	async function submitEspecificacionTecnica(e) {
 		e.preventDefault();
 
 		try {
-			const codigo = document.getElementById('et_codigo').value.trim();
-			const file = document.getElementById('et_documento').files[0];
+			const modo = document.getElementById('et_modal_modo').value;
+			const idEspecificacion = parseInt(document.getElementById('et_modal_id').value, 10);
+			const codigo = document.getElementById('et_codigo_modal').value.trim();
+			const file = document.getElementById('et_documento_modal').files[0];
 
 			if (!codigo) {
 				throw new Error('El código de especificación técnica es obligatorio.');
@@ -559,55 +737,44 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 			validarPdf(file);
 			const documentoBase64 = await fileToBase64(file);
-			const data = await enviarJson('index.php?module=adquisiciones&action=guardarEspecificacionTecnicaAjax', {
-				IdCatalogoTecnologico: idTecnologia,
-				Codigo: codigo,
-				Anio: anioActual,
-				Documento: documentoBase64
-			});
+			let data = null;
+
+			if (modo === 'editar') {
+				if (!idEspecificacion) {
+					throw new Error('Faltan datos para actualizar la especificación técnica.');
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarEspecificacionTecnicaAjax', {
+					Id: idEspecificacion,
+					Codigo: codigo,
+					Documento: documentoBase64
+				});
+			} else {
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarEspecificacionTecnicaAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					Codigo: codigo,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
 
 			if (!data.ok) {
-				throw new Error(data.error || 'No se pudo guardar la especificación técnica.');
+				throw new Error(data.error || (modo === 'editar'
+					? 'No se pudo actualizar la especificación técnica.'
+					: 'No se pudo guardar la especificación técnica.'));
 			}
 
+			cerrarModalEspecificacionTecnica();
 			await recargarVistaTecnologia();
 		} catch (error) {
-			window.adqNotifySafe('danger', 'Error al guardar especificacion', error.message || 'Error al guardar la especificacion tecnica.');
-		}
-
-		return false;
-	}
-
-	async function actualizarEspecificacionTecnica(e) {
-		e.preventDefault();
-
-		try {
-			const idEspecificacion = parseInt(document.getElementById('et_id').value, 10);
-			const codigo = document.getElementById('et_codigo_upd').value.trim();
-			const file = document.getElementById('et_documento_upd').files[0];
-
-			if (!idEspecificacion || !codigo) {
-				throw new Error('Faltan datos para actualizar la especificación técnica.');
-			}
-			if (codigo.length > 50) {
-				throw new Error('El código de especificación técnica no puede exceder 50 caracteres.');
-			}
-
-			validarPdf(file);
-			const documentoBase64 = await fileToBase64(file);
-			const data = await enviarJson('index.php?module=adquisiciones&action=actualizarEspecificacionTecnicaAjax', {
-				Id: idEspecificacion,
-				Codigo: codigo,
-				Documento: documentoBase64
-			});
-
-			if (!data.ok) {
-				throw new Error(data.error || 'No se pudo actualizar la especificación técnica.');
-			}
-
-			await recargarVistaTecnologia();
-		} catch (error) {
-			window.adqNotifySafe('danger', 'Error al actualizar especificacion', error.message || 'Error al actualizar la especificacion tecnica.');
+			const modo = (document.getElementById('et_modal_modo') || {}).value || 'crear';
+			window.adqNotifySafe(
+				'danger',
+				modo === 'editar' ? 'Error al actualizar especificacion' : 'Error al guardar especificacion',
+				error.message || (modo === 'editar'
+					? 'Error al actualizar la especificacion tecnica.'
+					: 'Error al guardar la especificacion tecnica.')
+			);
 		}
 
 		return false;
