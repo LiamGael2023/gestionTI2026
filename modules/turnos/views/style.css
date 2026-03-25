@@ -1,0 +1,252 @@
+
+body{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:0;
+    color:#333;
+}
+
+.contenedor{
+    width:95%;
+    margin:30px auto;
+    background:#fff;
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.08);
+}
+
+h2{
+    text-align:center;
+    font-size:26px;
+    font-weight:700;
+    margin-bottom:30px;
+    color:#133D60;
+}
+
+/* barra superior */
+.barra-superior{
+    display:flex;
+    /* flex-wrap:wrap; */
+    align-items:center;
+    gap:12px;
+    margin-bottom:20px;
+    padding:15px;
+    background:#f8fafc;
+    border-radius:8px;
+    border:1px solid #e5e7eb;
+}
+
+label{
+    font-weight:600;
+    font-size:14px;
+}
+
+select,input{
+    padding:8px 12px;
+    border:1px solid #d1d5db;
+    border-radius:6px;
+    font-size:14px;
+    transition:all 0.2s;
+}
+
+select:focus,input:focus{
+    outline:none;
+    border-color:#133D60;
+    box-shadow:0 0 0 2px rgba(19,61,96,0.1);
+}
+
+/* botones */
+
+.boton{
+    background:#133D60;
+    border:none;
+    color:#fff;
+    padding:8px 16px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    font-weight:600;
+    transition:all 0.25s;
+}
+
+.boton:hover{
+    background:#0f2b44;
+    transform:translateY(-1px);
+}
+
+/* tabla */
+
+.tabla{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+}
+/* encabezado de la tabla */
+
+#tablaTrabajadores thead th{
+background-color:#133D60 !important;
+color:#fcfcfc !important;
+font-weight:600;
+border-bottom:2px solid #2f6a99;
+}
+.tabla th{
+    background:#133D60;
+    color:#fff;
+    padding:12px;
+    text-align:left;
+    font-weight:600;
+}
+
+.tabla td{
+    padding:11px;
+    border-bottom:1px solid #e5e7eb;
+}
+
+.tabla tr:nth-child(even){
+    background:#fafafa;
+}
+
+.tabla tr:hover{
+    background:#eef4ff;
+}
+
+/* iconos */
+
+.link{
+    color:#133D60;
+    font-size:16px;
+    margin-right:10px;
+    transition:all 0.2s;
+}
+
+.link:hover{
+    color:#0f2b44;
+}
+
+/* modal */
+.modal-header{
+background:#133D60;
+color:white;
+}
+
+.modal-header h4{
+margin:0;
+font-weight:600;
+}
+
+.modal-body{
+padding:20px;
+}
+
+#tablaHorarios th{
+background:#133D60;
+color:white;
+}
+
+.seleccionarHorario{
+font-size:13px;
+padding:5px 10px;
+}
+
+.modal-contenido h3{
+    margin-top:0;
+    color:#133D60;
+}
+.contenedor-boton{
+    display:flex;
+    justify-content:flex-end;
+    margin-top:15px;
+}
+@keyframes aparecer{
+    from{transform:scale(0.9);opacity:0;}
+    to{transform:scale(1);opacity:1;}
+}
+
+/* responsive */
+
+@media(max-width:768px){
+
+    .barra-superior{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .tabla th,
+    .tabla td{
+        font-size:13px;
+        padding:8px;
+    }
+
+
+    
+}
+
+.btn-eliminar-pastel{
+background-color:#ea90a5 !important;
+border-color:#d37f93 !important;
+color:#d8728a !important;
+}
+
+.btn-agregar-pastel{
+background-color:#A8E6CF !important;
+border-color:#A8E6CF !important;
+color:#2d6a4f !important;
+}
+
+.btn-agregar-pastel:hover{
+background-color:#95d5b2 !important;
+border-color:#95d5b2 !important;
+color:#1b4332 !important;
+}
+
+
+
+.btn-modificar-pastel{
+background-color:#FFF3B0 !important;
+border-color:#FFF3B0 !important;
+color:#7a5c00 !important;
+}
+
+.btn-modificar-pastel:hover{
+background-color:#ffe066 !important;
+border-color:#ffe066 !important;
+color:#5c4400 !important;
+}
+.filtro-item{
+display:flex;
+gap:10px;
+align-items:flex-end;
+}
+
+.boton{
+padding:8px 14px;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+/* CSS para la tabla dentro del modal */
+.tabla-scroll {
+    overflow-x: auto;      /* permite scroll horizontal */
+    max-width: 100%;       /* no se salga del modal */
+}
+
+/* Asegurar que la tabla no exceda el contenedor */
+#tablaHorarioModal {
+    min-width: 1200px;    
+}
+
+.turno-existente{
+    background-color:#8cb6e2;
+}
+
+.turno-existente input{
+    pointer-events:none; 
+}
+.no-print {
+    display:none;
+}
+#reportePDF{
+    background:white;
+    padding:10px;
+}
