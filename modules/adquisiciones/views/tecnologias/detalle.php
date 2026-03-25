@@ -334,14 +334,27 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		const iframe = document.getElementById('iframeVisorPdf');
 		const modalElement = document.getElementById('modalVisorPdf');
 
-		if (!iframe || !modalElement || typeof bootstrap === 'undefined' || !bootstrap.Modal) {
-			window.adqNotifySafe('warning', 'No se pudo abrir el visor', 'El visor de PDF no está disponible en este momento.');
+		if (!iframe || !modalElement) {
+			window.adqNotifySafe('danger', 'Error', 'El modal no está disponible.');
 			return false;
 		}
 
 		iframe.src = url;
-		const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
-		modalInstance.show();
+		
+		// Intentar usar Bootstrap si está disponible, si no generar el modal manualmente
+		if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+			const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+			modalInstance.show();
+		} else if (typeof $ !== 'undefined' && $.fn.modal) {
+			// Fallback a jQuery si Bootstrap no está disponible
+			$(modalElement).modal('show');
+		} else {
+			// Fallback: mostrar el modal con display
+			modalElement.style.display = 'block';
+			modalElement.classList.add('show');
+			document.body.classList.add('modal-open');
+		}
+		
 		return false;
 	}
 
