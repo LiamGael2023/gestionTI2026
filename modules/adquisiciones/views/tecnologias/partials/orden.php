@@ -110,3 +110,213 @@
 		</div>
 	</div>
 </div>
+
+<script>
+	function abrirModalOrdenCompra(modo, idOrdenCompra, fechaEntrega) {
+		const modalElement = document.getElementById('modalOrdenCompra');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('oc_modal_modo');
+		const inputId = document.getElementById('oc_modal_id');
+		const inputNumero = document.getElementById('oc_numero_orden_modal');
+		const inputFecha = document.getElementById('oc_fecha_entrega_modal');
+		const inputDocumento = document.getElementById('oc_documento_modal');
+		const labelDocumento = document.getElementById('oc_documento_label');
+		const hintDocumento = document.getElementById('oc_documento_hint');
+		const titulo = document.getElementById('modalOrdenCompraLabel');
+		const botonSubmit = document.getElementById('oc_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idOrdenCompra, 10) || 0) : '0';
+		}
+		if (inputNumero) {
+			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+		}
+		if (inputFecha) {
+			inputFecha.value = modoFormulario === 'editar' ? String(fechaEntrega || '') : '';
+		}
+		if (inputDocumento) {
+			inputDocumento.required = modoFormulario !== 'editar';
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Orden de Compra' : 'Agregar Orden de Compra';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF (opcional)' : 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = modoFormulario === 'editar' ?
+				'Si no selecciona un archivo, se conservará el PDF actual.' :
+				'';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		mostrarModal(modalElement);
+		return false;
+	}
+
+	function cerrarModalOrdenCompra() {
+		const modalElement = document.getElementById('modalOrdenCompra');
+		ocultarModal(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioOrdenCompra() {
+		const form = document.getElementById('form-orden-compra-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('oc_modal_modo');
+		const inputId = document.getElementById('oc_modal_id');
+		const inputNumero = document.getElementById('oc_numero_orden_modal');
+		const inputDocumento = document.getElementById('oc_documento_modal');
+		const labelDocumento = document.getElementById('oc_documento_label');
+		const hintDocumento = document.getElementById('oc_documento_hint');
+		const titulo = document.getElementById('modalOrdenCompraLabel');
+		const botonSubmit = document.getElementById('oc_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		if (inputNumero) {
+			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+		}
+		if (inputDocumento) {
+			inputDocumento.required = true;
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Orden de Compra';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = '';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalOrdenCompra() {
+		inicializarModalConLimpieza({
+			modalId: 'modalOrdenCompra',
+			datasetKey: 'adqOcInit',
+			limpiarFn: limpiarFormularioOrdenCompra
+		});
+	}
+
+	function normalizarFechaEntrega(valor) {
+		const fecha = (valor || '').trim();
+		return fecha !== '' ? fecha : null;
+	}
+
+	async function submitOrdenCompraModal(e) {
+		e.preventDefault();
+
+		try {
+			const modo = document.getElementById('oc_modal_modo').value;
+			const idOrden = parseInt(document.getElementById('oc_modal_id').value, 10);
+			const numeroOrden = generarNumeroOrdenCompra(anioActual);
+			const fechaEntrega = normalizarFechaEntrega(document.getElementById('oc_fecha_entrega_modal').value);
+			const file = document.getElementById('oc_documento_modal').files[0];
+
+			if (!numeroOrden) {
+				throw new Error('No se pudo generar el número de orden.');
+			}
+			if (numeroOrden.length > 25) {
+				throw new Error('El número de orden generado excede 25 caracteres.');
+			}
+
+			let data = null;
+			let documentoBase64 = null;
+
+			if (modo === 'editar') {
+				if (!idOrden) {
+					throw new Error('Faltan datos para actualizar la orden de compra.');
+				}
+
+				if (file) {
+					validarPdf(file);
+					documentoBase64 = await fileToBase64(file);
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarOrdenCompraAjax', {
+					Id: idOrden,
+					NumeroOrden: numeroOrden,
+					FechaEntrega: fechaEntrega,
+					Documento: documentoBase64
+				});
+			} else {
+				validarPdf(file);
+				documentoBase64 = await fileToBase64(file);
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarOrdenCompraAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					NumeroOrden: numeroOrden,
+					FechaEntrega: fechaEntrega,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
+
+			if (!data.ok) {
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la orden de compra.' :
+					'No se pudo guardar la orden de compra.'));
+			}
+
+			cerrarModalOrdenCompra();
+			await recargarVistaTecnologia();
+		} catch (error) {
+			const modo = (document.getElementById('oc_modal_modo') || {}).value || 'crear';
+			window.adqNotifySafe(
+				'danger',
+				modo === 'editar' ? 'Error al actualizar orden de compra' : 'Error al guardar orden de compra',
+				error.message || (modo === 'editar' ?
+					'Error al actualizar la orden de compra.' :
+					'Error al guardar la orden de compra.')
+			);
+		}
+
+		return false;
+	}
+
+	async function eliminarOrdenCompra(id) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: '¿Desea eliminar esta orden de compra?',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
+			return;
+		}
+
+		try {
+			const data = await enviarJson('index.php?module=adquisiciones&action=eliminarOrdenCompraAjax', {
+				Id: id
+			});
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo eliminar la orden de compra.');
+			}
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error al eliminar orden de compra', error.message || 'Error al eliminar la orden de compra.');
+		}
+	}
+</script>

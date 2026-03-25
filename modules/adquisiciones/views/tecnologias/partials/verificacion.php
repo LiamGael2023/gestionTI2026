@@ -98,3 +98,201 @@
 		</div>
 	<?php endif; ?>
 </div>
+
+<script>
+	function autoAjustarAlturaTextarea(textarea) {
+		if (!textarea) {
+			return;
+		}
+
+		textarea.style.height = 'auto';
+		textarea.style.height = textarea.scrollHeight + 'px';
+	}
+
+	function ajustarTextareaObservacionVerificacion() {
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		autoAjustarAlturaTextarea(inputObservacion);
+	}
+
+	function abrirModalVerificacionTecnica(modo, idVerificacion, observacion) {
+		const modalElement = document.getElementById('modalVerificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('vt_modal_modo');
+		const inputId = document.getElementById('vt_modal_id');
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		const inputDocumento = document.getElementById('vt_modal_documento');
+		const titulo = document.getElementById('modalVerificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('vt_modal_documento_label');
+		const hintDocumento = document.getElementById('vt_modal_documento_hint');
+		const botonSubmit = document.getElementById('vt_modal_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idVerificacion, 10) || 0) : '0';
+		}
+		if (inputObservacion) {
+			inputObservacion.value = String(observacion || '');
+			ajustarTextareaObservacionVerificacion();
+		}
+		if (inputDocumento) {
+			inputDocumento.required = modoFormulario !== 'editar';
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Verificación Técnica' : 'Agregar Verificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF' : 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = modoFormulario === 'editar' ?
+				'Si no selecciona un archivo, se conservará el PDF actual.' :
+				'';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		mostrarModal(modalElement);
+		setTimeout(ajustarTextareaObservacionVerificacion, 50);
+		return false;
+	}
+
+	function cerrarModalVerificacionTecnica() {
+		const modalElement = document.getElementById('modalVerificacionTecnica');
+		ocultarModal(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioVerificacionTecnica() {
+		const form = document.getElementById('form-verificacion-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('vt_modal_modo');
+		const inputId = document.getElementById('vt_modal_id');
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		const inputDocumento = document.getElementById('vt_modal_documento');
+		const titulo = document.getElementById('modalVerificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('vt_modal_documento_label');
+		const hintDocumento = document.getElementById('vt_modal_documento_hint');
+		const botonSubmit = document.getElementById('vt_modal_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		if (inputObservacion) {
+			ajustarTextareaObservacionVerificacion();
+		}
+		if (inputDocumento) {
+			inputDocumento.required = true;
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Verificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = '';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalVerificacionTecnica() {
+		inicializarModalConLimpieza({
+			modalId: 'modalVerificacionTecnica',
+			datasetKey: 'adqVtInit',
+			limpiarFn: limpiarFormularioVerificacionTecnica,
+			extraInitFn: function(modalElement) {
+				const inputObservacion = document.getElementById('vt_modal_observacion');
+				if (inputObservacion) {
+					inputObservacion.addEventListener('input', function() {
+						ajustarTextareaObservacionVerificacion();
+					});
+				}
+
+				modalElement.addEventListener('shown.bs.modal', ajustarTextareaObservacionVerificacion);
+
+				if (typeof $ !== 'undefined' && $.fn.modal) {
+					$(modalElement).on('shown.bs.modal', ajustarTextareaObservacionVerificacion);
+				}
+			}
+		});
+	}
+
+	async function submitVerificacionTecnicaModal(e) {
+		e.preventDefault();
+
+		try {
+			const modo = document.getElementById('vt_modal_modo').value;
+			const idVerificacion = parseInt(document.getElementById('vt_modal_id').value, 10);
+			const observacion = document.getElementById('vt_modal_observacion').value.trim();
+			const file = document.getElementById('vt_modal_documento').files[0];
+			let documentoBase64 = '';
+
+			if (modo === 'editar') {
+				if (file) {
+					validarPdf(file);
+					documentoBase64 = await fileToBase64(file);
+				}
+			} else {
+				validarPdf(file);
+				documentoBase64 = await fileToBase64(file);
+			}
+			let data = null;
+
+			if (modo === 'editar') {
+				if (!idVerificacion) {
+					throw new Error('Faltan datos para actualizar la verificación técnica.');
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarVerificacionTecnicaAjax', {
+					Id: idVerificacion,
+					Observacion: observacion,
+					Documento: documentoBase64
+				});
+			} else {
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarVerificacionTecnicaAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					Observacion: observacion,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
+
+			if (!data.ok) {
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la verificación técnica.' :
+					'No se pudo guardar la verificación técnica.'));
+			}
+
+			cerrarModalVerificacionTecnica();
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error en verificacion tecnica', error.message || 'No se pudo procesar la verificación técnica.');
+		}
+
+		return false;
+	}
+
+	function eliminarVerificacionTecnica(id) {
+		return eliminarDocumentoSimple(id, {
+			url: 'index.php?module=adquisiciones&action=eliminarVerificacionTecnicaAjax',
+			confirmacion: '¿Desea eliminar esta verificación técnica?',
+			errorEliminar: 'No se pudo eliminar la verificación técnica.'
+		});
+	}
+</script>

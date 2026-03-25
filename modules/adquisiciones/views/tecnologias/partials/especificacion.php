@@ -105,3 +105,187 @@
 		</div>
 	</div>
 </div>
+
+<script>
+	function abrirModalEspecificacionTecnica(modo, idEspecificacion) {
+		const modalElement = document.getElementById('modalEspecificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('et_modal_modo');
+		const inputId = document.getElementById('et_modal_id');
+		const inputCodigo = document.getElementById('et_codigo_modal');
+		const inputCodigoVisual = document.getElementById('et_codigo_modal_visual');
+		const labelDocumento = document.getElementById('et_documento_label');
+		const titulo = document.getElementById('modalEspecificacionTecnicaLabel');
+		const botonSubmit = document.getElementById('et_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idEspecificacion, 10) || 0) : '0';
+		}
+		const codigoGenerado = generarCodigoEspecificacion();
+		if (inputCodigo) {
+			inputCodigo.value = codigoGenerado;
+		}
+		if (inputCodigoVisual) {
+			inputCodigoVisual.value = formatearCodigoEspecificacionVisual(codigoGenerado);
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Especificación Técnica' : 'Agregar Especificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF (opcional)' : 'Documento PDF';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		mostrarModal(modalElement);
+		return false;
+	}
+
+	function cerrarModalEspecificacionTecnica() {
+		const modalElement = document.getElementById('modalEspecificacionTecnica');
+		ocultarModal(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioEspecificacionTecnica() {
+		const form = document.getElementById('form-especificacion-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('et_modal_modo');
+		const inputId = document.getElementById('et_modal_id');
+		const inputCodigo = document.getElementById('et_codigo_modal');
+		const inputCodigoVisual = document.getElementById('et_codigo_modal_visual');
+		const titulo = document.getElementById('modalEspecificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('et_documento_label');
+		const botonSubmit = document.getElementById('et_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		const codigoGenerado = generarCodigoEspecificacion();
+		if (inputCodigo) {
+			inputCodigo.value = codigoGenerado;
+		}
+		if (inputCodigoVisual) {
+			inputCodigoVisual.value = formatearCodigoEspecificacionVisual(codigoGenerado);
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Especificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalEspecificacionTecnica() {
+		inicializarModalConLimpieza({
+			modalId: 'modalEspecificacionTecnica',
+			datasetKey: 'adqEtInit',
+			limpiarFn: limpiarFormularioEspecificacionTecnica
+		});
+	}
+
+	async function submitEspecificacionTecnica(e) {
+		e.preventDefault();
+
+		try {
+			const modo = document.getElementById('et_modal_modo').value;
+			const idEspecificacion = parseInt(document.getElementById('et_modal_id').value, 10);
+			const codigo = document.getElementById('et_codigo_modal').value.trim();
+			const file = document.getElementById('et_documento_modal').files[0];
+
+			if (!codigo) {
+				throw new Error('El código de especificación técnica es obligatorio.');
+			}
+			if (codigo.length > 50) {
+				throw new Error('El código de especificación técnica no puede exceder 50 caracteres.');
+			}
+
+			validarPdf(file);
+			const documentoBase64 = await fileToBase64(file);
+			let data = null;
+
+			if (modo === 'editar') {
+				if (!idEspecificacion) {
+					throw new Error('Faltan datos para actualizar la especificación técnica.');
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarEspecificacionTecnicaAjax', {
+					Id: idEspecificacion,
+					Codigo: codigo,
+					Documento: documentoBase64
+				});
+			} else {
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarEspecificacionTecnicaAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					Codigo: codigo,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
+
+			if (!data.ok) {
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la especificación técnica.' :
+					'No se pudo guardar la especificación técnica.'));
+			}
+
+			cerrarModalEspecificacionTecnica();
+			await recargarVistaTecnologia();
+		} catch (error) {
+			const modo = (document.getElementById('et_modal_modo') || {}).value || 'crear';
+			window.adqNotifySafe(
+				'danger',
+				modo === 'editar' ? 'Error al actualizar especificacion' : 'Error al guardar especificacion',
+				error.message || (modo === 'editar' ?
+					'Error al actualizar la especificacion tecnica.' :
+					'Error al guardar la especificacion tecnica.')
+			);
+		}
+
+		return false;
+	}
+
+	async function eliminarEspecificacionTecnica(id) {
+		const confirmado = await window.adqConfirmSafe({
+			titulo: 'Confirmar eliminacion',
+			mensaje: '¿Desea eliminar esta especificación técnica?',
+			textoAceptar: 'Eliminar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: 'btn-danger'
+		});
+
+		if (!confirmado) {
+			return;
+		}
+
+		try {
+			const data = await enviarJson('index.php?module=adquisiciones&action=eliminarEspecificacionTecnicaAjax', {
+				Id: id
+			});
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo eliminar la especificación técnica.');
+			}
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error al eliminar especificacion', error.message || 'Error al eliminar la especificacion tecnica.');
+		}
+	}
+</script>

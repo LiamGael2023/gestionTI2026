@@ -97,7 +97,7 @@
             data-toggle="modal"
             data-target="#modalAgregarFichaTecnica"
             onclick="return abrirModalAgregarFichaTecnica();">
-            Agregar Ficha
+            Agregar
         </button>
     </div>
 </div>
@@ -134,3 +134,132 @@
         </div>
     </div>
 </div>
+
+<script>
+    function abrirModalAgregarFichaTecnica() {
+        const modalElement = document.getElementById('modalAgregarFichaTecnica');
+        mostrarModal(modalElement);
+        return false;
+    }
+
+    function cerrarModalAgregarFichaTecnica() {
+        const modalElement = document.getElementById('modalAgregarFichaTecnica');
+        ocultarModal(modalElement);
+        return false;
+    }
+
+    function limpiarFormularioFichaTecnica() {
+        const form = document.getElementById('form-ficha-tecnica');
+        if (form) {
+            form.reset();
+        }
+    }
+
+    function inicializarModalAgregarFichaTecnica() {
+        inicializarModalConLimpieza({
+            modalId: 'modalAgregarFichaTecnica',
+            datasetKey: 'adqFichaInit',
+            limpiarFn: limpiarFormularioFichaTecnica
+        });
+    }
+
+    async function guardarFichaTecnica(e) {
+        e.preventDefault();
+
+        try {
+            const marca = document.getElementById('ficha_marca').value.trim();
+            const modelo = document.getElementById('ficha_modelo').value.trim();
+            const file = document.getElementById('ficha_documento').files[0];
+
+            if (!marca || !modelo) {
+                throw new Error('Marca y modelo son obligatorios.');
+            }
+
+            validarPdf(file);
+            const documentoBase64 = await fileToBase64(file);
+            const data = await enviarJson('index.php?module=adquisiciones&action=guardarFichaTecnicaAjax', {
+                IdCatalogoTecnologico: idTecnologia,
+                Marca: marca,
+                Modelo: modelo,
+                Anio: anioActual,
+                Documento: documentoBase64
+            });
+
+            if (!data.ok) {
+                throw new Error(data.error || 'No se pudo guardar la ficha técnica.');
+            }
+
+            cerrarModalAgregarFichaTecnica();
+            await recargarVistaTecnologia();
+        } catch (error) {
+            window.adqNotifySafe('danger', 'Error al guardar ficha tecnica', error.message || 'Error al guardar la ficha tecnica.');
+        }
+
+        return false;
+    }
+
+    async function eliminarFichaTecnica(id) {
+        const confirmado = await window.adqConfirmSafe({
+            titulo: 'Confirmar eliminacion',
+            mensaje: '¿Desea eliminar esta ficha técnica?',
+            textoAceptar: 'Eliminar',
+            textoCancelar: 'Cancelar',
+            claseAceptar: 'btn-danger'
+        });
+
+        if (!confirmado) {
+            return;
+        }
+
+        try {
+            const data = await enviarJson('index.php?module=adquisiciones&action=eliminarFichaTecnicaAjax', {
+                Id: id
+            });
+            if (!data.ok) {
+                throw new Error(data.error || 'No se pudo eliminar la ficha técnica.');
+            }
+            await recargarVistaTecnologia();
+        } catch (error) {
+            window.adqNotifySafe('danger', 'Error al eliminar ficha tecnica', error.message || 'Error al eliminar la ficha tecnica.');
+        }
+    }
+
+    async function cambiarEstadoFichaTecnica(id, estado) {
+        try {
+            const data = await enviarJson('index.php?module=adquisiciones&action=cambiarEstadoFichaTecnicaAjax', {
+                Id: id,
+                Estado: estado
+            });
+
+            if (!data.ok) {
+                throw new Error(data.error || 'No se pudo cambiar el estado.');
+            }
+
+            await recargarVistaTecnologia();
+        } catch (error) {
+            window.adqNotifySafe('danger', 'Error al cambiar estado', error.message || 'Error al cambiar el estado.');
+        }
+    }
+
+    async function moverFichaTecnicaRango(id, direccion) {
+        if (!['up', 'down'].includes(direccion)) {
+            window.adqNotifySafe('danger', 'Error', 'Dirección inválida para mover la ficha técnica.');
+            return;
+        }
+
+        try {
+            const data = await enviarJson('index.php?module=adquisiciones&action=moverFichaTecnicaRangoAjax', {
+                Id: id,
+                Direccion: direccion
+            });
+
+            if (!data.ok) {
+                throw new Error(data.error || 'No se pudo cambiar el rango de la ficha técnica.');
+            }
+
+            await recargarVistaTecnologia();
+        } catch (error) {
+            window.adqNotifySafe('danger', 'Error al mover ficha tecnica', error.message || 'Error al cambiar el rango de la ficha técnica.');
+        }
+    }
+</script>
