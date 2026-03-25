@@ -58,6 +58,10 @@ $tieneVerificacion = !empty($verificacionTecnica);
 $puedeRegistrarEspecificacion = $tieneFichas;
 $puedeRegistrarOrdenCompra = $tieneFichas && $tieneEspecificacion;
 $puedeRegistrarVerificacion = $tieneFichas && $tieneEspecificacion && $tieneOrdenCompra;
+$estaFinalizada = !empty($cierreAquisicion) && (int) ($cierreAquisicion['Estado'] ?? 0) === 1;
+$fechaCierre = $estaFinalizada && !empty($cierreAquisicion['FechaFinalizacion'])
+	? htmlspecialchars((string) $cierreAquisicion['FechaFinalizacion'])
+	: null;
 $formatearFecha = static function ($fecha) {
 	if (empty($fecha)) {
 		return '';
@@ -155,9 +159,36 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	<?php require __DIR__ . '/partials/orden.php'; ?>
 	<?php require __DIR__ . '/partials/verificacion.php'; ?>
 
-	<!-- ===================== BARRA DE ACCIONES ===================== -->
-	<div class="d-flex justify-content-end gap-2 mt-2 mb-3">
-		<a href="index.php?module=adquisiciones&action=tecnologias&anio=<?php echo $anioActual; ?>" class="btn btn-secondary js-adq-link">Volver</a>
+	<!-- ===================== CIERRE DE ADQUISICIÓN ===================== -->
+	<?php if ($tieneVerificacion): ?>
+	<div class="card card-body mb-3">
+		<div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+
+			<div>
+				<h4 class="fw-bold mb-1">Estado de Adquisición</h4>
+				<span id="badge-cierre"
+					title="<?php echo $estaFinalizada ? ('Finalizado el ' . $fechaCierre) : 'Adquisición en proceso'; ?>"
+					class="badge <?php echo $estaFinalizada ? 'bg-success-lt text-success' : 'bg-warning-lt text-dark'; ?>">
+					<?php echo $estaFinalizada
+						? ('&#10003; Finalizado' . ($fechaCierre ? ' &mdash; ' . $fechaCierre : ''))
+					: 'En proceso'; ?>
+				</span>
+			</div>
+
+			<button id="btn-cierre"
+				type="button"
+				class="btn <?php echo $estaFinalizada ? 'btn-warning' : 'btn-success'; ?>"
+				onclick="cambiarCierreTecnologia(<?php echo $idTec; ?>, <?php echo $anioActual; ?>, <?php echo $estaFinalizada ? 'false' : 'true'; ?>)">
+				<?php echo $estaFinalizada ? 'Aperturar' : 'Finalizar'; ?>
+			</button>
+		</div>
+	</div>
+	<?php endif; ?>
+
+	<!-- Navegación -->
+	<div class="d-flex justify-content-end mb-3">
+		<a href="index.php?module=adquisiciones&action=tecnologias&anio=<?php echo $anioActual; ?>"
+			class="btn btn-secondary js-adq-link">Volver</a>
 	</div>
 
 </div>
@@ -398,6 +429,63 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	inicializarModalAgregarFichaTecnica();
 	inicializarModalEspecificacionTecnica();
 	inicializarModalOrdenCompra();
+
+	async function cambiarCierreTecnologia(idTec, anio, finalizar) {
+		const btn = document.getElementById('btn-cierre');
+		const badge = document.getElementById('badge-cierre');
+		const accion = finalizar ? 'finalizar' : 'aperturar';
+
+		const confirmado = await window.adqConfirmSafe({
+			titulo: finalizar ? 'Finalizar adquisición' : 'Aperturar adquisición',
+			mensaje: finalizar
+				? '¿Desea finalizar la adquisición para el año ' + anio + '? Ya no se podrán registrar nuevos documentos.'
+				: '¿Desea aperturar nuevamente la adquisición para el año ' + anio + '?',
+			textoAceptar: finalizar ? 'Finalizar' : 'Aperturar',
+			textoCancelar: 'Cancelar',
+			claseAceptar: finalizar ? 'btn-success' : 'btn-warning'
+		});
+
+		if (!confirmado) return;
+
+		if (btn) btn.disabled = true;
+
+		try {
+			const res = await enviarJson(
+				'index.php?module=adquisiciones&action=cambiarCierreTecnologiaAjax',
+				{ IdCatalogoTecnologico: idTec, Anio: anio, Accion: accion }
+			);
+
+			if (!res.ok) {
+				alert('Error: ' + (res.error || 'No se pudo cambiar el estado.'));
+				return;
+			}
+
+			const esFinalizado = res.finalizado;
+
+			// Actualizar badge
+			if (badge) {
+						badge.innerHTML = esFinalizado
+							? ('\u2713 Finalizado' + (res.fecha ? ' \u2014 ' + res.fecha : ''))
+							: 'En proceso';
+						badge.className = 'badge '
+							+ (esFinalizado ? 'bg-success-lt text-success' : 'bg-warning-lt text-dark');
+						badge.title = esFinalizado ? ('Finalizado el ' + (res.fecha || '')) : 'Adquisición en proceso';
+			}
+
+			// Actualizar botón
+			if (btn) {
+				btn.textContent = esFinalizado ? 'Aperturar' : 'Finalizar';
+				btn.className = 'btn ' + (esFinalizado ? 'btn-warning' : 'btn-success');
+				btn.setAttribute('onclick',
+					'cambiarCierreTecnologia(' + idTec + ', ' + anio + ', ' + (esFinalizado ? 'false' : 'true') + ')'
+				);
+			}
+		} catch (err) {
+			alert('Error de conexión: ' + err.message);
+		} finally {
+			if (btn) btn.disabled = false;
+		}
+	}
 	inicializarModalVerificacionTecnica();
 
 	async function guardarDocumentoConObservacion(e, options) {

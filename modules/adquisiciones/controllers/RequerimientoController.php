@@ -89,6 +89,8 @@ $accionesTecnologia = [
 	'eliminarFichaTecnicaAjax',
 	'cambiarEstadoFichaTecnicaAjax',
 	'moverFichaTecnicaRangoAjax',
+	'obtenerCierreTecnologiaAjax',
+	'cambiarCierreTecnologiaAjax',
 ];
 
 if ($action === 'requerimiento') {

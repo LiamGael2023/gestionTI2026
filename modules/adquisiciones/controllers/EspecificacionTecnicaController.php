@@ -1,6 +1,7 @@
 <?php
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
 require_once 'modules/adquisiciones/models/EspecificacionTecnicaModel.php';
+require_once 'modules/adquisiciones/models/CierreAquisicionModel.php';
 require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
 require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
@@ -14,6 +15,7 @@ if (!isset($conn) || $conn === null) {
 
 $catalogoModel = new CatalogoTecnologicoModel($conn);
 $especificacionModel = new EspecificacionTecnicaModel($conn);
+$cierreModel = new CierreAquisicionModel($conn);
 $fichaTecnicaModel = new FichaTecnicaModel($conn);
 $ordenCompraModel = new OrdenCompraModel($conn);
 $verificacionTecnicaModel = new VerificacionTecnicaModel($conn);
@@ -338,6 +340,7 @@ switch ($action) {
 		$fichasTecnicas = $fichaTecnicaModel->listarPorTecnologia($id, $anioFiltro);
 		$ordenCompra = $ordenCompraModel->obtenerPorTecnologia($id, $anioFiltro);
 		$verificacionTecnica = $verificacionTecnicaModel->obtenerPorTecnologia($id, $anioFiltro);
+		$cierreAquisicion = $cierreModel->obtenerPorTecnologiaYAnio($id, $anioFiltro);
 		break;
 
 	case 'verEspecificacionTecnicaAjax':
@@ -692,6 +695,45 @@ switch ($action) {
 			responderJson(['ok' => false, 'error' => 'No se pudo mover la ficha técnica.']);
 		}
 		responderJson(['ok' => true]);
+
+	case 'obtenerCierreTecnologiaAjax':
+		$idCat = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+		$anio  = isset($_GET['anio']) ? (int) $_GET['anio'] : 0;
+		if ($idCat <= 0 || $anio <= 0) {
+			responderJson(['ok' => false, 'error' => 'Parámetros inválidos']);
+		}
+		$cierre = $cierreModel->obtenerPorTecnologiaYAnio($idCat, $anio);
+		responderJson([
+			'ok'            => true,
+			'finalizado'    => !empty($cierre) && (int) $cierre['Estado'] === 1,
+			'fecha'         => !empty($cierre) ? $cierre['FechaFinalizacion'] : null,
+		]);
+
+	case 'cambiarCierreTecnologiaAjax':
+		$input  = obtenerInputJsonPost();
+		$idCat  = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
+		$anio   = obtenerEnteroInput($input, 'Anio');
+		$accion = isset($input['Accion']) ? strtolower(trim((string) $input['Accion'])) : '';
+		if ($idCat <= 0 || $anio <= 0 || !in_array($accion, ['finalizar', 'aperturar'], true)) {
+			responderJson(['ok' => false, 'error' => 'Datos inválidos']);
+		}
+		if ($accion === 'finalizar') {
+			if (!$verificacionTecnicaModel->obtenerPorTecnologia($idCat, $anio)) {
+				responderJson(['ok' => false, 'error' => 'Debe registrar la verificación técnica antes de finalizar.']);
+			}
+			$ok = $cierreModel->finalizar($idCat, $anio, $idUsuarioSesion);
+		} else {
+			$ok = $cierreModel->aperturar($idCat, $anio, $idUsuarioSesion);
+		}
+		if (!$ok) {
+			responderJson(['ok' => false, 'error' => 'No se pudo actualizar el estado de cierre.']);
+		}
+		$cierre = $cierreModel->obtenerPorTecnologiaYAnio($idCat, $anio);
+		responderJson([
+			'ok'         => true,
+			'finalizado' => !empty($cierre) && (int) $cierre['Estado'] === 1,
+			'fecha'      => !empty($cierre) ? $cierre['FechaFinalizacion'] : null,
+		]);
 
 	default:
 		redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');

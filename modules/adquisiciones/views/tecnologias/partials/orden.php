@@ -16,7 +16,7 @@
 					<tbody>
 						<tr>
 							<td><?php echo htmlspecialchars($formatearFecha($ordenCompra['FechaRegistro'])); ?></td>
-							<td><?php echo htmlspecialchars($ordenCompra['NumeroOrden'] ?? ''); ?></td>
+							<td><?php echo htmlspecialchars(str_replace('_', ' ', $ordenCompra['NumeroOrden'] ?? '')); ?></td>
 							<td><?php echo htmlspecialchars($formatearFecha($ordenCompra['FechaEntrega'] ?? '')); ?></td>
 							<td class="text-end">
 								<div class="acciones-iconos">
