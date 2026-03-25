@@ -165,8 +165,11 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			</thead>
 			<tbody id="tabla-fichas-tecnicas">
 				<?php if (!empty($fichasTecnicas)): ?>
-					<?php foreach ($fichasTecnicas as $ficha): ?>
+					<?php $totalFichasLista = count($fichasTecnicas); ?>
+					<?php foreach ($fichasTecnicas as $indiceFicha => $ficha): ?>
 						<?php $estadoFicha = (int) $ficha['Estado']; ?>
+						<?php $esPrimeraFicha = $indiceFicha === 0; ?>
+						<?php $esUltimaFicha = $indiceFicha === ($totalFichasLista - 1); ?>
 						<tr data-id="<?php echo (int) $ficha['Id']; ?>">
 							<td><?php echo htmlspecialchars($ficha['Marca']); ?></td>
 							<td><?php echo htmlspecialchars($ficha['Modelo']); ?></td>
@@ -192,6 +195,14 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 							</td>
 							<td class="text-end">
 								<div class="acciones-iconos">
+									<i class="ti ti-arrow-up icon-action <?php echo $esPrimeraFicha ? 'text-secondary' : ''; ?>"
+										title="Subir prioridad"
+										<?php if (!$esPrimeraFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'up')"<?php endif; ?>></i>
+
+									<i class="ti ti-arrow-down icon-action <?php echo $esUltimaFicha ? 'text-secondary' : ''; ?>"
+										title="Bajar prioridad"
+										<?php if (!$esUltimaFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'down')"<?php endif; ?>></i>
+
 									<?php if ($estadoFicha === 0): ?>
 										<i class="ti ti-send icon-action"
 											title="Marcar como enviada"
@@ -446,6 +457,28 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			await recargarVistaTecnologia();
 		} catch (error) {
 			window.adqNotifySafe('danger', 'Error al cambiar estado', error.message || 'Error al cambiar el estado.');
+		}
+	}
+
+	async function moverFichaTecnicaRango(id, direccion) {
+		if (!['up', 'down'].includes(direccion)) {
+			window.adqNotifySafe('danger', 'Error', 'Dirección inválida para mover la ficha técnica.');
+			return;
+		}
+
+		try {
+			const data = await enviarJson('index.php?module=adquisiciones&action=moverFichaTecnicaRangoAjax', {
+				Id: id,
+				Direccion: direccion
+			});
+
+			if (!data.ok) {
+				throw new Error(data.error || 'No se pudo cambiar el rango de la ficha técnica.');
+			}
+
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error al mover ficha tecnica', error.message || 'Error al cambiar el rango de la ficha técnica.');
 		}
 	}
 

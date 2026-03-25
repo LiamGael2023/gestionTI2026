@@ -685,6 +685,20 @@ switch ($action) {
 		$ok = $fichaTecnicaModel->cambiarEstado($idFicha, $estado, $idUsuarioSesion);
 		responderJson(['ok' => $ok]);
 
+	case 'moverFichaTecnicaRangoAjax':
+		$input = obtenerInputJsonPost();
+		$idFicha = obtenerEnteroInput($input, 'Id');
+		$direccion = strtolower(obtenerTextoInput($input, 'Direccion'));
+		if ($idFicha <= 0 || !in_array($direccion, ['up', 'down'], true)) {
+			responderJson(['ok' => false, 'error' => 'Datos inválidos']);
+		}
+
+		$ok = $fichaTecnicaModel->moverRango($idFicha, $direccion, $idUsuarioSesion);
+		if (!$ok) {
+			responderJson(['ok' => false, 'error' => 'No se pudo mover la ficha técnica.']);
+		}
+		responderJson(['ok' => true]);
+
 	default:
 		redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
 }

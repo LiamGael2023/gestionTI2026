@@ -92,6 +92,7 @@ $accionesTecnologia = [
 	'guardarFichaTecnicaAjax',
 	'eliminarFichaTecnicaAjax',
 	'cambiarEstadoFichaTecnicaAjax',
+	'moverFichaTecnicaRangoAjax',
 ];
 
 if ($action === 'requerimiento') {
