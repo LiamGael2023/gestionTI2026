@@ -40,7 +40,7 @@ class tablaPapeletaUPER
 
         function generateStatusButton($status, $field, $id)
         {
-            $status = utf8_encode($status);
+            $status = ($status);
 
             // Mapeo de estados con título, clase, ícono y deshabilitado
             $statusMap = [
@@ -174,9 +174,9 @@ class tablaPapeletaUPER
 
 
             // ✅ Nombres
-            $nombres = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . utf8_encode($p["apellidos"]) . '<br>' . utf8_encode($p["nombres"]) . '</h6></td>';
+            $nombres = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . ($p["apellidos"]) . '<br>' . ($p["nombres"]) . '</h6></td>';
 
-            $nombres_jefe = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . utf8_encode($p["jefe_apellidos"]) . '<br>' . utf8_encode($p["jefe_nombres"]) . '</h6></td>';
+            $nombres_jefe = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . ($p["jefe_apellidos"]) . '<br>' . ($p["jefe_nombres"]) . '</h6></td>';
 
             if ($p["salida_vehicular"] === 0) {
 
@@ -268,14 +268,14 @@ class tablaPapeletaUPER
             }
 
             $motivojunto = '<h6 style="max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
-                . '<span style="font-weight:bold; font-style:italic;">' . utf8_encode($p["Id_Trabajador_Concepto_APP"]) . '</span>'
+                . '<span style="font-weight:bold; font-style:italic;">' . ($p["Id_Trabajador_Concepto_APP"]) . '</span>'
                 . '<br>'
-                . '<span title="' . utf8_encode($p["Id_Trabajador_Motivo_APP"]) . '">'
-                . utf8_encode($p["Id_Trabajador_Motivo_APP"])
+                . '<span title="' . ($p["Id_Trabajador_Motivo_APP"]) . '">'
+                . ($p["Id_Trabajador_Motivo_APP"])
                 . '</span>'
                 . '<br>'
-                . '<span title="' . utf8_encode($p["Id_Trabajador_Lugar_APP"]) . '">'
-                . utf8_encode($p["Id_Trabajador_Lugar_APP"])
+                . '<span title="' . ($p["Id_Trabajador_Lugar_APP"]) . '">'
+                . ($p["Id_Trabajador_Lugar_APP"])
                 . '</span>'
                 . '</h6>';
 
@@ -308,8 +308,8 @@ class tablaPapeletaUPER
             // ✅ Sin retorno
 
             $Id_Trabajador_Lugar_APP = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-                                            title="' . utf8_encode($p["Id_Trabajador_Lugar_APP"]) . '">'
-                . utf8_encode($p["Id_Trabajador_Lugar_APP"])
+                                            title="' . ($p["Id_Trabajador_Lugar_APP"]) . '">'
+                . ($p["Id_Trabajador_Lugar_APP"])
                 . '</h6>';
 
             $disabledCerrar = ($p["cerrar"] == 1) ? 'disabled' : '';

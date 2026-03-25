@@ -217,9 +217,9 @@ class AjaxPapeleta
         foreach ($respuesta as $row) {
 
 
-            $nombreCompleto = utf8_encode(($row["trabajador"]));
-            $oficina = utf8_encode($row["oficina"]);
-            $fotocheck = utf8_encode($row["fotocheck"]);
+            $nombreCompleto = (($row["trabajador"]));
+            $oficina = ($row["oficina"]);
+            $fotocheck = ($row["fotocheck"]);
 
 
             if (!$q || stripos($nombreCompleto, $q) !== false) {

@@ -14,11 +14,11 @@
                                 <label class="form-label">Tipo Vehículo <font color="red">(*)</font></label>
                                 <input name="Id_Trabajador" id="Id_Trabajador" value="<?php echo $_SESSION["id_Trabajador"]; ?>" hidden>
                                 <input name="trabajador" id="trabajador"
-                                    value="<?php echo utf8_encode(utf8_decode($_SESSION["Trab_Paterno"])) . " " . utf8_encode(utf8_decode($_SESSION["Trab_Materno"])) . " " . utf8_encode(utf8_decode($_SESSION["Trab_Nombres"])); ?>"
+                                    value="<?php echo (utf8_decode($_SESSION["Trab_Paterno"])) . " " . (utf8_decode($_SESSION["Trab_Materno"])) . " " . (utf8_decode($_SESSION["Trab_Nombres"])); ?>"
                                     hidden>
                                 <input name="nuevoOfi" id="nuevoOfi"
-                                    value="<?php echo utf8_encode(utf8_decode($_SESSION["Oficina"])); ?>" hidden>
-                                <input name="nuevoGerencia" id="nuevoGerencia" value="<?php echo utf8_encode($_SESSION["Gerencia"]); ?>"
+                                    value="<?php echo (utf8_decode($_SESSION["Oficina"])); ?>" hidden>
+                                <input name="nuevoGerencia" id="nuevoGerencia" value="<?php echo ($_SESSION["Gerencia"]); ?>"
                                     hidden>
                                 <input name="Jefe" id="Jefe" value="<?php echo $_SESSION["cod_jefe"]; ?>" hidden>
                                 <input name="JefeInmediato" id="JefeInmediato" value="<?php echo $_SESSION["JefeInmediato"]; ?>" hidden>
@@ -99,7 +99,7 @@
                                     $valor = null;
                                     $estadoVehiculos = ControladorVehiculo::ctrMostrarEstadoVehiculo($item, $valor);
                                     foreach ($estadoVehiculos as $estado) {
-                                        echo '<option  value="' . $estado['id_estado_vehiculo'] . '">' . utf8_encode($estado['nombre_estado']) . '</option>';
+                                        echo '<option  value="' . $estado['id_estado_vehiculo'] . '">' . ($estado['nombre_estado']) . '</option>';
                                     }
                                     ?>
                                 </select>
@@ -133,7 +133,7 @@
                                     $valor = null;
                                     $marcaVehiculos = ControladorVehiculo::ctrMostrarMarcaVehiculo($item, $valor);
                                     foreach ($marcaVehiculos as $marca) {
-                                        echo '<option  value="' . $marca['marca'] . '">' . utf8_encode($marca['nombre_marca']) . '</option>';
+                                        echo '<option  value="' . $marca['marca'] . '">' . ($marca['nombre_marca']) . '</option>';
                                     }
                                     ?>
                                 </select>
@@ -180,7 +180,7 @@
                                     if (!empty($colores)) {
                                         foreach ($colores as $color) {
                                             echo '<option value="' . htmlspecialchars($color["color"]) . '">' .
-                                                ucfirst(utf8_encode($color["color"])) . '</option>';
+                                                ucfirst(($color["color"])) . '</option>';
                                         }
                                     }
                                     ?>

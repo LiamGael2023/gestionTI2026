@@ -50,7 +50,7 @@ class tablaAminPapeleta
 
         function generateStatusButton($status, $field, $id)
         {
-            $status = utf8_encode($status);
+            $status = ($status);
 
             // Mapeo de estados con título, clase, ícono y deshabilitado
             $statusMap = [
@@ -176,7 +176,7 @@ class tablaAminPapeleta
 
 
 
-            $nombres = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . utf8_encode($papeleta["apellidos"]) . '<br>' . utf8_encode($papeleta["nombres"]) . '</h6></td>';
+            $nombres = '<td style="padding:4px 4px; max-width:30px,width:30px; text-align:center;"><h6>' . ($papeleta["apellidos"]) . '<br>' . ($papeleta["nombres"]) . '</h6></td>';
 
             $grupoEstados = generateStatusGroup($papeleta);
 
@@ -215,7 +215,7 @@ class tablaAminPapeleta
                 '</div><div>' .
                 ($papeleta["fecha_fin"] instanceof DateTime ? $papeleta["fecha_fin"]->format('d/m/y') : date('d/m/y', strtotime($papeleta["fecha_fin"]))) .
                 '</div><h6></td>';
-            $Id_Trabajador_Concepto_APP = '<td><h6 title="' . utf8_encode($papeleta["Id_Trabajador_Concepto_APP"]) . '">' . utf8_encode(substr($papeleta["Id_Trabajador_Concepto_APP"], 0, 16)) . '...</h6></td>';
+            $Id_Trabajador_Concepto_APP = '<td><h6 title="' . ($papeleta["Id_Trabajador_Concepto_APP"]) . '">' . (substr($papeleta["Id_Trabajador_Concepto_APP"], 0, 16)) . '...</h6></td>';
             $hora_rango = '<td><h6></div><div><div>' .
                 ($papeleta["hora_salida"] instanceof DateTime ? $papeleta["hora_salida"]->format('H:i') : date('H:i', strtotime($papeleta["hora_salida"]))) . '-' .
                 '</div><div>' .
@@ -239,22 +239,22 @@ class tablaAminPapeleta
                                     </a>';
             }
             $motivojunto = '<h6 style="max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
-                . '<span style="font-weight:bold; font-style:italic;">' . utf8_encode($papeleta["Id_Trabajador_Concepto_APP"]) . '</span>'
+                . '<span style="font-weight:bold; font-style:italic;">' . ($papeleta["Id_Trabajador_Concepto_APP"]) . '</span>'
                 . '<br>'
-                . '<span title="' . utf8_encode($papeleta["Id_Trabajador_Motivo_APP"]) . '">'
-                . utf8_encode($papeleta["Id_Trabajador_Motivo_APP"])
+                . '<span title="' . ($papeleta["Id_Trabajador_Motivo_APP"]) . '">'
+                . ($papeleta["Id_Trabajador_Motivo_APP"])
                 . '</span>'
                 . '</h6>';
 
             $Id_Trabajador_Lugar_APP = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-                title="' . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
-                . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"])
+                title="' . ($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
+                . ($papeleta["Id_Trabajador_Lugar_APP"])
                 . '</h6>';
 
 
             $establecimiento = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-             title="' . utf8_encode($papeleta["establecimiento"]) . '">'
-                . utf8_encode($papeleta["establecimiento"])
+             title="' . ($papeleta["establecimiento"]) . '">'
+                . ($papeleta["establecimiento"])
                 . '</h6>';
 
             $tieneEvidencias = ($papeleta["tiene_evidencias"] == 1);

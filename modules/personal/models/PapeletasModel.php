@@ -649,7 +649,7 @@ class ModeloPapeleta
             } else {
                 $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
                 if ($result['nombre']) {
-                    $result['nombre'] = utf8_encode($result['nombre']);
+                    $result['nombre'] = ($result['nombre']);
                 }
                 sqlsrv_free_stmt($stmt);
                 return $result ? [$result] : [];

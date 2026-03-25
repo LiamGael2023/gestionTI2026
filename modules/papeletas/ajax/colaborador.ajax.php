@@ -18,9 +18,12 @@ class AjaxColaborador
         foreach ($respuesta as $row) {
 
 
-            $nombreCompleto = utf8_encode($row["Trabajador_apellidos"]) . " " . utf8_encode($row["Trabajador_nombres"]);
-            $oficina = utf8_encode($row["gerencia"]);
-            $fotocheck = utf8_encode($row["Trab_Fotocheck"]);
+            $nombreCompleto = $row["Trabajador_apellidos"] . " " . $row["Trabajador_nombres"];
+            $oficina = $row["gerencia"];
+            $fotocheck = $row["Trab_Fotocheck"];
+
+            $val = $row["gerencia"];
+            echo $val . " → Encoding: " . mb_detect_encoding($val, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true) . "<br>";
 
 
             if (!$q || stripos($nombreCompleto, $q) !== false) {

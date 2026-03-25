@@ -155,11 +155,11 @@ class InicioController
                     $_SESSION["iniciarSesion"] = "ok";
                     $_SESSION["id_vigilante"] = $respuesta['id_vigilante'];
                     $_SESSION["Trab_Documento"] = $respuesta['documento'];
-                    $_SESSION["Trab_Paterno"] = utf8_encode($respuesta['Trab_Paterno']);
-                    $_SESSION["Trab_Materno"] = utf8_encode($respuesta['Trab_Materno']);
-                    $_SESSION["Trab_Nombres"] = utf8_encode($respuesta['Trab_Nombres']);
+                    $_SESSION["Trab_Paterno"] = ($respuesta['Trab_Paterno']);
+                    $_SESSION["Trab_Materno"] = ($respuesta['Trab_Materno']);
+                    $_SESSION["Trab_Nombres"] = ($respuesta['Trab_Nombres']);
                     $_SESSION["foto_personal"] = $respuesta['foto_personal'];
-                    $_SESSION["Correo"] = utf8_encode($respuesta['correo_electronico']);
+                    $_SESSION["Correo"] = ($respuesta['correo_electronico']);
                     $_SESSION["Celular"] = $respuesta['telefono'];
                     $_SESSION["SEDE"] = $respuesta['sede'];
                     $_SESSION["ultimo_acceso"] = $respuesta['ultimo_acceso'];

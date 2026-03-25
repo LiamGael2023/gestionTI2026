@@ -637,7 +637,7 @@ class ModeloPapeleta
         $conn = Conexion::conectar();
 
         if ($item != null) {
-            $sql = "SELECT * from $tabla where $item = ?";
+            $sql = "SELECT * from $tabla where $item = ? where ";
             $params = array($valor);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -649,7 +649,7 @@ class ModeloPapeleta
             } else {
                 $result = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
                 if ($result['nombre']) {
-                    $result['nombre'] = utf8_encode($result['nombre']);
+                    $result['nombre'] = ($result['nombre']);
                 }
                 sqlsrv_free_stmt($stmt);
                 return $result ? [$result] : [];

@@ -146,7 +146,7 @@ $(document).ready(function() {
         $('#apellidos').val(data.Trab_Paterno + ' ' + data.Trab_Materno);
 
         // 2. Llenar Usuario y Correo (Tal cual vienen de la API)
-        $('#usuario').val(data.usuario);
+        $('#usuario').val(data.Documento);
         $('#email').val(data.email || data.Correo); // La API tiene ambos campos a veces
 
         // 3. Seleccionar la Sede automáticamente

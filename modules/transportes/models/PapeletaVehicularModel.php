@@ -138,7 +138,7 @@ class ModeloPapeletaVehicular
         $sedes = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             if (isset($row['sede'])) {
-                $row['sede'] = utf8_encode($row['sede']);
+                $row['sede'] = ($row['sede']);
             }
             $sedes[] = $row;
         }
@@ -166,7 +166,7 @@ class ModeloPapeletaVehicular
         $placas = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             if (isset($row['placa'])) {
-                $row['placa'] = utf8_encode($row['placa']);
+                $row['placa'] = ($row['placa']);
             }
             $placas[] = $row;
         }

@@ -51,7 +51,7 @@ class tablaAminPapeleta
 
         function generateStatusButton($status, $field, $id)
         {
-            $status = utf8_encode($status);
+            $status = ($status);
 
             // Mapeo de estados con título, clase, ícono y deshabilitado
             $statusMap = [
@@ -150,7 +150,7 @@ class tablaAminPapeleta
 
 
 
-            $nombres = '<h6>' . utf8_encode($papeleta["apellidos"]) . '<br>' . utf8_encode($papeleta["nombres"]) . '</h6>';
+            $nombres = '<h6>' . ($papeleta["apellidos"]) . '<br>' . ($papeleta["nombres"]) . '</h6>';
 
             $jefeinmediato = generateStatusButton($papeleta['estadoJI'], 'estadoJI', $papeleta['id_papeleta']);
             $jefepersonal = generateStatusButton($papeleta['estadoJP'], 'estadoJP', $papeleta['id_papeleta']);
@@ -192,7 +192,7 @@ class tablaAminPapeleta
                 '</div><div>' .
                 ($papeleta["fecha_fin"] instanceof DateTime ? $papeleta["fecha_fin"]->format('d/m/y') : date('d/m/y', strtotime($papeleta["fecha_fin"]))) .
                 '</div><h6>';
-            $Id_Trabajador_Concepto_APP = '<h6 title="' . utf8_encode($papeleta["Id_Trabajador_Concepto_APP"]) . '">' . utf8_encode(substr($papeleta["Id_Trabajador_Concepto_APP"], 0, 16)) . '...</h6>';
+            $Id_Trabajador_Concepto_APP = '<h6 title="' . ($papeleta["Id_Trabajador_Concepto_APP"]) . '">' . (substr($papeleta["Id_Trabajador_Concepto_APP"], 0, 16)) . '...</h6>';
             $horaIni = is_object($papeleta["hora_salida"]) ? $papeleta["hora_salida"]->format('H:i') : date('H:i', strtotime($papeleta["hora_salida"]));
             $horaFin = is_object($papeleta["hora_llegada"]) ? $papeleta["hora_llegada"]->format('H:i') : date('H:i', strtotime($papeleta["hora_llegada"]));
 
@@ -217,16 +217,16 @@ class tablaAminPapeleta
 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48"><path fill="#ffffff" fill-rule="evenodd" d="M8.14 45.956c3.271.266 8.462.544 15.864.544c7.401 0 12.593-.278 15.864-.544c3.288-.267 5.825-2.804 6.092-6.092c.266-3.271.544-8.463.544-15.864s-.278-12.593-.544-15.864c-.267-3.288-2.804-5.825-6.092-6.092c-3.271-.266-8.463-.544-15.864-.544s-12.593.278-15.864.544c-3.288.267-5.825 2.804-6.092 6.092c-.266 3.271-.544 8.463-.544 15.864s.278 12.593.544 15.864c.267 3.288 2.804 5.825 6.092 6.092m17.756-29.238c-1.414-.049-2.64-.922-2.696-2.335a12 12 0 0 1 0-.967c.057-1.414 1.283-2.284 2.697-2.336a131 131 0 0 1 6.108-.074a6.05 6.05 0 0 1 6 6.047l-.009 10.81c-.003 3.312-2.687 6.001-5.998 6.08c-4.872.117-10.272.328-13.704.473a63 63 0 0 1-.11 2.4c-.085 1.249-1.273 1.794-2.272 1.04a55 55 0 0 1-2.915-2.378c-1.713-1.487-2.693-2.602-3.246-3.348a1.844 1.844 0 0 1 0-2.247c.553-.745 1.534-1.861 3.246-3.348a55 55 0 0 1 2.915-2.38c1-.752 2.187-.207 2.271 1.041c.041.609.08 1.36.107 2.282c4.129.074 8.921.251 12.98.406a1 1 0 0 0 1.038-1v-9.133c0-.553-.448-1-1-.999c-.464.001-.882.004-1.27.006c-1.541.007-2.604.013-4.142-.04" clip-rule="evenodd"/></svg>            </span>';
             }
             $motivojunto = '<h6 style="max-width:180px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">'
-                . '<span style="font-weight:bold; font-style:italic;">' . utf8_encode($papeleta["Id_Trabajador_Concepto_APP"]) . '</span>'
+                . '<span style="font-weight:bold; font-style:italic;">' . ($papeleta["Id_Trabajador_Concepto_APP"]) . '</span>'
                 . '<br>'
-                . '<span title="' . utf8_encode($papeleta["Id_Trabajador_Motivo_APP"]) . '">'
-                . utf8_encode($papeleta["Id_Trabajador_Motivo_APP"])
+                . '<span title="' . ($papeleta["Id_Trabajador_Motivo_APP"]) . '">'
+                . ($papeleta["Id_Trabajador_Motivo_APP"])
                 . '</span>'
                 . '</h6>';
 
             $Id_Trabajador_Lugar_APP = '<h6 style="max-width:60px ;; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" 
-    title="' . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
-                . utf8_encode($papeleta["Id_Trabajador_Lugar_APP"])
+    title="' . ($papeleta["Id_Trabajador_Lugar_APP"]) . '">'
+                . ($papeleta["Id_Trabajador_Lugar_APP"])
                 . '</h6>';
 
             $tieneEvidencias = ($papeleta["tiene_evidencias"] == 1);

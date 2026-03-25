@@ -134,8 +134,7 @@
                                 <?php
                                 if (isset($_SESSION["Oficina"]) && $_SESSION["Oficina"] !== "") {
                                     $texto = $_SESSION["Oficina"];
-                                    $texto_utf8 = mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
-                                    echo htmlspecialchars($texto_utf8, ENT_QUOTES, 'UTF-8');
+                                    echo $texto;
                                 } else {
                                     echo "No disponible";
                                 }

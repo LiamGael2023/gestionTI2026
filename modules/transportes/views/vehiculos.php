@@ -44,10 +44,8 @@
 
   /* Avatar */
   .avatar {
-    border-radius: 10%;
     background-size: cover;
     background-position: center;
-    display: inline-block;
   }
 
   td h6[title]:hover::after {

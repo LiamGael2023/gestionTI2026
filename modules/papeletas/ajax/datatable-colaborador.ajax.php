@@ -50,7 +50,7 @@ class tablaColaborador
                      onerror="this.onerror=null;this.src=\'' . $rutaSinFoto . '\';">
            </a>';
 
-            $nombres = '<td>' . utf8_encode($colaboradores["Trabajador_apellidos"]) . '<br>' . utf8_encode($colaboradores["Trabajador_nombres"]) . '</td>';
+            $nombres = '<td>' . ($colaboradores["Trabajador_apellidos"]) . '<br>' . ($colaboradores["Trabajador_nombres"]) . '</td>';
             $gerencia = '<td>' . ($colaboradores["gerencia"]) . '</td>';
             $oficina = '<td>' . ($colaboradores["oficina"]) . '</td>';
 

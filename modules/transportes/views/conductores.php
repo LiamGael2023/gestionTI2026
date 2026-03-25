@@ -2,8 +2,7 @@
     .avatar {
         width: 40px;
         height: 40px;
-        display: inline-block;
-        border-radius: 50%;
+        
         background-size: cover;
         background-position: center;
     }

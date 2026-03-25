@@ -126,12 +126,12 @@
                                     value="<?php echo $_SESSION["EsConductor"]; ?>" hidden>
 
                                 <input name="trabajador" id="trabajador"
-                                    value="<?php echo utf8_encode(utf8_decode($_SESSION["Trab_Paterno"])) . " " . utf8_encode(utf8_decode($_SESSION["Trab_Materno"])) . " " . utf8_encode(utf8_decode($_SESSION["Trab_Nombres"])); ?>"
+                                    value="<?php echo (utf8_decode($_SESSION["Trab_Paterno"])) . " " . (utf8_decode($_SESSION["Trab_Materno"])) . " " . (utf8_decode($_SESSION["Trab_Nombres"])); ?>"
                                     hidden>
                                 <input name="nuevoOfi" id="nuevoOfi"
-                                    value="<?php echo utf8_encode(utf8_decode($_SESSION["Oficina"])); ?>" hidden>
+                                    value="<?php echo (utf8_decode($_SESSION["Oficina"])); ?>" hidden>
                                 <input name="nuevoGerencia" id="nuevoGerencia"
-                                    value="<?php echo utf8_encode($_SESSION["Gerencia"]); ?>"
+                                    value="<?php echo ($_SESSION["Gerencia"]); ?>"
                                     hidden>
                                 <input name="Jefe" id="Jefe" value="<?php echo $_SESSION["cod_jefe"]; ?>" hidden>
                                 <input name="FirmaPersonal" id="FirmaPersonal"
@@ -155,22 +155,47 @@
                                     foreach ($concepto as $conceptos) {
                                         echo '<option value="' . $conceptos['Concepto'] . '" 
                                          data-cod="' . $conceptos['Cod_Concepto'] . '">'
-                                            . utf8_encode($conceptos['Concepto']) .
+                                            . ($conceptos['Concepto']) .
                                             '</option>';
                                     }
                                     ?>
                                 </select>
                                 <label id="labelAtencionMedica" style="display: none;  padding-left: 20px;">
-                                    <font color="red"><br>*Recuerda, los descansos medicos <br>se realizarán por SGD.</font>
+                                    <font color="red"><br>*Recuerda, debes adjuntar tu cita. <br> **Los descansos medicos se realizarán<br> por SGD.</font>
                                 </label>
+
+                                <label id="labelVacaciones" style="display: none;  padding-left: 20px;">
+                                    <font color="red"><br>*Recuerda, debes solicitarlo <br>5 dias habiles antes.</font>
+                                </label>
+
+                                <label id="labelCompensacion" style="display: none;  padding-left: 20px;">
+                                    <font color="red"><br>*Recuerda, debes subir el correo <br>de autorización por compensación.</font>
+                                </label>
+
                                 <script>
                                     $(document).ready(function() {
                                         $('#concepto').on('change', function() {
-                                            if ($(this).val() === 'ATENCION MEDICA (ADJUNTAR CONSTANCIA)') {
-                                                $('#labelAtencionMedica').show();
-                                            } else {
-                                                $('#labelAtencionMedica').hide();
+                                            // Ocultar todos primero
+                                            $('#labelAtencionMedica').hide();
+                                            $('#labelVacaciones').hide();
+                                            $('#labelCompensacion').hide();
+
+                                            switch ($(this).val()) {
+                                                case 'ATENCION MEDICA (ADJUNTAR CONSTANCIA)':
+                                                    $('#labelAtencionMedica').show();
+                                                    break;
+                                                case 'ASUNTOS PERSONALES (A CUENTA DE VACACIONES)':
+                                                    $('#labelVacaciones').show();
+                                                    break;
+                                                case 'COMPENSACION - DIA COMPLETO':
+                                                    $('#labelCompensacion').show();
+                                                    break;
+
+                                                case 'COMPENSACION - HORAS':
+                                                    $('#labelCompensacion').show();
+                                                    break;
                                             }
+
                                         });
                                     });
                                 </script>
@@ -324,7 +349,7 @@
                                     if (!empty($placaseleccionada)) {
                                         foreach ($placaseleccionada as $placas) {
                                             echo '<option value="' . $placas['id'] . '">'
-                                                . utf8_encode($placas['placaseleccionada']) .
+                                                . ($placas['placaseleccionada']) .
                                                 '</option>';
                                         }
                                     }
@@ -366,7 +391,7 @@
                                     if (!empty($sede)) {
                                         foreach ($sede as $sedes) {
                                             echo '<option value="' . $sedes['id'] . '">'
-                                                . utf8_encode($sedes['sede']) .
+                                                . ($sedes['sede']) .
                                                 '</option>';
                                         }
                                     }
@@ -650,19 +675,21 @@
             return new Date(p[2], p[1] - 1, p[0]);
         }
 
-        // Devuelve siguiente día laborable
-        function siguienteDiaLaborable(date) {
+        // Devuelve la fecha tras avanzar 5 días laborables
+        function siguienteDiaLaborable5(date) {
             let d = new Date(date);
-            d.setDate(d.getDate() + 1);
-            if (d.getDay() === 6) d.setDate(d.getDate() + 2); // sábado
-            if (d.getDay() === 0) d.setDate(d.getDate() + 1); // domingo
+            let diasContados = 0;
+            while (diasContados < 5) {
+                d.setDate(d.getDate() + 1);
+                if (d.getDay() !== 0 && d.getDay() !== 6) { // ignorar sábado y domingo
+                    diasContados++;
+                }
+            }
             return d;
         }
 
-        // Hoy y hace 15 días
+        // Hoy (sin fechas pasadas)
         const hoy = new Date();
-        const hace15 = new Date();
-        hace15.setDate(hoy.getDate() - 15);
 
 
         /* -------------------------------------------------------------
@@ -676,20 +703,20 @@
             fpInicio.clear();
             fpFin.clear();
 
-            // Siempre aplicar límite inferior general de 15 días hacia atrás
-            fpInicio.set("minDate", hace15);
-            fpFin.set("minDate", hace15);
+            // Límite inferior: no permitir fechas anteriores a hoy
+            fpInicio.set("minDate", hoy);
+            fpFin.set("minDate", hoy);
 
-            // Caso especial: COD = 02 → Fecha inicio = siguiente día laborable
+            // Caso especial: COD = 02 → Fecha inicio = 5 días laborables desde hoy
             if (cod == "02") {
 
-                let sigLab = siguienteDiaLaborable(hoy);
+                let sig5Lab = siguienteDiaLaborable5(hoy);
 
-                fpInicio.set("minDate", sigLab);
-                fpInicio.setDate(sigLab); // Lo deja fijo pero editable
+                fpInicio.set("minDate", sig5Lab);
+                fpInicio.setDate(sig5Lab); // Lo deja fijo pero editable
 
                 // Fin mínimo a partir de esa fecha
-                fpFin.set("minDate", sigLab);
+                fpFin.set("minDate", sig5Lab);
             }
         });
 

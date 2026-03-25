@@ -2,8 +2,7 @@
     .avatar {
         width: 40px;
         height: 40px;
-        display: inline-block;
-        border-radius: 50%;
+
         background-size: cover;
         background-position: center;
     }
@@ -58,55 +57,55 @@
         }
 
         /* Coinciden con tus targets en DataTables */
-        .col-id {
+        #col-id {
             width: 3% !important;
         }
 
-        .col-foto {
+        #col-foto {
             width: 5% !important;
         }
 
-        .col-qr {
+        #col-qr {
             width: 3% !important;
         }
 
-        .col-nombres {
+        #col-nombres {
             width: 15% !important;
         }
 
-        .col-f1 {
+        #col-f1 {
             width: 3% !important;
         }
 
-        .col-f2 {
+        #col-f2 {
             width: 3% !important;
         }
 
-        .col-f3 {
+        #col-f3 {
             width: 3% !important;
         }
 
-        .col-f4 {
+        #col-f4 {
             width: 3% !important;
         }
 
-        .col-fechas {
+        #col-fechas {
             width: 6% !important;
         }
 
-        .col-horas {
+        #col-horas {
             width: 6% !important;
         }
 
-        .col-retorno {
+        #col-retorno {
             width: 3% !important;
         }
 
-        .col-concepto {
+        #col-concepto {
             width: 25% !important;
         }
 
-        .col-acciones {
+        #col-acciones {
             width: 22% !important;
         }
 
@@ -124,10 +123,34 @@
 
     }
 
+    td {
+        max-width: 180px;
+        /* Ajusta según tu diseño */
+        white-space: nowrap;
+        /* No permite salto de línea */
+        overflow: hidden;
+        /* Oculta lo que se desborda */
+        text-overflow: ellipsis;
+        /* Muestra los ... */
+    }
+
+    .tablaAdminPapeleta td:nth-child(3),
+    .tablaAdminPapeleta th:nth-child(3) {
+        text-align: center !important;
+        vertical-align: middle !important;
+
+
+    }
 
 
 
-
+    .tablaAdminPapeleta td:nth-child(2),
+    .tablaAdminPapeleta td:nth-child(3),
+    .tablaAdminPapeleta td:nth-child(8),
+    .tablaAdminPapeleta td:nth-child(10) {
+        text-overflow: clip !important;
+        /* No muestra los “…” */
+    }
 
     .btn-tabler {
         font-size: 12px;
@@ -452,19 +475,19 @@
                                                 style="width: 100%">
                                                 <thead>
                                                     <tr>
-                                                        <th class="col-id">ID</th>
-                                                        <th class="col-foto">Foto</th>
-                                                        <th class="col-qr">QR</th>
-                                                        <th class="col-nombres">Nombres</th>
-                                                        <th class="col-f1">Jefe<br>Inme.</th>
-                                                        <th class="col-f2">Jefe<br>Pers.</th>
-                                                        <th class="col-f3">SubGer.</th>
-                                                        <th class="col-f4">Jefe<br>Transp.</th>
-                                                        <th class="col-fechas">Fechas</th>
-                                                        <th class="col-horas">Horas</th>
-                                                        <th class="col-retorno">Retorn.</th>
-                                                        <th class="col-concepto">Concepto / Motivo</th>
-                                                        <th class="col-acciones">Acciones</th>
+                                                        <th id="col-id">ID</th>
+                                                        <th id="col-foto">Foto</th>
+                                                        <th id="col-qr">QR</th>
+                                                        <th id="col-nombres">Nombres</th>
+                                                        <th id="col-f1">Jefe<br>Inme.</th>
+                                                        <th id="col-f2">Jefe<br>Pers.</th>
+                                                        <th id="col-f3">SubGer.</th>
+                                                        <th id="col-f4">Jefe<br>Transp.</th>
+                                                        <th id="col-fechas">Fechas</th>
+                                                        <th id="col-horas">Horas</th>
+                                                        <th id="col-retorno">Retorn.</th>
+                                                        <th id="col-concepto">Concepto / Motivo</th>
+                                                        <th id="col-acciones">Acciones</th>
                                                     </tr>
                                                 </thead>
 

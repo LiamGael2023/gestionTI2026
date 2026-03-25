@@ -93,7 +93,7 @@ class tablaVehiculo
                     $vehiculo[$i]["conductor"]
                     ?: 'LIBRE'
                  . '</h6></td>',
-                '<td><h6>' . utf8_encode($vehiculo[$i]["nombre_tipo"]) . '</h6></td>',
+                '<td><h6>' . ($vehiculo[$i]["nombre_tipo"]) . '</h6></td>',
                 // Botón de estado con data-id agregado
 
 

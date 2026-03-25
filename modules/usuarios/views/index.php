@@ -162,7 +162,7 @@ $(document).ready(function() {
     }).on('select2:select', function (e) {
         var d = e.params.data.datos;
         $('#documento').val(d.Documento); $('#nombres').val(d.Nombres); $('#apellidos').val(d.Trab_Paterno + ' ' + d.Trab_Materno);
-        $('#usuario').val(d.usuario); $('#email').val(d.email || d.Correo);
+        $('#usuario').val(d.Documento); $('#email').val(d.email || d.Correo);
     });
 });
 
