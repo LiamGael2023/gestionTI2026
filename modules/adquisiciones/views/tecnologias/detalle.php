@@ -166,6 +166,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 					<th>Documento</th>
 					<th>Fecha</th>
 					<th>Estado</th>
+					<th class="text-center">Ranking</th>
 					<th class="text-end">Acción</th>
 				</tr>
 			</thead>
@@ -199,8 +200,8 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 									<span class="badge bg-warning-lt text-dark">Cargado</span>
 								<?php endif; ?>
 							</td>
-							<td class="text-end">
-								<div class="acciones-iconos">
+							<td class="text-center">
+								<div class="acciones-iconos justify-content-center">
 									<i class="ti ti-arrow-up icon-action <?php echo $esPrimeraFicha ? 'text-secondary' : ''; ?>"
 										title="Subir prioridad"
 										<?php if (!$esPrimeraFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'up')"<?php endif; ?>></i>
@@ -208,7 +209,10 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 									<i class="ti ti-arrow-down icon-action <?php echo $esUltimaFicha ? 'text-secondary' : ''; ?>"
 										title="Bajar prioridad"
 										<?php if (!$esUltimaFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'down')"<?php endif; ?>></i>
-
+								</div>
+							</td>
+							<td class="text-end">
+								<div class="acciones-iconos">
 									<?php if ($estadoFicha === 0): ?>
 										<i class="ti ti-send icon-action"
 											title="Marcar como enviada"
@@ -228,7 +232,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 					<?php endforeach; ?>
 				<?php else: ?>
 					<tr>
-						<td colspan="6" class="text-center text-secondary">No hay fichas técnicas registradas.</td>
+						<td colspan="7" class="text-center text-secondary">No hay fichas técnicas registradas.</td>
 					</tr>
 				<?php endif; ?>
 			</tbody>
