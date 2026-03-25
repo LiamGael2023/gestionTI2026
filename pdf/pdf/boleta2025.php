@@ -71,7 +71,7 @@ if ($idactividad == '') $idactividad = null;
 if ($idtrabajador == '') $idtrabajador = null;
 
 // ==== CONSULTA CABECERA (SQLSRV) ====
-$tsqlCab = "{CALL BDPERSONAL.Planilla.pa_Boleta_Unica_Cabecera_Consultar_WEBSERVICE(?, ?, ?, ?, ?, ?, ?)}";
+$tsqlCab = "{CALL BD_PERSONAL.Planilla.pa_Boleta_Unica_Cabecera_Consultar_WEBSERVICE(?, ?, ?, ?, ?, ?, ?)}";
 $paramsCab = array($anio, $mes, $idplanillaauxiliar, $tipotrabajador, $idtrabajador, $numeroplanilla, $contrato);
 $stmtCab = sqlsrv_query($conn, $tsqlCab, $paramsCab);
 if ($stmtCab === false) {
@@ -83,8 +83,8 @@ while ($cab = sqlsrv_fetch_array($stmtCab, SQLSRV_FETCH_NUMERIC)) {
 
     // === nombre planilla (consulta separada) ===
     $tsqlP = "SELECT aux.PlanAuxi_Descripcion
-              FROM BDPERSONAL.Planilla.Tbl_Planilla_Auxiliar AS aux
-              INNER JOIN BDPERSONAL.Planilla.Tbl_Pago AS pa ON aux.Id_Planilla_Auxiliar = pa.Id_Planilla_Auxiliar
+              FROM BD_PERSONAL.Planilla.Tbl_Planilla_Auxiliar AS aux
+              INNER JOIN BD_PERSONAL.Planilla.Tbl_Pago AS pa ON aux.Id_Planilla_Auxiliar = pa.Id_Planilla_Auxiliar
               WHERE aux.Id_Planilla_Auxiliar = ? AND pa.Id_Anio = ? AND pa.Id_Mes = ?";
     $paramsP = array($idplanillaauxiliar, $anio, $mes);
     $stmtP = sqlsrv_query($conn, $tsqlP, $paramsP);
@@ -95,7 +95,7 @@ while ($cab = sqlsrv_fetch_array($stmtCab, SQLSRV_FETCH_NUMERIC)) {
     }
 
     // === nombre trabajador / documento (consulta separada) ===
-    $tsqlT = "SELECT RTRIM(LTRIM(Trab_documento)) FROM BDPERSONAL.Escalafon.Tbl_Trabajador WHERE Id_Trabajador = ?";
+    $tsqlT = "SELECT RTRIM(LTRIM(Trab_documento)) FROM BD_PERSONAL.Escalafon.Tbl_Trabajador WHERE Id_Trabajador = ?";
     $paramsT = array($idtrabajador);
     $stmtT = sqlsrv_query($conn, $tsqlT, $paramsT);
     $nombre_planilla2_doc = '';
@@ -201,7 +201,7 @@ while ($cab = sqlsrv_fetch_array($stmtCab, SQLSRV_FETCH_NUMERIC)) {
     $pdf->Line(155, 69, 155, 135);
 
     // === CONSULTA DETALLE ===
-    $tsqlDet = "{CALL BDPERSONAL.Planilla.pa_Boleta_Unica_Consultar_WEBSERVICE_2025(?, ?, ?, ?, ?, ?, ?, ?)}";
+    $tsqlDet = "{CALL BD_PERSONAL.Planilla.pa_Boleta_Unica_Consultar_WEBSERVICE_2025(?, ?, ?, ?, ?, ?, ?, ?)}";
     $paramsDet = array($anio, $mes, $idplanillaauxiliar, $tipotrabajador, $idtrabajador, $numeroplanilla, $contrato, $dato);
     $stmtDet = sqlsrv_query($conn, $tsqlDet, $paramsDet);
     if ($stmtDet === false) {

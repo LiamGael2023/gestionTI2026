@@ -22,7 +22,7 @@ class ModeloColaborador
         $conn = Conexion::conectar();
 
         // ✅ Si no se envía fecha, se pasa NULL (SQL tomará GETDATE())
-        $sql = "{CALL BDPERSONAL.Aplicativo.SP_Listar_Colaboradores_Papeleta_Diaria(?, ?)}";
+        $sql = "{CALL BD_PERSONAL.Aplicativo.SP_Listar_Colaboradores_Papeleta_Diaria(?, ?)}";
         $params = array($idJefe, $fecha);
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -48,7 +48,7 @@ class ModeloColaborador
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [Aplicativo].[SP_Listar_Trabajadores_Activos]";
+        $sql = "EXEC BD_PERSONAL.[Aplicativo].[SP_Listar_Trabajadores_Activos]";
 
         $stmt = sqlsrv_query($conn, $sql);
 

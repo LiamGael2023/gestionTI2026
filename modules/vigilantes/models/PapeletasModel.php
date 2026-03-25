@@ -32,7 +32,7 @@ class ModeloPapeleta
         try {
 
             // ✅ Llamamos al SP con parámetros directos
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular] ?, ?, ?,?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular] ?, ?, ?,?";
             $params = array($id_trabajador, $start, $length, $search);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -93,7 +93,7 @@ class ModeloPapeleta
             // ============================================
             // ✅ Ejecutar SP con TODOS los parámetros
             // ============================================
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_Admin_Personal_Vehicular] ?, ?, ?, ?, ?, ?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_Admin_Personal_Vehicular] ?, ?, ?, ?, ?, ?";
             $params = array(
                 $id_jefe,
                 $start,
@@ -166,7 +166,7 @@ class ModeloPapeleta
             }
 
             // ✅ Llamamos al SP con parámetros directos
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_Vigilantes] ?, ?, ?,?,?,?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_Vigilantes] ?, ?, ?,?,?,?";
             $params = array($id_establecimiento, $start, $length, $search, $filtroFecha, $filtroCerrar);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -222,7 +222,7 @@ class ModeloPapeleta
             }
 
             // ✅ Llamamos al SP con parámetros directos
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_UPER] ?, ?, ?,?,?,?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_UPER] ?, ?, ?,?,?,?";
             $params = array($id_establecimiento, $start, $length, $search, $filtroFecha, $filtroCerrar);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -278,7 +278,7 @@ class ModeloPapeleta
             }
 
             // ✅ Llamamos al SP con parámetros directos
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[SP_Listar_Papeletas_Por_Trabajador] ?, ?, ?,?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[SP_Listar_Papeletas_Por_Trabajador] ?, ?, ?,?";
             $params = array($id_trabajador, $start, $length, $search);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -328,7 +328,7 @@ class ModeloPapeleta
 
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE [BDPERSONAL].$tabla SET anulado = 1 WHERE id_papeleta = ?";
+        $sql = "UPDATE [BD_PERSONAL].$tabla SET anulado = 1 WHERE id_papeleta = ?";
         $params = array($idPapeleta);
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -350,7 +350,7 @@ class ModeloPapeleta
 
         $conn = Conexion::conectar();
 
-        $sql = "[BDPERSONAL].[Aplicativo].[SP_ActualizarJefePapeleta] ?,?";
+        $sql = "[BD_PERSONAL].[Aplicativo].[SP_ActualizarJefePapeleta] ?,?";
         $params = array($idPapeleta, $codJefe);
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -372,7 +372,7 @@ class ModeloPapeleta
         $conn = Conexion::conectar();
 
         // Preparar la consulta con parámetros
-        $sql = "INSERT INTO [BDPERSONAL].[Aplicativo].[evidencias] (id_papeletaFK, nombre, tipo, evidencia) VALUES (?, ?, ?, ?)";
+        $sql = "INSERT INTO [BD_PERSONAL].[Aplicativo].[evidencias] (id_papeletaFK, nombre, tipo, evidencia) VALUES (?, ?, ?, ?)";
         $params = [
             [$id_papeleta, SQLSRV_PARAM_IN],
             [$nombre, SQLSRV_PARAM_IN],
@@ -398,7 +398,7 @@ class ModeloPapeleta
 
 
 
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[InsertarPapeleta] ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[InsertarPapeleta] ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?";
 
         $params = array(
             $datos["Id_Trabajador"],
@@ -455,7 +455,7 @@ class ModeloPapeleta
             return ["status" => "error", "message" => "Campo no válido"];
         }
 
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[sp_Intercambiar_Estados_Papeleta] @id_papeleta = ?, @campo = ?, @id_jefe_aprobacion = ?";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[sp_Intercambiar_Estados_Papeleta] @id_papeleta = ?, @campo = ?, @id_jefe_aprobacion = ?";
         $params = [$id_papeleta, $campo, $id_jefe_aprobacion];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -489,7 +489,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "DELETE FROM [BDPERSONAL].[Aplicativo].[evidencias] WHERE id_evidencia = ?";
+        $sql = "DELETE FROM [BD_PERSONAL].[Aplicativo].[evidencias] WHERE id_evidencia = ?";
         $params = [$id_evidencia];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -509,7 +509,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[SP_MarcarNoAutorizado] ?, ?";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[SP_MarcarNoAutorizado] ?, ?";
         $params = [$id_papeleta, $codigo_jefe];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -547,7 +547,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[SP_TienePapeletaPendiente] ?";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[SP_TienePapeletaPendiente] ?";
         $params = [$id_trabajador];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -585,7 +585,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE  [BDPERSONAL].[Aplicativo].[papeleta]
+        $sql = "UPDATE  [BD_PERSONAL].[Aplicativo].[papeleta]
         SET hora_salida=CONVERT(time, GETDATE())
          WHERE id_papeleta = ?";
         $params = [$id_papeleta];
@@ -608,7 +608,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE      [BDPERSONAL].[Aplicativo].[papeleta]
+        $sql = "UPDATE      [BD_PERSONAL].[Aplicativo].[papeleta]
         SET hora_llegada=CONVERT(time, GETDATE())
          WHERE id_papeleta = ?";
         $params = [$id_papeleta];
@@ -655,7 +655,7 @@ class ModeloPapeleta
                 return $result ? [$result] : [];
             }
         } else {
-            $sql = "SELECT distinct * from [BDPERSONAL].$tabla  where trab_estado= 1 order by concepto asc";
+            $sql = "SELECT distinct * from [BD_PERSONAL].$tabla  where trab_estado= 1 order by concepto asc";
 
             $stmt = sqlsrv_query($conn, $sql);
 
@@ -681,7 +681,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Listar_Jefes_Divisiones]";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Listar_Jefes_Divisiones]";
 
         $stmt = sqlsrv_query($conn, $sql);
 
@@ -706,7 +706,7 @@ class ModeloPapeleta
         // printf('Item: %s — Valor: %s', htmlspecialchars($item), htmlspecialchars($valor));
         if ($item != null) {
             // $sql = "select * from $tabla where Id_Trabajador=$valor  ORDER BY id_papeleta DESC";
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular_Por_Id] ?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular_Por_Id] ?";
             $params = array($valor);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -724,7 +724,7 @@ class ModeloPapeleta
                 return $result; // Retorna todos los registros encontrados
             }
         } else {
-            $sql = "EXEC [BDPERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular_Por_Id] ?";
+            $sql = "EXEC [BD_PERSONAL].[Aplicativo].[VW_Papeleta_Personal_Vehicular_Por_Id] ?";
             $params = array($valor);
 
             // $sql = "select *,cast(fecha_inicio as DATE) as fechaini,cast(fecha_fin as DATE) as fechafin from papeleta ORDER BY id_papeleta DESC";
@@ -754,7 +754,7 @@ class ModeloPapeleta
     {
         $conn = Conexion::conectar();
 
-        $sql = "SELECT id_evidencia as id,nombre, tipo, evidencia FROM [BDPERSONAL].[Aplicativo].[evidencias] WHERE id_papeletaFK = ?";
+        $sql = "SELECT id_evidencia as id,nombre, tipo, evidencia FROM [BD_PERSONAL].[Aplicativo].[evidencias] WHERE id_papeletaFK = ?";
         $params = [$id_papeleta];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -781,7 +781,7 @@ class ModeloPapeleta
     static public function mdlFotoJefe()
     {
         $conn = Conexion::conectar();
-        $sql = "EXEC [BDPERSONAL].[Aplicativo].[SP_FotoJefe] ?";
+        $sql = "EXEC [BD_PERSONAL].[Aplicativo].[SP_FotoJefe] ?";
         $params = array($_SESSION["id_Trabajador"]);
 
         $stmt = sqlsrv_query($conn, $sql, $params);

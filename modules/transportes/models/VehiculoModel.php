@@ -21,7 +21,7 @@ class ModeloVehiculo
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Transportes].[sp_Registrar_Vehiculo] ?, ?, ?, ?, ?, ?, ?, ?, ?";
+        $sql = "EXEC [BD_PERSONAL].[Transportes].[sp_Registrar_Vehiculo] ?, ?, ?, ?, ?, ?, ?, ?, ?";
 
         $params = array(
             $datos["codigo_patrimonial"],
@@ -60,7 +60,7 @@ class ModeloVehiculo
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Transportes].[sp_Asignar_Vehiculo] ?, ?";
+        $sql = "EXEC [BD_PERSONAL].[Transportes].[sp_Asignar_Vehiculo] ?, ?";
 
         $params = array(
             $placa,
@@ -92,7 +92,7 @@ class ModeloVehiculo
         // printf('Item: %s — Valor: %s', htmlspecialchars($item), htmlspecialchars($valor));
         if ($item != null) {
             // $sql = "select * from $tabla where Id_Trabajador=$valor  ORDER BY id_papeleta DESC";
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Detalle_Vehiculo_Por_Placa] ?";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Detalle_Vehiculo_Por_Placa] ?";
             $params = array($valor);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -110,7 +110,7 @@ class ModeloVehiculo
                 return $result; // Retorna todos los registros encontrados
             }
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Detalle_Vehiculo_Por_Placa] ?";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Detalle_Vehiculo_Por_Placa] ?";
             $params = array($valor);
 
             // $sql = "select *,cast(fecha_inicio as DATE) as fechaini,cast(fecha_fin as DATE) as fechafin from papeleta ORDER BY id_papeleta DESC";
@@ -144,7 +144,7 @@ class ModeloVehiculo
         // printf('Item: %s — Valor: %s', htmlspecialchars($item), htmlspecialchars($valor));
         if ($item != null) {
             // $sql = "select * from $tabla where Id_Trabajador=$valor  ORDER BY id_papeleta DESC";
-            $sql = "EXEC [BDPERSONAL].[Transportes].[SP_HISTORIAL_ASIGNAMIENTO_VEHICULO] ?";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[SP_HISTORIAL_ASIGNAMIENTO_VEHICULO] ?";
             $params = array($valor);
 
             $stmt = sqlsrv_query($conn, $sql, $params);
@@ -162,7 +162,7 @@ class ModeloVehiculo
                 return $result; // Retorna todos los registros encontrados
             }
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[SP_HISTORIAL_ASIGNAMIENTO_VEHICULO] ?";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[SP_HISTORIAL_ASIGNAMIENTO_VEHICULO] ?";
             $params = array($valor);
 
             // $sql = "select *,cast(fecha_inicio as DATE) as fechaini,cast(fecha_fin as DATE) as fechafin from papeleta ORDER BY id_papeleta DESC";
@@ -190,7 +190,7 @@ class ModeloVehiculo
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC [BDPERSONAL].[Transportes].[sp_Desasignar_Vehiculo] ?";
+        $sql = "EXEC [BD_PERSONAL].[Transportes].[sp_Desasignar_Vehiculo] ?";
         $params = array($placa);
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -219,11 +219,11 @@ class ModeloVehiculo
         $conn = Conexion::conectar();
 
         if ($item != null && $valor != null) {
-            $sql = "EXEC    [BDPERSONAL].[Transportes].[VW_Listar_Vehiculos]";
+            $sql = "EXEC    [BD_PERSONAL].[Transportes].[VW_Listar_Vehiculos]";
             $params = array($valor);
             $stmt = sqlsrv_query($conn, $sql, $params);
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Listar_Vehiculos]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Listar_Vehiculos]";
             $stmt = sqlsrv_query($conn, $sql);
         }
 
@@ -248,11 +248,11 @@ class ModeloVehiculo
 
         if ($item != null && $valor != null) {
 
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Reporte_Vehiculos_Asignaciones]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Reporte_Vehiculos_Asignaciones]";
             $params = array($valor);
             $stmt = sqlsrv_query($conn, $sql, $params);
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Reporte_Vehiculos_Asignaciones]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Reporte_Vehiculos_Asignaciones]";
             $stmt = sqlsrv_query($conn, $sql);
         }
 
@@ -276,11 +276,11 @@ class ModeloVehiculo
 
         if ($fk_vehiculo != null) {
 
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Papeleta_Historial_Por_Vehiculos] ?";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Papeleta_Historial_Por_Vehiculos] ?";
             $params = array($fk_vehiculo);
             $stmt = sqlsrv_query($conn, $sql, $params);
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Papeleta_Historial_Por_Vehiculos]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Papeleta_Historial_Por_Vehiculos]";
             $stmt = sqlsrv_query($conn, $sql);
         }
 
@@ -301,11 +301,11 @@ class ModeloVehiculo
         $conn = Conexion::conectar();
 
         if ($item != null && $valor != null) {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Llenar_Combo_Conductores_Activos]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Llenar_Combo_Conductores_Activos]";
             $params = array($valor);
             $stmt = sqlsrv_query($conn, $sql, $params);
         } else {
-            $sql = "EXEC [BDPERSONAL].[Transportes].[VW_Llenar_Combo_Conductores_Activos]";
+            $sql = "EXEC [BD_PERSONAL].[Transportes].[VW_Llenar_Combo_Conductores_Activos]";
             $stmt = sqlsrv_query($conn, $sql);
         }
 
@@ -347,7 +347,7 @@ class ModeloVehiculo
             }
         } else {
 
-            $sql = "SELECT DISTINCT id_tipo_vehiculo, nombre_tipo FROM [BDPERSONAL].$tabla ORDER BY nombre_tipo ASC;";
+            $sql = "SELECT DISTINCT id_tipo_vehiculo, nombre_tipo FROM [BD_PERSONAL].$tabla ORDER BY nombre_tipo ASC;";
 
 
 
@@ -396,7 +396,7 @@ class ModeloVehiculo
             }
         } else {
 
-            $sql = "SELECT DISTINCT id_estado_vehiculo, nombre_estado FROM [BDPERSONAL].$tabla ORDER BY nombre_estado ASC;";
+            $sql = "SELECT DISTINCT id_estado_vehiculo, nombre_estado FROM [BD_PERSONAL].$tabla ORDER BY nombre_estado ASC;";
 
 
 
@@ -423,7 +423,7 @@ class ModeloVehiculo
     {
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE [BDPERSONAL].[Transportes].[tbl_vehiculo] SET dado_de_baja = 1 WHERE placa = ?";
+        $sql = "UPDATE [BD_PERSONAL].[Transportes].[tbl_vehiculo] SET dado_de_baja = 1 WHERE placa = ?";
         $params = array($placa);
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -465,7 +465,7 @@ class ModeloVehiculo
             }
         } else {
 
-            $sql = "SELECT DISTINCT marca, nombre_marca FROM [BDPERSONAL].$tabla ORDER BY nombre_marca ASC;";
+            $sql = "SELECT DISTINCT marca, nombre_marca FROM [BD_PERSONAL].$tabla ORDER BY nombre_marca ASC;";
 
 
             $stmt = sqlsrv_query($conn, $sql);
@@ -495,7 +495,7 @@ class ModeloVehiculo
 
 
 
-        $sql = "SELECT DISTINCT color FROM [BDPERSONAL].[Transportes].[tbl_vehiculo];";
+        $sql = "SELECT DISTINCT color FROM [BD_PERSONAL].[Transportes].[tbl_vehiculo];";
 
 
         $stmt = sqlsrv_query($conn, $sql);
@@ -520,7 +520,7 @@ class ModeloVehiculo
     static public function mdlBuscarPlaca($id_trabajador)
     {
         $conn = Conexion::conectar();
-        $sql = "EXEC [BDPERSONAL].[Transportes].[sp_Consultar_Vehiculo_Asignado_ID] ?";
+        $sql = "EXEC [BD_PERSONAL].[Transportes].[sp_Consultar_Vehiculo_Asignado_ID] ?";
         $params = array($id_trabajador);
         $stmt = sqlsrv_query($conn, $sql, $params);
 

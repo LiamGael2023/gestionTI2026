@@ -26,7 +26,7 @@ class PlanillaModel
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC BDPersonal.Planilla.SP_Listar_Anios_Boletas ?";
+        $sql = "EXEC BD_PERSONAL.Planilla.SP_Listar_Anios_Boletas ?";
         $params = [$datos['id_trabajador']];
 
         $stmt = sqlsrv_query($conn, $sql, $params);
@@ -53,7 +53,7 @@ class PlanillaModel
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC BDPersonal.Planilla.SP_Listar_Boletas_X_Anio ?, ?";
+        $sql = "EXEC BD_PERSONAL.Planilla.SP_Listar_Boletas_X_Anio ?, ?";
         $params = [
             $datos['id_trabajador'],
             $datos['anio']
@@ -80,7 +80,7 @@ class PlanillaModel
     {
         $conn = Conexion::conectar();
 
-        $sql = "EXEC BDPersonal.Planilla.SP_ACTUALIZAR_DESCARGADO ?,?,?,?";
+        $sql = "EXEC BD_PERSONAL.Planilla.SP_ACTUALIZAR_DESCARGADO ?,?,?,?";
         $params = [
             $datos['id_trabajador'],
             $datos['anio'],
@@ -107,12 +107,12 @@ class PlanillaModel
         $conn = Conexion::conectar();
 
         if ($item != null) {
-            $query = "EXEC BDPERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ?";
+            $query = "EXEC BD_PERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ?";
             $params = array($valor);
 
             $stmt = sqlsrv_query($conn, $query, $params);
         } else {
-            $query = "EXEC BDPERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ";
+            $query = "EXEC BD_PERSONAL.Aplicativo.SP_Login_Usuario_Vigilante ";
             $stmt = sqlsrv_query($conn, $query);
         }
 
