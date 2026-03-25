@@ -1,2 +1,0 @@
-<div class='page-header'><div class='container-xl'><h2 class='page-title'>Salas de Reuniones</h2></div></div>
-<div class='page-body'><div class='container-xl'><div class='card'><div class='card-body'>Bienvenido al sistema de Salas de Reuniones.</div></div></div></div>

@@ -8,7 +8,11 @@ class Conexion {
     static public function conectar() {
         $serverName = 'Ip delServidorSQL'; // Ejemplo: 'localhost' o '127.0.0.1'
         $connectionOptions = array(
+<<<<<<< Updated upstream
             'Database' => 'Nombre_BD',
+=======
+            'Database' => 'BD_GESTION_TI',
+>>>>>>> Stashed changes
             'Uid' => 'USUARIO_SQL',
             'PWD' => 'REEMPLAZAR_PASSWORD_SQL',
             'CharacterSet' => 'UTF-8',

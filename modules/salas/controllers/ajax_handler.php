@@ -3,7 +3,7 @@
  * ajax_handler.php
  * Manejador de peticiones AJAX/JSON del módulo de Gestión de Reservas de Sala.
  * Todas las respuestas son en formato JSON.
- * Proyecto Especial Chavimochic (PECH) — GestionTI
+ * Proyecto Especial Chavimochic (PECH) — GestionTI v1.0
  */
 ob_start(); // Captura cualquier salida espuria (warnings, notices) para no corromper el JSON
 
@@ -11,7 +11,7 @@ ob_start(); // Captura cualquier salida espuria (warnings, notices) para no corr
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../config/db.php';
 require_once __DIR__ . '/../../../core/Auth.php';
-require_once __DIR__ . '/../models/SalasModel.php';
+require_once __DIR__ . '/../models/core/SalasModel.php';
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -31,19 +31,80 @@ $conn       = Conexion::conectar();
 $model      = new SalasModel($conn);
 $action     = $_GET['action'] ?? $_POST['action'] ?? '';
 $id_usuario = (int) $_SESSION['usuario_id'];
-$rol        = $_SESSION['usuario_rol_nombre'] ?? '';
+$rol        = SalasModel::normalizarRolUsuario();
 
-// Fallback al campo texto legacy con normalización
-if (empty($rol)) {
-    $rol_legacy = $_SESSION['usuario_rol'] ?? '';
-    $rol = ($rol_legacy === 'ADMIN') ? SalasModel::ROL_ADMINISTRADOR : $rol_legacy;
+// ============================================================================
+// AUTO-CANCELACIÓN OPTIMIZADA
+// Misma función de negocio, pero con control de frecuencia y lock para
+// evitar ejecuciones redundantes con alta concurrencia.
+// ============================================================================
+
+/**
+ * Decide si conviene intentar la auto-cancelación según la acción.
+ * Se priorizan acciones que dependen más de datos frescos de reserva.
+ */
+function debeIntentarAutoCancelacion(string $action): bool
+{
+    $accionesClave = [
+        'crearReserva',
+        'editarReserva',
+        'cancelarReserva',
+        'aprobarReserva',
+        'rechazarReserva',
+        'getPendientes',
+        'getMisReservas',
+        'getEventosCalendar',
+        'getEventosCronograma',
+    ];
+
+    return in_array($action, $accionesClave, true);
 }
 
-// ============================================================================
-// AUTO-CANCELACIÓN: reservas PENDIENTE cuya hora de inicio ya pasó
-// Se ejecuta en cada petición AJAX del módulo (sin cron job).
-// ============================================================================
-$model->cancelarReservasVencidas();
+/**
+ * Ejecuta auto-cancelación con ventana de tiempo y lock local.
+ * No modifica la lógica interna de cancelarReservasVencidas().
+ */
+function ejecutarAutoCancelacionControlada(SalasModel $model, int $ventanaSegundos = 60): void
+{
+    $runtimeDir = __DIR__ . '/../../../../runtime/salas';
+    if (!is_dir($runtimeDir)) {
+        @mkdir($runtimeDir, 0775, true);
+    }
+
+    $lockPath = $runtimeDir . '/autocancel.lock';
+    $tsPath   = $runtimeDir . '/autocancel.last';
+
+    $lockHandle = @fopen($lockPath, 'c');
+    if ($lockHandle === false) {
+        return;
+    }
+
+    if (!@flock($lockHandle, LOCK_EX | LOCK_NB)) {
+        fclose($lockHandle);
+        return;
+    }
+
+    $ahora = time();
+    $ultimo = 0;
+    if (is_file($tsPath)) {
+        $raw = @file_get_contents($tsPath);
+        if ($raw !== false) {
+            $ultimo = (int) trim($raw);
+        }
+    }
+
+    if (($ahora - $ultimo) >= $ventanaSegundos) {
+        $model->cancelarReservasVencidas();
+        @file_put_contents($tsPath, (string) $ahora, LOCK_EX);
+    }
+
+    @flock($lockHandle, LOCK_UN);
+    fclose($lockHandle);
+}
+
+if (debeIntentarAutoCancelacion($action)) {
+    ejecutarAutoCancelacionControlada($model, 60);
+}
 
 // Helper para responder JSON y terminar
 function responder(array $data, int $codigo = 200): void
@@ -477,6 +538,79 @@ switch ($action) {
         $ok = $model->guardarFotoSala($id_sala, $nombre2);
         if (!$ok) responder(['ok' => false, 'msg' => 'Imagen guardada pero no se pudo registrar en la base de datos.'], 500);
         responder(['ok' => true, 'msg' => 'Fotografía guardada correctamente.', 'foto_ruta' => $nombre2]);
+
+    // ========================================================================
+    // DASHBOARD — Indicadores y Análisis
+    // ========================================================================
+    case 'getDashboardData':
+        // Sin restricción de roles - todos pueden ver dashboard (personalizado según rol)
+        $tipo = $_GET['tipo'] ?? 'all';
+
+        try {
+            $dashboardData = [];
+            
+            // Obtener UNA SOLA VEZ la lista de documentos con gerencia válida (solo para indicadores específicos)
+            $documentos_validos = $model->obtenerDocumentosConGerenciaValida();
+
+            // INDICADOR 1: Utilización de Salas (SIN filtro de gerencia)
+            if ($tipo === 'all' || $tipo === 'utilizacion') {
+                $dashboardData['utilizacion'] = $model->getUtilizacionSalas();
+            }
+
+            // INDICADOR 2: Estado de Solicitudes (SIN filtro de gerencia - todos los datos)
+            if ($tipo === 'all' || $tipo === 'estado') {
+                $dashboardData['estado'] = $model->getEstadoSolicitudes();
+            }
+
+            // INDICADOR 4: Equipos más usados por Sala (SIN filtro de gerencia)
+            if ($tipo === 'all' || $tipo === 'equipos') {
+                $dashboardData['equipos'] = $model->getTopEquiposPorSala();
+            }
+
+            // INDICADOR 5: Tendencias Temporales (SIN filtro de gerencia)
+            if ($tipo === 'all' || $tipo === 'tendencias') {
+                $dashboardData['tendencias'] = $model->getTendenciasTemporales();
+            }
+
+            // INDICADOR: Análisis por Gerencia/Unidad (CON filtro de gerencia válida)
+            if ($tipo === 'all' || $tipo === 'gerencia') {
+                $reservasPorUsuario = $model->getAnalisisPorGerencia($documentos_validos);
+                
+                // Extraer documentos de usuarios para consultar API
+                $documentos = array_column($reservasPorUsuario, 'documento');
+                $datosAPI = $model->obtenerDatosDelAPIPersonal($documentos);
+                
+                // Enriquecer datos con información del API
+                $usuariosConGerencia = [];
+                foreach ($reservasPorUsuario as &$usuario) {
+                    $usuario['gerencia_laboral'] = 'Sincronizando...';
+                    $usuario['unidad_laboral'] = 'Sincronizando...';
+                    
+                    if (isset($datosAPI[$usuario['documento']])) {
+                        $usuario['gerencia_laboral'] = $datosAPI[$usuario['documento']]['gerencia_laboral'];
+                        $usuario['unidad_laboral'] = $datosAPI[$usuario['documento']]['unidad_laboral'];
+                        
+                        // Solo incluir si tiene gerencia válida (no sincronizando, no null, no vacío)
+                        if (!empty($usuario['gerencia_laboral']) && 
+                            $usuario['gerencia_laboral'] !== 'Sincronizando...' &&
+                            $usuario['gerencia_laboral'] !== 'Sin asignar') {
+                            $usuariosConGerencia[] = $usuario;
+                        }
+                    }
+                }
+                
+                $dashboardData['gerencia'] = $usuariosConGerencia;
+            }
+
+            // INDICADOR: Tiempo de Aprobación por Gerencia (CON filtro de gerencia válida)
+            if ($tipo === 'all' || $tipo === 'tiempoAprobacion') {
+                $dashboardData['tiempoAprobacion'] = $model->getTiempoAprobacionPorGerencia($documentos_validos);
+            }
+
+            responder(['ok' => true, 'data' => $dashboardData]);
+        } catch (Exception $e) {
+            responder(['ok' => false, 'msg' => 'Error al obtener datos del dashboard: ' . $e->getMessage()], 500);
+        }
 
     // ------------------------------------------------------------------------
     // Acción desconocida

@@ -6,7 +6,7 @@
  * Proyecto Especial Chavimochic (PECH) — GestionTI v1.0
  */
 
-require_once 'modules/salas/models/SalasModel.php';
+require_once 'modules/salas/models/core/SalasModel.php';
 
 // Verificar sesión activa (la verificación principal ya la hace Auth::check() en index.php)
 if (!isset($_SESSION['usuario_id'])) {
@@ -35,14 +35,8 @@ if ($usuario_login_impresion === '') {
     }
 }
 
-// Usar el nombre del rol desde comun.Rol (vía id_rol) como fuente de verdad.
-// Fallback al campo texto legacy con normalización para compatibilidad.
-$rol_normalizado = $_SESSION['usuario_rol_nombre'] ?? '';
-if (empty($rol_normalizado)) {
-    $rol_normalizado = ($rol_usuario === 'ADMIN')
-        ? SalasModel::ROL_ADMINISTRADOR
-        : $rol_usuario;
-}
+// Normalizar rol desde sesión (con fallback)
+$rol_normalizado = SalasModel::normalizarRolUsuario();
 
 $es_autorizador_o_admin = SalasModel::esAutorizadorOAdmin($rol_normalizado);
 $es_admin               = SalasModel::esAdmin($rol_normalizado);
@@ -53,14 +47,25 @@ switch ($action) {
     // ------------------------------------------------------------------
     case 'index':
     default:
-        include 'modules/salas/views/html/calendario.php';
+        include 'modules/salas/views/html/features/dashboard.php';
+        break;
+
+    // ------------------------------------------------------------------
+    // Vista de Calendario (cualquier rol autenticado)
+    // ------------------------------------------------------------------
+    case 'calendario':
+        include 'modules/salas/views/html/features/calendario.php';
         break;
 
     // ------------------------------------------------------------------
     // Vista de Administración (solo Administrador)
     // ------------------------------------------------------------------
     case 'admin':
-        include 'modules/salas/views/html/catalogo.php';
+        if (!$es_admin) {
+            echo '<div class="alert alert-danger m-4">Acceso restringido. Se requiere rol Administrador.</div>';
+            break;
+        }
+        include 'modules/salas/views/html/roles/admin/catalogo.php';
         break;
 
     // ------------------------------------------------------------------
@@ -71,20 +76,31 @@ switch ($action) {
             echo '<div class="alert alert-danger m-4">Acceso restringido. Se requiere rol Administrador.</div>';
             break;
         }
-        include 'modules/salas/views/html/historial.php';
+        include 'modules/salas/views/html/roles/admin/historial.php';
+        break;
+
+    // ------------------------------------------------------------------
+    // Dashboard de Indicadores (todos los roles)
+    // ------------------------------------------------------------------
+    case 'dashboard':
+        include 'modules/salas/views/html/features/dashboard.php';
         break;
 
     // ------------------------------------------------------------------
     // Vista de Solicitudes Pendientes (Autorizador y Administrador)
     // ------------------------------------------------------------------
     case 'pendientes':
-        include 'modules/salas/views/html/autorizaciones.php';
+        if (!$es_autorizador_o_admin) {
+            echo '<div class="alert alert-danger m-4">Acceso restringido. Se requiere rol Autorizador o Administrador.</div>';
+            break;
+        }
+        include 'modules/salas/views/html/roles/autorizador/autorizaciones.php';
         break;
 
     // ------------------------------------------------------------------
     // Vista "Mis Reservas" — página dedicada (cualquier rol autenticado)
     // ------------------------------------------------------------------
     case 'mis-reservas':
-        include 'modules/salas/views/html/mis-reservas.php';
+        include 'modules/salas/views/html/roles/usuario/mis-reservas.php';
         break;
 }
