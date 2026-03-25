@@ -142,7 +142,7 @@ class CatalogoTecnologicoModel
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
 	}
 
-	public function existeDuplicado($codigo, $nombreGenerico)
+	public function existeDuplicado($codigo, $nombreGenerico, $idExcluir = null)
 	{
 		$sql = "
 			SELECT TOP 1 Id, Codigo, NombreGenerico
@@ -153,6 +153,10 @@ class CatalogoTecnologicoModel
 		";
 
 		$params = [$codigo, $nombreGenerico];
+		if ((int) $idExcluir > 0) {
+			$sql .= " AND Id <> ?";
+			$params[] = (int) $idExcluir;
+		}
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if ($stmt === false) {
@@ -160,6 +164,153 @@ class CatalogoTecnologicoModel
 		}
 
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
+	}
+
+	public function listarTecnologiasActivas()
+	{
+		$sql = "
+			SELECT Id, Codigo, NombreGenerico, Activo
+			FROM adquisiciones.CatalogoTecnologico
+			ORDER BY Codigo, NombreGenerico
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = $row;
+		}
+
+		return $data;
+	}
+
+	public function actualizarTecnologia($id, $codigo, $nombreGenerico)
+	{
+		$id = (int) $id;
+		$codigoLimpio = trim((string) $codigo);
+		$nombreLimpio = trim((string) $nombreGenerico);
+
+		if ($id <= 0 || $codigoLimpio === '' || $nombreLimpio === '') {
+			return [
+				'success' => false,
+				'message' => 'Debe ingresar codigo y nombre generico válidos.',
+			];
+		}
+
+		$duplicado = $this->existeDuplicado($codigoLimpio, $nombreLimpio, $id);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'message' => 'Ya existe otra tecnologia con el mismo codigo y nombre generico.',
+			];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.CatalogoTecnologico
+			SET Codigo = ?, NombreGenerico = ?
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$codigoLimpio, $nombreLimpio, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo actualizar la tecnologia' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tecnologia actualizada correctamente.',
+		];
+	}
+
+	public function eliminarTecnologia($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return [
+				'success' => false,
+				'message' => 'Tecnologia inválida.',
+			];
+		}
+
+		$sql = "UPDATE adquisiciones.CatalogoTecnologico SET Activo = 0 WHERE Id = ? AND Activo = 1";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo inactivar la tecnologia' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tecnologia inactivada correctamente.',
+		];
+	}
+
+	public function activarTecnologia($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return [
+				'success' => false,
+				'message' => 'Tecnologia inválida.',
+			];
+		}
+
+		$sqlBuscar = "SELECT TOP 1 Codigo, NombreGenerico FROM adquisiciones.CatalogoTecnologico WHERE Id = ?";
+		$stmtBuscar = sqlsrv_query($this->db, $sqlBuscar, [$id]);
+		if ($stmtBuscar === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo validar la tecnologia' . $detalle,
+			];
+		}
+
+		$fila = sqlsrv_fetch_array($stmtBuscar, SQLSRV_FETCH_ASSOC);
+		if (!$fila) {
+			return [
+				'success' => false,
+				'message' => 'No se encontró la tecnologia.',
+			];
+		}
+
+		$codigo = trim((string) ($fila['Codigo'] ?? ''));
+		$nombreGenerico = trim((string) ($fila['NombreGenerico'] ?? ''));
+		$duplicado = $this->existeDuplicado($codigo, $nombreGenerico, $id);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'message' => 'No se puede activar porque ya existe otra tecnologia activa con el mismo codigo y nombre generico.',
+			];
+		}
+
+		$sql = "UPDATE adquisiciones.CatalogoTecnologico SET Activo = 1 WHERE Id = ? AND Activo = 0";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo activar la tecnologia' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tecnologia activada correctamente.',
+		];
 	}
 
 	public function agregarTecnologia($codigo, $nombreGenerico)

@@ -78,6 +78,7 @@ $accionesTecnologia = [
 	'verOrdenCompraAjax',
 	'guardarOrdenCompraAjax',
 	'actualizarOrdenCompraAjax',
+	'actualizarFechaOrdenCompraAjax',
 	'eliminarOrdenCompraAjax',
 	'verVerificacionTecnicaAjax',
 	'guardarVerificacionTecnicaAjax',
@@ -269,6 +270,73 @@ switch ($action) {
 		$catalogoModel = new CatalogoTecnologicoModel($conn);
 		$resultado = $catalogoModel->agregarTecnologia($codigo, $nombreGenerico);
 		echo json_encode($resultado);
+		exit;
+
+	case 'listarCentrosCostoAjax':
+		header('Content-Type: application/json');
+		echo json_encode([
+			'success' => true,
+			'data' => $model->listarCentrosCostoGestion(),
+		]);
+		exit;
+
+	case 'agregarCentroCostoAjax':
+		header('Content-Type: application/json');
+		$siglas = isset($_POST['siglas']) ? trim((string) $_POST['siglas']) : '';
+		$nombreCentroCosto = isset($_POST['nombreCentroCosto']) ? trim((string) $_POST['nombreCentroCosto']) : '';
+		echo json_encode($model->agregarCentroCosto($siglas, $nombreCentroCosto));
+		exit;
+
+	case 'actualizarCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$siglas = isset($_POST['siglas']) ? trim((string) $_POST['siglas']) : '';
+		$nombreCentroCosto = isset($_POST['nombreCentroCosto']) ? trim((string) $_POST['nombreCentroCosto']) : '';
+		echo json_encode($model->actualizarCentroCosto($id, $siglas, $nombreCentroCosto));
+		exit;
+
+	case 'eliminarCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->eliminarCentroCosto($id));
+		exit;
+
+	case 'activarCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->activarCentroCosto($id));
+		exit;
+
+	case 'listarTecnologiasCatalogoAjax':
+		header('Content-Type: application/json');
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode([
+			'success' => true,
+			'data' => $catalogoModel->listarTecnologiasActivas(),
+		]);
+		exit;
+
+	case 'actualizarTecnologiaCatalogoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$codigo = isset($_POST['codigo']) ? trim((string) $_POST['codigo']) : '';
+		$nombreGenerico = isset($_POST['nombreGenerico']) ? trim((string) $_POST['nombreGenerico']) : '';
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->actualizarTecnologia($id, $codigo, $nombreGenerico));
+		exit;
+
+	case 'eliminarTecnologiaCatalogoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->eliminarTecnologia($id));
+		exit;
+
+	case 'activarTecnologiaCatalogoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->activarTecnologia($id));
 		exit;
 
 	default:

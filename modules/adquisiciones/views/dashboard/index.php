@@ -63,6 +63,7 @@ foreach ($resumenCentroCosto as $filaCentroCosto) {
 		$totalCentrosConRequerimientos++;
 	}
 }
+$totalCentrosCosto = count($resumenCentroCosto);
 
 function formatearFechaEntregaDashboard($fecha)
 {
@@ -94,6 +95,26 @@ function formatearFechaEntregaDashboard($fecha)
 
 	.adq-dashboard .card .card-header {
 		border-bottom-color: rgba(98, 105, 118, 0.12);
+	}
+
+	.adq-dashboard .adq-card-clickable {
+		cursor: pointer;
+	}
+
+	.adq-dashboard .adq-card-clickable:focus-visible {
+		outline: 2px solid rgba(32, 107, 196, 0.35);
+		outline-offset: 2px;
+	}
+
+	.adq-dashboard .adq-card-arrow {
+		font-size: 1.05rem;
+		opacity: 0.72;
+	}
+
+	.adq-dashboard .adq-btn-action {
+		font-weight: 600;
+		min-width: 84px;
+		border-radius: 0.375rem !important;
 	}
 </style>
 <div class="adq-dashboard">
@@ -156,35 +177,38 @@ function formatearFechaEntregaDashboard($fecha)
 		</div>
 
 		<div class="col-12 col-md-6 col-xl-3">
-			<div class="card h-100">
+			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionTecnologias" aria-label="Abrir gestión de tecnologías">
 				<div class="card-body">
 					<div class="d-flex align-items-start justify-content-between mb-2">
-						<span class="avatar avatar-md bg-green-lt text-green"><i class="ti ti-file-check"></i></span>
-						<div class="h1 mb-0"><?php echo number_format($tecnologiasCompletas); ?></div>
+						<span class="avatar avatar-md bg-green-lt text-green"><i class="ti ti-device-desktop"></i></span>
+						<div class="d-flex align-items-center gap-2">
+							<div class="h1 mb-0" id="cardTotalTecnologias"><?php echo number_format($totalTecnologias); ?></div>
+							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
+						</div>
 					</div>
-					<div class="fw-bold">Tecnologías Completas</div>
-					<div class="text-secondary small">Total activas: <?php echo number_format($totalTecnologias); ?>.</div>
-					<div class="progress progress-sm mt-3">
-						<div class="progress-bar bg-green" style="width: <?php echo $porcentajeTecnologiasCompletas; ?>%"></div>
-					</div>
-					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
-						<span><?php echo $porcentajeTecnologiasCompletas; ?>% cobertura integral</span>
+					<div class="fw-bold">Tecnologías</div>
+					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
+					<div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
+						<span><?php echo number_format($tecnologiasCompletas); ?> completas en <?php echo $anioFiltro; ?></span>
 					</div>
 				</div>
 			</div>
 		</div>
 
 		<div class="col-12 col-md-6 col-xl-3">
-			<div class="card h-100">
+			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionCentrosCosto" aria-label="Abrir gestión de centros de costo">
 				<div class="card-body">
 					<div class="d-flex align-items-start justify-content-between mb-2">
 						<span class="avatar avatar-md bg-azure-lt text-azure"><i class="ti ti-building"></i></span>
-						<div class="h1 mb-0"><?php echo number_format($totalCentrosConRequerimientos); ?></div>
+						<div class="d-flex align-items-center gap-2">
+							<div class="h1 mb-0" id="cardTotalCentrosCosto"><?php echo number_format($totalCentrosCosto); ?></div>
+							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
+						</div>
 					</div>
-					<div class="fw-bold">Centros con Requerimientos</div>
-					<div class="text-secondary small">Distribución del año <?php echo $anioFiltro; ?> por centro de costo.</div>
+					<div class="fw-bold">Centros de Costo</div>
+					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
 					<div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
-						<span><?php echo number_format(count($resumenCentroCosto)); ?> centros evaluados</span>
+						<span><?php echo number_format($totalCentrosConRequerimientos); ?> con requerimientos en <?php echo $anioFiltro; ?></span>
 					</div>
 				</div>
 			</div>
@@ -375,5 +399,449 @@ function formatearFechaEntregaDashboard($fecha)
 			</div>
 		</div>
 	</div>
+
+	<div class="modal modal-blur fade" id="modalGestionCentrosCosto" tabindex="-1" aria-labelledby="modalGestionCentrosCostoLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalGestionCentrosCostoLabel">Gestión de Centros de Costo</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-md-3">
+							<label class="form-label" for="ccSiglas">Siglas</label>
+							<input type="text" class="form-control" id="ccSiglas" maxlength="20" placeholder="Ej: OTI">
+						</div>
+						<div class="col-12 col-md-7">
+							<label class="form-label" for="ccNombre">Nombre Centro de Costo</label>
+							<input type="text" class="form-control" id="ccNombre" maxlength="255" placeholder="Nombre del centro de costo">
+						</div>
+						<div class="col-12 col-md-2 d-flex align-items-end">
+							<button type="button" class="btn btn-primary w-100" id="btnGuardarCentroCosto">Agregar</button>
+						</div>
+					</div>
+					<input type="hidden" id="ccIdEditar" value="">
+					<div class="table-responsive">
+						<table class="table table-vcenter card-table table-striped" id="tablaCentrosCostoGestion">
+							<thead>
+								<tr>
+									<th>Siglas</th>
+									<th>Centro de Costo</th>
+									<th>Estado</th>
+									<th class="text-end">Acciones</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="4" class="text-center text-secondary py-4">Cargando...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="modal modal-blur fade" id="modalGestionTecnologias" tabindex="-1" aria-labelledby="modalGestionTecnologiasLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalGestionTecnologiasLabel">Gestión de Tecnologías</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-md-3">
+							<label class="form-label" for="tecCodigo">Código</label>
+							<input type="text" class="form-control" id="tecCodigo" maxlength="50" placeholder="Código">
+						</div>
+						<div class="col-12 col-md-7">
+							<label class="form-label" for="tecNombre">Nombre Genérico</label>
+							<input type="text" class="form-control" id="tecNombre" maxlength="255" placeholder="Nombre genérico">
+						</div>
+						<div class="col-12 col-md-2 d-flex align-items-end">
+							<button type="button" class="btn btn-primary w-100" id="btnGuardarTecnologiaCatalogo">Agregar</button>
+						</div>
+					</div>
+					<input type="hidden" id="tecIdEditar" value="">
+					<div class="table-responsive">
+						<table class="table table-vcenter card-table table-striped" id="tablaTecnologiasGestion">
+							<thead>
+								<tr>
+									<th>Código</th>
+									<th>Nombre Genérico</th>
+									<th>Estado</th>
+									<th class="text-end">Acciones</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="4" class="text-center text-secondary py-4">Cargando...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
+
+<script>
+(function() {
+	var modalCentros = document.getElementById('modalGestionCentrosCosto');
+	var modalTecnologias = document.getElementById('modalGestionTecnologias');
+	if (!modalCentros || !modalTecnologias) {
+		return;
+	}
+
+	document.querySelectorAll('.adq-card-clickable').forEach(function(card) {
+		card.addEventListener('keydown', function(event) {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				card.click();
+			}
+		});
+	});
+
+	function notificar(tipo, titulo, mensaje) {
+		if (window.adqNotifySafe) {
+			window.adqNotifySafe(tipo, titulo, mensaje);
+			return;
+		}
+		alert(mensaje || titulo);
+	}
+
+	function escaparHtml(valor) {
+		return String(valor || '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
+	function actualizarContador(id, total) {
+		var nodo = document.getElementById(id);
+		if (!nodo) {
+			return;
+		}
+		nodo.textContent = new Intl.NumberFormat('es-PE').format(total || 0);
+	}
+
+	function limpiarFormularioCentro() {
+		document.getElementById('ccIdEditar').value = '';
+		document.getElementById('ccSiglas').value = '';
+		document.getElementById('ccNombre').value = '';
+		document.getElementById('btnGuardarCentroCosto').textContent = 'Agregar';
+	}
+
+	function limpiarFormularioTecnologia() {
+		document.getElementById('tecIdEditar').value = '';
+		document.getElementById('tecCodigo').value = '';
+		document.getElementById('tecNombre').value = '';
+		document.getElementById('btnGuardarTecnologiaCatalogo').textContent = 'Agregar';
+	}
+
+	function cargarCentrosCosto() {
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=listarCentrosCostoAjax',
+			type: 'GET',
+			dataType: 'json',
+			success: function(response) {
+				var tbody = $('#tablaCentrosCostoGestion tbody');
+				if (!response || !response.success) {
+					tbody.html('<tr><td colspan="4" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+					return;
+				}
+
+				var data = Array.isArray(response.data) ? response.data : [];
+				if (data.length === 0) {
+					tbody.html('<tr><td colspan="4" class="text-center text-secondary py-4">No hay centros de costo registrados.</td></tr>');
+					return;
+				}
+
+				var filas = data.map(function(item) {
+					var activo = Number(item.Activo) === 1;
+					var badgeEstado = activo
+						? '<span class="badge bg-success-lt">Activo</span>'
+						: '<span class="badge bg-secondary-lt">Inactivo</span>';
+					var acciones = activo
+						? '<button type="button" class="btn btn-primary adq-btn-action js-editar-cc" data-id="' + Number(item.Id) + '" data-siglas="' + escaparHtml(item.Siglas) + '" data-nombre="' + escaparHtml(item.NombreCentroCosto) + '">Editar</button>' +
+						  '<button type="button" class="btn btn-danger adq-btn-action js-eliminar-cc" data-id="' + Number(item.Id) + '">Inactivar</button>'
+						: '<button type="button" class="btn btn-success adq-btn-action js-activar-cc" data-id="' + Number(item.Id) + '">Activar</button>';
+
+					return '<tr>' +
+						'<td>' + escaparHtml(item.Siglas) + '</td>' +
+						'<td>' + escaparHtml(item.NombreCentroCosto) + '</td>' +
+						'<td>' + badgeEstado + '</td>' +
+						'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							acciones +
+						'</td>' +
+					'</tr>';
+				}).join('');
+
+				tbody.html(filas);
+			},
+			error: function() {
+				$('#tablaCentrosCostoGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+			}
+		});
+	}
+
+	function cargarTecnologias() {
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=listarTecnologiasCatalogoAjax',
+			type: 'GET',
+			dataType: 'json',
+			success: function(response) {
+				var tbody = $('#tablaTecnologiasGestion tbody');
+				if (!response || !response.success) {
+					tbody.html('<tr><td colspan="4" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+					return;
+				}
+
+				var data = Array.isArray(response.data) ? response.data : [];
+				if (data.length === 0) {
+					tbody.html('<tr><td colspan="4" class="text-center text-secondary py-4">No hay tecnologías registradas.</td></tr>');
+					return;
+				}
+
+				var filas = data.map(function(item) {
+					var activo = Number(item.Activo) === 1;
+					var badgeEstado = activo
+						? '<span class="badge bg-success-lt">Activo</span>'
+						: '<span class="badge bg-secondary-lt">Inactivo</span>';
+					var acciones = activo
+						? '<button type="button" class="btn btn-primary adq-btn-action js-editar-tec" data-id="' + Number(item.Id) + '" data-codigo="' + escaparHtml(item.Codigo) + '" data-nombre="' + escaparHtml(item.NombreGenerico) + '">Editar</button>' +
+						  '<button type="button" class="btn btn-danger adq-btn-action js-eliminar-tec" data-id="' + Number(item.Id) + '">Inactivar</button>'
+						: '<button type="button" class="btn btn-success adq-btn-action js-activar-tec" data-id="' + Number(item.Id) + '">Activar</button>';
+
+					return '<tr>' +
+						'<td>' + escaparHtml(item.Codigo) + '</td>' +
+						'<td>' + escaparHtml(item.NombreGenerico) + '</td>' +
+						'<td>' + badgeEstado + '</td>' +
+						'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							acciones +
+						'</td>' +
+					'</tr>';
+				}).join('');
+
+				tbody.html(filas);
+			},
+			error: function() {
+				$('#tablaTecnologiasGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+			}
+		});
+	}
+
+	$('#btnGuardarCentroCosto').on('click', function() {
+		var id = $('#ccIdEditar').val();
+		var siglas = $('#ccSiglas').val().trim();
+		var nombreCentroCosto = $('#ccNombre').val().trim();
+
+		if (!siglas || !nombreCentroCosto) {
+			notificar('warning', 'Campos obligatorios', 'Debe completar siglas y nombre del centro de costo.');
+			return;
+		}
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarCentroCostoAjax' : 'agregarCentroCostoAjax'),
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				id: id,
+				siglas: siglas,
+				nombreCentroCosto: nombreCentroCosto
+			},
+			success: function(response) {
+				if (response && response.success) {
+					notificar('success', 'Operación correcta', response.message || 'Centro de costo guardado.');
+					limpiarFormularioCentro();
+					cargarCentrosCosto();
+					return;
+				}
+				notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar centro de costo.');
+			}
+		});
+	});
+
+	$('#tablaCentrosCostoGestion').on('click', '.js-editar-cc', function() {
+		var btn = $(this);
+		$('#ccIdEditar').val(btn.data('id'));
+		$('#ccSiglas').val(btn.data('siglas'));
+		$('#ccNombre').val(btn.data('nombre'));
+		$('#btnGuardarCentroCosto').text('Actualizar');
+	});
+
+	$('#tablaCentrosCostoGestion').on('click', '.js-eliminar-cc', function() {
+		var id = $(this).data('id');
+		window.adqConfirmSafe({
+			titulo: 'Inactivar centro de costo',
+			mensaje: '¿Desea inactivar este centro de costo?',
+			textoAceptar: 'Inactivar',
+			claseAceptar: 'btn-danger'
+		}).then(function(confirmado) {
+			if (!confirmado) {
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=eliminarCentroCostoAjax',
+				type: 'POST',
+				dataType: 'json',
+				data: { id: id },
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Centro inactivado', response.message || 'Centro de costo inactivado.');
+						limpiarFormularioCentro();
+						cargarCentrosCosto();
+						return;
+					}
+					notificar('danger', 'No se pudo inactivar', response && response.message ? response.message : 'Error al inactivar centro de costo.');
+				}
+			});
+		});
+	});
+
+	$('#tablaCentrosCostoGestion').on('click', '.js-activar-cc', function() {
+		var id = $(this).data('id');
+		window.adqConfirmSafe({
+			titulo: 'Activar centro de costo',
+			mensaje: '¿Desea activar este centro de costo?',
+			textoAceptar: 'Activar',
+			claseAceptar: 'btn-success'
+		}).then(function(confirmado) {
+			if (!confirmado) {
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=activarCentroCostoAjax',
+				type: 'POST',
+				dataType: 'json',
+				data: { id: id },
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Centro activado', response.message || 'Centro de costo activado.');
+						cargarCentrosCosto();
+						return;
+					}
+					notificar('danger', 'No se pudo activar', response && response.message ? response.message : 'Error al activar centro de costo.');
+				}
+			});
+		});
+	});
+
+	$('#btnGuardarTecnologiaCatalogo').on('click', function() {
+		var id = $('#tecIdEditar').val();
+		var codigo = $('#tecCodigo').val().trim();
+		var nombreGenerico = $('#tecNombre').val().trim();
+
+		if (!codigo || !nombreGenerico) {
+			notificar('warning', 'Campos obligatorios', 'Debe completar código y nombre genérico.');
+			return;
+		}
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarTecnologiaCatalogoAjax' : 'agregarTecnologiaAjax'),
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				id: id,
+				codigo: codigo,
+				nombreGenerico: nombreGenerico
+			},
+			success: function(response) {
+				if (response && response.success) {
+					notificar('success', 'Operación correcta', response.message || 'Tecnología guardada.');
+					limpiarFormularioTecnologia();
+					cargarTecnologias();
+					return;
+				}
+				notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar tecnología.');
+			}
+		});
+	});
+
+	$('#tablaTecnologiasGestion').on('click', '.js-editar-tec', function() {
+		var btn = $(this);
+		$('#tecIdEditar').val(btn.data('id'));
+		$('#tecCodigo').val(btn.data('codigo'));
+		$('#tecNombre').val(btn.data('nombre'));
+		$('#btnGuardarTecnologiaCatalogo').text('Actualizar');
+	});
+
+	$('#tablaTecnologiasGestion').on('click', '.js-eliminar-tec', function() {
+		var id = $(this).data('id');
+		window.adqConfirmSafe({
+			titulo: 'Inactivar tecnología',
+			mensaje: '¿Desea inactivar esta tecnología?',
+			textoAceptar: 'Inactivar',
+			claseAceptar: 'btn-danger'
+		}).then(function(confirmado) {
+			if (!confirmado) {
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=eliminarTecnologiaCatalogoAjax',
+				type: 'POST',
+				dataType: 'json',
+				data: { id: id },
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Tecnología inactivada', response.message || 'Tecnología inactivada correctamente.');
+						limpiarFormularioTecnologia();
+						cargarTecnologias();
+						return;
+					}
+					notificar('danger', 'No se pudo inactivar', response && response.message ? response.message : 'Error al inactivar tecnología.');
+				}
+			});
+		});
+	});
+
+	$('#tablaTecnologiasGestion').on('click', '.js-activar-tec', function() {
+		var id = $(this).data('id');
+		window.adqConfirmSafe({
+			titulo: 'Activar tecnología',
+			mensaje: '¿Desea activar esta tecnología?',
+			textoAceptar: 'Activar',
+			claseAceptar: 'btn-success'
+		}).then(function(confirmado) {
+			if (!confirmado) {
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=activarTecnologiaCatalogoAjax',
+				type: 'POST',
+				dataType: 'json',
+				data: { id: id },
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Tecnología activada', response.message || 'Tecnología activada correctamente.');
+						cargarTecnologias();
+						return;
+					}
+					notificar('danger', 'No se pudo activar', response && response.message ? response.message : 'Error al activar tecnología.');
+				}
+			});
+		});
+	});
+
+	modalCentros.addEventListener('shown.bs.modal', function() {
+		limpiarFormularioCentro();
+		cargarCentrosCosto();
+	});
+
+	modalTecnologias.addEventListener('shown.bs.modal', function() {
+		limpiarFormularioTecnologia();
+		cargarTecnologias();
+	});
+})();
+</script>
 

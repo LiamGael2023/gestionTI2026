@@ -21,6 +21,12 @@
 	</div>
 </div>
 
+<style>
+	#adq-modal-confirmacion {
+		z-index: 1085;
+	}
+</style>
+
 <script>
 	(function() {
 		if (window.adqConfirm && window.adqConfirmSafe) {
@@ -32,6 +38,33 @@
 		const mensajeEl = document.getElementById('adq-confirmacion-mensaje');
 		const btnAceptar = document.getElementById('adq-confirmacion-aceptar');
 		const btnCancelar = document.getElementById('adq-confirmacion-cancelar');
+
+		function prepararZIndexConfirmacion() {
+			const modalesAbiertos = Array.prototype.slice.call(document.querySelectorAll('.modal.show'))
+				.filter(function(el) {
+					return el !== modalEl;
+				});
+
+			let zBase = 1055;
+			modalesAbiertos.forEach(function(el) {
+				const z = parseInt(window.getComputedStyle(el).zIndex, 10);
+				if (!Number.isNaN(z) && z > zBase) {
+					zBase = z;
+				}
+			});
+
+			modalEl.style.zIndex = String(zBase + 30);
+
+			// Bootstrap inserta el backdrop al final del body; elevamos el último.
+			setTimeout(function() {
+				const backdrops = document.querySelectorAll('.modal-backdrop');
+				if (!backdrops.length) {
+					return;
+				}
+				const ultimoBackdrop = backdrops[backdrops.length - 1];
+				ultimoBackdrop.style.zIndex = String(zBase + 20);
+			}, 0);
+		}
 
 		window.adqConfirm = function(options) {
 			const opts = Object.assign({
@@ -53,6 +86,7 @@
 			btnAceptar.className = 'btn w-100 ' + opts.claseAceptar;
 
 			const instancia = bootstrap.Modal.getOrCreateInstance(modalEl);
+			prepararZIndexConfirmacion();
 
 			return new Promise(function(resolve) {
 				let resulto = false;
@@ -71,9 +105,11 @@
 
 				function onOculto() {
 					if (resulto) {
+						modalEl.style.removeProperty('z-index');
 						return;
 					}
 					limpiar();
+					modalEl.style.removeProperty('z-index');
 					resolve(false);
 				}
 

@@ -71,6 +71,156 @@ class RequerimientoModel
 		return $data;
 	}
 
+	public function listarCentrosCostoGestion()
+	{
+		$sql = "
+			SELECT Id, Siglas, NombreCentroCosto, Activo
+			FROM adquisiciones.CentroCosto
+			ORDER BY NombreCentroCosto
+		";
+
+		return $this->fetchAll($sql);
+	}
+
+	public function agregarCentroCosto($siglas, $nombreCentroCosto)
+	{
+		$siglasLimpio = strtoupper(trim((string) $siglas));
+		$nombreLimpio = trim((string) $nombreCentroCosto);
+
+		if ($siglasLimpio === '' || $nombreLimpio === '') {
+			return ['success' => false, 'message' => 'Debe completar siglas y nombre del centro de costo.'];
+		}
+
+		if ($this->existeCentroCostoDuplicado($siglasLimpio, $nombreLimpio)) {
+			return ['success' => false, 'message' => 'Ya existe un centro de costo con las mismas siglas o nombre.'];
+		}
+
+		$sql = "
+			INSERT INTO adquisiciones.CentroCosto (Siglas, NombreCentroCosto, Activo)
+			VALUES (?, ?, 1)
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$siglasLimpio, $nombreLimpio]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo registrar el centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Centro de costo registrado correctamente.'];
+	}
+
+	public function actualizarCentroCosto($id, $siglas, $nombreCentroCosto)
+	{
+		$id = (int) $id;
+		$siglasLimpio = strtoupper(trim((string) $siglas));
+		$nombreLimpio = trim((string) $nombreCentroCosto);
+
+		if ($id <= 0 || $siglasLimpio === '' || $nombreLimpio === '') {
+			return ['success' => false, 'message' => 'Datos inválidos para actualizar el centro de costo.'];
+		}
+
+		if ($this->existeCentroCostoDuplicado($siglasLimpio, $nombreLimpio, $id)) {
+			return ['success' => false, 'message' => 'Ya existe otro centro de costo con las mismas siglas o nombre.'];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.CentroCosto
+			SET Siglas = ?, NombreCentroCosto = ?
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$siglasLimpio, $nombreLimpio, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo actualizar el centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Centro de costo actualizado correctamente.'];
+	}
+
+	public function eliminarCentroCosto($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Centro de costo inválido.'];
+		}
+
+		$sql = "UPDATE adquisiciones.CentroCosto SET Activo = 0 WHERE Id = ? AND Activo = 1";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo inactivar el centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Centro de costo inactivado correctamente.'];
+	}
+
+	public function activarCentroCosto($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Centro de costo inválido.'];
+		}
+
+		$sqlBuscar = "SELECT TOP 1 Siglas, NombreCentroCosto FROM adquisiciones.CentroCosto WHERE Id = ?";
+		$stmtBuscar = sqlsrv_query($this->db, $sqlBuscar, [$id]);
+		if ($stmtBuscar === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo validar el centro de costo' . $detalle];
+		}
+
+		$fila = sqlsrv_fetch_array($stmtBuscar, SQLSRV_FETCH_ASSOC);
+		if (!$fila) {
+			return ['success' => false, 'message' => 'No se encontró el centro de costo.'];
+		}
+
+		$siglas = trim((string) ($fila['Siglas'] ?? ''));
+		$nombreCentroCosto = trim((string) ($fila['NombreCentroCosto'] ?? ''));
+		if ($this->existeCentroCostoDuplicado($siglas, $nombreCentroCosto, $id)) {
+			return ['success' => false, 'message' => 'No se puede activar porque ya existe otro centro de costo activo con las mismas siglas o nombre.'];
+		}
+
+		$sql = "UPDATE adquisiciones.CentroCosto SET Activo = 1 WHERE Id = ? AND Activo = 0";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo activar el centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Centro de costo activado correctamente.'];
+	}
+
+	private function existeCentroCostoDuplicado($siglas, $nombreCentroCosto, $idExcluir = null)
+	{
+		$sql = "
+			SELECT TOP 1 Id
+			FROM adquisiciones.CentroCosto
+			WHERE Activo = 1
+			  AND (
+				UPPER(LTRIM(RTRIM(Siglas))) = UPPER(LTRIM(RTRIM(?)))
+				OR UPPER(LTRIM(RTRIM(NombreCentroCosto))) = UPPER(LTRIM(RTRIM(?)))
+			  )
+		";
+
+		$params = [$siglas, $nombreCentroCosto];
+		if ((int) $idExcluir > 0) {
+			$sql .= " AND Id <> ?";
+			$params[] = (int) $idExcluir;
+		}
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if ($stmt === false) {
+			return false;
+		}
+
+		return (bool) sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+	}
+
 	public function obtenerAniosDisponibles()
 	{
 		$sql = "SELECT DISTINCT Anio FROM adquisiciones.Requerimiento ORDER BY Anio DESC";

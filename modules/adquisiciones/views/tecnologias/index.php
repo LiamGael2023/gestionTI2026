@@ -12,9 +12,6 @@
 		</select>
 	</div>
 	<div class="col-auto ms-auto">
-		<button class="btn btn-primary me-2" type="button" data-bs-toggle="modal" data-bs-target="#modalNuevaTecnologia">
-			Nueva tecnologia
-		</button>
 		<button class="btn btn-success" id="btn-sincronizar-homologacion">
 			Sincronizar de SIGA
 		</button>
