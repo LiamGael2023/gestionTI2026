@@ -89,26 +89,48 @@
 		</table>
 	</div>
 
-	<div class="bg-light rounded p-3 mt-3">
-		<h5 class="fw-bold mb-2">Agregar Nueva Ficha Técnica</h5>
-		<form id="form-ficha-tecnica" enctype="multipart/form-data" onsubmit="return guardarFichaTecnica(event)">
-			<div class="row g-3 align-items-end">
-				<div class="col-md-3">
-					<label class="form-label">Marca</label>
-					<input type="text" class="form-control" id="ficha_marca" name="Marca" required>
-				</div>
-				<div class="col-md-3">
-					<label class="form-label">Modelo</label>
-					<input type="text" class="form-control" id="ficha_modelo" name="Modelo" required>
-				</div>
-				<div class="col-md-4">
-					<label class="form-label">Documento PDF</label>
-					<input type="file" class="form-control" id="ficha_documento" name="DocumentoPDF" accept=".pdf" required>
-				</div>
-				<div class="col-md-2">
-					<button type="submit" class="btn btn-primary w-100">Guardar</button>
-				</div>
+	<div class="d-flex justify-content-end mt-3">
+		<button type="button"
+			class="btn btn-primary"
+			data-bs-toggle="modal"
+			data-bs-target="#modalAgregarFichaTecnica"
+			data-toggle="modal"
+			data-target="#modalAgregarFichaTecnica"
+			onclick="return abrirModalAgregarFichaTecnica();">
+			Agregar Ficha
+		</button>
+	</div>
+</div>
+
+<div class="modal modal-blur fade" id="modalAgregarFichaTecnica" tabindex="-1" aria-labelledby="modalAgregarFichaTecnicaLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalAgregarFichaTecnicaLabel">Agregar Nueva Ficha Técnica</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Cerrar" onclick="return cerrarModalAgregarFichaTecnica();"></button>
 			</div>
-		</form>
+			<div class="modal-body">
+				<form id="form-ficha-tecnica" enctype="multipart/form-data" onsubmit="return guardarFichaTecnica(event)">
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label class="form-label">Marca</label>
+							<input type="text" class="form-control" id="ficha_marca" name="Marca" required>
+						</div>
+						<div class="col-md-6">
+							<label class="form-label">Modelo</label>
+							<input type="text" class="form-control" id="ficha_modelo" name="Modelo" required>
+						</div>
+						<div class="col-12">
+							<label class="form-label">Documento PDF</label>
+							<input type="file" class="form-control" id="ficha_documento" name="DocumentoPDF" accept=".pdf" required>
+						</div>
+						<div class="col-12 d-flex justify-content-end gap-2 mt-2">
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="return cerrarModalAgregarFichaTecnica();">Cancelar</button>
+							<button type="submit" class="btn btn-primary">Guardar</button>
+						</div>
+					</div>
+				</form>
+			</div>
+		</div>
 	</div>
 </div>

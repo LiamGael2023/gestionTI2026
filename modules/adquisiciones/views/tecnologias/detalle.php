@@ -373,7 +373,75 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		});
 	}
 
+	function abrirModalAgregarFichaTecnica() {
+		const modalElement = document.getElementById('modalAgregarFichaTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).show();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('show');
+			return false;
+		}
+
+		abrirModalFallback(modalElement);
+		return false;
+	}
+
+	function cerrarModalAgregarFichaTecnica() {
+		const modalElement = document.getElementById('modalAgregarFichaTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).hide();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('hide');
+			return false;
+		}
+
+		cerrarModalFallback(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioFichaTecnica() {
+		const form = document.getElementById('form-ficha-tecnica');
+		if (form) {
+			form.reset();
+		}
+	}
+
+	function inicializarModalAgregarFichaTecnica() {
+		const modalElement = document.getElementById('modalAgregarFichaTecnica');
+		if (!modalElement) {
+			return;
+		}
+
+		if (modalElement.dataset.adqFichaInit === '1') {
+			return;
+		}
+		modalElement.dataset.adqFichaInit = '1';
+
+		modalElement.addEventListener('hidden.bs.modal', limpiarFormularioFichaTecnica);
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).on('hidden.bs.modal', limpiarFormularioFichaTecnica);
+		}
+	}
+
 	inicializarModalVisorPdf();
+	inicializarModalAgregarFichaTecnica();
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();
@@ -401,6 +469,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 				throw new Error(data.error || 'No se pudo guardar la ficha técnica.');
 			}
 
+			cerrarModalAgregarFichaTecnica();
 			await recargarVistaTecnologia();
 		} catch (error) {
 			window.adqNotifySafe('danger', 'Error al guardar ficha tecnica', error.message || 'Error al guardar la ficha tecnica.');
