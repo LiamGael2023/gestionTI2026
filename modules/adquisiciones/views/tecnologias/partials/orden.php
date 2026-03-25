@@ -57,7 +57,7 @@
 					data-toggle="modal"
 					data-target="#modalOrdenCompra"
 					onclick="return abrirModalOrdenCompra('editar', <?php echo (int) $ordenCompra['Id']; ?>, '<?php echo htmlspecialchars((string) ($ordenCompra['FechaEntrega'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>');">
-					Actualizar Orden de Compra
+					Actualizar
 				</button>
 			<?php else: ?>
 				<button type="button"
@@ -67,7 +67,7 @@
 					data-toggle="modal"
 					data-target="#modalOrdenCompra"
 					onclick="return abrirModalOrdenCompra('crear');">
-					Agregar Orden de Compra
+					Agregar
 				</button>
 			<?php endif; ?>
 		</div>

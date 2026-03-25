@@ -65,18 +65,26 @@ class VerificacionTecnicaModel
 
 	public function actualizar($id, $datos)
 	{
+		$setClauses = ['Observacion = ?'];
+		$params = [$datos['Observacion']];
+
+		if (array_key_exists('Documento', $datos)) {
+			$setClauses[] = 'Documento = ?';
+			$params[] = [$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')];
+		}
+
+		$setClauses[] = 'idUsuarioModifica = ?';
+		$setClauses[] = 'FechaModifica = GETDATE()';
+		$params[] = $datos['idUsuarioModifica'] ?? null;
+		$params[] = $id;
+
 		$sql = "
 			UPDATE adquisiciones.VerificacionTecnica
-			SET Observacion = ?, Documento = ?, idUsuarioModifica = ?, FechaModifica = GETDATE()
+			SET " . implode(', ', $setClauses) . "
 			WHERE Id = ?
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [
-			$datos['Observacion'],
-			[$datos['Documento'], SQLSRV_PARAM_IN, null, SQLSRV_SQLTYPE_VARCHAR('max')],
-			$datos['idUsuarioModifica'] ?? null,
-			$id
-		]);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 
 		return $stmt !== false;
 	}

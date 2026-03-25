@@ -1,5 +1,5 @@
 <div class="card card-body mb-3">
-	<h4 class="fw-bold mb-3">Verificación Técnica</h4>
+	<h4 class="fw-bold mb-3">Verificación Técnica / Coformidad</h4>
 
 	<?php if ($tieneVerificacion): ?>
 		<div class="mt-3">
@@ -31,51 +31,70 @@
 			</div>
 		</div>
 
-		<div class="bg-light rounded p-3 mt-3">
-			<h5 class="fw-bold mb-2">Reemplazar Verificación Técnica</h5>
-			<form id="form-verificacion-actualizar" enctype="multipart/form-data" onsubmit="return actualizarVerificacionTecnica(event)">
-				<input type="hidden" id="vt_id" value="<?php echo (int) $verificacionTecnica['Id']; ?>">
-				<div class="row g-3 align-items-end">
-					<div class="col-md-6">
-						<label class="form-label">Observación</label>
-						<input type="text" class="form-control" id="vt_observacion_upd" name="Observacion" maxlength="500">
-					</div>
-					<div class="col-md-4">
-						<label class="form-label">Nuevo Documento PDF</label>
-						<input type="file" class="form-control" id="vt_documento_upd" name="DocumentoPDF" accept=".pdf" required>
-					</div>
-					<div class="col-md-2">
-						<button type="submit" class="btn btn-primary w-100">Actualizar</button>
-					</div>
-				</div>
-			</form>
+		<div class="d-flex justify-content-end mt-3">
+			<button type="button"
+				class="btn btn-primary"
+				data-bs-toggle="modal"
+				data-bs-target="#modalVerificacionTecnica"
+				data-toggle="modal"
+				data-target="#modalVerificacionTecnica"
+				onclick="return abrirModalVerificacionTecnica('editar', <?php echo (int) $verificacionTecnica['Id']; ?>, <?php echo htmlspecialchars(json_encode((string) ($verificacionTecnica['Observacion'] ?? '')), ENT_QUOTES, 'UTF-8'); ?>);">
+				Actualizar
+			</button>
 		</div>
 	<?php else: ?>
 		<p class="text-secondary mb-0">No hay verificación técnica registrada para este año.</p>
 
 		<?php if ($puedeRegistrarVerificacion): ?>
-			<div class="bg-light rounded p-3 mt-3">
-				<h5 class="fw-bold mb-2">Agregar Verificación Técnica</h5>
-				<form id="form-verificacion" enctype="multipart/form-data" onsubmit="return guardarVerificacionTecnica(event)">
-					<div class="row g-3 align-items-end">
-						<div class="col-md-6">
-							<label class="form-label">Observación</label>
-							<input type="text" class="form-control" id="vt_observacion" name="Observacion" maxlength="500">
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Documento PDF</label>
-							<input type="file" class="form-control" id="vt_documento" name="DocumentoPDF" accept=".pdf" required>
-						</div>
-						<div class="col-md-2">
-							<button type="submit" class="btn btn-primary w-100">Guardar</button>
-						</div>
-					</div>
-				</form>
+			<div class="d-flex justify-content-end mt-3">
+				<button type="button"
+					class="btn btn-primary"
+					data-bs-toggle="modal"
+					data-bs-target="#modalVerificacionTecnica"
+					data-toggle="modal"
+					data-target="#modalVerificacionTecnica"
+					onclick="return abrirModalVerificacionTecnica('crear', 0, '');">
+					Agregar
+				</button>
 			</div>
 		<?php else: ?>
 			<div class="alert alert-warning mt-3 mb-0" role="alert">
 				Debe registrar primero la orden de compra antes de cargar la verificación técnica.
 			</div>
 		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ($puedeRegistrarVerificacion || $tieneVerificacion): ?>
+		<div class="modal modal-blur fade" id="modalVerificacionTecnica" tabindex="-1" aria-labelledby="modalVerificacionTecnicaLabel" aria-hidden="true">
+			<div class="modal-dialog modal-lg modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title" id="modalVerificacionTecnicaLabel">Agregar Verificación Técnica</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Cerrar" onclick="return cerrarModalVerificacionTecnica();"></button>
+					</div>
+					<div class="modal-body">
+						<form id="form-verificacion-modal" enctype="multipart/form-data" onsubmit="return submitVerificacionTecnicaModal(event)">
+							<input type="hidden" id="vt_modal_modo" value="crear">
+							<input type="hidden" id="vt_modal_id" value="0">
+							<div class="row g-3">
+								<div class="col-12">
+									<label class="form-label">Observación</label>
+									<textarea class="form-control" id="vt_modal_observacion" name="Observacion" maxlength="500" rows="2" style="resize:none; overflow:hidden;"></textarea>
+								</div>
+								<div class="col-12">
+									<label class="form-label" id="vt_modal_documento_label">Documento PDF</label>
+									<input type="file" class="form-control" id="vt_modal_documento" name="DocumentoPDF" accept=".pdf" required>
+									<small class="text-secondary" id="vt_modal_documento_hint"></small>
+								</div>
+								<div class="col-12 d-flex justify-content-end gap-2 mt-2">
+									<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal" onclick="return cerrarModalVerificacionTecnica();">Cancelar</button>
+									<button type="submit" class="btn btn-primary" id="vt_modal_btn_submit">Guardar</button>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
 	<?php endif; ?>
 </div>

@@ -55,11 +55,9 @@ $tieneFichas = $totalFichas >= $minimoFichasRequeridas;
 $tieneEspecificacion = !empty($especificacionTecnica);
 $tieneOrdenCompra = !empty($ordenCompra);
 $tieneVerificacion = !empty($verificacionTecnica);
-$tieneConformidad = !empty($conformidad);
 $puedeRegistrarEspecificacion = $tieneFichas;
 $puedeRegistrarOrdenCompra = $tieneFichas && $tieneEspecificacion;
 $puedeRegistrarVerificacion = $tieneFichas && $tieneEspecificacion && $tieneOrdenCompra;
-$puedeRegistrarConformidad = $tieneFichas && $tieneEspecificacion && $tieneVerificacion;
 $formatearFecha = static function ($fecha) {
 	if (empty($fecha)) {
 		return '';
@@ -156,7 +154,6 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	<?php require __DIR__ . '/partials/especificacion.php'; ?>
 	<?php require __DIR__ . '/partials/orden.php'; ?>
 	<?php require __DIR__ . '/partials/verificacion.php'; ?>
-	<?php require __DIR__ . '/partials/conformidad.php'; ?>
 
 	<!-- ===================== BARRA DE ACCIONES ===================== -->
 	<div class="d-flex justify-content-end gap-2 mt-2 mb-3">
@@ -529,7 +526,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Especificación Técnica' : 'Agregar Especificación Técnica';
 		}
 		if (labelDocumento) {
-			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF' : 'Documento PDF';
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF (opcional)' : 'Documento PDF';
 		}
 		if (botonSubmit) {
 			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
@@ -668,9 +665,9 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF (opcional)' : 'Documento PDF';
 		}
 		if (hintDocumento) {
-			hintDocumento.textContent = modoFormulario === 'editar'
-				? 'Si no selecciona un archivo, se conservará el PDF actual.'
-				: '';
+			hintDocumento.textContent = modoFormulario === 'editar' ?
+				'Si no selecciona un archivo, se conservará el PDF actual.' :
+				'';
 		}
 		if (botonSubmit) {
 			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
@@ -737,7 +734,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			inputNumero.value = generarNumeroOrdenCompra(anioActual);
 		}
 		if (inputDocumento) {
-			inputDocumento.required = true;
+			inputDocumento.required = modoFormulario !== 'editar';
 		}
 		if (titulo) {
 			titulo.textContent = 'Agregar Orden de Compra';
@@ -772,10 +769,178 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
+	function autoAjustarAlturaTextarea(textarea) {
+		if (!textarea) {
+			return;
+		}
+
+		textarea.style.height = 'auto';
+		textarea.style.height = textarea.scrollHeight + 'px';
+	}
+
+	function ajustarTextareaObservacionVerificacion() {
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		autoAjustarAlturaTextarea(inputObservacion);
+	}
+
+	function abrirModalVerificacionTecnica(modo, idVerificacion, observacion) {
+		const modalElement = document.getElementById('modalVerificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const modoFormulario = modo === 'editar' ? 'editar' : 'crear';
+		const inputModo = document.getElementById('vt_modal_modo');
+		const inputId = document.getElementById('vt_modal_id');
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		const inputDocumento = document.getElementById('vt_modal_documento');
+		const titulo = document.getElementById('modalVerificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('vt_modal_documento_label');
+		const hintDocumento = document.getElementById('vt_modal_documento_hint');
+		const botonSubmit = document.getElementById('vt_modal_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = modoFormulario;
+		}
+		if (inputId) {
+			inputId.value = modoFormulario === 'editar' ? String(parseInt(idVerificacion, 10) || 0) : '0';
+		}
+		if (inputObservacion) {
+			inputObservacion.value = String(observacion || '');
+			ajustarTextareaObservacionVerificacion();
+		}
+		if (inputDocumento) {
+			inputDocumento.required = modoFormulario !== 'editar';
+		}
+
+		if (titulo) {
+			titulo.textContent = modoFormulario === 'editar' ? 'Actualizar Verificación Técnica' : 'Agregar Verificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = modoFormulario === 'editar' ? 'Nuevo Documento PDF' : 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = modoFormulario === 'editar' ?
+				'Si no selecciona un archivo, se conservará el PDF actual.' :
+				'';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = modoFormulario === 'editar' ? 'Actualizar' : 'Guardar';
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).show();
+			setTimeout(ajustarTextareaObservacionVerificacion, 50);
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('show');
+			setTimeout(ajustarTextareaObservacionVerificacion, 50);
+			return false;
+		}
+
+		abrirModalFallback(modalElement);
+		setTimeout(ajustarTextareaObservacionVerificacion, 50);
+		return false;
+	}
+
+	function cerrarModalVerificacionTecnica() {
+		const modalElement = document.getElementById('modalVerificacionTecnica');
+		if (!modalElement) {
+			return false;
+		}
+
+		const BootstrapModal = obtenerBootstrapModal();
+		if (BootstrapModal) {
+			BootstrapModal.getOrCreateInstance(modalElement).hide();
+			return false;
+		}
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).modal('hide');
+			return false;
+		}
+
+		cerrarModalFallback(modalElement);
+		return false;
+	}
+
+	function limpiarFormularioVerificacionTecnica() {
+		const form = document.getElementById('form-verificacion-modal');
+		if (form) {
+			form.reset();
+		}
+
+		const inputModo = document.getElementById('vt_modal_modo');
+		const inputId = document.getElementById('vt_modal_id');
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		const inputDocumento = document.getElementById('vt_modal_documento');
+		const titulo = document.getElementById('modalVerificacionTecnicaLabel');
+		const labelDocumento = document.getElementById('vt_modal_documento_label');
+		const hintDocumento = document.getElementById('vt_modal_documento_hint');
+		const botonSubmit = document.getElementById('vt_modal_btn_submit');
+
+		if (inputModo) {
+			inputModo.value = 'crear';
+		}
+		if (inputId) {
+			inputId.value = '0';
+		}
+		if (inputObservacion) {
+			ajustarTextareaObservacionVerificacion();
+		}
+		if (inputDocumento) {
+			inputDocumento.required = true;
+		}
+		if (titulo) {
+			titulo.textContent = 'Agregar Verificación Técnica';
+		}
+		if (labelDocumento) {
+			labelDocumento.textContent = 'Documento PDF';
+		}
+		if (hintDocumento) {
+			hintDocumento.textContent = '';
+		}
+		if (botonSubmit) {
+			botonSubmit.textContent = 'Guardar';
+		}
+	}
+
+	function inicializarModalVerificacionTecnica() {
+		const modalElement = document.getElementById('modalVerificacionTecnica');
+		if (!modalElement) {
+			return;
+		}
+
+		if (modalElement.dataset.adqVtInit === '1') {
+			return;
+		}
+		modalElement.dataset.adqVtInit = '1';
+
+		const inputObservacion = document.getElementById('vt_modal_observacion');
+		if (inputObservacion) {
+			inputObservacion.addEventListener('input', function() {
+				ajustarTextareaObservacionVerificacion();
+			});
+		}
+
+		modalElement.addEventListener('shown.bs.modal', ajustarTextareaObservacionVerificacion);
+		limpiarFormularioVerificacionTecnica();
+		modalElement.addEventListener('hidden.bs.modal', limpiarFormularioVerificacionTecnica);
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).on('shown.bs.modal', ajustarTextareaObservacionVerificacion);
+			$(modalElement).on('hidden.bs.modal', limpiarFormularioVerificacionTecnica);
+		}
+	}
+
 	inicializarModalVisorPdf();
 	inicializarModalAgregarFichaTecnica();
 	inicializarModalEspecificacionTecnica();
 	inicializarModalOrdenCompra();
+	inicializarModalVerificacionTecnica();
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();
@@ -917,9 +1082,9 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 
 			if (!data.ok) {
-				throw new Error(data.error || (modo === 'editar'
-					? 'No se pudo actualizar la especificación técnica.'
-					: 'No se pudo guardar la especificación técnica.'));
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la especificación técnica.' :
+					'No se pudo guardar la especificación técnica.'));
 			}
 
 			cerrarModalEspecificacionTecnica();
@@ -929,9 +1094,9 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			window.adqNotifySafe(
 				'danger',
 				modo === 'editar' ? 'Error al actualizar especificacion' : 'Error al guardar especificacion',
-				error.message || (modo === 'editar'
-					? 'Error al actualizar la especificacion tecnica.'
-					: 'Error al guardar la especificacion tecnica.')
+				error.message || (modo === 'editar' ?
+					'Error al actualizar la especificacion tecnica.' :
+					'Error al guardar la especificacion tecnica.')
 			);
 		}
 
@@ -1019,9 +1184,9 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			}
 
 			if (!data.ok) {
-				throw new Error(data.error || (modo === 'editar'
-					? 'No se pudo actualizar la orden de compra.'
-					: 'No se pudo guardar la orden de compra.'));
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la orden de compra.' :
+					'No se pudo guardar la orden de compra.'));
 			}
 
 			cerrarModalOrdenCompra();
@@ -1031,9 +1196,9 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			window.adqNotifySafe(
 				'danger',
 				modo === 'editar' ? 'Error al actualizar orden de compra' : 'Error al guardar orden de compra',
-				error.message || (modo === 'editar'
-					? 'Error al actualizar la orden de compra.'
-					: 'Error al guardar la orden de compra.')
+				error.message || (modo === 'editar' ?
+					'Error al actualizar la orden de compra.' :
+					'Error al guardar la orden de compra.')
 			);
 		}
 
@@ -1152,23 +1317,59 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
-	function guardarVerificacionTecnica(e) {
-		return guardarDocumentoConObservacion(e, {
-			observacionId: 'vt_observacion',
-			documentoId: 'vt_documento',
-			url: 'index.php?module=adquisiciones&action=guardarVerificacionTecnicaAjax',
-			errorGuardar: 'No se pudo guardar la verificación técnica.'
-		});
-	}
+	async function submitVerificacionTecnicaModal(e) {
+		e.preventDefault();
 
-	function actualizarVerificacionTecnica(e) {
-		return actualizarDocumentoConObservacion(e, {
-			idId: 'vt_id',
-			observacionId: 'vt_observacion_upd',
-			documentoId: 'vt_documento_upd',
-			url: 'index.php?module=adquisiciones&action=actualizarVerificacionTecnicaAjax',
-			errorActualizar: 'No se pudo actualizar la verificación técnica.'
-		});
+		try {
+			const modo = document.getElementById('vt_modal_modo').value;
+			const idVerificacion = parseInt(document.getElementById('vt_modal_id').value, 10);
+			const observacion = document.getElementById('vt_modal_observacion').value.trim();
+			const file = document.getElementById('vt_modal_documento').files[0];
+			let documentoBase64 = '';
+
+			if (modo === 'editar') {
+				if (file) {
+					validarPdf(file);
+					documentoBase64 = await fileToBase64(file);
+				}
+			} else {
+				validarPdf(file);
+				documentoBase64 = await fileToBase64(file);
+			}
+			let data = null;
+
+			if (modo === 'editar') {
+				if (!idVerificacion) {
+					throw new Error('Faltan datos para actualizar la verificación técnica.');
+				}
+
+				data = await enviarJson('index.php?module=adquisiciones&action=actualizarVerificacionTecnicaAjax', {
+					Id: idVerificacion,
+					Observacion: observacion,
+					Documento: documentoBase64
+				});
+			} else {
+				data = await enviarJson('index.php?module=adquisiciones&action=guardarVerificacionTecnicaAjax', {
+					IdCatalogoTecnologico: idTecnologia,
+					Observacion: observacion,
+					Anio: anioActual,
+					Documento: documentoBase64
+				});
+			}
+
+			if (!data.ok) {
+				throw new Error(data.error || (modo === 'editar' ?
+					'No se pudo actualizar la verificación técnica.' :
+					'No se pudo guardar la verificación técnica.'));
+			}
+
+			cerrarModalVerificacionTecnica();
+			await recargarVistaTecnologia();
+		} catch (error) {
+			window.adqNotifySafe('danger', 'Error en verificacion tecnica', error.message || 'No se pudo procesar la verificación técnica.');
+		}
+
+		return false;
 	}
 
 	function eliminarVerificacionTecnica(id) {
@@ -1176,33 +1377,6 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			url: 'index.php?module=adquisiciones&action=eliminarVerificacionTecnicaAjax',
 			confirmacion: '¿Desea eliminar esta verificación técnica?',
 			errorEliminar: 'No se pudo eliminar la verificación técnica.'
-		});
-	}
-
-	function guardarConformidad(e) {
-		return guardarDocumentoConObservacion(e, {
-			observacionId: 'cf_observacion',
-			documentoId: 'cf_documento',
-			url: 'index.php?module=adquisiciones&action=guardarConformidadAjax',
-			errorGuardar: 'No se pudo guardar la conformidad.'
-		});
-	}
-
-	function actualizarConformidad(e) {
-		return actualizarDocumentoConObservacion(e, {
-			idId: 'cf_id',
-			observacionId: 'cf_observacion_upd',
-			documentoId: 'cf_documento_upd',
-			url: 'index.php?module=adquisiciones&action=actualizarConformidadAjax',
-			errorActualizar: 'No se pudo actualizar la conformidad.'
-		});
-	}
-
-	function eliminarConformidad(id) {
-		return eliminarDocumentoSimple(id, {
-			url: 'index.php?module=adquisiciones&action=eliminarConformidadAjax',
-			confirmacion: '¿Desea eliminar esta conformidad?',
-			errorEliminar: 'No se pudo eliminar la conformidad.'
 		});
 	}
 </script>

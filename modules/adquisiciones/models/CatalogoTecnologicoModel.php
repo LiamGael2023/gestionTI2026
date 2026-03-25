@@ -27,7 +27,7 @@ class CatalogoTecnologicoModel
 					FOR XML PATH(''), TYPE
 				).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS CodigosSiga,
 				CASE 
-					WHEN et.Id IS NOT NULL AND vt.Id IS NOT NULL AND cf.Id IS NOT NULL AND ft.TotalFichas >= 2 THEN 1
+					WHEN et.Id IS NOT NULL AND vt.Id IS NOT NULL AND ft.TotalFichas >= 2 THEN 1
 					ELSE 0
 				END AS EstadoCompleto
 			FROM adquisiciones.DetalleRequerimiento d
@@ -37,8 +37,6 @@ class CatalogoTecnologicoModel
 				ON et.IdCatalogoTecnologico = ct.Id AND et.Anio = ?
 			LEFT JOIN adquisiciones.VerificacionTecnica vt
 				ON vt.IdCatalogoTecnologico = ct.Id AND vt.Anio = ?
-			LEFT JOIN adquisiciones.Conformidad cf
-				ON cf.IdCatalogoTecnologico = ct.Id AND cf.Anio = ?
 			LEFT JOIN (
 				SELECT IdCatalogoTecnologico, Anio, COUNT(*) AS TotalFichas
 				FROM adquisiciones.FichaTecnica
@@ -46,11 +44,11 @@ class CatalogoTecnologicoModel
 				GROUP BY IdCatalogoTecnologico, Anio
 			) ft ON ft.IdCatalogoTecnologico = ct.Id AND ft.Anio = ?
 			WHERE r.Anio = ? AND ct.Activo = 1
-			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, et.Id, vt.Id, cf.Id, ft.TotalFichas
+			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, et.Id, vt.Id, ft.TotalFichas
 			ORDER BY ct.Codigo, ct.NombreGenerico
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta]);
+		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta]);
 		if ($stmt === false) {
 			return [];
 		}
@@ -400,13 +398,13 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
-    // Sincronizar HomologacionSiga con lo homologado
-    // Inserta nuevos y actualiza los que cambiaron de tipo
-	
-    public function sincronizarHomologacion(): array
-    {
-        // 1. Insertar códigos nuevos que no están en HomologacionSiga
-        $sqlInsert = "
+	// Sincronizar HomologacionSiga con lo homologado
+	// Inserta nuevos y actualiza los que cambiaron de tipo
+
+	public function sincronizarHomologacion(): array
+	{
+		// 1. Insertar códigos nuevos que no están en HomologacionSiga
+		$sqlInsert = "
             INSERT INTO adquisiciones.HomologacionSiga (CodigoSiga, IdCatalogoTecnologico)
             SELECT DISTINCT
                 dr.CodigoSiga,
@@ -419,15 +417,15 @@ class CatalogoTecnologicoModel
               )
         ";
 
-        $stmtInsert = sqlsrv_query($this->db, $sqlInsert);
-        if ($stmtInsert === false) {
-            $errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
-            throw new Exception('Error insertando homologaciones: ' . $errors[0]['message']);
-        }
-        $nuevos = sqlsrv_rows_affected($stmtInsert);
+		$stmtInsert = sqlsrv_query($this->db, $sqlInsert);
+		if ($stmtInsert === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			throw new Exception('Error insertando homologaciones: ' . $errors[0]['message']);
+		}
+		$nuevos = sqlsrv_rows_affected($stmtInsert);
 
-        // 2. Actualizar los que cambiaron de tipo
-        $sqlUpdate = "
+		// 2. Actualizar los que cambiaron de tipo
+		$sqlUpdate = "
             UPDATE h
             SET h.IdCatalogoTecnologico = dr.IdCatalogoTecnologico
             FROM adquisiciones.HomologacionSiga h
@@ -439,16 +437,16 @@ class CatalogoTecnologicoModel
             WHERE h.IdCatalogoTecnologico <> dr.IdCatalogoTecnologico
         ";
 
-        $stmtUpdate = sqlsrv_query($this->db, $sqlUpdate);
-        if ($stmtUpdate === false) {
-            $errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
-            throw new Exception('Error actualizando homologaciones: ' . $errors[0]['message']);
-        }
-        $actualizados = sqlsrv_rows_affected($stmtUpdate);
+		$stmtUpdate = sqlsrv_query($this->db, $sqlUpdate);
+		if ($stmtUpdate === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			throw new Exception('Error actualizando homologaciones: ' . $errors[0]['message']);
+		}
+		$actualizados = sqlsrv_rows_affected($stmtUpdate);
 
-        return [
-            'nuevos'       => (int) $nuevos,
-            'actualizados' => (int) $actualizados,
-        ];
-    }
+		return [
+			'nuevos'       => (int) $nuevos,
+			'actualizados' => (int) $actualizados,
+		];
+	}
 }

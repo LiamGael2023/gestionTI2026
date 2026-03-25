@@ -56,7 +56,7 @@
 					data-toggle="modal"
 					data-target="#modalEspecificacionTecnica"
 					onclick="return abrirModalEspecificacionTecnica('editar', <?php echo (int) $especificacionTecnica['Id']; ?>);">
-					Actualizar Especificación
+					Actualizar
 				</button>
 			<?php else: ?>
 				<button type="button"
@@ -66,7 +66,7 @@
 					data-toggle="modal"
 					data-target="#modalEspecificacionTecnica"
 					onclick="return abrirModalEspecificacionTecnica('crear');">
-					Agregar Especificación Técnica
+					Agregar
 				</button>
 			<?php endif; ?>
 		</div>

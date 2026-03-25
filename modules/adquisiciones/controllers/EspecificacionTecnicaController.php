@@ -4,7 +4,6 @@ require_once 'modules/adquisiciones/models/EspecificacionTecnicaModel.php';
 require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
 require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
-require_once 'modules/adquisiciones/models/ConformidadModel.php';
 
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
@@ -18,7 +17,6 @@ $especificacionModel = new EspecificacionTecnicaModel($conn);
 $fichaTecnicaModel = new FichaTecnicaModel($conn);
 $ordenCompraModel = new OrdenCompraModel($conn);
 $verificacionTecnicaModel = new VerificacionTecnicaModel($conn);
-$conformidadModel = new ConformidadModel($conn);
 $action = $_GET['action'] ?? 'tecnologia';
 $vistaActual = 'tecnologia';
 
@@ -288,17 +286,6 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 
 			return $tieneEspecificacion ? null : 'Primero debe registrar la especificación técnica.';
 
-		case 'conformidad':
-			if (!$tieneFichasMinimas) {
-				return $mensajeMinimoFichas;
-			}
-
-			if (!$tieneEspecificacion) {
-				return 'Primero debe registrar la especificación técnica.';
-			}
-
-			return $tieneVerificacion ? null : 'Primero debe registrar la verificación técnica.';
-
 		default:
 			return null;
 	}
@@ -351,7 +338,6 @@ switch ($action) {
 		$fichasTecnicas = $fichaTecnicaModel->listarPorTecnologia($id, $anioFiltro);
 		$ordenCompra = $ordenCompraModel->obtenerPorTecnologia($id, $anioFiltro);
 		$verificacionTecnica = $verificacionTecnicaModel->obtenerPorTecnologia($id, $anioFiltro);
-		$conformidad = $conformidadModel->obtenerPorTecnologia($id, $anioFiltro);
 		break;
 
 	case 'verEspecificacionTecnicaAjax':
@@ -365,9 +351,6 @@ switch ($action) {
 
 	case 'verOrdenCompraAjax':
 		enviarDocumentoPdf($conn, 'adquisiciones.OrdenCompra', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['NumeroOrden']);
-
-	case 'verConformidadAjax':
-		enviarDocumentoPdf($conn, 'adquisiciones.Conformidad', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Observacion']);
 
 	case 'guardarEspecificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
@@ -625,17 +608,20 @@ switch ($action) {
 		$idDocumento = obtenerEnteroInput($input, 'Id');
 		$observacion = obtenerTextoInput($input, 'Observacion');
 		$pdfBase64 = obtenerDocumentoInput($input);
-		if ($idDocumento <= 0 || $pdfBase64 === '') {
+		if ($idDocumento <= 0) {
 			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
 		}
-		if (!validarPdfBase64($pdfBase64)) {
+		if ($pdfBase64 !== '' && !validarPdfBase64($pdfBase64)) {
 			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
 		}
-		$ok = $verificacionTecnicaModel->actualizar($idDocumento, [
+		$datosActualizar = [
 			'Observacion' => normalizarTextoNullable($observacion),
-			'Documento' => $pdfBase64,
 			'idUsuarioModifica' => $idUsuarioSesion
-		]);
+		];
+		if ($pdfBase64 !== '') {
+			$datosActualizar['Documento'] = $pdfBase64;
+		}
+		$ok = $verificacionTecnicaModel->actualizar($idDocumento, $datosActualizar);
 		responderJson(['ok' => $ok]);
 
 	case 'eliminarVerificacionTecnicaAjax':
@@ -645,71 +631,6 @@ switch ($action) {
 			responderJson(['ok' => false, 'error' => 'ID inválido']);
 		}
 		$ok = $verificacionTecnicaModel->eliminar($idDocumento);
-		responderJson(['ok' => $ok]);
-
-	case 'guardarConformidadAjax':
-		$input = obtenerInputJsonPost();
-		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
-		$observacion = obtenerTextoInput($input, 'Observacion');
-		$anio = obtenerEnteroInput($input, 'Anio');
-		$pdfBase64 = obtenerDocumentoInput($input);
-		if ($idCat <= 0 || $anio <= 0 || $pdfBase64 === '') {
-			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
-		}
-		validarPedidosTecnologiaPorAnio($catalogoModel, $idCat, $anio);
-		if (!validarPdfBase64($pdfBase64)) {
-			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
-		}
-		$errorSecuencia = obtenerErrorSecuenciaDocumental(
-			$idCat,
-			$anio,
-			$fichaTecnicaModel,
-			$especificacionModel,
-			$ordenCompraModel,
-			$verificacionTecnicaModel,
-			'conformidad'
-		);
-		if ($errorSecuencia !== null) {
-			responderJson(['ok' => false, 'error' => $errorSecuencia]);
-		}
-		$resultado = $conformidadModel->guardar([
-			'IdCatalogoTecnologico' => $idCat,
-			'Observacion' => normalizarTextoNullable($observacion),
-			'Anio' => $anio,
-			'Documento' => $pdfBase64,
-			'idUsuarioRegistro' => $idUsuarioSesion
-		]);
-		if ($resultado) {
-			responderJson(['ok' => true, 'id' => $resultado]);
-		}
-
-		responderErrorSql('Ya existe una conformidad para este año o error al guardar');
-
-	case 'actualizarConformidadAjax':
-		$input = obtenerInputJsonPost();
-		$idDocumento = obtenerEnteroInput($input, 'Id');
-		$observacion = obtenerTextoInput($input, 'Observacion');
-		$pdfBase64 = obtenerDocumentoInput($input);
-		if ($idDocumento <= 0 || $pdfBase64 === '') {
-			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
-		}
-		if (!validarPdfBase64($pdfBase64)) {
-			responderJson(['ok' => false, 'error' => 'El archivo no es un PDF válido']);
-		}
-		$ok = $conformidadModel->actualizar($idDocumento, [
-			'Observacion' => normalizarTextoNullable($observacion),
-			'Documento' => $pdfBase64,
-			'idUsuarioModifica' => $idUsuarioSesion
-		]);
-		responderJson(['ok' => $ok]);
-
-	case 'eliminarConformidadAjax':
-		$input = obtenerInputJsonPost();
-		$idDocumento = obtenerEnteroInput($input, 'Id');
-		if ($idDocumento <= 0) {
-			responderJson(['ok' => false, 'error' => 'ID inválido']);
-		}
-		$ok = $conformidadModel->eliminar($idDocumento);
 		responderJson(['ok' => $ok]);
 
 	case 'guardarFichaTecnicaAjax':

@@ -538,11 +538,9 @@ class RequerimientoModel
 				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL THEN ct.Id END)         AS ConEspecificacion,
 				COUNT(DISTINCT CASE WHEN oc.Id IS NOT NULL THEN ct.Id END)         AS ConOrdenCompra,
 				COUNT(DISTINCT CASE WHEN vt.Id IS NOT NULL THEN ct.Id END)         AS ConVerificacion,
-				COUNT(DISTINCT CASE WHEN cf.Id IS NOT NULL THEN ct.Id END)         AS ConConformidad,
 				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL
 												 AND oc.Id IS NOT NULL
 												 AND vt.Id IS NOT NULL
-												 AND cf.Id IS NOT NULL
 												 AND ft.TotalFichas >= 2
 								 THEN ct.Id END)              AS Completas
 			FROM adquisiciones.CatalogoTecnologico ct
@@ -552,8 +550,6 @@ class RequerimientoModel
 				ON oc.IdCatalogoTecnologico = ct.Id AND oc.Anio = ?
 			LEFT JOIN adquisiciones.VerificacionTecnica vt
 				ON vt.IdCatalogoTecnologico = ct.Id AND vt.Anio = ?
-			LEFT JOIN adquisiciones.Conformidad cf
-				ON cf.IdCatalogoTecnologico = ct.Id AND cf.Anio = ?
 			LEFT JOIN (
 				SELECT IdCatalogoTecnologico, COUNT(*) AS TotalFichas
 				FROM adquisiciones.FichaTecnica
@@ -563,7 +559,7 @@ class RequerimientoModel
 			WHERE ct.Activo = 1
 		";
 
-		$resumen = $this->fetchOne($sql, [$anio, $anio, $anio, $anio, $anio]);
+		$resumen = $this->fetchOne($sql, [$anio, $anio, $anio, $anio]);
 
 		return [
 			'TotalTecnologias' => (int) ($resumen['TotalTecnologias'] ?? 0),
@@ -571,7 +567,6 @@ class RequerimientoModel
 			'ConEspecificacion' => (int) ($resumen['ConEspecificacion'] ?? 0),
 			'ConOrdenCompra' => (int) ($resumen['ConOrdenCompra'] ?? 0),
 			'ConVerificacion' => (int) ($resumen['ConVerificacion'] ?? 0),
-			'ConConformidad' => (int) ($resumen['ConConformidad'] ?? 0),
 			'Completas' => (int) ($resumen['Completas'] ?? 0),
 		];
 	}
