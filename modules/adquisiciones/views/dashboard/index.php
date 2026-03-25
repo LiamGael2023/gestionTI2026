@@ -523,14 +523,6 @@ function formatearFechaEntregaDashboard($fecha)
 			.replace(/'/g, '&#039;');
 	}
 
-	function actualizarContador(id, total) {
-		var nodo = document.getElementById(id);
-		if (!nodo) {
-			return;
-		}
-		nodo.textContent = new Intl.NumberFormat('es-PE').format(total || 0);
-	}
-
 	function limpiarFormularioCentro() {
 		document.getElementById('ccIdEditar').value = '';
 		document.getElementById('ccSiglas').value = '';

@@ -18,6 +18,17 @@ $detalles = [];
 $catalogoOpciones = [];
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 
+function redireccionarDetalleRequerimiento($url)
+{
+	if (!headers_sent()) {
+		header('Location: ' . $url);
+		exit;
+	}
+
+	echo '<script>window.location.href=' . json_encode($url) . ';</script>';
+	exit;
+}
+
 switch ($action) {
 	case 'requerimiento':
 		$vistaActual = 'detalle';
@@ -28,8 +39,7 @@ switch ($action) {
 			$catalogoOpciones = $model->listarOpcionesCatalogoTecnologico();
 		}
 		if (!$requerimiento) {
-			header('Location: index.php?module=adquisiciones&action=requerimientos');
-			exit;
+			redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimientos');
 		}
 		break;
 
@@ -119,8 +129,7 @@ switch ($action) {
 			}
 		}
 
-		header('Location: index.php?module=adquisiciones&action=requerimiento&id=' . (int) $datos['IdRequerimiento']);
-		exit;
+		redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimiento&id=' . (int) $datos['IdRequerimiento']);
 
 	case 'eliminarDetalleAjax':
 		header('Content-Type: application/json');
@@ -146,8 +155,7 @@ switch ($action) {
 		exit;
 
 	default:
-		header('Location: index.php?module=adquisiciones&action=requerimientos');
-		exit;
+		redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimientos');
 }
 
 include 'modules/adquisiciones/views/index.php';
