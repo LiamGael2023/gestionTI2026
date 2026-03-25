@@ -33,6 +33,12 @@
 		justify-content: flex-end;
 		gap: 0.5rem;
 	}
+
+	.adq-pdf-modal-backdrop {
+		background-color: rgba(24, 36, 51, 0.45);
+		backdrop-filter: blur(4px);
+		-webkit-backdrop-filter: blur(4px);
+	}
 </style>
 
 
@@ -265,12 +271,12 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 </div>
 
-<div class="modal fade" id="modalVisorPdf" tabindex="-1" aria-labelledby="modalVisorPdfLabel" aria-hidden="true">
+<div class="modal modal-blur fade" id="modalVisorPdf" tabindex="-1" aria-labelledby="modalVisorPdfLabel" aria-hidden="true">
 	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="modalVisorPdfLabel">Vista previa de PDF</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Cerrar"></button>
 			</div>
 			<div class="modal-body p-0" style="height: 80vh;">
 				<iframe id="iframeVisorPdf" src="" title="Visor PDF" style="width: 100%; height: 100%; border: 0;"></iframe>
@@ -282,6 +288,55 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 <script>
 	const idTecnologia = <?php echo $idTec; ?>;
 	const anioActual = <?php echo $anioActual; ?>;
+	let adqPdfBackdropFallback = null;
+
+	function obtenerBootstrapModal() {
+		if (typeof window !== 'undefined' && window.bootstrap && window.bootstrap.Modal) {
+			return window.bootstrap.Modal;
+		}
+
+		if (typeof bootstrap !== 'undefined' && bootstrap && bootstrap.Modal) {
+			return bootstrap.Modal;
+		}
+
+		return null;
+	}
+
+	function abrirModalFallback(modalElement) {
+		if (!modalElement) {
+			return;
+		}
+
+		modalElement.style.display = 'block';
+		modalElement.classList.add('show');
+		modalElement.removeAttribute('aria-hidden');
+		document.body.classList.add('modal-open');
+
+		if (!adqPdfBackdropFallback) {
+			const backdrop = document.createElement('div');
+			backdrop.className = 'modal-backdrop fade show adq-pdf-modal-backdrop';
+			document.body.appendChild(backdrop);
+			adqPdfBackdropFallback = backdrop;
+		}
+	}
+
+	function cerrarModalFallback(modalElement) {
+		if (!modalElement) {
+			return;
+		}
+
+		modalElement.classList.remove('show');
+		modalElement.style.display = 'none';
+		modalElement.setAttribute('aria-hidden', 'true');
+		document.body.classList.remove('modal-open');
+
+		if (adqPdfBackdropFallback) {
+			adqPdfBackdropFallback.remove();
+			adqPdfBackdropFallback = null;
+		}
+
+		modalElement.dispatchEvent(new Event('hidden.bs.modal'));
+	}
 
 	function recargarVistaTecnologia() {
 		if (typeof window.recargarVistaActualAdquisiciones === 'function') {
@@ -351,37 +406,82 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 
 		iframe.src = url;
-		
-		// Intentar usar Bootstrap si está disponible, si no generar el modal manualmente
-		if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-			const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
+		const BootstrapModal = obtenerBootstrapModal();
+
+		if (BootstrapModal) {
+			const modalInstance = BootstrapModal.getOrCreateInstance(modalElement);
 			modalInstance.show();
 		} else if (typeof $ !== 'undefined' && $.fn.modal) {
-			// Fallback a jQuery si Bootstrap no está disponible
 			$(modalElement).modal('show');
 		} else {
-			// Fallback: mostrar el modal con display
-			modalElement.style.display = 'block';
-			modalElement.classList.add('show');
-			document.body.classList.add('modal-open');
+			abrirModalFallback(modalElement);
 		}
-		
+
 		return false;
 	}
 
-	document.addEventListener('DOMContentLoaded', function() {
+	function inicializarModalVisorPdf() {
 		const modalElement = document.getElementById('modalVisorPdf');
 		if (!modalElement) {
 			return;
 		}
 
-		modalElement.addEventListener('hidden.bs.modal', function() {
+		if (modalElement.dataset.adqPdfInit === '1') {
+			return;
+		}
+		modalElement.dataset.adqPdfInit = '1';
+
+		const limpiarIframe = function() {
 			const iframe = document.getElementById('iframeVisorPdf');
 			if (iframe) {
 				iframe.src = '';
 			}
+		};
+
+		modalElement.addEventListener('hidden.bs.modal', limpiarIframe);
+
+		if (typeof $ !== 'undefined' && $.fn.modal) {
+			$(modalElement).on('hidden.bs.modal', limpiarIframe);
+		}
+
+		const botonCerrar = modalElement.querySelector('.btn-close');
+		if (botonCerrar) {
+			botonCerrar.addEventListener('click', function() {
+				const BootstrapModal = obtenerBootstrapModal();
+				if (!BootstrapModal && !(typeof $ !== 'undefined' && $.fn.modal)) {
+					cerrarModalFallback(modalElement);
+				}
+			});
+		}
+
+		modalElement.addEventListener('click', function(event) {
+			if (event.target !== modalElement) {
+				return;
+			}
+
+			const BootstrapModal = obtenerBootstrapModal();
+			if (!BootstrapModal && !(typeof $ !== 'undefined' && $.fn.modal)) {
+				cerrarModalFallback(modalElement);
+			}
 		});
-	});
+
+		document.addEventListener('keydown', function(event) {
+			if (event.key !== 'Escape') {
+				return;
+			}
+
+			if (!modalElement.classList.contains('show')) {
+				return;
+			}
+
+			const BootstrapModal = obtenerBootstrapModal();
+			if (!BootstrapModal && !(typeof $ !== 'undefined' && $.fn.modal)) {
+				cerrarModalFallback(modalElement);
+			}
+		});
+	}
+
+	inicializarModalVisorPdf();
 
 	async function guardarFichaTecnica(e) {
 		e.preventDefault();
