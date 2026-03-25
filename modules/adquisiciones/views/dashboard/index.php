@@ -197,7 +197,7 @@ function formatearFechaEntregaDashboard($fecha)
 				<div class="card-body py-3">
 					<div class="text-secondary text-uppercase fw-bold small">Con Fichas</div>
 					<div class="h1 mb-1"><?php echo number_format($conFichas); ?></div>
-					<div class="text-secondary small">Mínimo 4 fichas</div>
+					<div class="text-secondary small">Mínimo 2 fichas</div>
 				</div>
 			</div>
 		</div>
@@ -261,7 +261,7 @@ function formatearFechaEntregaDashboard($fecha)
 					<?php if (empty($listaOrdenesProximas)): ?>
 						<div class="text-secondary">No hay entregas programadas para la ventana seleccionada.</div>
 					<?php else: ?>
-						<?php $filasMinimasProximas = 3; ?>
+						<?php $filasMinimasProximas = 2; ?>
 						<div class="list-group list-group-flush">
 							<?php foreach ($listaOrdenesProximas as $orden): ?>
 								<?php

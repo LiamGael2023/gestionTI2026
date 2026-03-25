@@ -383,7 +383,7 @@ class RequerimientoModel
 		$sql = "
 			SELECT
 				COUNT(DISTINCT ct.Id)                                             AS TotalTecnologias,
-				COUNT(DISTINCT CASE WHEN ft.TotalFichas >= 4 THEN ct.Id END)      AS ConFichas,
+				COUNT(DISTINCT CASE WHEN ft.TotalFichas >= 2 THEN ct.Id END)      AS ConFichas,
 				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL THEN ct.Id END)         AS ConEspecificacion,
 				COUNT(DISTINCT CASE WHEN oc.Id IS NOT NULL THEN ct.Id END)         AS ConOrdenCompra,
 				COUNT(DISTINCT CASE WHEN vt.Id IS NOT NULL THEN ct.Id END)         AS ConVerificacion,
@@ -392,7 +392,7 @@ class RequerimientoModel
 												 AND oc.Id IS NOT NULL
 												 AND vt.Id IS NOT NULL
 												 AND cf.Id IS NOT NULL
-												 AND ft.TotalFichas >= 4
+												 AND ft.TotalFichas >= 2
 								 THEN ct.Id END)              AS Completas
 			FROM adquisiciones.CatalogoTecnologico ct
 			LEFT JOIN adquisiciones.EspecificacionTecnica et

@@ -27,7 +27,7 @@ class CatalogoTecnologicoModel
 					FOR XML PATH(''), TYPE
 				).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS CodigosSiga,
 				CASE 
-					WHEN et.Id IS NOT NULL AND vt.Id IS NOT NULL AND cf.Id IS NOT NULL AND ft.TotalFichas >= 4 THEN 1
+					WHEN et.Id IS NOT NULL AND vt.Id IS NOT NULL AND cf.Id IS NOT NULL AND ft.TotalFichas >= 2 THEN 1
 					ELSE 0
 				END AS EstadoCompleto
 			FROM adquisiciones.DetalleRequerimiento d

@@ -193,7 +193,8 @@ function enviarDocumentoPdf($conn, $tabla, $id, $camposNombre)
 
 function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTecnicaModel, $especificacionModel, $ordenCompraModel, $verificacionTecnicaModel, $etapa)
 {
-	$minimoFichas = 4;
+	$minimoFichas = 2;
+	$mensajeMinimoFichas = sprintf('Primero debe registrar al menos %d fichas técnicas.', $minimoFichas);
 	$totalFichas = $fichaTecnicaModel->contarPorTecnologia($idCatalogoTecnologico, $anio);
 	$tieneFichasMinimas = $totalFichas >= $minimoFichas;
 	$tieneEspecificacion = !empty($especificacionModel->obtenerPorTecnologia($idCatalogoTecnologico, $anio));
@@ -202,11 +203,11 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 
 	switch ($etapa) {
 		case 'especificacion':
-			return $tieneFichasMinimas ? null : 'Primero debe registrar al menos 4 fichas técnicas.';
+			return $tieneFichasMinimas ? null : $mensajeMinimoFichas;
 
 		case 'verificacion':
 			if (!$tieneFichasMinimas) {
-				return 'Primero debe registrar al menos 4 fichas técnicas.';
+				return $mensajeMinimoFichas;
 			}
 
 			if (!$tieneEspecificacion) {
@@ -217,14 +218,14 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 
 		case 'orden':
 			if (!$tieneFichasMinimas) {
-				return 'Primero debe registrar al menos 4 fichas técnicas.';
+				return $mensajeMinimoFichas;
 			}
 
 			return $tieneEspecificacion ? null : 'Primero debe registrar la especificación técnica.';
 
 		case 'conformidad':
 			if (!$tieneFichasMinimas) {
-				return 'Primero debe registrar al menos 4 fichas técnicas.';
+				return $mensajeMinimoFichas;
 			}
 
 			if (!$tieneEspecificacion) {

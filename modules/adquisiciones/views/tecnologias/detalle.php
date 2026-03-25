@@ -1,4 +1,20 @@
 <style>
+	.adq-dashboard .card {
+		border: 1px solid rgba(98, 105, 118, 0.12);
+		border-radius: 0.9rem;
+		box-shadow: 0 1px 2px rgba(31, 41, 55, 0.04), 0 8px 24px -14px rgba(31, 41, 55, 0.22);
+		transition: box-shadow 0.2s ease, border-color 0.2s ease;
+	}
+
+	.adq-dashboard .card:hover {
+		border-color: rgba(98, 105, 118, 0.2);
+		box-shadow: 0 2px 6px rgba(31, 41, 55, 0.08), 0 10px 24px -14px rgba(31, 41, 55, 0.28);
+	}
+
+	.adq-dashboard .card .card-header {
+		border-bottom-color: rgba(98, 105, 118, 0.12);
+	}
+
 	.icon-action {
 		cursor: pointer;
 		font-size: 20px;
@@ -25,7 +41,7 @@ $idTec = (int) $tecnologia['Id'];
 $codigoTec = htmlspecialchars($tecnologia['Codigo']);
 $nombreTec = htmlspecialchars($tecnologia['NombreGenerico']);
 $anioActual = isset($anioFiltro) ? (int) $anioFiltro : (int) date('Y');
-$minimoFichasRequeridas = 4;
+$minimoFichasRequeridas = 2;
 $totalFichas = count($fichasTecnicas);
 $tieneFichas = $totalFichas >= $minimoFichasRequeridas;
 $tieneEspecificacion = !empty($especificacionTecnica);
@@ -63,6 +79,8 @@ foreach ($pedidos as $pedido) {
 }
 $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 ?>
+
+<div class="adq-dashboard">
 
 <div class="bg-primary text-white p-3 rounded mb-3">
 	<h3 class="mb-0 fw-bold fs-5"><span class="badge me-2" style="background:rgba(255,255,255,.2)"><?php echo $codigoTec; ?></span> <?php echo $nombreTec; ?></h3>
@@ -232,6 +250,8 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 <!-- ===================== BARRA DE ACCIONES ===================== -->
 <div class="d-flex justify-content-end gap-2 mt-2 mb-3">
 	<a href="index.php?module=adquisiciones&action=tecnologias&anio=<?php echo $anioActual; ?>" class="btn btn-secondary js-adq-link">Volver</a>
+</div>
+
 </div>
 
 <script>
