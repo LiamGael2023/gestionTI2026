@@ -37,6 +37,7 @@ $conEspecificacion = (int) ($estadoDocumental['ConEspecificacion'] ?? 0);
 $conOrdenCompra = (int) ($estadoDocumental['ConOrdenCompra'] ?? 0);
 $conVerificacion = (int) ($estadoDocumental['ConVerificacion'] ?? 0);
 $tecnologiasCompletas = (int) ($estadoDocumental['Completas'] ?? 0);
+$adquisicionesFinalizadas = isset($dashboardFinalizados) ? (int) $dashboardFinalizados : 0;
 
 $totalOrdenesProximas = (int) ($ordenesProximas['total'] ?? 0);
 $diasVentanaEntrega = (int) ($ordenesProximas['diasVentana'] ?? 30);
@@ -257,6 +258,15 @@ function formatearFechaEntregaDashboard($fecha)
 					<div class="text-secondary text-uppercase fw-bold small">Completas</div>
 					<div class="h1 mb-1 text-green"><?php echo number_format($tecnologiasCompletas); ?></div>
 					<div class="text-secondary small">Flujo documental total</div>
+				</div>
+			</div>
+		</div>
+		<div class="col-6 col-md-4 col-xl-2">
+			<div class="card h-100">
+				<div class="card-body py-3">
+					<div class="text-secondary text-uppercase fw-bold small">Finalizadas</div>
+					<div class="h1 mb-1 text-teal"><?php echo number_format($adquisicionesFinalizadas); ?></div>
+					<div class="text-secondary small">Cierre de adquisición</div>
 				</div>
 			</div>
 		</div>

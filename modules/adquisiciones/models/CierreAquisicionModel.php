@@ -97,4 +97,20 @@ class CierreAquisicionModel
 		$registro = $this->obtenerPorTecnologiaYAnio($idCatalogoTecnologico, $anio);
 		return !empty($registro) && (int) $registro['Estado'] === 1;
 	}
+
+	// Cuenta el total de adquisiciones finalizadas (Estado=1) para un año dado.
+	public function contarFinalizadosPorAnio($anio)
+	{
+		$sql = "
+			SELECT COUNT(*) AS Total
+			FROM adquisiciones.CierreAquisicion
+			WHERE Anio = ? AND Estado = 1
+		";
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $anio]);
+		if ($stmt === false) {
+			return 0;
+		}
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		return $row ? (int) $row['Total'] : 0;
+	}
 }
