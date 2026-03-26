@@ -3,7 +3,6 @@
 require_once 'modules/turnos/models/trabajador.php';
 require_once 'modules/turnos/controllers/trabajadorController.php';
 
-
 $anio = $_POST["anio"];
 $componente = $_POST["componente"];
 

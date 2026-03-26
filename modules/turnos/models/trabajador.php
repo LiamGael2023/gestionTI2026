@@ -6,7 +6,7 @@ class Trabajador {
 
     $conn = Conexion::conectar();
 
-    $sql = "EXEC BDPERSONAL.Escalafon.pa_Listar_Trabajadores_Meta
+    $sql = "EXEC BDPERSONAL.Escalafon.sp_Listar_Trabajadores_Meta
             @anio = ?,
             @id_componente = ?,
             @id_meta = ?,
@@ -44,7 +44,7 @@ static public function mdlMostrarComponente(){
 FROM BDPERSONAL.Escalafon.Tbl_Componente c
 INNER JOIN BDPERSONAL.Escalafon.Tbl_Trabajador t 
     ON t.Id_Componente = c.Id_Componente
-WHERE t.Trab_Estado = 1 and c.Id_Componente !=33";
+WHERE t.Trab_Estado = 1 and c.Id_Componente =26";
 
     $stmt = sqlsrv_query($conn, $sql);
 
@@ -131,7 +131,7 @@ static public function mdlMostrarTurnoTrabajador(){
     mt.Id_Marcacion_Tipo, mt.MarcTipo_Descripcion
     from BDPERSONAL.Asistencia.Tbl_Marcacion_Tipo mt
 
-    where MarcTipo_Estado=1
+    where MarcTipo_Estado=1 and Id_Marcacion_Tipo in (62,61,12,42,41)
     order by MarcTipo_Descripcion ASC";
   
     $stmt = sqlsrv_query($conn, $sql);

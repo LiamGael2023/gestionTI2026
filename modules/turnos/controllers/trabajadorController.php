@@ -1,8 +1,11 @@
 <?php
+
+
 require_once 'modules/turnos/models/trabajador.php';
 
 
 class TrabajadorController {
+
 
    static public function ctrMostrarTrabajadoresFiltro($anio, $componente, $meta,$tipotrabajador){
 
@@ -95,6 +98,7 @@ static public function ctrEliminarTurnoTrabajador($componente,$meta,$anio,$id_tr
     return Trabajador::mdlEliminarTurnoTrabajador($componente,$meta,$anio,$id_trabajador);
 }
 
+
 }
 
 if(isset($_POST['accion']) && $_POST['accion'] == "traerSeleccionados"){
@@ -125,3 +129,4 @@ if(isset($_POST['accion']) && $_POST['accion'] == "eliminarTurno"){
     echo json_encode($respuesta);
     exit;
 }
+

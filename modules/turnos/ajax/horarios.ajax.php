@@ -2,8 +2,6 @@
 
 require_once 'modules/turnos/models/horario.php';
 require_once 'modules/turnos/controllers/horarioController.php';
-
-
 class AjaxHorarios{
 
     public function ajaxListarHorarios(){

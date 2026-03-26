@@ -225,13 +225,12 @@ border:none;
 border-radius:5px;
 cursor:pointer;
 }
-/* CSS para la tabla dentro del modal */
+
 .tabla-scroll {
-    overflow-x: auto;      /* permite scroll horizontal */
-    max-width: 100%;       /* no se salga del modal */
+    overflow-x: auto;      
+    max-width: 100%;      
 }
 
-/* Asegurar que la tabla no exceda el contenedor */
 #tablaHorarioModal {
     min-width: 1200px;    
 }
@@ -249,4 +248,35 @@ cursor:pointer;
 #reportePDF{
     background:white;
     padding:10px;
+}
+@media (max-width: 768px){
+
+    .d-flex.justify-content-end{
+        justify-content: flex-start !important;
+    }
+
+    .d-flex.justify-content-end button{
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+
+}
+/* Scroll horizontal para la tabla de horarios */
+.tabla-scroll{
+    overflow-x:auto;
+}
+#tablaHorarioModal th, #tablaHorarioModal td{
+    text-align:center;
+    font-size:12px;
+    white-space:nowrap;
+}
+#tablaHorarioModal th:first-child, #tablaHorarioModal td:first-child{
+    position:sticky;
+    left:0;
+    background:white;
+    z-index:2;
+}
+#tablaHorarioModal thead th:first-child{
+    z-index:3;
+    background:#f8f9fa;
 }

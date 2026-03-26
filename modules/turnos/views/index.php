@@ -1,12 +1,31 @@
 <?php
-
 require_once __DIR__ . '/../models/trabajador.php';
 require_once __DIR__ . '/../controllers/trabajadorController.php';
+require_once __DIR__ . '/../../../core/Auth.php';
 
-$anio = $_GET["anio"] ?? '';
+// session_start();
+
+// $idUsuarioLogueado = $_SESSION["id_Trabajador"] ?? null;
+Auth::check();
+$idUsuarioLogueado = $_SESSION["usuario_id"] ?? null;
+
+$anio = $_GET["anio"] ?? 2026;
 $componente = $_GET["componente"] ?? '';
 $meta = $_GET["meta"] ?? '';
 $tipotrabajador = $_GET["tipotrabajador"] ?? '';
+
+$mapMeta = [
+    // 2361 => 227,
+    // 1321 => 220,
+    // 803  => 219,
+    1224  => 227
+];
+
+if(isset($mapMeta[$idUsuarioLogueado])){
+    $meta = $mapMeta[$idUsuarioLogueado];
+    $componente = 26;
+
+}
 
 $trabajadores = TrabajadorController::ctrMostrarTrabajadoresFiltro(
     $anio,
@@ -16,9 +35,8 @@ $trabajadores = TrabajadorController::ctrMostrarTrabajadoresFiltro(
 );
 
 $trabajadoresJS = [];
-
 foreach ($trabajadores as $row) {
-    $idTrabajador = $row['Id_Trabajador'];
+    $idTrabajador = $row['Id_Trabajador']; 
 
     $turnos = TrabajadorController::ctrListarTurnosTrabajador($idTrabajador, $anio);
 
@@ -71,89 +89,111 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 }
 </style>
 </head>
+<body style="background:#f4f6f9;">
 
-<body>
 
-<div class="container mt-4">
+<!-- BODY -->
+<div class="page-body">
+  <div class="container-xl">
 
-<h2><i class="fa fa-users"></i> Trabajadores</h2>
+    <!-- CARD FILTROS -->
+    <div class="card mb-3">
+      <div class="card-body">
 
-<form method="GET">
-    
-    <div class="barra-superior d-flex flex-wrap gap-3 mb-3">
+       <form method="GET">
 
-        <div class="filtro-item">
-            <label>Año</label>
-            <select name="anio" id="anio" class="form-control">
+         <div class="d-flex flex-column">
+
+  
+            <div class="d-flex align-items-end" style="gap:15px; width:100%;">
+
+            <div>
+              <label>Año</label>
+              <select name="anio" id="anio" class="form-control">
                 <?php for($i = date("Y")-7; $i <= date("Y")+2; $i++): ?>
-                    <option value="<?= $i ?>" <?= ($anio == $i) ? 'selected' : '' ?>><?= $i ?></option>
+                  <option value="<?= $i ?>" <?= ($anio == $i) ? 'selected' : '' ?>><?= $i ?></option>
                 <?php endfor; ?>
-            </select>
-        </div>
+              </select>
+            </div>
 
-        <div class="filtro-item">
-            <label>Componente</label>
-            <select name="componente" id="componente" class="form-control">
-                <option value="">Todos</option>
-                <?php
-                $componentes = TrabajadorController::ctrMostrarComponentes();
-                foreach ($componentes as $comp) {
-                    echo '<option value="'.$comp["Id_Componente"].'" '.($componente == $comp["Id_Componente"] ? 'selected' : '').'>'.$comp["Comp_Descripcion"].'</option>';
-                }
-                ?>
-            </select>
-        </div>
+             <div class="filtro-item">
+                <label>Componente</label>
+                <select name="componente" id="componente" class="form-control" <?= isset($mapMeta[$idUsuarioLogueado]) ? 'disabled' : '' ?>>
+                    <?php
+                    $componentes = TrabajadorController::ctrMostrarComponentes();
+                    foreach ($componentes as $comp) {
+                        echo '<option value="'.$comp["Id_Componente"].'" '.($componente == $comp["Id_Componente"] ? 'selected' : '').'>'.$comp["Comp_Descripcion"].'</option>';
+                    }
+                    ?>
+                </select>
+            </div>
 
-        <div class="filtro-item">
-            <label>Meta</label>
-            <select name="meta" id="meta" class="form-control">
-                <option value="">Todos</option>
-                <?php
-                $metas = TrabajadorController::ctrMostrarMetas($anio, $componente);
-                foreach ($metas as $m) {
-                    echo '<option value="'.$m["Id_Meta"].'" '.($meta == $m["Id_Meta"] ? 'selected' : '').'>'.$m["Meta_Descripcion"].'</option>';
-                }
-                ?>
-            </select>
+            <div class="filtro-item">
+                    <label>Meta</label>
+                    <select name="meta" id="meta" class="form-control" <?= isset($mapMeta[$idUsuarioLogueado]) ? 'disabled' : '' ?>>
+                        <option value="">Todos</option>
+                        <?php
+                        $metas = TrabajadorController::ctrMostrarMetas($anio, $componente);
+                        foreach ($metas as $m) {
+                            echo '<option value="'.$m["Id_Meta"].'" '.($meta == $m["Id_Meta"] ? 'selected' : '').'>'.$m["Meta_Descripcion"].'</option>';
+                        }
+                        ?>
+                    </select>
+             </div>
+            <div class="filtro-item">
+                <label>Tipo Trabajador</label>
+                <select name="tipotrabajador" id="tipotrabajador" class="form-control">
+                    <option value="">Todos</option>
+                    <?php
+                    $tipotrabajadores = TrabajadorController::ctrMostrarTipoTrabajador();
+                    foreach ($tipotrabajadores as $tt) {
+                        echo '<option value="'.$tt["Id_Trabajador_Tipo"].'" '.($tipotrabajador == $tt["Id_Trabajador_Tipo"] ? 'selected' : '').'>'.$tt["TrabTipo_Descripcion"].'</option>';
+                    }
+                    ?>
+                </select>
+            </div>
         </div>
-
-        <div class="filtro-item">
-            <label>Tipo Trabajador </label>
-            <select name="tipotrabajador" id="tipotrabajador" class="form-control">
-                <option value="">Todos</option>
-                <?php
-                $tipotrabajadores = TrabajadorController::ctrMostrarTipoTrabajador();
-                foreach ($tipotrabajadores as $tt) {
-                    echo '<option value="'.$tt["Id_Trabajador_Tipo"].'" '.($tipotrabajador == $tt["Id_Trabajador_Tipo"] ? 'selected' : '').'>'.$tt["TrabTipo_Descripcion"].'</option>';
-                }
-                ?>
-            </select>
         </div>
+          <!-- BOTONES -->
+          <div class="d-flex justify-content-end mt-3 flex-wrap" style="gap:10px;">
+            <button type="submit" class="btn btn-primary">
+              <i class="fa fa-search"></i> Buscar
+            </button>
 
-        <div class="filtro-item d-flex align-items-end gap-2">
-            <button type="submit" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
-            <button type="button" id="btnAgregarHorario" class="btn btn-success"><i class="fa fa-calendar"></i> Agregar Turno</button>
-        <button type="button" id="btnUsuariosSeleccionados" class="btn btn-success"><i class="fa fa-calendar"></i> Usuarios para turno</button>
-       
-        </div>
+            <button type="button" id="btnAgregarHorario" class="btn btn-success">
+              <i class="fa fa-calendar"></i> Agregar Turno
+            </button>
 
+            <button type="button" id="btnUsuariosSeleccionados" class="btn btn-success">
+              <i class="fa fa-users"></i> Usuarios
+            </button>
+          </div>
+
+        </form>
+
+      </div>
     </div>
-</form>
 
-<table id="tablaTrabajadores" class="display table table-bordered">
-    <thead>
-    <tr>
-        <th><input type="checkbox" id="checkAll"></th>
-        <th>Nombre del trabajador</th>
-        <th>Componente</th>
-        <th>Meta</th>
-        <th>Horario</th>
-        <th>Turno</th>
-        <th>Eliminar</th>
+    <!-- CARD TABLA -->
+    <div class="card">
+      <div class="card-body">
 
-    </tr>
-    </thead>
-<tbody>
+        <div class="table-responsive">
+          <table id="tablaTrabajadores" class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="checkAll"></th>
+                <th>Nombre</th>
+                <th>Componente</th>
+                <th>Meta</th>
+                <th>Horario</th>
+                <th>Turno</th>
+                <th>Eliminar</th>
+              </tr>
+            </thead>
+
+            <tbody>
+ 
 <?php if(!empty($trabajadores)): ?>
     <?php foreach($trabajadores as $row): ?>
     <tr
@@ -179,7 +219,8 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
       </td>
         <td class="turnoAsignado" id="turno-<?= $row['Id_Trabajador'] ?>">
             <?php if(!empty($row['Turno'])): ?>
-                <span class="badge badge-info"><?= $row['Turno'] ?></span>
+                <!-- <span class="badge badge-info"><?= $row['Turno'] ?></span> -->
+                <span class="badge badge-info">Turno asignado</span>
             <?php else: ?>
                 <span class="badge badge-light">Sin turno</span>
             <?php endif; ?>
@@ -205,6 +246,34 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 </tbody>
 </table>
 </div>
+
+<!-- MODAL DESCRIPCION DE TURNOS-->
+<div class="modal fade" id="modalDescripcion" tabindex="-1" role="dialog" aria-labelledby="modalDescripcionLabel" aria-hidden="true" data-backdrop="static">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDescripcionLabel">Descripción del turno</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <textarea id="descripcionTurno" class="form-control" rows="3" placeholder="Ingrese descripción"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="guardarDescripcion" class="btn btn-success">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Asegurar que este modal siempre esté encima del otro */
+  #modalDescripcion.modal {
+      z-index: 1600 !important;
+  }
+</style>
 
 <!-- MODALTURNO MENSUAL -->
 <div class="modal fade" id="modalHorarioMes" tabindex="-1" role="dialog" aria-labelledby="modalHorarioMesLabel" aria-hidden="true">
@@ -237,7 +306,8 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
     </select>
 
     <label>Año:</label>
-    <input type="number" id="anioModal" value="<?= date("Y") ?>" class="form-control form-control-sm d-inline w-auto" min="2000" max="<?= date("Y")+5 ?>">
+    <input type="number" id="anioModal" value="<?= date("Y") ?>"
+     class="form-control form-control-sm d-inline w-auto" min="2000" max="<?= date("Y")+5 ?>">
 
     <button type="button" id="btnActualizarModal" class="btn btn-primary btn-sm">Actualizar</button>
     <button id="btnDescargarReporte" class="btn btn-info">
@@ -387,37 +457,71 @@ $("#btnAgregarHorario").click(function(){
 // CHECKBOX → GUARDADO TEMPORAL
 // ===============================
 
+let checkboxTemporal = null; // almacenar referencia al checkbox activo
+
 $(document).on("change", "#tablaHorarioModal input[type='checkbox']", function(){
 
     let checked = $(this).prop("checked");
-
     let trabajador = $(this).data("trabajador");
     let dia = $(this).data("dia");
-
     let anio = $("#anioModal").val();
     let mes = $("#mesModal").val();
     let marcacion = $("#marcacion").val();
 
     if(checked){
 
+        // Guardar referencia para usarla luego
+        checkboxTemporal = $(this);
+
+        // Si ya existe un turno para ese trabajador y día, cargar la descripción
+        let turnoExistente = turnosTemp.find(t => t.trabajador == trabajador && t.dia == dia);
+        $("#descripcionTurno").val(turnoExistente ? turnoExistente.descripcion : '');
+
+        // Abrir modal para ingresar descripción
+        $("#modalDescripcion").modal("show");
+
+    } else {
+        // Si se desmarca, eliminamos de turnosTemp
+        turnosTemp = turnosTemp.filter(t => !(t.trabajador == trabajador && t.dia == dia));
+        console.log("TEMP:", turnosTemp);
+    }
+
+});
+
+// Guardar descripción desde el modal
+$("#guardarDescripcion").click(function(){
+
+    let descripcion = $("#descripcionTurno").val().trim();
+
+    if(!descripcion){
+        alert("Debe ingresar una descripción");
+        return;
+    }
+
+    let trabajador = checkboxTemporal.data("trabajador");
+    let dia = checkboxTemporal.data("dia");
+    let anio = $("#anioModal").val();
+    let mes = $("#mesModal").val();
+    let marcacion = $("#marcacion").val();
+
+    // Si ya existe, actualizar descripción
+    let index = turnosTemp.findIndex(t => t.trabajador == trabajador && t.dia == dia);
+    if(index !== -1){
+        turnosTemp[index].descripcion = descripcion;
+    } else {
         turnosTemp.push({
             trabajador: trabajador,
             dia: dia,
             mes: mes,
             anio: anio,
-            marcacion: marcacion
+            marcacion: marcacion,
+            descripcion: descripcion
         });
-
-    }else{
-
-        turnosTemp = turnosTemp.filter(t => 
-            !(t.trabajador == trabajador && t.dia == dia)
-        );
-
     }
 
     console.log("TEMP:", turnosTemp);
 
+    $("#modalDescripcion").modal("hide");
 });
 
 
@@ -465,7 +569,7 @@ $("#guardarHorarioModal").click(function(){
     $("#guardarHorarioModal").prop("disabled", true);
 
     $.ajax({
-        url:"../ajax/guardarHorarios.ajax.php",
+        url: "ajax/guardarHorarios.ajax.php",
         method:"POST",
         data:{datos: JSON.stringify(datos)},
         success:function(respuesta){
@@ -486,7 +590,7 @@ $("#guardarHorarioModal").click(function(){
 
             if(seleccionados.length > 0){
                 $.ajax({
-                    url: "../ajax/guardarUsuariosSeleccionados.ajax.php",
+                    url: "ajax/guardarUsuariosSeleccionados.ajax.php",
                     method: "POST",
                     data: { datos: JSON.stringify(seleccionados) },
                     success: function(res){
@@ -518,7 +622,7 @@ $("#btnUsuariosSeleccionados").click(function(){
     let anio = $("#anio").val();
 
     $.ajax({
-        url:"../controladores/trabajadorController.php",
+       url: "controladores/trabajadorController.php",
         method:"POST",
         data:{
             accion: "traerSeleccionados",
@@ -545,7 +649,7 @@ $("#btnUsuariosSeleccionados").click(function(){
 
 
 // ===============================
-// TABLA MODAL
+// cargar turnos mes y dias
 // ===============================
 
 function cargarTablaHorarioModal(){
@@ -594,15 +698,28 @@ function cargarTablaHorarioModal(){
 
             turnosTrab.forEach(turno => {
 
-                let inicio = new Date(turno.FechaInicioTurno.date).getDate();
-                let fin = new Date(turno.FechaFinTurno.date).getDate();
+                let fechaInicio = new Date(turno.FechaInicioTurno.date);
+                let fechaFin = new Date(turno.FechaFinTurno.date);
 
-                if(d >= inicio && d <= fin){
+                let mesTurno = fechaInicio.getMonth() + 1;
+                let anioTurno = fechaInicio.getFullYear();
 
-                    color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
-                    clase = "turno-existente";
+              
+                if(mesTurno == mes && anioTurno == anio){
 
-                }
+                    let diaInicio = fechaInicio.getDate();
+                    let diaFin = fechaFin.getDate();
+
+                    let fechaCelda = new Date(anio, mes-1, d);
+
+                    if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
+
+                        color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
+                        clase = "turno-existente";
+
+                    }
+
+}
 
             });
 
@@ -620,12 +737,8 @@ function cargarTablaHorarioModal(){
 
     $("#tablaHorarioModal tbody").html(html);
 console.log(turnosBD);
-console.log(turnosTrab);
-}
 
-// ===============================
-// ACTUALIZAR MES/AÑO
-// ===============================
+}
 
 $("#btnActualizarModal").click(function(){
     cargarTablaHorarioModal();
@@ -649,7 +762,8 @@ function crearObjeto(t, inicio, fin){
         horario: fila.data("horario") || null,
         fechainicioturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(inicio).padStart(2,'0')}`,
         fechafinturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(fin).padStart(2,'0')}`,
-        marcacionturno: t.marcacion
+        marcacionturno: t.marcacion,
+        descripcion: t.descripcion || ""
     };
 
 }
@@ -774,7 +888,7 @@ $(document).on("click", ".btnEliminarTurno", function(){
     }
 
     $.ajax({
-        url: "../controladores/trabajadorController.php",
+        url: "controladores/trabajadorController.php",
         method: "POST",
         data: {
             accion: "eliminarTurno",

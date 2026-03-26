@@ -1,14 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../modelo/conexion.php';
 
 class HorarioTrabajadorModelo{
 
     static public function mdlGuardarHorario($datos){
 
         $conn = Conexion::conectar();
-
-        $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador
+ $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Horario_Trabajador
             @Id_Anio = ?,
             @Id_Mes = ?,
             @Id_Trabajador = ?,
@@ -17,7 +15,8 @@ class HorarioTrabajadorModelo{
             @Id_Horario = ?,
             @FechaInicioTurno = ?,
             @FechaFinTurno = ?,
-            @Id_marcacion_tipo =?";
+            @Id_marcacion_tipo =?,
+            @DescripcionTurno  = ?";
 
         $params = array(
             $datos["anio"],
@@ -28,8 +27,10 @@ class HorarioTrabajadorModelo{
             $datos["horario"],
             $datos["fechainicioturno"],
             $datos["fechafinturno"],
-            $datos["marcacionturno"]
+            $datos["marcacionturno"],
+            $datos["descripcion"]
         );
+
 
         $stmt = sqlsrv_query($conn, $sql, $params);
 
@@ -44,4 +45,5 @@ class HorarioTrabajadorModelo{
         return "ok";
     }
 
+    
 }

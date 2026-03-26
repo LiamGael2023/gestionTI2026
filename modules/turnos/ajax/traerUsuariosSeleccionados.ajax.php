@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../modelo/conexion.php';
+
 
 $componente = $_POST['componente'];
 $meta = $_POST['meta'];

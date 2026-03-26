@@ -1,11 +1,14 @@
 <?php
 
-require_once 'modules/turnos/models/horarioTrabajador.php';
 
+
+require_once 'modules/turnos/models/horarioTrabajador.php';
 
 class HorarioTrabajadorController{
 
     static public function ctrGuardarHorario(){
+        var_dump($_POST);
+die(); // corta la ejecución para ver solo los datos
 
         if(isset($_POST["datos"])){
 
@@ -17,7 +20,7 @@ class HorarioTrabajadorController{
                 $fecha_inicio = date("Y-m-d", strtotime($fila["fechainicioturno"]));
                 $fecha_fin = date("Y-m-d", strtotime($fila["fechafinturno"]));
 
-                $datos = array(
+                 $datos = array(
                     "anio" => $fila["anio"],
                     "mes" => $fila["mes"],                       
                     "trabajador" => $fila["trabajador"],
@@ -26,10 +29,12 @@ class HorarioTrabajadorController{
                     "horario" => $fila["horario"],
                     "fechainicioturno" => $fecha_inicio,       
                     "fechafinturno" => $fecha_fin,
-                    "marcacionturno" => $fila["marcacionturno"],            
+                    "marcacionturno" => $fila["marcacionturno"],
+                    "descripcion" => $fila["descripcion"] ?? ""
+
                 );
 
-                $respuesta = HorarioTrabajadorModelo::mdlGuardarHorario($datos);
+                $respuesta = HorarioTrabajadorModel::mdlGuardarHorario($datos);
 
             }
 
@@ -38,5 +43,6 @@ class HorarioTrabajadorController{
         }
 
     }
+
 
 }

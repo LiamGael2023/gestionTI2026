@@ -140,9 +140,9 @@ if(trabajadores){
 
 $("#tablaHorario tbody").html(html);
 
-/* Limitar scroll: mostrar 15 días */
+
 $("#tablaHorario th, #tablaHorario td").each(function(index){
-    if(index>15) $(this).css("min-width","80px"); // opcional ancho fijo para scroll
+    if(index>15) $(this).css("min-width","80px"); 
 });
 
 /* Guardar datos */
@@ -155,7 +155,7 @@ $("#guardar").click(function(){
         });
     });
     console.log(datos);
-    // Aquí iría tu AJAX para guardar
+   
 });
 </script>
 

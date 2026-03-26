@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../modelo/conexion.php';
 
 $datos = json_decode($_POST['datos'], true);
 if(!$datos) { echo "No hay datos"; exit; }
