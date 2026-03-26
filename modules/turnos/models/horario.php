@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../modelo/conexion.php';
 
 class Horario
 {

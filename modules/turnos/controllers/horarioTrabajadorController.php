@@ -1,14 +1,18 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once __DIR__ . "/../../../config/db.php"; 
+require_once __DIR__ .'/../models/horarioTrabajador.php';
 
 
-
-require_once 'modules/turnos/models/horarioTrabajador.php';
-
+$conn  = Conexion::conectar();
+$model = new HorarioTrabajadorModel($conn);
 class HorarioTrabajadorController{
 
     static public function ctrGuardarHorario(){
-        var_dump($_POST);
-die(); // corta la ejecución para ver solo los datos
+     
 
         if(isset($_POST["datos"])){
 
@@ -43,6 +47,35 @@ die(); // corta la ejecución para ver solo los datos
         }
 
     }
+
+      static public function ctrGuardarTrabajador(){
+     
+
+        if(isset($_POST["datos"])){
+
+            $lista = json_decode($_POST["datos"], true);
+
+            foreach($lista as $fila){
+
+                
+
+                 $datos = array(
+                    "id" => $fila["id"],
+                    "componente" => $fila["componente"],
+                    "meta" => $fila["meta"],
+                    "tipotrabajador" => $fila["tipotrabajador"],
+                    "anio" => $fila["anio"],
+
+                );
+
+                $respuesta = HorarioTrabajadorModel::mdlGuardarTrabajador($datos);
+
+            }
+
+            echo json_encode($respuesta);
+
+        }
+      }
 
 
 }

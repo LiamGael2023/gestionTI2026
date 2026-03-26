@@ -34,6 +34,8 @@ $trabajadores = TrabajadorController::ctrMostrarTrabajadoresFiltro(
     $tipotrabajador
 );
 
+
+
 $trabajadoresJS = [];
 foreach ($trabajadores as $row) {
     $idTrabajador = $row['Id_Trabajador']; 
@@ -384,7 +386,7 @@ $("#anio").change(function(){
     var anio = $(this).val();
 
     $.ajax({
-        url:"ajax/metas.php",
+        url:"modules/turnos/ajax/metas.php",
         method:"POST",
         data:{anio:anio},
         success:function(respuesta){
@@ -400,7 +402,7 @@ $("#componente").change(function(){
     var componente = $(this).val();
 
     $.ajax({
-        url:"ajax/metas.php",
+        url:"modules/turnos/ajax/metas.php",
         method:"POST",
         data:{componente:componente},
         success:function(respuesta){
@@ -569,12 +571,12 @@ $("#guardarHorarioModal").click(function(){
     $("#guardarHorarioModal").prop("disabled", true);
 
     $.ajax({
-        url: "ajax/guardarHorarios.ajax.php",
+        url: "modules/turnos/ajax/guardarHorarios.ajax.php",
         method:"POST",
         data:{datos: JSON.stringify(datos)},
         success:function(respuesta){
 
-           
+           console.log(respuesta);
             let seleccionados = [];
             $("#tablaTrabajadores tbody tr").each(function(){
                 if($(this).find(".checkItem").prop("checked")){
@@ -590,10 +592,11 @@ $("#guardarHorarioModal").click(function(){
 
             if(seleccionados.length > 0){
                 $.ajax({
-                    url: "ajax/guardarUsuariosSeleccionados.ajax.php",
+                    url: "modules/turnos/ajax/guardarUsuariosSeleccionados.ajax.php",
                     method: "POST",
                     data: { datos: JSON.stringify(seleccionados) },
                     success: function(res){
+                        console.log(respuesta)
                         console.log("Usuarios seleccionados guardados");
                     }
                 });
@@ -622,7 +625,7 @@ $("#btnUsuariosSeleccionados").click(function(){
     let anio = $("#anio").val();
 
     $.ajax({
-       url: "controladores/trabajadorController.php",
+       url: "turnos/controladores/trabajadorController.php",
         method:"POST",
         data:{
             accion: "traerSeleccionados",
@@ -888,7 +891,7 @@ $(document).on("click", ".btnEliminarTurno", function(){
     }
 
     $.ajax({
-        url: "controladores/trabajadorController.php",
+        url: "turnos/controladores/trabajadorController.php",
         method: "POST",
         data: {
             accion: "eliminarTurno",

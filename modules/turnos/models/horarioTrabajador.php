@@ -1,12 +1,22 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 
-class HorarioTrabajadorModelo{
+class HorarioTrabajadorModel{
+    private $conn;
+
+
+      public function __construct($conn2)
+    {
+        $this->conn = $conn2;
+    }
 
     static public function mdlGuardarHorario($datos){
 
         $conn = Conexion::conectar();
- $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Horario_Trabajador
+ $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador1
             @Id_Anio = ?,
             @Id_Mes = ?,
             @Id_Trabajador = ?,
@@ -45,5 +55,38 @@ class HorarioTrabajadorModelo{
         return "ok";
     }
 
-    
+static public function mdlGuardarTrabajador($datos){
+
+
+        $conn = Conexion::conectar();
+ $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Trabajador_Seleccionado_Turno 
+        @Id_Trabajador = ?, 
+        @Id_Componente = ?, 
+        @Id_Meta = ?, 
+        @Id_Trabajador_Tipo = ?, 
+        @Id_Anio = ?";
+    $params = [
+        $datos['id'],
+        $datos['componente'],
+        $datos['meta'],
+        $datos['tipotrabajador'],
+        $datos['anio']
+    ];
+
+    echo $sql;
+        $stmt = sqlsrv_query($conn, $sql, $params);
+
+        if($stmt === false){
+            echo json_encode(sqlsrv_errors());
+            exit;
+        }
+
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+
+        return "ok";
+    }
+
+
+
 }

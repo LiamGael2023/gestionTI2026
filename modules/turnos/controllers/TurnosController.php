@@ -6,7 +6,7 @@ $action = $_GET['action'] ?? 'index';
 
 switch($action) {
     case 'guardar':
-        // Lógica de guardado
+       include 'modules/turnos/ajax/guardarHorarios.ajax.php';
         break;
     default:
         include 'modules/turnos/views/index.php';
