@@ -36,6 +36,7 @@ $conFichas = (int) ($estadoDocumental['ConFichas'] ?? 0);
 $conEspecificacion = (int) ($estadoDocumental['ConEspecificacion'] ?? 0);
 $conOrdenCompra = (int) ($estadoDocumental['ConOrdenCompra'] ?? 0);
 $conVerificacion = (int) ($estadoDocumental['ConVerificacion'] ?? 0);
+$tecnologiasConReq = (int) ($estadoDocumental['ConRequerimiento'] ?? 0);
 $tecnologiasCompletas = (int) ($estadoDocumental['Completas'] ?? 0);
 $adquisicionesFinalizadas = isset($dashboardFinalizados) ? (int) $dashboardFinalizados : 0;
 
@@ -167,10 +168,10 @@ function formatearFechaEntregaDashboard($fecha)
 					<div class="fw-bold">Items Cargados</div>
 					<div class="text-secondary small">Sin homologar: <?php echo number_format($sinHomologar); ?> registros.</div>
 					<div class="progress progress-sm mt-3">
-						<div class="progress-bar bg-orange" style="width: <?php echo $porcentajeSinHomologar; ?>%"></div>
+						<div class="progress-bar bg-blue" style="width: <?php echo 100 - $porcentajeSinHomologar; ?>%"></div>
 					</div>
 					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
-						<span><?php echo $porcentajeSinHomologar; ?>% sin homologación</span>
+						<span><?php echo 100 - $porcentajeSinHomologar; ?>% homologación</span>
 					</div>
 				</div>
 			</div>
@@ -188,8 +189,12 @@ function formatearFechaEntregaDashboard($fecha)
 					</div>
 					<div class="fw-bold">Tecnologías</div>
 					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
-					<div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
-						<span><?php echo number_format($tecnologiasCompletas); ?> completas en <?php echo $anioFiltro; ?></span>
+					<div class="progress progress-sm mt-3">
+						<?php $pctCompletas = $tecnologiasConReq > 0 ? round(($tecnologiasCompletas / $tecnologiasConReq) * 100) : 0; ?>
+						<div class="progress-bar bg-blue" style="width: <?php echo $pctCompletas; ?>%"></div>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
+						<span><?php echo number_format($tecnologiasCompletas); ?> / <?php echo number_format($tecnologiasConReq); ?> con documentación completa</span>
 					</div>
 				</div>
 			</div>
@@ -207,8 +212,12 @@ function formatearFechaEntregaDashboard($fecha)
 					</div>
 					<div class="fw-bold">Centros de Costo</div>
 					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
-					<div class="d-flex justify-content-between align-items-center mt-3 small text-secondary">
-						<span><?php echo number_format($totalCentrosConRequerimientos); ?> con requerimientos en <?php echo $anioFiltro; ?></span>
+					<div class="progress progress-sm mt-3">
+						<?php $pctCentros = $totalCentrosCosto > 0 ? round(($totalCentrosConRequerimientos / $totalCentrosCosto) * 100) : 0; ?>
+						<div class="progress-bar bg-blue" style="width: <?php echo $pctCentros; ?>%"></div>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
+						<span><?php echo number_format($totalCentrosConRequerimientos); ?> / <?php echo number_format($totalCentrosCosto); ?> con requerimientos en <?php echo $anioFiltro; ?></span>
 					</div>
 				</div>
 			</div>
@@ -296,7 +305,13 @@ function formatearFechaEntregaDashboard($fecha)
 									<div class="d-flex justify-content-between align-items-start gap-2">
 										<div>
 											<div class="fw-semibold">
-												OC <?php echo htmlspecialchars((string) ($orden['NumeroOrden'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+												<?php
+												echo htmlspecialchars(
+													str_replace('_', ' ', (string) ($orden['NumeroOrden'] ?? '-')),
+													ENT_QUOTES,
+													'UTF-8'
+												);
+												?>
 											</div>
 											<div class="text-secondary small">
 												<?php echo htmlspecialchars((string) ($orden['Codigo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>

@@ -535,9 +535,10 @@ class RequerimientoModel
 			SELECT
 				COUNT(DISTINCT ct.Id)                                             AS TotalTecnologias,
 				COUNT(DISTINCT CASE WHEN ft.TotalFichas >= 2 THEN ct.Id END)      AS ConFichas,
-				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL THEN ct.Id END)         AS ConEspecificacion,
-				COUNT(DISTINCT CASE WHEN oc.Id IS NOT NULL THEN ct.Id END)         AS ConOrdenCompra,
-				COUNT(DISTINCT CASE WHEN vt.Id IS NOT NULL THEN ct.Id END)         AS ConVerificacion,
+				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL THEN ct.Id END)        AS ConEspecificacion,
+				COUNT(DISTINCT CASE WHEN oc.Id IS NOT NULL THEN ct.Id END)        AS ConOrdenCompra,
+				COUNT(DISTINCT CASE WHEN vt.Id IS NOT NULL THEN ct.Id END)        AS ConVerificacion,
+				COUNT(DISTINCT CASE WHEN dr.IdCatalogoTecnologico IS NOT NULL THEN ct.Id END) AS ConRequerimiento,
 				COUNT(DISTINCT CASE WHEN et.Id IS NOT NULL
 												 AND oc.Id IS NOT NULL
 												 AND vt.Id IS NOT NULL
@@ -556,18 +557,25 @@ class RequerimientoModel
 				WHERE Anio = ?
 				GROUP BY IdCatalogoTecnologico
 			) ft ON ft.IdCatalogoTecnologico = ct.Id
+			LEFT JOIN (
+				SELECT DISTINCT dr2.IdCatalogoTecnologico
+				FROM adquisiciones.DetalleRequerimiento dr2
+				INNER JOIN adquisiciones.Requerimiento r2 ON r2.Id = dr2.IdRequerimiento AND r2.Anio = ?
+				WHERE dr2.IdCatalogoTecnologico <> 1000010
+			) dr ON dr.IdCatalogoTecnologico = ct.Id
 			WHERE ct.Activo = 1
 		";
 
-		$resumen = $this->fetchOne($sql, [$anio, $anio, $anio, $anio]);
+		$resumen = $this->fetchOne($sql, [$anio, $anio, $anio, $anio, $anio]);
 
 		return [
-			'TotalTecnologias' => (int) ($resumen['TotalTecnologias'] ?? 0),
-			'ConFichas' => (int) ($resumen['ConFichas'] ?? 0),
+			'TotalTecnologias'  => (int) ($resumen['TotalTecnologias'] ?? 0),
+			'ConFichas'         => (int) ($resumen['ConFichas'] ?? 0),
 			'ConEspecificacion' => (int) ($resumen['ConEspecificacion'] ?? 0),
-			'ConOrdenCompra' => (int) ($resumen['ConOrdenCompra'] ?? 0),
-			'ConVerificacion' => (int) ($resumen['ConVerificacion'] ?? 0),
-			'Completas' => (int) ($resumen['Completas'] ?? 0),
+			'ConOrdenCompra'    => (int) ($resumen['ConOrdenCompra'] ?? 0),
+			'ConVerificacion'   => (int) ($resumen['ConVerificacion'] ?? 0),
+			'ConRequerimiento'  => (int) ($resumen['ConRequerimiento'] ?? 0),
+			'Completas'         => (int) ($resumen['Completas'] ?? 0),
 		];
 	}
 
