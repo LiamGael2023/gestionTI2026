@@ -4,6 +4,30 @@ require_once __DIR__ . "/../../../config/db.php";
 class IpModel
 {
     /* ────────────────────────────────────────────
+       LISTAR UBICACIONES (para combos)
+    ──────────────────────────────────────────── */
+    static public function mdlListarUbicaciones()
+    {
+        $conn = Conexion::conectar();
+        $sql  = "SELECT idUbicacion, descripcion
+                 FROM inventario.ubicacion
+                 ORDER BY descripcion ASC";
+        $stmt = sqlsrv_query($conn, $sql);
+        $rows = [];
+        if ($stmt !== false) {
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $rows[] = [
+                    "idUbicacion" => intval($row["idUbicacion"]),
+                    "descripcion" => $row["descripcion"] ?? "",
+                ];
+            }
+            sqlsrv_free_stmt($stmt);
+        }
+        sqlsrv_close($conn);
+        return $rows;
+    }
+
+    /* ────────────────────────────────────────────
        SERVER-SIDE PROCESSING para DataTables
        Devuelve: [ 'rows'=>[], 'total'=>N, 'filtered'=>N ]
     ──────────────────────────────────────────── */
@@ -23,7 +47,7 @@ class IpModel
 
         $baseFrom = "
             FROM inventario.ip i
-            INNER JOIN inventario.ubicacion u ON i.idUbicacion = u.idUbicacion
+            LEFT JOIN inventario.ubicacion u ON i.idUbicacion = u.idUbicacion
         ";
 
         // Total sin filtro
@@ -257,7 +281,7 @@ class IpModel
                    i.estado, i.idUsuarioRegistro, i.fechaCreacion,
                    i.idUsuarioModifica, i.fechaModificacion
             FROM inventario.ip i
-            INNER JOIN inventario.ubicacion u ON i.idUbicacion = u.idUbicacion
+            LEFT JOIN inventario.ubicacion u ON i.idUbicacion = u.idUbicacion
             WHERE i.$item = ?
         ";
         $stmt = sqlsrv_query($conn, $sql, [[$valor, SQLSRV_PARAM_IN]]);

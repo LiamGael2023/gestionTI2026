@@ -7,10 +7,10 @@ $action = $_GET['action'] ?? 'index';
 
 switch ($action) {
 
-    case 'activos':
-        require_once 'modules/inventario/models/ActivosModel.php';
-        require_once 'modules/inventario/controllers/ActivosController.php';
-        include 'modules/inventario/views/activos.php';
+    case 'tipoActivos':
+        require_once 'modules/inventario/models/TipoActivosModel.php';
+        require_once 'modules/inventario/controllers/TipoActivosController.php';
+        include 'modules/inventario/views/tipoActivos.php';
         break;
 
     case 'tipoCaracteristicas':
@@ -25,10 +25,10 @@ switch ($action) {
         include 'modules/inventario/views/caracteristicas.php';
         break;
 
-    case 'equipos':
-        require_once 'modules/inventario/models/EquipoModel.php';
-        require_once 'modules/inventario/controllers/EquipoController.php';
-        include 'modules/inventario/views/equipos.php';
+    case 'activos':
+        require_once 'modules/inventario/models/ActivosModel.php';
+        require_once 'modules/inventario/controllers/ActivosController.php';
+        include 'modules/inventario/views/activos.php';
         break;
 
     case 'ubicaciones':

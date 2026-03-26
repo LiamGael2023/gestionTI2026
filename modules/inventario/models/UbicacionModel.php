@@ -41,42 +41,48 @@ class UbicacionModel
             ]
         );
     }
+static public function mdlMostrarUbicacion($item, $valor)
+{
+    $conn = Conexion::conectar();
 
-    static public function mdlMostrarUbicacion($item, $valor)
-    {
-        $conn = Conexion::conectar();
+    // CTE Corregido: Construye la ruta de PADRE hacia HIJO
+    $sql = "
+    WITH Jerarquia AS (
+        SELECT 
+            idUbicacion, 
+            idUbicacionPadre,
+            descripcion,
+            CAST(descripcion AS VARCHAR(MAX)) AS rutaPropia
+        FROM inventario.ubicacion
+        WHERE idUbicacionPadre IS NULL
+        
+        UNION ALL
+        
+        SELECT 
+            u.idUbicacion,
+            u.idUbicacionPadre,
+            u.descripcion,
+            CAST(j.rutaPropia + ' > ' + u.descripcion AS VARCHAR(MAX))
+        FROM inventario.ubicacion u
+        INNER JOIN Jerarquia j ON u.idUbicacionPadre = j.idUbicacion
+    )
+    SELECT u.*, j.rutaPropia 
+    FROM inventario.ubicacion u
+    LEFT JOIN Jerarquia j ON u.idUbicacion = j.idUbicacion";
 
-        $sql = "
-            SELECT u.idUbicacion,
-                   u.descripcion,
-                   u.idUbicacionPadre,
-                   p.descripcion AS descripcionPadre,
-                   u.idUsuarioRegistro,
-                   u.fechaCreacion,
-                   u.idUsuarioModifica,
-                   u.fechaModificacion
-            FROM inventario.ubicacion u
-            LEFT JOIN inventario.ubicacion p ON u.idUbicacionPadre = p.idUbicacion
-        ";
-
-        if ($item !== null) {
-            $sql   .= " WHERE u.$item = ?";
-            $params = [[$valor, SQLSRV_PARAM_IN]];
-            $stmt   = sqlsrv_query($conn, $sql, $params);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
-            $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        } else {
-            $sql  .= " ORDER BY u.descripcion ASC";
-            $stmt  = sqlsrv_query($conn, $sql);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
-            $resultado = [];
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                $resultado[] = $row;
-            }
+    if ($item !== null) {
+        $sql .= " WHERE u.$item = ?";
+        $stmt = sqlsrv_query($conn, $sql, [[$valor, SQLSRV_PARAM_IN]]);
+        return ($stmt === false) ? "error" : sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+    } else {
+        $sql .= " ORDER BY j.rutaPropia ASC";
+        $stmt = sqlsrv_query($conn, $sql);
+        if ($stmt === false) return "error";
+        $resultado = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $resultado[] = $row;
         }
-
-        sqlsrv_free_stmt($stmt);
-        sqlsrv_close($conn);
         return $resultado;
     }
+}
 }

@@ -38,7 +38,7 @@ function manejarRespuesta(data, onSuccess) {
     }
 }
 
-/* ─── CUSTOM SELECT (mismo patrón de equipos.js) ─── */
+/* ─── CUSTOM SELECT ─── */
 function crearCustomSelect(selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return null;
@@ -106,7 +106,6 @@ function crearCustomSelect(selectId) {
         const q = this.value.toLowerCase().trim();
         renderLista(q ? opciones.filter(o => o.label.toLowerCase().includes(q)) : opciones);
     });
-    searchIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } });
 
     function renderLista(items) {
         list.innerHTML = '';
@@ -115,7 +114,7 @@ function crearCustomSelect(selectId) {
         items.forEach(o => {
             const li = document.createElement('li');
             li.textContent = o.label; li.dataset.value = o.value;
-            if (!o.value)              li.classList.add('cs-placeholder-item');
+            if (!o.value) li.classList.add('cs-placeholder-item');
             if (o.value === valActual) li.classList.add('cs-selected');
             li.addEventListener('mousedown', e => { e.preventDefault(); seleccionar(o.value, o.label); cerrar(); });
             list.appendChild(li);
@@ -140,43 +139,56 @@ function crearCustomSelect(selectId) {
                 sel.appendChild(opt);
             });
             const textEl = display.querySelector('.cs-text');
-            textEl.textContent = arr[0]?.label ?? 'Seleccionar...';
-            textEl.classList.add('placeholder-text');
-            sel.value = arr[0]?.value ?? '';
+            textEl.textContent = arr.find(o => String(o.value) === String(sel.value))?.label ?? arr[0]?.label ?? 'Seleccionar...';
+            textEl.classList.toggle('placeholder-text', !sel.value);
         },
         setValue(value) {
             const found = opciones.find(o => String(o.value) === String(value));
             if (found) seleccionar(found.value, found.label);
+            else seleccionar('', '');
         },
-        getValue()  { return sel.value; },
-        reset()     { if (opciones.length) seleccionar(opciones[0].value, opciones[0].label); }
+        getValue() { return sel.value; },
+        reset() { if (opciones.length) seleccionar(opciones[0].value, opciones[0].label); }
     };
 }
 
-/* ─── CARGA DE UBICACIONES ─── */
+/* ─── CARGA DE UBICACIONES (Con Jerarquía) ─── */
 async function cargarUbicacionesCombo(cs, placeholder) {
+    if (!cs) return;
     try {
         const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php?listarUbicaciones=1');
         const data = await res.json();
+        
+        // Limpiamos y agregamos el placeholder
         const ops  = [{ value: '', label: placeholder }];
-        data.forEach(u => ops.push({ value: String(u.idUbicacion), label: u.descripcion }));
+        
+        data.forEach(u => {
+            ops.push({ 
+                value: String(u.idUbicacion), 
+                label: u.rutaPropia // Aquí usamos el nombre que viene del Ajax
+            });
+        });
+        
         cs.setOptions(ops);
-    } catch (e) { console.error('[cargarUbicaciones]', e); }
+    } catch (e) { 
+        console.error('Error cargando combo:', e); 
+    }
 }
 
 /* ─── DOM READY ─── */
 document.addEventListener("DOMContentLoaded", function () {
 
-    const csNuevoPadre    = crearCustomSelect('nuevoIdUbicacionPadre');
-    const csEditarPadre   = crearCustomSelect('editarIdUbicacionPadre');
-    const csNuevoUbicAmb  = crearCustomSelect('nuevoIdUbicacionAmbiente');
-    const csEditarUbicAmb = crearCustomSelect('editarIdUbicacionAmbiente');
+    const csNuevoPadre     = crearCustomSelect('nuevoIdUbicacionPadre');
+    const csEditarPadre    = crearCustomSelect('editarIdUbicacionPadre');
+    const csNuevoUbicAmb   = crearCustomSelect('nuevoIdUbicacionAmbiente');
+    const csEditarUbicAmb  = crearCustomSelect('editarIdUbicacionAmbiente');
 
-    /* ── Abrir modal AGREGAR UBICACIÓN ── */
+    /* ── Modal AGREGAR UBICACIÓN ── */
     document.getElementById('modalAgregarUbicacion')
         ?.addEventListener('show.bs.modal', async () => {
             document.getElementById('formNuevaUbicacion')?.reset();
             await cargarUbicacionesCombo(csNuevoPadre, 'Ninguna (raíz)');
+            csNuevoPadre.setValue('');
         });
 
     /* ── Clic EDITAR UBICACIÓN ── */
@@ -193,7 +205,7 @@ document.addEventListener("DOMContentLoaded", function () {
             await cargarUbicacionesCombo(csEditarPadre, 'Ninguna (raíz)');
             csEditarPadre.setValue(json.idUbicacionPadre ? String(json.idUbicacionPadre) : '');
 
-            document.getElementById('editarIdUbicacion').value          = json.idUbicacion;
+            document.getElementById('editarIdUbicacion').value = json.idUbicacion;
             document.getElementById('editarDescripcionUbicacion').value = json.descripcion;
             document.getElementById('editarUbicUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
             document.getElementById('editarUbicFechaCreacion').textContent   = json.fechaCreacion     ?? '--';
@@ -202,41 +214,12 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch { mostrarToast('error', 'Error al cargar la ubicación.'); }
     });
 
-    /* ── Guardar nueva ubicación ── */
-    document.getElementById('formNuevaUbicacion')
-        ?.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const btn = this.querySelector('[type=submit]'); btn.disabled = true;
-            try {
-                const resp = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: new FormData(this) });
-                manejarRespuesta(await resp.json(), () => {
-                    bootstrap.Modal.getInstance(document.getElementById('modalAgregarUbicacion')).hide();
-                    setTimeout(() => location.reload(), 1500);
-                });
-            } catch { mostrarToast('error', 'Error de servidor.'); }
-            finally { btn.disabled = false; }
-        });
-
-    /* ── Actualizar ubicación ── */
-    document.getElementById('formEditarUbicacion')
-        ?.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const btn = this.querySelector('[type=submit]'); btn.disabled = true;
-            try {
-                const resp = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: new FormData(this) });
-                manejarRespuesta(await resp.json(), () => {
-                    bootstrap.Modal.getInstance(document.getElementById('modalEditarUbicacion')).hide();
-                    setTimeout(() => location.reload(), 1500);
-                });
-            } catch { mostrarToast('error', 'Error de servidor.'); }
-            finally { btn.disabled = false; }
-        });
-
-    /* ── Abrir modal AGREGAR AMBIENTE ── */
+    /* ── Modal AGREGAR AMBIENTE ── */
     document.getElementById('modalAgregarAmbiente')
         ?.addEventListener('show.bs.modal', async () => {
             document.getElementById('formNuevoAmbiente')?.reset();
             await cargarUbicacionesCombo(csNuevoUbicAmb, 'Seleccionar ubicación...');
+            csNuevoUbicAmb.setValue('');
         });
 
     /* ── Clic EDITAR AMBIENTE ── */
@@ -250,10 +233,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const json = await res.json();
             if (json.error) { mostrarToast('error', json.error); return; }
 
+            // IMPORTANTE: Cargar combo con jerarquía antes de asignar valor
             await cargarUbicacionesCombo(csEditarUbicAmb, 'Seleccionar ubicación...');
             csEditarUbicAmb.setValue(String(json.idUbicacion));
 
-            document.getElementById('editarIdAmbiente').value          = json.idAmbiente;
+            document.getElementById('editarIdAmbiente').value = json.idAmbiente;
             document.getElementById('editarDescripcionAmbiente').value = json.descripcion;
             document.getElementById('editarAmbUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
             document.getElementById('editarAmbFechaCreacion').textContent   = json.fechaCreacion     ?? '--';
@@ -262,35 +246,22 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch { mostrarToast('error', 'Error al cargar el ambiente.'); }
     });
 
-    /* ── Guardar nuevo ambiente ── */
-    document.getElementById('formNuevoAmbiente')
-        ?.addEventListener('submit', async function (e) {
+    /* ── Formularios SUBMIT (Ubicaciones y Ambientes) ── */
+    ['formNuevaUbicacion', 'formEditarUbicacion', 'formNuevoAmbiente', 'formEditarAmbiente'].forEach(id => {
+        document.getElementById(id)?.addEventListener('submit', async function (e) {
             e.preventDefault();
             const btn = this.querySelector('[type=submit]'); btn.disabled = true;
             try {
                 const resp = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: new FormData(this) });
                 manejarRespuesta(await resp.json(), () => {
-                    bootstrap.Modal.getInstance(document.getElementById('modalAgregarAmbiente')).hide();
-                    setTimeout(() => location.reload(), 1500);
+                    const modal = bootstrap.Modal.getInstance(this.closest('.modal'));
+                    if (modal) modal.hide();
+                    setTimeout(() => location.reload(), 1200);
                 });
             } catch { mostrarToast('error', 'Error de servidor.'); }
             finally { btn.disabled = false; }
         });
-
-    /* ── Actualizar ambiente ── */
-    document.getElementById('formEditarAmbiente')
-        ?.addEventListener('submit', async function (e) {
-            e.preventDefault();
-            const btn = this.querySelector('[type=submit]'); btn.disabled = true;
-            try {
-                const resp = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: new FormData(this) });
-                manejarRespuesta(await resp.json(), () => {
-                    bootstrap.Modal.getInstance(document.getElementById('modalEditarAmbiente')).hide();
-                    setTimeout(() => location.reload(), 1500);
-                });
-            } catch { mostrarToast('error', 'Error de servidor.'); }
-            finally { btn.disabled = false; }
-        });
+    });
 
     /* ── DataTables ── */
     ['#tablaUbicaciones', '#tablaAmbientes'].forEach(id => {
@@ -309,5 +280,4 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
-
-}); // fin DOMContentLoaded
+});

@@ -14,6 +14,9 @@
   --purple:     #7c3aed;
   --purple-lt:  #f5f3ff;
   --purple-md:  #ddd6fe;
+  --teal:       #0891b2;
+  --teal-lt:    #ecfeff;
+  --teal-md:    #a5f3fc;
   --gray-50:    #f8fafc;
   --gray-100:   #f1f5f9;
   --gray-200:   #e2e8f0;
@@ -120,6 +123,30 @@
 }
 .pass-toggle:hover{background:var(--blue-lt);color:var(--blue);border-color:var(--blue)}
 
+/* IPs multi-chip */
+.ip-selector{display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.5rem}
+.ip-chips{display:flex;flex-wrap:wrap;gap:.35rem;min-height:28px}
+.ip-chip{
+  display:inline-flex;align-items:center;gap:.3rem;
+  padding:.2rem .55rem;
+  background:var(--teal-lt);
+  border:1.5px solid var(--teal-md);
+  border-radius:20px;
+  font-size:.72rem;font-weight:600;color:var(--teal);
+  font-family:'DM Sans',sans-serif;
+}
+.ip-chip-rm{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:14px;height:14px;
+  border-radius:50%;
+  background:var(--teal-md);
+  color:var(--teal);
+  border:none;cursor:pointer;font-size:.6rem;padding:0;
+  transition:all .12s;
+}
+.ip-chip-rm:hover{background:var(--teal);color:#fff}
+.ip-chips-empty{font-size:.72rem;color:var(--gray-400);font-style:italic;font-family:'DM Sans',sans-serif}
+
 /* Main area */
 .est-main{
   padding:1.5rem;
@@ -177,7 +204,6 @@
 .eq-search-bar{display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.75rem}
 .eq-search-label{font-size:.73rem;font-weight:600;color:var(--gray-600);margin-bottom:.28rem;display:block}
 
-/* Botón agregar */
 .btn-eq-add{
   width:40px;height:40px;
   border:none;border-radius:var(--radius);
@@ -192,7 +218,6 @@
 .btn-eq-add:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
 .btn-eq-add:not(:disabled):hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
 
-/* Items */
 .eq-items{min-height:44px}
 .eq-empty{
   display:flex;align-items:center;justify-content:center;gap:.5rem;
@@ -239,7 +264,6 @@
 }
 .btn-eq-rm:hover{background:#ef4444;color:#fff;border-color:#ef4444}
 
-/* Colores principal */
 .eq-principal .eq-card-header{background:linear-gradient(135deg,var(--blue-lt) 0%,#dbeafe 100%)}
 .eq-principal .eq-card-header::before{background:var(--blue)}
 .eq-principal .eq-icon-wrap{background:var(--blue);color:#fff}
@@ -250,7 +274,6 @@
 .eq-principal .eq-item-ico{background:var(--blue-lt);color:var(--blue)}
 .eq-principal .eq-item-cp{background:var(--blue-lt);color:var(--blue)}
 
-/* Colores periférico */
 .eq-periferico .eq-card-header{background:linear-gradient(135deg,var(--green-lt) 0%,#dcfce7 100%)}
 .eq-periferico .eq-card-header::before{background:var(--green)}
 .eq-periferico .eq-icon-wrap{background:var(--green);color:#fff}
@@ -261,7 +284,6 @@
 .eq-periferico .eq-item-ico{background:var(--green-lt);color:var(--green)}
 .eq-periferico .eq-item-cp{background:var(--green-lt);color:var(--green)}
 
-/* Colores software */
 .eq-software .eq-card-header{background:linear-gradient(135deg,var(--purple-lt) 0%,#ede9fe 100%)}
 .eq-software .eq-card-header::before{background:var(--purple)}
 .eq-software .eq-icon-wrap{background:var(--purple);color:#fff}
@@ -314,7 +336,6 @@
 .btn-save:disabled{opacity:.55;cursor:not-allowed;box-shadow:none;transform:none}
 .btn-save i,.btn-cancel i{font-size:.9rem}
 
-/* Breadcrumb */
 .est-breadcrumb{
   display:flex;align-items:center;gap:.35rem;
   font-size:.75rem;color:var(--gray-400);
@@ -326,7 +347,18 @@
 .est-breadcrumb span{color:var(--gray-300)}
 .est-title{font-size:1.35rem;font-weight:700;color:var(--gray-800);font-family:'DM Sans',sans-serif;margin-bottom:1rem}
 
-/* Responsive */
+/* btn agregar IP */
+.btn-ip-add{
+  width:40px;height:40px;flex-shrink:0;
+  border:none;border-radius:var(--radius);
+  background:var(--teal);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.05rem;cursor:pointer;transition:all .15s;
+  box-shadow:var(--shadow-sm);
+}
+.btn-ip-add:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.btn-ip-add:not(:disabled):hover{background:#0e7490;transform:translateY(-1px);box-shadow:var(--shadow-md)}
+
 @media(max-width:900px){
   .est-layout{grid-template-columns:1fr}
   .est-sidebar{border-right:none;border-bottom:1.5px solid var(--gray-200)}
@@ -363,23 +395,50 @@
               <input class="fld-input" type="text" placeholder="Ej: ESTACION-CONTA-01"
                      name="nuevoNombreEstacion" id="nuevoNombreEstacion" required>
             </div>
+          </div>
+
+          <!-- Bloque IPs múltiples -->
+          <div class="sidebar-block">
+            <div class="sidebar-section-title"><i class="ti ti-network"></i> Direcciones IP</div>
+            <div class="ip-selector">
+              <div style="flex:1">
+                <span class="fld-label">Agregar IP disponible</span>
+                <select id="nuevoIpSelect" style="display:none"><option value="">Seleccionar IP...</option></select>
+              </div>
+              <button type="button" id="btnAgregarNuevoIp" class="btn-ip-add" disabled title="Agregar IP">
+                <i class="ti ti-plus"></i>
+              </button>
+            </div>
+            <div id="nuevoIpChips" class="ip-chips">
+              <span class="ip-chips-empty">Sin IPs asignadas</span>
+            </div>
+            <input type="hidden" id="nuevoIpsIds" name="ipsIds">
+          </div>
+
+          <!-- Bloque adaptativo: cambia según tipo equipo principal -->
+          <div class="sidebar-block" id="nuevoBloqueDireccionFisica" style="display:none">
+            <div class="sidebar-section-title"><i class="ti ti-wifi"></i> Red</div>
             <div class="fld-group" style="margin-bottom:0">
-              <label class="fld-label">IP Asignada</label>
-              <select id="nuevoIdIp" name="nuevoIdIp" style="display:none">
-                <option value="">Sin IP asignada</option>
-              </select>
+              <label class="fld-label">Dirección Física <span style="font-size:.68rem;color:var(--gray-400)">(MAC)</span></label>
+              <input class="fld-input font-monospace text-uppercase" type="text"
+                     name="nuevaDireccionFisica" id="nuevaDireccionFisica"
+                     placeholder="XX:XX:XX:XX:XX:XX" maxlength="17"
+                     oninput="this.value=this.value.toUpperCase()">
             </div>
           </div>
 
-          <div class="sidebar-block">
-            <div class="sidebar-section-title"><i class="ti ti-device-desktop"></i> Acceso Remoto</div>
-            <div class="fld-group" style="margin-bottom:.75rem">
-              <label class="fld-label">Código Anydesk</label>
+          <div class="sidebar-block" id="nuevoBloque_acceso">
+            <div class="sidebar-section-title">
+              <i class="ti ti-device-desktop" id="nuevoIconoAcceso"></i>
+              <span id="nuevoTituloAcceso">Acceso Remoto</span>
+            </div>
+            <div class="fld-group" style="margin-bottom:.75rem" id="nuevoBloqueCodigo">
+              <label class="fld-label" id="nuevoLabelCodigo">Código Anydesk</label>
               <input class="fld-input font-monospace" type="text" placeholder="123 456 789"
                      name="nuevoCodigoAnydesk" id="nuevoCodigoAnydesk">
             </div>
             <div class="fld-group" style="margin-bottom:0">
-              <label class="fld-label">Contraseña Anydesk</label>
+              <label class="fld-label" id="nuevoLabelContrasena">Contraseña Anydesk</label>
               <div class="pass-wrap">
                 <input class="fld-input font-monospace" type="password"
                        name="nuevoContrasenaAnydesk" id="nuevoContrasenaAnydesk">
@@ -500,6 +559,76 @@
 <div id="toastContainerEstaciones" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
 <script src="modules/inventario/views/js/estacion_form.js"></script>
 <script>
+/* ── helpers compartidos ── */
+function initTogglePass() {
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btnTogglePass');
+        if (!btn) return;
+        const inp = document.getElementById(btn.getAttribute('data-target'));
+        if (!inp) return;
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        btn.querySelector('i').className = inp.type === 'password' ? 'ti ti-eye' : 'ti ti-eye-off';
+    });
+}
+
+function escHtml(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function sincronizarHiddens(pfx, principal, perifericos, software) {
+    document.getElementById(pfx+'EquipoPrincipalId').value = principal[0]?.idActivo ?? '';
+    document.getElementById(pfx+'PerifericosIds').value    = perifericos.map(e=>e.idActivo).join(',');
+    document.getElementById(pfx+'SoftwareIds').value       = software.map(e=>e.idActivo).join(',');
+}
+
+function idsExcluir(p, per, sw){ return [...p,...per,...sw].map(e=>e.idActivo).filter(Boolean); }
+
+async function cargarEquiposTipo(cs, tipo, idEst, excl) {
+    try {
+        const url = `${AJAX_EST}?listarEquipos=1&tipo=${tipo}&idEstacion=${idEst}&excluir=${excl.join(',')}`;
+        const data = await (await fetch(url)).json();
+        const ops = [{value:'',label:tipo==='software'?'Seleccionar software...':'Seleccionar...'}];
+        data.forEach(eq => ops.push({value:String(eq.idActivo), label:eq.label}));
+        cs.setOptions(ops);
+        cs._data = {};
+        data.forEach(eq => { cs._data[String(eq.idActivo)] = eq; });
+    } catch(e){ console.error('[cargarEquiposTipo]',e); }
+}
+
+/* ── Carga IPs múltiples disponibles ── */
+async function cargarIpsDisponibles(cs, ipsActualesIds = []) {
+    try {
+        const idEst = ipsActualesIds.length ? 0 : 0; // siempre pedir disponibles
+        const url   = `${AJAX_EST}?listarIps=1`;
+        const data  = await (await fetch(url)).json();
+        const ops   = [{value:'', label:'Seleccionar IP...'}];
+        data.forEach(ip => ops.push({value:String(ip.idIp), label:ip.ipAddress}));
+        cs.setOptions(ops);
+    } catch(e){ console.error('[cargarIpsDisponibles]',e); }
+}
+
+/* ── Render chips de IPs ── */
+function renderIpChips(containerId, hiddenId, ips, csIp, onCambio) {
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
+    cont.innerHTML = '';
+    if (!ips.length) {
+        cont.innerHTML = '<span class="ip-chips-empty">Sin IPs asignadas</span>';
+    } else {
+        ips.forEach((ip, idx) => {
+            const chip = document.createElement('span');
+            chip.className = 'ip-chip';
+            chip.innerHTML = `<i class="ti ti-network" style="font-size:.7rem"></i>${escHtml(ip.ipAddress)}<button type="button" class="ip-chip-rm" title="Quitar"><i class="ti ti-x"></i></button>`;
+            chip.querySelector('.ip-chip-rm').addEventListener('click', () => {
+                ips.splice(idx, 1);
+                renderIpChips(containerId, hiddenId, ips, csIp, onCambio);
+                if (onCambio) onCambio();
+            });
+            cont.appendChild(chip);
+        });
+    }
+    // Actualizar hidden
+    document.getElementById(hiddenId).value = ips.map(ip => ip.idIp).join(',');
+}
+
 function renderItemNuevo(eq, colorClass, onQuitar) {
     const d = document.createElement('div');
     d.className = 'eq-item';
@@ -543,12 +672,12 @@ function renderListaNuevo(listaId, contadorId, arr, colorClass, onAfterQuitar) {
 
 document.addEventListener('DOMContentLoaded', async function () {
     initTogglePass();
-    const csIp         = crearCustomSelect('nuevoIdIp');
     const csPrincipal  = crearCustomSelect('nuevoEquipoPrincipalSelect');
     const csPeriferico = crearCustomSelect('nuevoPerifericoSelect');
     const csSoftware   = crearCustomSelect('nuevoSoftwareSelect');
+    const csIp         = crearCustomSelect('nuevoIpSelect');
 
-    let principal=[], perifericos=[], software=[];
+    let principal=[], perifericos=[], software=[], ips=[];
 
     function sync(){ sincronizarHiddens('nuevo', principal, perifericos, software); }
 
@@ -558,26 +687,101 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('btnAgregarNuevoPrincipal').disabled = lock;
     }
 
+    let _tipoPrincipal = '';
+
+    function adaptarSidebarNuevo(tipo) {
+        _tipoPrincipal = (tipo || '').toUpperCase();
+        const esServidor   = _tipoPrincipal.includes('SERVIDOR');
+        const esImpresora  = _tipoPrincipal.includes('IMPRESORA');
+        const esLaptopCpu  = _tipoPrincipal.includes('LAPTOP') || _tipoPrincipal.includes('CPU');
+
+        document.getElementById('nuevoBloqueDireccionFisica').style.display = esLaptopCpu ? '' : 'none';
+
+        const tituloEl = document.getElementById('nuevoTituloAcceso');
+        const iconoEl  = document.getElementById('nuevoIconoAcceso');
+        if (esServidor) {
+            tituloEl.textContent = 'Acceso al Servidor';
+            iconoEl.className    = 'ti ti-server';
+        } else if (esImpresora) {
+            tituloEl.textContent = 'Acceso a Impresora';
+            iconoEl.className    = 'ti ti-printer';
+        } else {
+            tituloEl.textContent = 'Acceso Remoto';
+            iconoEl.className    = 'ti ti-device-desktop';
+        }
+
+        const bloqueCodigoEl = document.getElementById('nuevoBloqueCodigo');
+        const labelCodigoEl  = document.getElementById('nuevoLabelCodigo');
+        const inputCodigoEl  = document.getElementById('nuevoCodigoAnydesk');
+        if (esServidor) {
+            bloqueCodigoEl.style.display = 'none';
+            if (inputCodigoEl) { inputCodigoEl.value = ''; }
+        } else if (esImpresora) {
+            bloqueCodigoEl.style.display = '';
+            labelCodigoEl.textContent    = 'Usuario';
+            if (inputCodigoEl) inputCodigoEl.placeholder = 'Nombre de usuario';
+        } else {
+            bloqueCodigoEl.style.display = '';
+            labelCodigoEl.textContent    = 'Código Anydesk';
+            if (inputCodigoEl) inputCodigoEl.placeholder = '123 456 789';
+        }
+
+        const labelPassEl = document.getElementById('nuevoLabelContrasena');
+        labelPassEl.textContent = (esServidor || esImpresora) ? 'Contraseña' : 'Contraseña Anydesk';
+        _filtroPerifericoImpresora = esImpresora;
+    }
+
+    let _filtroPerifericoImpresora = false;
+
+    function syncIps() {
+        renderIpChips('nuevoIpChips', 'nuevoIpsIds', ips, csIp, recargarComboIp);
+    }
+
+    async function recargarComboIp() {
+        // Solo mostrar IPs que no están ya en la lista
+        const idsEnUso = ips.map(ip => ip.idIp);
+        try {
+            const data = await (await fetch(`${AJAX_EST}?listarIps=1`)).json();
+            const ops = [{value:'', label:'Seleccionar IP...'}];
+            data.forEach(ip => {
+                if (!idsEnUso.includes(ip.idIp))
+                    ops.push({value:String(ip.idIp), label:ip.ipAddress, _ip:ip});
+            });
+            csIp.setOptions(ops);
+            csIp._ipData = {};
+            data.forEach(ip => { csIp._ipData[String(ip.idIp)] = ip; });
+        } catch(e){ console.error('[recargarComboIp]',e); }
+        document.getElementById('btnAgregarNuevoIp').disabled = true;
+    }
+
     function renderAll() {
-        renderListaNuevo('nuevoEquipoPrincipalLista', null, principal, 'eq-principal', () => { sync(); lockPrincipal(false); recargarCombos(); });
+        renderListaNuevo('nuevoEquipoPrincipalLista', null, principal, 'eq-principal', () => {
+            sync(); lockPrincipal(false);
+            adaptarSidebarNuevo('');
+            recargarCombos();
+        });
         renderListaNuevo('nuevoPerifericosLista', 'nuevoPerifericosContador', perifericos, 'eq-periferico', () => { sync(); recargarCombos(); });
         renderListaNuevo('nuevoSoftwareLista', 'nuevoSoftwareContador', software, 'eq-software', () => { sync(); recargarCombos(); });
+        syncIps();
         sync();
         lockPrincipal(principal.length > 0);
     }
 
     async function recargarCombos() {
         const excl = idsExcluir(principal, perifericos, software);
+        const tipoPerif = _filtroPerifericoImpresora ? 'ups_estabilizador' : 'periferico';
         await Promise.all([
             cargarEquiposTipo(csPrincipal,  'principal',  0, excl),
-            cargarEquiposTipo(csPeriferico, 'periferico', 0, excl),
+            cargarEquiposTipo(csPeriferico, tipoPerif,    0, excl),
             cargarEquiposTipo(csSoftware,   'software',   0, excl),
         ]);
     }
 
-    await Promise.all([cargarIps(csIp), recargarCombos()]);
+    // Carga inicial
+    await Promise.all([recargarCombos(), recargarComboIp()]);
     renderAll();
 
+    // Cambios en selects de equipos
     document.getElementById('nuevoEquipoPrincipalSelect')?.addEventListener('change', function() {
         document.getElementById('btnAgregarNuevoPrincipal').disabled = !this.value || principal.length > 0;
     });
@@ -588,31 +792,51 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('btnAgregarNuevoSoftware').disabled = !this.value;
     });
 
+    // Cambio en select de IP
+    document.getElementById('nuevoIpSelect')?.addEventListener('change', function() {
+        document.getElementById('btnAgregarNuevoIp').disabled = !this.value;
+    });
+
+    // Agregar IP
+    document.getElementById('btnAgregarNuevoIp')?.addEventListener('click', () => {
+        const val = csIp.getValue(); if (!val) return;
+        const ipData = csIp._ipData?.[val];
+        if (!ipData) return;
+        if (ips.some(ip => String(ip.idIp) === val)) { mostrarToast('warning','Esta IP ya está en la lista.'); return; }
+        ips.push({idIp: parseInt(val), ipAddress: ipData.ipAddress});
+        csIp.reset();
+        document.getElementById('btnAgregarNuevoIp').disabled = true;
+        syncIps();
+        recargarComboIp();
+    });
+
+    // Agregar equipos
     document.getElementById('btnAgregarNuevoPrincipal')?.addEventListener('click', () => {
         const val = csPrincipal.getValue(); if (!val || principal.length) return;
         const eq = csPrincipal._data?.[val]; if (!eq) return;
-        principal = [{idEquipo:val,...eq}]; csPrincipal.reset();
+        principal = [{idActivo:val,...eq}]; csPrincipal.reset();
+        adaptarSidebarNuevo(eq.nombreActivo || eq.label || '');
         renderAll(); recargarCombos();
     });
     document.getElementById('btnAgregarNuevoPeriferico')?.addEventListener('click', () => {
         const val = csPeriferico.getValue(); if (!val) return;
-        if (perifericos.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (perifericos.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq = csPeriferico._data?.[val]; if (!eq) return;
-        perifericos.push({idEquipo:val,...eq}); csPeriferico.reset();
+        perifericos.push({idActivo:val,...eq}); csPeriferico.reset();
         document.getElementById('btnAgregarNuevoPeriferico').disabled = true;
         renderAll(); recargarCombos();
     });
     document.getElementById('btnAgregarNuevoSoftware')?.addEventListener('click', () => {
         const val = csSoftware.getValue(); if (!val) return;
-        if (software.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (software.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq = csSoftware._data?.[val]; if (!eq) return;
-        software.push({idEquipo:val,...eq}); csSoftware.reset();
+        software.push({idActivo:val,...eq}); csSoftware.reset();
         document.getElementById('btnAgregarNuevoSoftware').disabled = true;
         renderAll(); recargarCombos();
     });
 
     document.getElementById('formNuevaEstacion')?.addEventListener('submit', async function(e) {
-        e.preventDefault(); sync();
+        e.preventDefault(); sync(); syncIps();
         const btn = document.getElementById('btnGuardar'); btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm" style="width:14px;height:14px;margin-right:.4rem"></span>Guardando...';
         try {

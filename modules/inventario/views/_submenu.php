@@ -8,8 +8,8 @@ $currentAction = $_GET['action'] ?? 'index';
 
 $menuItems = [
     ['action' => 'index',        'icon' => 'ti-layout-dashboard', 'label' => 'Dashboard',       'group' => ['index']],
-    ['action' => 'activos',      'icon' => 'ti-settings',         'label' => 'Configuraciones', 'group' => ['activos','tipoCaracteristicas','caracteristicas','ubicaciones','ips']],
-    ['action' => 'equipos',      'icon' => 'ti-devices',          'label' => 'Equipos',         'group' => ['equipos']],
+    ['action' => 'tipoActivos',  'icon' => 'ti-settings',         'label' => 'Configuraciones', 'group' => ['tipoActivos','tipoCaracteristicas','caracteristicas','ubicaciones','ips']],
+    ['action' => 'activos',      'icon' => 'ti-device-desktop',   'label' => 'Activos',         'group' => ['activos']],
     ['action' => 'estaciones',   'icon' => 'ti-desktop',          'label' => 'Estaciones',      'group' => ['estaciones','agregarEstacion','editarEstacion']],
     ['action' => 'asignaciones', 'icon' => 'ti-user-check',       'label' => 'Asignaciones',    'group' => ['asignaciones']],
 ];

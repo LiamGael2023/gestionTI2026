@@ -40,6 +40,7 @@
 </style>
 
   <div class="page">
+    <?php include __DIR__ . '/_submenu.php'; ?>
     <div class="page-wrapper">
       <div class="container-xl">
         <div class="page-header d-print-none">
@@ -62,7 +63,7 @@
         <div class="card shadow-sm mb-4">
           <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
-              <li class="nav-item"><a class="nav-link" href="?module=inventario&action=activos"><i class="ti ti-devices me-1"></i>Activos</a></li>
+              <li class="nav-item"><a class="nav-link" href="?module=inventario&action=tipoActivos"><i class="ti ti-devices me-1"></i>Tipo Activos</a></li>
               <li class="nav-item"><a class="nav-link" href="?module=inventario&action=tipoCaracteristicas"><i class="ti ti-category me-1"></i>Tipo Características</a></li>
               <li class="nav-item"><a class="nav-link" href="?module=inventario&action=caracteristicas"><i class="ti ti-adjustments me-1"></i>Características</a></li>
               <li class="nav-item"><a class="nav-link" href="?module=inventario&action=ubicaciones"><i class="ti ti-map-pin me-1"></i>Ubicaciones</a></li>

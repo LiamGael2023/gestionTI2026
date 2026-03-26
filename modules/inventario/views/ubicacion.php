@@ -5,153 +5,198 @@
   }
   ?>
 
-<style>
-/* =============================================================
+  <style>
+    /* =============================================================
    CUSTOM SELECT  (.cs-*)
 ============================================================= */
-.cs-wrap {
-    position: relative;
-    width: 100%;
-    font-size: 0.875rem;
-}
-.cs-display {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    padding: .375rem .75rem;
-    min-height: 36px;
-    background: #fff;
-    border: 1px solid var(--tblr-border-color, #d0d5dd);
-    border-radius: var(--tblr-border-radius, .375rem);
-    cursor: pointer;
-    outline: none;
-    transition: border-color .15s, box-shadow .15s;
-}
-.cs-display:hover { border-color: var(--tblr-primary, #0054a6); }
-.cs-wrap.cs-open .cs-display,
-.cs-display:focus {
-    border-color: var(--tblr-primary, #0054a6);
-    box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb,0,84,166),.15);
-}
-.cs-text {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.4;
-}
-.cs-text.placeholder-text { color: #9ca3af; }
-.cs-arrow {
-    flex-shrink: 0;
-    color: #6c757d;
-    transition: transform .2s;
-}
-.cs-wrap.cs-open .cs-arrow { transform: rotate(180deg); }
-.cs-panel {
-    display: none;
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: 1060;
-    background: #fff;
-    border: 1px solid var(--tblr-border-color, #d0d5dd);
-    border-radius: var(--tblr-border-radius, .375rem);
-    box-shadow: 0 4px 20px rgba(0,0,0,.12);
-    overflow: hidden;
-}
-.cs-wrap.cs-open .cs-panel { display: block; }
-.cs-search-row {
-    display: flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .4rem .65rem;
-    border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-}
-.cs-search {
-    border: none;
-    outline: none;
-    background: transparent;
-    font-size: .8rem;
-    width: 100%;
-    padding: 0;
-    color: #374151;
-}
-.cs-list {
-    list-style: none;
-    margin: 0;
-    padding: .2rem 0;
-    max-height: 190px;
-    overflow-y: auto;
-}
-.cs-list li {
-    padding: .38rem .75rem;
-    cursor: pointer;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: background .1s;
-}
-.cs-list li:hover,
-.cs-list li.cs-selected {
-    background: var(--tblr-primary-lt, #e7f0ff);
-    color: var(--tblr-primary, #0054a6);
-}
-.cs-list li.cs-selected { font-weight: 600; }
-.cs-list li.cs-placeholder-item { color: #9ca3af; font-style: italic; }
-.cs-list li.cs-empty { color: #9ca3af; font-style: italic; cursor: default; }
-.cs-list li.cs-empty:hover { background: none; }
+    .cs-wrap {
+      position: relative;
+      width: 100%;
+      font-size: 0.875rem;
+    }
 
-/* =============================================================
+    .cs-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      padding: .375rem .75rem;
+      min-height: 36px;
+      background: #fff;
+      border: 1px solid var(--tblr-border-color, #d0d5dd);
+      border-radius: var(--tblr-border-radius, .375rem);
+      cursor: pointer;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    .cs-display:hover {
+      border-color: var(--tblr-primary, #0054a6);
+    }
+
+    .cs-wrap.cs-open .cs-display,
+    .cs-display:focus {
+      border-color: var(--tblr-primary, #0054a6);
+      box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb, 0, 84, 166), .15);
+    }
+
+    .cs-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+
+    .cs-text.placeholder-text {
+      color: #9ca3af;
+    }
+
+    .cs-arrow {
+      flex-shrink: 0;
+      color: #6c757d;
+      transition: transform .2s;
+    }
+
+    .cs-wrap.cs-open .cs-arrow {
+      transform: rotate(180deg);
+    }
+
+    .cs-panel {
+      display: none;
+      position: absolute;
+      left: 0;
+      right: 0;
+      z-index: 1060;
+      background: #fff;
+      border: 1px solid var(--tblr-border-color, #d0d5dd);
+      border-radius: var(--tblr-border-radius, .375rem);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .12);
+      overflow: hidden;
+    }
+
+    .cs-wrap.cs-open .cs-panel {
+      display: block;
+    }
+
+    .cs-search-row {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .4rem .65rem;
+      border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
+      background: var(--tblr-bg-surface-secondary, #f8fafc);
+    }
+
+    .cs-search {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: .8rem;
+      width: 100%;
+      padding: 0;
+      color: #374151;
+    }
+
+    .cs-list {
+      list-style: none;
+      margin: 0;
+      padding: .2rem 0;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+
+    .cs-list li {
+      padding: .38rem .75rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background .1s;
+    }
+
+    .cs-list li:hover,
+    .cs-list li.cs-selected {
+      background: var(--tblr-primary-lt, #e7f0ff);
+      color: var(--tblr-primary, #0054a6);
+    }
+
+    .cs-list li.cs-selected {
+      font-weight: 600;
+    }
+
+    .cs-list li.cs-placeholder-item {
+      color: #9ca3af;
+      font-style: italic;
+    }
+
+    .cs-list li.cs-empty {
+      color: #9ca3af;
+      font-style: italic;
+      cursor: default;
+    }
+
+    .cs-list li.cs-empty:hover {
+      background: none;
+    }
+
+    /* =============================================================
    MODAL LAYOUT
 ============================================================= */
-.modal-body-scroll {
-    overflow-y: auto;
-    max-height: calc(100vh - 240px);
-}
-.seccion-card {
-    border: 1px solid var(--tblr-border-color, #e6ebf1);
-    border-left: 4px solid var(--tblr-primary, #0054a6);
-    border-radius: .5rem;
-    background: #fff;
-}
-.seccion-header {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .65rem 1.1rem .45rem;
-    border-bottom: 1px solid var(--tblr-border-color-light, #f0f3f8);
-}
-.seccion-titulo {
-    font-size: .68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-}
-.seccion-body { padding: .9rem 1.1rem 1rem; }
+    .modal-body-scroll {
+      overflow-y: auto;
+      max-height: calc(100vh - 240px);
+    }
 
-.auditoria-box {
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border: 1px dashed var(--tblr-border-color, #d0d5dd);
-    border-radius: .5rem;
-    padding: .8rem 1rem;
-}
+    .seccion-card {
+      border: 1px solid var(--tblr-border-color, #e6ebf1);
+      border-left: 4px solid var(--tblr-primary, #0054a6);
+      border-radius: .5rem;
+      background: #fff;
+    }
 
-/* Card header de tablas con ícono */
-.card-title-icon {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-}
+    .seccion-header {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .65rem 1.1rem .45rem;
+      border-bottom: 1px solid var(--tblr-border-color-light, #f0f3f8);
+    }
 
-@media (max-width: 991px) {
-    .modal-body-scroll { max-height: calc(100vh - 180px); }
-}
-</style>
+    .seccion-titulo {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .seccion-body {
+      padding: .9rem 1.1rem 1rem;
+    }
+
+    .auditoria-box {
+      background: var(--tblr-bg-surface-secondary, #f8fafc);
+      border: 1px dashed var(--tblr-border-color, #d0d5dd);
+      border-radius: .5rem;
+      padding: .8rem 1rem;
+    }
+
+    /* Card header de tablas con ícono */
+    .card-title-icon {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+
+    @media (max-width: 991px) {
+      .modal-body-scroll {
+        max-height: calc(100vh - 180px);
+      }
+    }
+  </style>
 
   <div class="page">
-<?php include __DIR__ . '/_submenu.php'; ?>
+    <?php include __DIR__ . '/_submenu.php'; ?>
 
 
     <div class="page-wrapper">
@@ -180,8 +225,8 @@
           <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
               <li class="nav-item">
-                <a class="nav-link" href="?module=inventario&action=activos">
-                  <i class="ti ti-devices me-1"></i>Activos
+                <a class="nav-link" href="?module=inventario&action=tipoActivos">
+                  <i class="ti ti-devices me-1"></i>Tipo Activos
                 </a>
               </li>
               <li class="nav-item">
@@ -229,38 +274,47 @@
                 <tbody>
                   <?php
                   $ubicaciones = UbicacionController::ctrMostrarUbicacion(null, null);
+
                   if ($ubicaciones && $ubicaciones !== "error") {
-                      foreach ($ubicaciones as $u) {
-                          $fecha = isset($u["fechaCreacion"])
-                              ? ($u["fechaCreacion"] instanceof DateTime
-                                  ? $u["fechaCreacion"]->format("d/m/Y")
-                                  : date("d/m/Y", strtotime($u["fechaCreacion"])))
-                              : "Sin fecha";
-                          echo '
-                          <tr>
-                            <td data-label="Descripción">
-                              <div class="d-flex align-items-center gap-2">
-                                <i class="ti ti-map-pin text-primary fs-3"></i>
-                                <span class="fw-medium">' . htmlspecialchars($u["descripcion"] ?? '') . '</span>
-                              </div>
-                            </td>
-                            <td data-label="Depende de" class="text-muted small">
-                              ' . (!empty($u["descripcionPadre"])
-                                  ? '<span class="badge badge-outline text-muted">' . htmlspecialchars($u["descripcionPadre"]) . '</span>'
-                                  : '—') . '
-                            </td>
-                            <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
-                            <td data-label="Usuario" class="d-none d-sm-table-cell">
-                              <span class="badge badge-outline text-muted fw-normal">ID: ' . $u["idUsuarioRegistro"] . '</span>
-                            </td>
-                            <td class="text-end">
-                              <button class="btn btn-sm btn-icon btn-outline-primary btnEditarUbicacion"
-                                      data-id="' . $u["idUbicacion"] . '" title="Editar">
-                                <i class="ti ti-edit"></i>
-                              </button>
-                            </td>
-                          </tr>';
+                    foreach ($ubicaciones as $u) {
+
+                      // 1. Manejo de fecha (Simplificado)
+                      $fecha = "Sin fecha";
+                      if (isset($u["fechaCreacion"])) {
+                        $fecha = ($u["fechaCreacion"] instanceof DateTime)
+                          ? $u["fechaCreacion"]->format("d/m/Y")
+                          : date("d/m/Y", strtotime($u["fechaCreacion"]));
                       }
+
+                      // 2. Lógica para la ruta del Padre
+                      // Usamos 'rutaPropia' que es el nombre que definiste en el SQL de la CTE
+                      $rutaMostrar = !empty($u["rutaPropia"]) ? $u["rutaPropia"] : "—";
+
+                      echo '
+        <tr>
+            <td data-label="Descripción">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="ti ti-map-pin text-primary fs-3"></i>
+                    <span class="fw-medium">' . htmlspecialchars($u["descripcion"] ?? '') . '</span>
+                </div>
+            </td>
+            <td data-label="Depende de" class="text-muted small">
+                ' . ($rutaMostrar !== "—"
+                        ? '<span class="badge badge-outline text-muted" style="white-space: normal; text-align: left; max-width: 250px;">' . htmlspecialchars($rutaMostrar) . '</span>'
+                        : '<span class="text-secondary opacity-50">Principal (Raíz)</span>') . '
+            </td>
+            <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
+            <td data-label="Usuario" class="d-none d-sm-table-cell">
+                <span class="badge badge-outline text-muted fw-normal">ID: ' . ($u["idUsuarioRegistro"] ?? '0') . '</span>
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-icon btn-outline-primary btnEditarUbicacion"
+                        data-id="' . $u["idUbicacion"] . '" title="Editar">
+                    <i class="ti ti-edit"></i>
+                </button>
+            </td>
+        </tr>';
+                    }
                   }
                   ?>
                 </tbody>
@@ -292,37 +346,43 @@
                   <?php
                   $ambientes = AmbienteController::ctrMostrarAmbiente(null, null);
                   if ($ambientes && $ambientes !== "error") {
-                      foreach ($ambientes as $a) {
-                          $fecha = isset($a["fechaCreacion"])
-                              ? ($a["fechaCreacion"] instanceof DateTime
-                                  ? $a["fechaCreacion"]->format("d/m/Y")
-                                  : date("d/m/Y", strtotime($a["fechaCreacion"])))
-                              : "Sin fecha";
-                          echo '
-                          <tr>
-                            <td data-label="Descripción">
-                              <div class="d-flex align-items-center gap-2">
-                                <i class="ti ti-building text-primary fs-3"></i>
-                                <span class="fw-medium">' . htmlspecialchars($a["descripcion"] ?? '') . '</span>
-                              </div>
-                            </td>
-                            <td data-label="Ubicación">
-                              <span class="badge bg-primary-lt text-primary">
-                                <i class="ti ti-map-pin me-1"></i>' . htmlspecialchars($a["nombreUbicacion"] ?? '') . '
-                              </span>
-                            </td>
-                            <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
-                            <td data-label="Usuario" class="d-none d-sm-table-cell">
-                              <span class="badge badge-outline text-muted fw-normal">ID: ' . $a["idUsuarioRegistro"] . '</span>
-                            </td>
-                            <td class="text-end">
-                              <button class="btn btn-sm btn-icon btn-outline-primary btnEditarAmbiente"
-                                      data-id="' . $a["idAmbiente"] . '" title="Editar">
-                                <i class="ti ti-edit"></i>
-                              </button>
-                            </td>
-                          </tr>';
-                      }
+                    foreach ($ambientes as $a) {
+                      $fecha = isset($a["fechaCreacion"])
+                        ? ($a["fechaCreacion"] instanceof DateTime
+                          ? $a["fechaCreacion"]->format("d/m/Y")
+                          : date("d/m/Y", strtotime($a["fechaCreacion"])))
+                        : "Sin fecha";
+                      echo '
+  <tr>
+    <td data-label="Descripción">
+      <div class="d-flex align-items-center gap-2">
+        <i class="ti ti-building text-primary fs-3"></i>
+        <span class="fw-medium">' . htmlspecialchars($a["descripcion"] ?? '') . '</span>
+      </div>
+    </td>
+
+    <td data-label="Ubicación">
+      <span class="badge bg-primary-lt text-primary" 
+            style="white-space: normal; text-align: left; display: inline-block; max-width: 280px; padding: 0.5em;">
+        <i class="ti ti-map-pin me-1"></i>'
+                        . htmlspecialchars(!empty($a["nombreUbicacion"]) ? $a["nombreUbicacion"] : 'Sin ubicación') .
+                        '</span>
+    </td>
+
+    <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
+    
+    <td data-label="Usuario" class="d-none d-sm-table-cell">
+      <span class="badge badge-outline text-muted fw-normal">ID: ' . ($a["idUsuarioRegistro"] ?? '—') . '</span>
+    </td>
+
+    <td class="text-end">
+      <button class="btn btn-sm btn-icon btn-outline-primary btnEditarAmbiente"
+              data-id="' . $a["idAmbiente"] . '" title="Editar">
+        <i class="ti ti-edit"></i>
+      </button>
+    </td>
+  </tr>';
+                    }
                   }
                   ?>
                 </tbody>
@@ -344,10 +404,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-map-pin fs-2"></i>
           </div>
           <div>
@@ -375,7 +435,7 @@
                       Descripción <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control" placeholder="Ej: GERENCIA GENERAL"
-                           name="nuevaDescripcionUbicacion" id="nuevaDescripcionUbicacion" required>
+                      name="nuevaDescripcionUbicacion" id="nuevaDescripcionUbicacion" required>
                   </div>
 
                   <div class="col-12">
@@ -396,7 +456,7 @@
         </div>
 
         <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+          style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
             <i class="ti ti-x me-1"></i>Cancelar
           </button>
@@ -417,10 +477,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-edit fs-2"></i>
           </div>
           <div>
@@ -448,7 +508,7 @@
                       Descripción <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control"
-                           name="editarDescripcionUbicacion" id="editarDescripcionUbicacion" required>
+                      name="editarDescripcionUbicacion" id="editarDescripcionUbicacion" required>
                   </div>
 
                   <div class="col-12">
@@ -485,7 +545,7 @@
         </div>
 
         <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+          style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <input type="hidden" id="editarIdUbicacion" name="editarIdUbicacion">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
             <i class="ti ti-x me-1"></i>Cancelar
@@ -507,10 +567,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-building fs-2"></i>
           </div>
           <div>
@@ -538,7 +598,7 @@
                       Descripción <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control" placeholder="Ej: SALA DE SERVIDORES"
-                           name="nuevaDescripcionAmbiente" id="nuevaDescripcionAmbiente" required>
+                      name="nuevaDescripcionAmbiente" id="nuevaDescripcionAmbiente" required>
                   </div>
 
                   <div class="col-12">
@@ -546,7 +606,7 @@
                       Ubicación <span class="text-danger">*</span>
                     </label>
                     <select id="nuevoIdUbicacionAmbiente" name="nuevoIdUbicacionAmbiente"
-                            style="display:none" required>
+                      style="display:none" required>
                       <option value="">Seleccionar ubicación...</option>
                     </select>
                   </div>
@@ -559,7 +619,7 @@
         </div>
 
         <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+          style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
             <i class="ti ti-x me-1"></i>Cancelar
           </button>
@@ -580,10 +640,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-edit fs-2"></i>
           </div>
           <div>
@@ -611,7 +671,7 @@
                       Descripción <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control"
-                           name="editarDescripcionAmbiente" id="editarDescripcionAmbiente" required>
+                      name="editarDescripcionAmbiente" id="editarDescripcionAmbiente" required>
                   </div>
 
                   <div class="col-12">
@@ -619,7 +679,7 @@
                       Ubicación <span class="text-danger">*</span>
                     </label>
                     <select id="editarIdUbicacionAmbiente" name="editarIdUbicacionAmbiente"
-                            style="display:none" required>
+                      style="display:none" required>
                       <option value="">Seleccionar ubicación...</option>
                     </select>
                   </div>
@@ -648,7 +708,7 @@
         </div>
 
         <div class="modal-footer px-4 pb-4 pt-2"
-             style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
+          style="border-top:1px solid var(--tblr-border-color);flex-shrink:0">
           <input type="hidden" id="editarIdAmbiente" name="editarIdAmbiente">
           <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
             <i class="ti ti-x me-1"></i>Cancelar

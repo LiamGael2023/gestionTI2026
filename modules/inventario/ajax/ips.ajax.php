@@ -14,6 +14,15 @@ function fmtFecha($fecha, $formato = "d/m/Y") {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   LISTAR UBICACIONES para combos
+   GET ?listarUbicaciones=1
+═══════════════════════════════════════════════════════════ */
+if (isset($_GET["listarUbicaciones"])) {
+    require_once __DIR__ . "/../models/IpModel.php";
+    responder(IpModel::mdlListarUbicaciones());
+}
+
+/* ═══════════════════════════════════════════════════════════
    DATATABLES — SERVER-SIDE PROCESSING
    GET ?serverSide=1
    DataTables envía: draw, start, length, search[value],

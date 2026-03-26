@@ -43,9 +43,10 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
               <thead>
                 <tr>
                   <th>Estación</th>
+                  <th>Equipo Principal</th>
                   <th>IP Asignada</th>
-                  <th>Código Anydesk</th>
-                  <th>Contraseña Anydesk</th>
+                  <th>Código Anydesk /<br>   Usuario</th>
+                  <th>Contraseña Anydesk /<br>   Contraseña</th>
                   <th>Equipos</th>
                   <th>Fecha Creación</th>
                   <th class="d-none d-sm-table-cell">Registrado Por</th>
@@ -63,9 +64,9 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
                             : date("d/m/Y", strtotime($e["fechaCreacion"])))
                         : "Sin fecha";
 
-                    $ipBadge = !empty($e["ipAddress"])
+                    $ipBadge = !empty($e["ipsTexto"])
                         ? '<span class="badge bg-primary-lt text-primary font-monospace">'
-                          . htmlspecialchars($e["ipAddress"]) . '</span>'
+                          . htmlspecialchars($e["ipsTexto"]) . '</span>'
                         : '<span class="text-muted small">—</span>';
 
                     $anydesk = !empty($e["codigoAnydesk"])
@@ -91,6 +92,21 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
                           <i class="ti ti-desktop text-primary fs-3"></i>
                           <span class="fw-medium">' . $nombre . '</span>
                         </div>
+                      </td>
+                      <td>
+                        ' . (!empty($e["codigoPatrimonialPrincipal"])
+      ? '<div class="d-flex flex-column gap-1">'
+        . '<div class="d-flex align-items-center gap-1">'
+        . '<i class="ti ti-cpu text-primary" style="font-size:.9rem"></i>'
+        . '<span class="badge bg-primary-lt text-primary font-monospace small">'
+        . htmlspecialchars($e["codigoPatrimonialPrincipal"]) . '</span>'
+        . '</div>'
+        . (!empty($e["nombreTipoPrincipal"])
+            ? '<span class="text-muted small">'
+              . htmlspecialchars($e["nombreTipoPrincipal"]) . '</span>'
+            : '')
+        . '</div>'
+      : '<span class="text-muted small">—</span>') . '
                       </td>
                       <td>' . $ipBadge . '</td>
                       <td>' . $anydesk . '</td>
@@ -238,7 +254,7 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
             <select id="terminalIdEquipoSelect" style="display:none">
               <option value="">Seleccionar equipo...</option>
             </select>
-            <input type="hidden" name="terminalIdEquipo" id="terminalIdEquipo">
+            <input type="hidden" name="terminalIdActivo" id="terminalIdActivo">
             <div id="terminalEquipoInfo" style="display:none" class="mt-2 border rounded p-2 small">
               <div class="row g-1">
                 <div class="col-6">
@@ -545,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btnNuevaTerminal')?.addEventListener('click', async function() {
         document.getElementById('formTerminal').reset();
-        document.getElementById('terminalIdEquipo').value = '';
+        document.getElementById('terminalIdActivo').value = '';
         document.getElementById('terminalEquipoInfo').style.display = 'none';
         document.getElementById('btnGuardarTerminal').disabled = true;
         csTerminal = crearCSTerminal('terminalIdEquipoSelect');
@@ -553,7 +569,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const res  = await fetch(AJAX_EST + '?equiposDisponibles=1');
             const data = await res.json();
             const ops  = [{ value:'', label:'Seleccionar equipo...' }];
-            data.forEach(eq => { ops.push({ value:String(eq.idEquipo), label:eq.label }); csTerminal._data[String(eq.idEquipo)] = eq; });
+            data.forEach(eq => { ops.push({ value:String(eq.idActivo), label:eq.label }); csTerminal._data[String(eq.idActivo)] = eq; });
             csTerminal.setOptions(ops);
         } catch(e) { console.error(e); }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTerminalEquipo')).show();
@@ -561,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('terminalIdEquipoSelect')?.addEventListener('change', function() {
         const val = this.value;
-        document.getElementById('terminalIdEquipo').value = val;
+        document.getElementById('terminalIdActivo').value = val;
         if (val && csTerminal?._data[val]) {
             const eq = csTerminal._data[val];
             document.getElementById('terminalEquipoCp').textContent    = eq.codigoPatrimonial || '—';

@@ -22,8 +22,8 @@ function queryRows($conn, $sql, $params = []) {
 }
 
 // ── KPIs principales ──────────────────────────────────
-$totalActivos   = queryVal($conn, "SELECT COUNT(*) FROM inventario.activos");
-$totalEquipos   = queryVal($conn, "SELECT COUNT(*) FROM inventario.equipo");
+$totalTipoActivos = queryVal($conn, "SELECT COUNT(*) FROM inventario.tipoActivo");
+$totalActivos     = queryVal($conn, "SELECT COUNT(*) FROM inventario.activo");
 $totalEstaciones= queryVal($conn, "SELECT COUNT(*) FROM inventario.estacion");
 $totalAsignados = queryVal($conn, "SELECT COUNT(*) FROM inventario.asignacion WHERE fechaLiberacion IS NULL");
 $totalIPs       = queryVal($conn, "SELECT COUNT(*) FROM inventario.ip");
@@ -33,9 +33,9 @@ $estSinAsignar  = $totalEstaciones - $totalAsignados;
 
 // ── Equipos por tipo de activo (top 6) ────────────────
 $equiposPorTipo = queryRows($conn, "
-    SELECT TOP 6 a.descripcion AS tipo, COUNT(e.idEquipo) AS total
-    FROM inventario.equipo e
-    INNER JOIN inventario.activos a ON e.idActivo = a.idActivos
+    SELECT TOP 6 a.descripcion AS tipo, COUNT(e.idActivo) AS total
+    FROM inventario.activo e
+    INNER JOIN inventario.tipoActivo a ON e.idTipoActivo = a.idTipoActivo
     GROUP BY a.descripcion
     ORDER BY total DESC
 ");
@@ -76,7 +76,7 @@ $jerarquia = queryRows($conn, "
         u.descripcion   AS ubicacion,
         COUNT(DISTINCT amb.idAmbiente)  AS totalAmbientes,
         COUNT(DISTINCT est.idEstacion)  AS totalEstaciones,
-        COUNT(DISTINCT ee.idEquipo)     AS totalEquipos
+        COUNT(DISTINCT ee.idActivo)     AS totalEquipos
     FROM inventario.ubicacion u
     LEFT JOIN inventario.ambiente    amb ON u.idUbicacion  = amb.idUbicacion
     LEFT JOIN inventario.asignacion  a   ON amb.idAmbiente = a.idAmbiente
@@ -243,21 +243,21 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
 <div class="row g-4 mb-4">
   <!-- Configuraciones -->
   <div class="col-12 col-md-6 col-lg-3">
-    <a href="?module=inventario&action=activos" style="text-decoration:none">
+    <a href="?module=inventario&action=tipoActivos" style="text-decoration:none">
       <div class="card shadow-sm card-modern h-100" style="border-radius:16px;transition:all .2s ease;border:1px solid var(--tblr-border-color)">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div style="width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center" class="bg-primary-lt text-primary">
               <i class="ti ti-settings" style="font-size:24px"></i>
             </div>
-            <div class="h2 mb-0 fw-bold text-dark"><?= $totalActivos ?></div>
+            <div class="h2 mb-0 fw-bold text-dark"><?= $totalTipoActivos ?></div>
           </div>
           <div class="fw-semibold text-dark">Configuraciones</div>
-          <div class="text-muted small mb-3">Activos, tipos, características, ubicaciones e IPs del sistema.</div>
+          <div class="text-muted small mb-3">Tipo Activos, tipos, características, ubicaciones e IPs del sistema.</div>
           <hr class="my-2">
           <div class="d-flex justify-content-between align-items-center">
             <div class="d-flex flex-wrap gap-1">
-              <span class="badge bg-primary-lt text-primary" style="font-size:.65rem">Activos</span>
+              <span class="badge bg-primary-lt text-primary" style="font-size:.65rem">Tipo Activos</span>
               <span class="badge bg-azure-lt text-azure" style="font-size:.65rem">IPs</span>
               <span class="badge bg-teal-lt text-teal" style="font-size:.65rem">Ubicaciones</span>
             </div>
@@ -270,20 +270,20 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
 
   <!-- Equipos -->
   <div class="col-12 col-md-6 col-lg-3">
-    <a href="?module=inventario&action=equipos" style="text-decoration:none">
+    <a href="?module=inventario&action=activos" style="text-decoration:none">
       <div class="card shadow-sm card-modern h-100" style="border-radius:16px;transition:all .2s ease;border:1px solid var(--tblr-border-color)">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div style="width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center" class="bg-azure-lt text-azure">
               <i class="ti ti-devices" style="font-size:24px"></i>
             </div>
-            <div class="h2 mb-0 fw-bold text-dark"><?= $totalEquipos ?></div>
+            <div class="h2 mb-0 fw-bold text-dark"><?= $totalActivos ?></div>
           </div>
-          <div class="fw-semibold text-dark">Gestión de Equipos</div>
-          <div class="text-muted small mb-3">Administración y control de los equipos registrados en inventario.</div>
+          <div class="fw-semibold text-dark">Gestión de Activos</div>
+          <div class="text-muted small mb-3">Administración y control de los activos registrados en inventario.</div>
           <hr class="my-2">
           <div class="d-flex justify-content-between align-items-center">
-            <span class="text-uppercase text-muted small fw-semibold">Equipos Totales</span>
+            <span class="text-uppercase text-muted small fw-semibold">Activos Totales</span>
             <i class="ti ti-arrow-right text-muted" style="font-size:20px"></i>
           </div>
         </div>
@@ -354,8 +354,8 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
   <div class="col-6 col-md-4 col-lg-2 dash-animate">
     <div class="dash-kpi">
       <div>
-        <div class="dash-kpi-val"><?= $totalActivos ?></div>
-        <div class="dash-kpi-label">Activos</div>
+        <div class="dash-kpi-val"><?= $totalTipoActivos ?></div>
+        <div class="dash-kpi-label">Tipo Activos</div>
         <div class="dash-kpi-sub">Tipos registrados</div>
       </div>
       <div class="dash-kpi-icon bg-primary-lt text-primary ms-auto">
@@ -367,8 +367,8 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
   <div class="col-6 col-md-4 col-lg-2 dash-animate">
     <div class="dash-kpi">
       <div>
-        <div class="dash-kpi-val"><?= $totalEquipos ?></div>
-        <div class="dash-kpi-label">Equipos</div>
+        <div class="dash-kpi-val"><?= $totalActivos ?></div>
+        <div class="dash-kpi-label">Activos</div>
         <div class="dash-kpi-sub">En inventario</div>
       </div>
       <div class="dash-kpi-icon bg-azure-lt text-azure ms-auto">
@@ -447,10 +447,10 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
     <div class="dash-card h-100">
       <div class="dash-card-header">
         <i class="ti ti-chart-donut text-primary" style="font-size:1rem"></i>
-        <span class="dash-card-header-title">Equipos por Tipo</span>
+        <span class="dash-card-header-title">Activos por Tipo de Activo</span>
       </div>
       <div class="dash-card-body d-flex align-items-center justify-content-center" style="min-height:260px">
-        <canvas id="chartEquiposTipo" height="260"></canvas>
+        <canvas id="chartActivosTipo" height="260"></canvas>
       </div>
     </div>
   </div>
@@ -507,7 +507,7 @@ $pctIPs       = $totalIPs > 0 ? round(($ipsAsignadas / $totalIPs) * 100) : 0;
     <div class="dash-card h-100">
       <div class="dash-card-header">
         <i class="ti ti-building text-primary" style="font-size:1rem"></i>
-        <span class="dash-card-header-title">Equipos por Ambiente</span>
+        <span class="dash-card-header-title">Activos por Ambiente</span>
         <span class="badge bg-primary-lt text-primary ms-auto">Top <?= count($equiposPorAmbiente) ?></span>
       </div>
       <div class="dash-card-body p-0">
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
     $tipoLabels = json_encode(array_column($equiposPorTipo, 'tipo'));
     $tipoData   = json_encode(array_map('intval', array_column($equiposPorTipo, 'total')));
     ?>
-    const ctxTipo = document.getElementById('chartEquiposTipo');
+    const ctxTipo = document.getElementById('chartActivosTipo');
     if (ctxTipo) {
         new Chart(ctxTipo, {
             type: 'doughnut',
@@ -710,7 +710,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     },
                     tooltip: {
                         callbacks: {
-                            label: ctx => ` ${ctx.label}: ${ctx.parsed} equipos`
+                            label: ctx => ` ${ctx.label}: ${ctx.parsed} activos`
                         }
                     }
                 }

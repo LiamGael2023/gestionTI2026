@@ -128,10 +128,10 @@ function crearCustomSelect(selectId) {
 /* ─── Ubicaciones ─── */
 async function cargarUbicacionesCombo(cs, placeholder) {
     try {
-        const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php?listarUbicaciones=1');
+        const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php?listarUbicaciones=1&soloRaiz=1');
         const data = await res.json();
         const ops  = [{ value:'', label:placeholder }];
-        data.forEach(u => ops.push({ value:String(u.idUbicacion), label:u.descripcion }));
+        data.forEach(u => ops.push({ value:String(u.idUbicacion), label:u.rutaPropia }));
         cs.setOptions(ops);
     } catch(e) { console.error('[cargarUbicaciones]', e); }
 }
@@ -171,12 +171,18 @@ function parseCidr(cidr) {
 ═══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
 
-    const csNuevoUbic    = crearCustomSelect('nuevoIdUbicacionIp');
-    const csNuevoEstado  = crearCustomSelect('nuevoEstadoIp');
-    const csCidrUbic     = crearCustomSelect('nuevoIdUbicacionCidr');
-    const csCidrEstado   = crearCustomSelect('nuevoEstadoCidr');
-    const csEditarUbic   = crearCustomSelect('editarIdUbicacionIp');
-    const csEditarEstado = crearCustomSelect('editarEstadoIp');
+    // Custom selects inicializados de forma lazy (los modales pueden no estar
+    // en el DOM en el momento del DOMContentLoaded si se cargan por include dinámico)
+    let csNuevoUbic    = null;
+    let csNuevoEstado  = null;
+    let csCidrUbic     = null;
+    let csCidrEstado   = null;
+    let csEditarUbic   = null;
+    let csEditarEstado = null;
+
+    function getOrCreate(ref, id) {
+        return ref ?? crearCustomSelect(id);
+    }
 
     function cargarEstados(cs, val='disponible') { cs.setOptions(ESTADOS_IP); cs.setValue(val); }
 
@@ -244,6 +250,8 @@ document.addEventListener('DOMContentLoaded', function () {
     ════════════════════════════════ */
     document.getElementById('modalAgregarIp')
         ?.addEventListener('show.bs.modal', async () => {
+            csNuevoUbic   = getOrCreate(csNuevoUbic,   'nuevoIdUbicacionIp');
+            csNuevoEstado = getOrCreate(csNuevoEstado,  'nuevoEstadoIp');
             document.getElementById('formNuevaIp')?.reset();
             await cargarUbicacionesCombo(csNuevoUbic, 'Seleccionar ubicación...');
             cargarEstados(csNuevoEstado, 'disponible');
@@ -268,6 +276,8 @@ document.addEventListener('DOMContentLoaded', function () {
     ════════════════════════════════ */
     document.getElementById('modalAgregarRangoCidr')
         ?.addEventListener('show.bs.modal', async () => {
+            csCidrUbic   = getOrCreate(csCidrUbic,   'nuevoIdUbicacionCidr');
+            csCidrEstado = getOrCreate(csCidrEstado,  'nuevoEstadoCidr');
             document.getElementById('formNuevoRangoCidr')?.reset();
             document.getElementById('panelPreviewCidr').style.display = 'none';
             document.getElementById('btnGuardarRango').disabled        = true;
@@ -354,6 +364,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const res  = await fetch(AJAX_URL, { method:'POST', body:fd });
             const json = await res.json();
             if (json.error) { mostrarToast('error', json.error); return; }
+
+            csEditarUbic   = getOrCreate(csEditarUbic,   'editarIdUbicacionIp');
+            csEditarEstado = getOrCreate(csEditarEstado,  'editarEstadoIp');
 
             await cargarUbicacionesCombo(csEditarUbic, 'Seleccionar ubicación...');
             cargarEstados(csEditarEstado, json.estado ?? 'disponible');

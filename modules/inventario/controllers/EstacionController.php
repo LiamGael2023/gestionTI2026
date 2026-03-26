@@ -8,12 +8,13 @@ class EstacionController
         if (!isset($_POST["nuevoNombreEstacion"])) return null;
         $datos = [
             "nombreEstacion"    => mb_strtoupper(trim($_POST["nuevoNombreEstacion"]), "UTF-8"),
-            "idIp"              => !empty($_POST["nuevoIdIp"]) ? intval($_POST["nuevoIdIp"]) : null,
             "codigoAnydesk"     => trim($_POST["nuevoCodigoAnydesk"]     ?? ''),
             "contrasenaAnydesk" => trim($_POST["nuevoContrasenaAnydesk"] ?? ''),
             "principalId"       => trim($_POST["nuevoEquipoPrincipalId"] ?? ''),
             "perifericosIds"    => trim($_POST["nuevoPerifericosIds"]     ?? ''),
             "softwareIds"       => trim($_POST["nuevoSoftwareIds"]        ?? ''),
+            "direccionFisica"   => strtoupper(trim($_POST["nuevaDireccionFisica"] ?? '')),
+            "ipsIds"            => trim($_POST["ipsIds"] ?? $_POST["nuevoIpsIds"] ?? ''),
             "idUsuario"         => $_SESSION["usuario_id"],
         ];
         return EstacionModel::mdlCrearEstacion($datos);
@@ -27,12 +28,13 @@ class EstacionController
         $datos = [
             "idEstacion"        => intval($_POST["editarIdEstacion"]),
             "nombreEstacion"    => mb_strtoupper(trim($_POST["editarNombreEstacion"]), "UTF-8"),
-            "idIp"              => !empty($_POST["editarIdIp"]) ? intval($_POST["editarIdIp"]) : null,
             "codigoAnydesk"     => trim($_POST["editarCodigoAnydesk"]     ?? ''),
             "contrasenaAnydesk" => trim($_POST["editarContrasenaAnydesk"] ?? ''),
             "principalId"       => trim($_POST["editarEquipoPrincipalId"] ?? ''),
             "perifericosIds"    => trim($_POST["editarPerifericosIds"]     ?? ''),
             "softwareIds"       => trim($_POST["editarSoftwareIds"]        ?? ''),
+            "direccionFisica"   => strtoupper(trim($_POST["editarDireccionFisica"] ?? '')),
+            "ipsIds"            => trim($_POST["ipsIds"] ?? $_POST["editarIpsIds"] ?? ''),
             "idUsuario"         => $_SESSION["usuario_id"],
         ];
         return EstacionModel::mdlEditarEstacion($datos);
@@ -74,12 +76,17 @@ class EstacionController
         return EstacionModel::mdlListarIps($idEstacion);
     }
 
+    static public function ctrIpsDeEstacion(int $idEstacion): array
+    {
+        return EstacionModel::mdlIpsDeEstacion($idEstacion);
+    }
+
     static public function ctrCrearTerminal()
     {
         if (!isset($_POST['terminalNombre'])) return null;
         $datos = [
             'nombreEstacion' => mb_strtoupper(trim($_POST['terminalNombre'] ?? ''), "UTF-8"),
-            'idEquipo'       => intval($_POST['terminalIdEquipo'] ?? 0),
+            'idActivo'       => intval($_POST['terminalIdActivo'] ?? 0),
             'idUsuario'      => $_SESSION['usuario_id'],
         ];
         return EstacionModel::mdlCrearTerminal($datos);

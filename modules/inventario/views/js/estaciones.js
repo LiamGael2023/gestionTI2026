@@ -187,12 +187,40 @@ async function cargarEquiposTipo(cs, tipo, idEstacion, excluirIds = []) {
         const res  = await fetch(url);
         const data = await res.json();
         const ops  = [{ value:'', label: tipo === 'software' ? 'Seleccionar software...' : 'Seleccionar...' }];
-        data.forEach(eq => ops.push({ value:String(eq.idEquipo), label:eq.label }));
+        data.forEach(eq => ops.push({ value:String(eq.idActivo), label:eq.label }));
         cs.setOptions(ops);
         // Guardar datos extra para mostrar en la lista
         cs._data = {};
-        data.forEach(eq => { cs._data[String(eq.idEquipo)] = eq; });
+        data.forEach(eq => { cs._data[String(eq.idActivo)] = eq; });
     } catch(e) { console.error('[cargarEquiposTipo]', e); }
+}
+
+/* ── Renderizar chips de IPs y sincronizar hidden ── */
+function renderIpChips(chipsId, hiddenId, ipsArr, csIp, onReload) {
+    // Actualizar el input hidden con los IDs separados por coma
+    const hidden = document.getElementById(hiddenId);
+    if (hidden) hidden.value = ipsArr.map(ip => ip.idIp).join(',');
+
+    const container = document.getElementById(chipsId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!ipsArr.length) {
+        container.innerHTML = '<span class="ip-chips-empty">Sin IPs asignadas</span>';
+        return;
+    }
+    ipsArr.forEach((ip, idx) => {
+        const chip = document.createElement('span');
+        chip.className = 'ip-chip';
+        chip.innerHTML = `${escHtml(ip.ipAddress)}
+            <button type="button" class="ip-chip-rm" title="Quitar">×</button>`;
+        chip.querySelector('.ip-chip-rm').addEventListener('click', () => {
+            ipsArr.splice(idx, 1);
+            renderIpChips(chipsId, hiddenId, ipsArr, csIp, onReload);
+            if (onReload) onReload();
+        });
+        container.appendChild(chip);
+    });
 }
 
 /* ════════════════════════════════════════
@@ -232,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let eSoftware   = [];
 
     function idsExcluir(arrP, arrPer, arrSoft) {
-        return [...arrP, ...arrPer, ...arrSoft].map(e => e.idEquipo).filter(Boolean);
+        return [...arrP, ...arrPer, ...arrSoft].map(e => e.idActivo).filter(Boolean);
     }
 
     /* ════ MODAL NUEVO — abrir ════ */
@@ -253,9 +281,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
     function sincronizarHiddensNuevo() {
-        document.getElementById('nuevoEquipoPrincipalId').value = nPrincipal[0]?.idEquipo ?? '';
-        document.getElementById('nuevoPerifericosIds').value    = nPerifericos.map(e=>e.idEquipo).join(',');
-        document.getElementById('nuevoSoftwareIds').value       = nSoftware.map(e=>e.idEquipo).join(',');
+        document.getElementById('nuevoEquipoPrincipalId').value = nPrincipal[0]?.idActivo ?? '';
+        document.getElementById('nuevoPerifericosIds').value    = nPerifericos.map(e=>e.idActivo).join(',');
+        document.getElementById('nuevoSoftwareIds').value       = nSoftware.map(e=>e.idActivo).join(',');
     }
 
     function renderNuevo() {
@@ -299,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const val = csNuevoPrincipal.getValue(); if (!val || nPrincipal.length) return;
         const eq  = csNuevoPrincipal._data?.[val];
         if (!eq) return;
-        nPrincipal = [{ idEquipo:val, ...eq }];
+        nPrincipal = [{ idActivo:val, ...eq }];
         renderNuevo();
         recargarCombosNuevo();
     });
@@ -307,10 +335,10 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Agregar periférico NUEVO */
     document.getElementById('btnAgregarNuevoPeriferico')?.addEventListener('click', () => {
         const val = csNuevoPeriferico.getValue(); if (!val) return;
-        if (nPerifericos.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (nPerifericos.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq  = csNuevoPeriferico._data?.[val];
         if (!eq) return;
-        nPerifericos.push({ idEquipo:val, ...eq });
+        nPerifericos.push({ idActivo:val, ...eq });
         csNuevoPeriferico.reset();
         document.getElementById('btnAgregarNuevoPeriferico').disabled = true;
         renderNuevo();
@@ -320,10 +348,10 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Agregar software NUEVO */
     document.getElementById('btnAgregarNuevoSoftware')?.addEventListener('click', () => {
         const val = csNuevoSoftware.getValue(); if (!val) return;
-        if (nSoftware.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (nSoftware.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq  = csNuevoSoftware._data?.[val];
         if (!eq) return;
-        nSoftware.push({ idEquipo:val, ...eq });
+        nSoftware.push({ idActivo:val, ...eq });
         csNuevoSoftware.reset();
         document.getElementById('btnAgregarNuevoSoftware').disabled = true;
         renderNuevo();
@@ -355,6 +383,31 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
     /* ════ BOTÓN EDITAR ════ */
+    // IPs del modal de edición (sistema multi-chip)
+    let eIps = [];
+
+    async function recargarComboIpEditar() {
+        const idsEnUso = eIps.map(ip => ip.idIp);
+        try {
+            const idEst = document.getElementById('editarIdEstacion')?.value || 0;
+            const data  = await (await fetch(`${AJAX_EST}?listarIps=1&idEstacion=${idEst}`)).json();
+            const ops   = [{value:'', label:'Seleccionar IP...'}];
+            data.forEach(ip => {
+                if (!idsEnUso.includes(ip.idIp))
+                    ops.push({value:String(ip.idIp), label:ip.ipAddress});
+            });
+            csEditarIp.setOptions(ops);
+            csEditarIp._ipData = {};
+            data.forEach(ip => { csEditarIp._ipData[String(ip.idIp)] = ip; });
+        } catch(e){ console.error('[recargarComboIpEditar]',e); }
+        const btnAdd = document.getElementById('btnAgregarEditarIp');
+        if (btnAdd) btnAdd.disabled = true;
+    }
+
+    function syncIpsEditar() {
+        renderIpChips('editarIpChips', 'editarIpsIds', eIps, csEditarIp, recargarComboIpEditar);
+    }
+
     document.addEventListener('click', async function(e) {
         const btn = e.target.closest('.btnEditarEstacion');
         if (!btn) return;
@@ -374,16 +427,26 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editarEstUsuarioModificacion').textContent = json.idUsuarioModifica ?? '--';
             document.getElementById('editarEstFechaModificacion').textContent   = json.fechaModificacion ?? '--';
 
-            // Reconstruir listas
-            ePrincipal   = (json.principal  ?? []).map(e=>({...e, idEquipo:String(e.idEquipo)}));
-            ePerifericos = (json.perifericos ?? []).map(e=>({...e, idEquipo:String(e.idEquipo)}));
-            eSoftware    = (json.software    ?? []).map(e=>({...e, idEquipo:String(e.idEquipo)}));
+            // Reconstruir listas de equipos
+            ePrincipal   = (json.principal  ?? []).map(e=>({...e, idActivo:String(e.idActivo)}));
+            ePerifericos = (json.perifericos ?? []).map(e=>({...e, idActivo:String(e.idActivo)}));
+            eSoftware    = (json.software    ?? []).map(e=>({...e, idActivo:String(e.idActivo)}));
+
+            // Cargar IPs actuales como chips
+            eIps = (json.ipsActuales ?? []).map(ip => ({idIp: ip.idIp, ipAddress: ip.ipAddress}));
+            // Fallback: si el ajax devuelve ipsIds en texto, convertirlo
+            if (!eIps.length && json.ipsIds) {
+                json.ipsIds.toString().split(',').filter(Boolean).forEach(id => {
+                    eIps.push({idIp: parseInt(id), ipAddress: id}); // se mostrará solo el id hasta recargar
+                });
+            }
 
             renderEditar();
+            syncIpsEditar();
 
             const excl = idsExcluir(ePrincipal, ePerifericos, eSoftware);
             await Promise.all([
-                cargarIps(csEditarIp, json.idIp ?? ''),
+                recargarComboIpEditar(),
                 cargarEquiposTipo(csEditarPrincipal,  'principal',  idEst, excl),
                 cargarEquiposTipo(csEditarPeriferico, 'periferico', idEst, excl),
                 cargarEquiposTipo(csEditarSoftware,   'software',   idEst, excl),
@@ -393,14 +456,34 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('btnAgregarEditarPeriferico').disabled = true;
             document.getElementById('btnAgregarEditarSoftware').disabled   = true;
 
+            // Listener para agregar IP en editar
+            const btnAddIp = document.getElementById('btnAgregarEditarIp');
+            if (btnAddIp) {
+                const nuevoBtn = btnAddIp.cloneNode(true); // limpiar listeners anteriores
+                btnAddIp.parentNode.replaceChild(nuevoBtn, btnAddIp);
+                nuevoBtn.addEventListener('click', () => {
+                    const val = csEditarIp.getValue(); if (!val) return;
+                    const ipData = csEditarIp._ipData?.[val]; if (!ipData) return;
+                    if (eIps.some(ip => String(ip.idIp) === val)) { mostrarToast('warning','Esta IP ya está en la lista.'); return; }
+                    eIps.push({idIp: parseInt(val), ipAddress: ipData.ipAddress});
+                    csEditarIp.reset();
+                    nuevoBtn.disabled = true;
+                    syncIpsEditar();
+                    recargarComboIpEditar();
+                });
+            }
+            document.getElementById('editarIpSelect')?.addEventListener('change', function() {
+                document.getElementById('btnAgregarEditarIp').disabled = !this.value;
+            });
+
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarEstacion')).show();
         } catch(err) { console.error(err); mostrarToast('error','Error al cargar la estación.'); }
     });
 
     function sincronizarHiddensEditar() {
-        document.getElementById('editarEquipoPrincipalId').value = ePrincipal[0]?.idEquipo ?? '';
-        document.getElementById('editarPerifericosIds').value    = ePerifericos.map(e=>e.idEquipo).join(',');
-        document.getElementById('editarSoftwareIds').value       = eSoftware.map(e=>e.idEquipo).join(',');
+        document.getElementById('editarEquipoPrincipalId').value = ePrincipal[0]?.idActivo ?? '';
+        document.getElementById('editarPerifericosIds').value    = ePerifericos.map(e=>e.idActivo).join(',');
+        document.getElementById('editarSoftwareIds').value       = eSoftware.map(e=>e.idActivo).join(',');
     }
 
     function renderEditar() {
@@ -440,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('btnAgregarEditarPrincipal')?.addEventListener('click', () => {
         const val = csEditarPrincipal.getValue(); if (!val || ePrincipal.length) return;
         const eq  = csEditarPrincipal._data?.[val]; if (!eq) return;
-        ePrincipal = [{ idEquipo:val, ...eq }];
+        ePrincipal = [{ idActivo:val, ...eq }];
         renderEditar();
         recargarCombosEditar();
     });
@@ -448,9 +531,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Agregar periférico EDITAR */
     document.getElementById('btnAgregarEditarPeriferico')?.addEventListener('click', () => {
         const val = csEditarPeriferico.getValue(); if (!val) return;
-        if (ePerifericos.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (ePerifericos.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq  = csEditarPeriferico._data?.[val]; if (!eq) return;
-        ePerifericos.push({ idEquipo:val, ...eq });
+        ePerifericos.push({ idActivo:val, ...eq });
         csEditarPeriferico.reset();
         document.getElementById('btnAgregarEditarPeriferico').disabled = true;
         renderEditar();
@@ -460,9 +543,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Agregar software EDITAR */
     document.getElementById('btnAgregarEditarSoftware')?.addEventListener('click', () => {
         const val = csEditarSoftware.getValue(); if (!val) return;
-        if (eSoftware.some(e=>e.idEquipo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
+        if (eSoftware.some(e=>e.idActivo===val)) { mostrarToast('warning','Ya está en la lista.'); return; }
         const eq  = csEditarSoftware._data?.[val]; if (!eq) return;
-        eSoftware.push({ idEquipo:val, ...eq });
+        eSoftware.push({ idActivo:val, ...eq });
         csEditarSoftware.reset();
         document.getElementById('btnAgregarEditarSoftware').disabled = true;
         renderEditar();

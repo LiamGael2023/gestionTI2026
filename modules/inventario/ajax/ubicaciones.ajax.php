@@ -36,18 +36,25 @@ if (isset($_POST["idUbicacion"])) {
         "fechaCreacion"     => fmtFecha($ub["fechaCreacion"]     ?? null),
         "idUsuarioModifica" => $ub["idUsuarioModifica"] ?? "",
         "fechaModificacion" => fmtFecha($ub["fechaModificacion"] ?? null),
+        // MODIFICACIÓN: Enviamos también la ruta completa para el formulario de edición
+        "rutaPropia"        => $ub["rutaPropia"]        ?? "" 
     ]);
 }
 
-// Listar todas las ubicaciones (para el combo de ambiente)
+// Listar todas las ubicaciones
 if (isset($_GET["listarUbicaciones"])) {
     $lista = UbicacionController::ctrMostrarUbicacion(null, null);
     if ($lista === "error" || !$lista) responder([]);
+
+    $soloRaiz = isset($_GET["soloRaiz"]) && $_GET["soloRaiz"] == '1';
+
     $result = [];
     foreach ($lista as $u) {
+        // Si soloRaiz=1, devolver solo ubicaciones sin padre (nivel raíz)
+        if ($soloRaiz && !empty($u["idUbicacionPadre"])) continue;
         $result[] = [
             "idUbicacion" => intval($u["idUbicacion"]),
-            "descripcion" => $u["descripcion"] ?? "",
+            "rutaPropia"  => $u["rutaPropia"] ?? $u["descripcion"]
         ];
     }
     responder($result);
@@ -70,7 +77,8 @@ if (isset($_POST["idAmbiente"])) {
         "idAmbiente"        => intval($amb["idAmbiente"]),
         "descripcion"       => $amb["descripcion"]       ?? "",
         "idUbicacion"       => intval($amb["idUbicacion"]),
-        "nombreUbicacion"   => $amb["nombreUbicacion"]   ?? "",
+        // MODIFICACIÓN: Aquí también podrías usar la ruta completa de la ubicación si fuera necesario
+        "nombreUbicacion"   => $amb["nombreUbicacion"]   ?? "", 
         "idUsuarioRegistro" => $amb["idUsuarioRegistro"] ?? "",
         "fechaCreacion"     => fmtFecha($amb["fechaCreacion"]     ?? null),
         "idUsuarioModifica" => $amb["idUsuarioModifica"] ?? "",

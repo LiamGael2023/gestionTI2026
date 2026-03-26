@@ -42,36 +42,48 @@ class AmbienteModel
         );
     }
 
+
     static public function mdlMostrarAmbiente($item, $valor)
     {
         $conn = Conexion::conectar();
 
         $sql = "
-            SELECT a.idAmbiente,
-                   a.descripcion,
-                   a.idUbicacion,
-                   u.descripcion AS nombreUbicacion,
-                   a.idUsuarioRegistro,
-                   a.fechaCreacion,
-                   a.idUsuarioModifica,
-                   a.fechaModificacion
-            FROM inventario.ambiente a
-            INNER JOIN inventario.ubicacion u ON a.idUbicacion = u.idUbicacion
-        ";
+        WITH JerarquiaUbicaciones AS (
+            -- Ancla: Sedes principales
+            SELECT 
+                idUbicacion, 
+                CAST(descripcion AS VARCHAR(MAX)) AS rutaCompleta
+            FROM inventario.ubicacion
+            WHERE idUbicacionPadre IS NULL
+            
+            UNION ALL
+            
+            -- Recursión: Construcción de la ruta
+            SELECT 
+                u.idUbicacion,
+                CAST(u.descripcion + ' – ' + j.rutaCompleta AS VARCHAR(MAX))
+            FROM inventario.ubicacion u
+            INNER JOIN JerarquiaUbicaciones j ON u.idUbicacionPadre = j.idUbicacion
+        )
+        SELECT 
+            a.*, 
+            j.rutaCompleta AS nombreUbicacion -- Usamos el mismo nombre que espera tu vista
+        FROM inventario.ambiente a
+        LEFT JOIN JerarquiaUbicaciones j ON a.idUbicacion = j.idUbicacion
+    ";
 
         if ($item !== null) {
-            $sql   .= " WHERE a.$item = ?";
-            $params = [[$valor, SQLSRV_PARAM_IN]];
-            $stmt   = sqlsrv_query($conn, $sql, $params);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
+            $sql .= " WHERE a.$item = ? ";
+            $stmt = sqlsrv_query($conn, $sql, [[$valor, SQLSRV_PARAM_IN]]);
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
-            $sql  .= " ORDER BY u.descripcion, a.descripcion ASC";
-            $stmt  = sqlsrv_query($conn, $sql);
-            if ($stmt === false) { sqlsrv_close($conn); return "error"; }
+            $sql .= " ORDER BY a.descripcion ASC";
+            $stmt = sqlsrv_query($conn, $sql);
             $resultado = [];
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                $resultado[] = $row;
+            if ($stmt !== false) {
+                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                    $resultado[] = $row;
+                }
             }
         }
 

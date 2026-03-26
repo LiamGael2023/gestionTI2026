@@ -53,7 +53,7 @@ if (isset($_GET['equiposEstacion'])) {
     $result  = [];
     foreach ($equipos as $eq) {
         $result[] = [
-            'idEquipo'          => intval($eq['idEquipo']),
+            'idActivo'          => intval($eq['idActivo']),
             'codigoPatrimonial' => $eq['codigoPatrimonial'] ?? '',
             'numeroSerie'       => $eq['numeroSerie']       ?? '',
             'nombreActivo'      => $eq['nombreActivo']      ?? '',

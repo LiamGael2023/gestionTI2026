@@ -1,272 +1,908 @@
-/* =====================================
-   CONFIGURACIÓN GLOBAL DE ICONOS
-===================================== */
-const iconosConfig = {
-    equipos:     ["ti-device-desktop", "ti-device-laptop", "ti-device-tablet", "ti-server"],
-    componentes: ["ti-cpu", "ti-device-hdd", "ti-device-ssd", "ti-device-usb", "ti-device-sd-card"],
-    perifericos: ["ti-mouse", "ti-keyboard", "ti-headphones", "ti-microphone", "ti-speaker"],
-    pantallas:   ["ti-device-desktop", "ti-presentation", "ti-projector"],
-    impresion:   ["ti-printer", "ti-printer-3d", "ti-copy"],
-    red:         ["ti-router", "ti-network", "ti-wifi", "ti-antenna"]
-};
+/* =============================================================
+   ACTIVOS.JS — actualizado
+   Rutas ajax según árbol REAL del proyecto:
+     modules/inventario/ajax/tipoActivosTabla.ajax.php
+     modules/inventario/ajax/tipoCaracteristicasTabla.ajax.php
+     modules/inventario/ajax/caracteristicasTabla.ajax.php
+     modules/inventario/ajax/activos.ajax.php
+============================================================= */
 
-/* =====================================
-   FUNCIONES AUXILIARES
-===================================== */
+const caracteristicasNuevo = [];
+const caracteristicasEditar = [];
+
+/* ─────────────────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────────────────── */
 function mostrarToast(tipo, mensaje) {
     const colores = { success: "bg-success", error: "bg-danger", warning: "bg-warning", info: "bg-info" };
-    const container = document.getElementById("toastContainer");
+    const container = document.getElementById("toastContainerActivos");
     if (!container) return;
-
     const html = `
-    <div class="toast align-items-center text-white ${colores[tipo] || 'bg-secondary'} border-0 mb-2" role="alert">
+    <div class="toast align-items-center text-white ${colores[tipo] ?? 'bg-secondary'} border-0 mb-2" role="alert">
         <div class="d-flex">
             <div class="toast-body">${mensaje}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>`;
-
     container.insertAdjacentHTML("beforeend", html);
-    const toast = new bootstrap.Toast(container.lastElementChild, { delay: 3500 });
-    container.lastElementChild.addEventListener('hidden.bs.toast', function () { this.remove(); });
-    toast.show();
+    const toastEl = container.lastElementChild;
+    const t = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    t.show();
 }
 
-// Normaliza cualquier respuesta del servidor a un string limpio
-function getResultado(res) {
-    if (res === null || res === undefined) return "error";
-    if (typeof res === "string") return res.trim();
-    if (typeof res === "object") return String(res.resultado ?? "error").trim();
-    return String(res).trim();
-}
-
-function getMensaje(res) {
-    if (typeof res === "object" && res !== null) return res.mensaje || "";
-    return "";
-}
-
-function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = null) {
-    contenedor.innerHTML = "";
-    if (!iconosConfig[tipo]) return;
-
-    iconosConfig[tipo].forEach(icono => {
-        const seleccionado = (icono === iconoActual) ? "border-primary bg-primary-lt" : "";
-        const html = `
-        <div class="col-4 col-sm-3">
-            <div class="card card-sm text-center icono-item ${seleccionado}" data-icon="${icono}" style="cursor:pointer">
-                <div class="card-body p-2">
-                    <i class="ti ${icono} fs-1 text-primary"></i>
-                    <div class="text-muted" style="font-size:0.65rem">${icono.replace("ti-", "")}</div>
-                </div>
-            </div>
-        </div>`;
-        contenedor.insertAdjacentHTML("beforeend", html);
-    });
-
-    if (iconoActual) {
-        preview.innerHTML = `<i class="ti ${iconoActual}"></i>`;
-        inputHidden.value = iconoActual;
+/* ─────────────────────────────────────────────────────────
+   MANEJAR RESPUESTA DEL SP
+───────────────────────────────────────────────────────── */
+function manejarRespuestaSP(data, modalId, onSuccess) {
+    if (!data || typeof data !== 'object') {
+        mostrarToast('error', 'Respuesta inesperada del servidor.'); return;
+    }
+    const resultado = (data.resultado ?? '').toString().trim();
+    const mensaje = (data.mensaje ?? '').toString().trim();
+    switch (resultado) {
+        case 'ok':
+            mostrarToast('success', mensaje || 'Operación realizada correctamente.');
+            if (onSuccess) onSuccess();
+            break;
+        case 'error_duplicado_cp':
+            mostrarToast('warning', mensaje || 'El código patrimonial ya existe.');
+            break;
+        case 'error_fecha':
+            mostrarToast('warning', mensaje || 'Error en las fechas ingresadas.');
+            break;
+        case 'error':
+        default:
+            mostrarToast('error', mensaje || 'Ocurrió un error. Intente nuevamente.');
+            break;
     }
 }
 
-/* =====================================
+/* ─────────────────────────────────────────────────────────
+   CUSTOM SELECT CON BÚSQUEDA
+───────────────────────────────────────────────────────── */
+function crearCustomSelect(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return null;
+
+    sel.style.display = 'none';
+
+    const wrapId = 'cswrap_' + selectId;
+    let wrap = document.getElementById(wrapId);
+    if (wrap) wrap.remove();
+
+    wrap = document.createElement('div');
+    wrap.className = 'cs-wrap';
+    wrap.id = wrapId;
+    wrap.innerHTML = `
+        <div class="cs-display" tabindex="0">
+            <span class="cs-text placeholder-text">Seleccionar...</span>
+            <svg class="cs-arrow" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <div class="cs-panel">
+            <div class="cs-search-row">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                    <circle cx="5.5" cy="5.5" r="4" stroke="#9ca3af" stroke-width="1.4"/>
+                    <path d="M9 9l2.5 2.5" stroke="#9ca3af" stroke-width="1.4" stroke-linecap="round"/>
+                </svg>
+                <input class="cs-search" type="text" placeholder="Buscar..." autocomplete="off">
+            </div>
+            <ul class="cs-list"></ul>
+        </div>`;
+    sel.parentNode.insertBefore(wrap, sel);
+
+    const display = wrap.querySelector('.cs-display');
+    const panel = wrap.querySelector('.cs-panel');
+    const searchIn = wrap.querySelector('.cs-search');
+    const list = wrap.querySelector('.cs-list');
+    let opciones = [];
+
+    function abrir() {
+        document.querySelectorAll('.cs-wrap.cs-open').forEach(w => {
+            if (w !== wrap) w.classList.remove('cs-open');
+        });
+        wrap.classList.add('cs-open');
+        searchIn.value = '';
+        renderLista(opciones);
+        requestAnimationFrame(() => {
+            const rect = wrap.getBoundingClientRect();
+            if ((window.innerHeight - rect.bottom) < 230 && rect.top > 230) {
+                panel.style.top = 'auto'; panel.style.bottom = '100%';
+                panel.style.marginTop = '0'; panel.style.marginBottom = '3px';
+            } else {
+                panel.style.top = '100%'; panel.style.bottom = 'auto';
+                panel.style.marginTop = '3px'; panel.style.marginBottom = '0';
+            }
+            searchIn.focus();
+        });
+    }
+    function cerrar() { wrap.classList.remove('cs-open'); }
+
+    display.addEventListener('mousedown', e => {
+        e.preventDefault();
+        wrap.classList.contains('cs-open') ? cerrar() : abrir();
+    });
+    display.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); }
+        if (e.key === 'Escape') cerrar();
+    });
+    document.addEventListener('mousedown', e => {
+        if (!wrap.contains(e.target)) cerrar();
+    });
+    searchIn.addEventListener('input', function () {
+        const q = this.value.toLowerCase().trim();
+        renderLista(q ? opciones.filter(o => o.label.toLowerCase().includes(q)) : opciones);
+    });
+    searchIn.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); }
+    });
+
+    function renderLista(items) {
+        list.innerHTML = '';
+        if (!items.length) { list.innerHTML = '<li class="cs-empty">Sin resultados</li>'; return; }
+        const valActual = sel.value;
+        items.forEach(o => {
+            const li = document.createElement('li');
+            li.textContent = o.label;
+            li.dataset.value = o.value;
+            if (!o.value) li.classList.add('cs-placeholder-item');
+            if (o.value === valActual) li.classList.add('cs-selected');
+            li.addEventListener('mousedown', e => {
+                e.preventDefault();
+                seleccionar(o.value, o.label);
+                cerrar();
+            });
+            list.appendChild(li);
+        });
+    }
+
+    function seleccionar(value, label) {
+        sel.value = value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        const textEl = display.querySelector('.cs-text');
+        textEl.textContent = label || 'Seleccionar...';
+        textEl.classList.toggle('placeholder-text', !value);
+    }
+
+    return {
+        setOptions(arr) {
+            opciones = arr;
+            sel.innerHTML = '';
+            arr.forEach(o => {
+                const opt = document.createElement('option');
+                opt.value = o.value; opt.textContent = o.label;
+                sel.appendChild(opt);
+            });
+            const textEl = display.querySelector('.cs-text');
+            textEl.textContent = arr[0]?.label ?? 'Seleccionar...';
+            textEl.classList.add('placeholder-text');
+            sel.value = arr[0]?.value ?? '';
+        },
+        setValue(value) {
+            const found = opciones.find(o => String(o.value) === String(value));
+            if (found) seleccionar(found.value, found.label);
+        },
+        getValue() { return sel.value; },
+        reset() { if (opciones.length) seleccionar(opciones[0].value, opciones[0].label); },
+        getExtra(v) { return opciones.find(o => String(o.value) === String(v)) ?? null; }
+    };
+}
+
+/* ─────────────────────────────────────────────────────────
+   CARGA DE DATOS AJAX
+───────────────────────────────────────────────────────── */
+async function cargarActivos(cs) {
+    try {
+        const res = await fetch('modules/inventario/ajax/tipoActivosTabla.ajax.php');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const ops = [{ value: '', label: 'Seleccionar Tipo Activo...' }];
+        data.forEach(a => ops.push({
+            value: String(a.idTipoActivo),
+            label: String(a.descripcion),
+            esCompuesto: intVal(a.esCompuesto),
+            esPeriferico: intVal(a.esPeriferico),
+            esComponente: intVal(a.esComponente),
+        }));
+        cs.setOptions(ops);
+        cs._tiposData = {};
+        data.forEach(a => {
+            cs._tiposData[String(a.idTipoActivo)] = {
+                esCompuesto: intVal(a.esCompuesto),
+                esPeriferico: intVal(a.esPeriferico),
+                esComponente: intVal(a.esComponente),
+            };
+        });
+    } catch (e) { console.error('[cargarActivos]', e); }
+}
+
+function intVal(v) { return parseInt(v) || 0; }
+
+async function cargarTipos(cs) {
+    try {
+        const res = await fetch('modules/inventario/ajax/tipoCaracteristicasTabla.ajax.php');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const ops = [{ value: '', label: 'Seleccionar tipo...' }];
+        data.forEach(t => ops.push({ value: String(t.idTipoCaracteristica), label: String(t.descripcion) }));
+        cs.setOptions(ops);
+    } catch (e) { console.error('[cargarTipos]', e); }
+}
+
+async function cargarValores(cs, idTipo) {
+    cs.setOptions([{ value: '', label: 'Seleccionar valor...' }]);
+    if (!idTipo) return;
+    try {
+        const url = 'modules/inventario/ajax/caracteristicasTabla.ajax.php?idTipoCaracteristica='
+            + encodeURIComponent(idTipo);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const ops = [{ value: '', label: 'Seleccionar valor...' }];
+        data.forEach(v => ops.push({ value: String(v.idCaracteristica), label: String(v.valor) }));
+        cs.setOptions(ops);
+    } catch (e) { console.error('[cargarValores]', e); }
+}
+
+/* ─────────────────────────────────────────────────────────
+   TABLA TEMPORAL DE CARACTERÍSTICAS
+───────────────────────────────────────────────────────── */
+function renderTabla(tablaId, lista, hiddenId) {
+    const tbody = document.querySelector('#' + tablaId + ' tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3 small">
+            <i class="ti ti-info-circle me-1"></i>Sin características agregadas</td></tr>`;
+    } else {
+        lista.forEach((c, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="small fw-semibold">${c.tipo}</td>
+                <td class="small">${c.valor}</td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-icon btn-outline-danger btnEliminarCaract"
+                    data-idx="${idx}" data-tabla="${tablaId}" data-hidden="${hiddenId}">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+    const hidden = document.getElementById(hiddenId);
+    if (hidden) {
+        hidden.value = lista.map(c => c.idCaracteristica).join(',');
+    }
+}
+
+/* ─────────────────────────────────────────────────────────
+   HELPER escapeHtml
+───────────────────────────────────────────────────────── */
+function escHtml(str) {
+    return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ─────────────────────────────────────────────────────────
+   ADAPTAR MODAL SEGÚN TIPO DE ACTIVO
+   ─────────────────────────────────────────────────────────
+   Tipos y reglas:
+     Compuesto  (esCompuesto=1)  → todo. Estado: disponible|asignado|inoperativo|reparacion|baja
+     Periférico (esPeriferico=1) → todo. Estado: disponible|asignado|inoperativo|reparacion|baja
+     Componente (esComponente=1) → sin codigoPatrimonial. Estado: disponible|asignado|inoperativo|reparacion|baja
+     Software   (ningún flag)    → sin codigoPatrimonial, sin numeroSerie, con codigoLicencia.
+                                    Fechas: "Inicio Licencia" y "Fin Licencia". Estado: disponible|asignado|expirado
+     Otros      (ningún flag, detectado como "otros") → igual que Compuesto.
+───────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────
+   ADAPTAR MODAL SEGÚN TIPO DE ACTIVO (ACTUALIZADO)
+───────────────────────────────────────────────────────── */
+function adaptarModal(flags, prefijo) {
+    const esCompuesto = intVal(flags?.esCompuesto);
+    const esPeriferico = intVal(flags?.esPeriferico);
+    const esComponente = intVal(flags?.esComponente);
+    const esSoftware = flags?._esSoftware ?? false;
+
+    const p = prefijo;
+    const sufijo = (p === 'editar') ? '-editar' : '';
+
+    /* ── Hint descriptivo del tipo seleccionado (Mejora visual) ── */
+    const hintBox = document.getElementById(`${p}TipoActivoHint`);
+    if (hintBox) {
+        let tipoDesc = '', icon = '', color = '', bg = '';
+        if (esCompuesto) { tipoDesc = '<b>Equipo Compuesto:</b> Requiere código patrimonial y permite asignarle componentes internos.'; icon = 'ti-cpu'; color = 'text-azure'; bg = 'bg-azure-lt'; }
+        else if (esPeriferico) { tipoDesc = '<b>Periférico:</b> Requiere código patrimonial. Es un equipo independiente.'; icon = 'ti-keyboard'; color = 'text-teal'; bg = 'bg-teal-lt'; }
+        else if (esComponente) { tipoDesc = '<b>Componente:</b> No requiere código patrimonial. Debe armarse dentro de un equipo padre.'; icon = 'ti-puzzle'; color = 'text-orange'; bg = 'bg-orange-lt'; }
+        else if (esSoftware) { tipoDesc = '<b>Software:</b> No requiere código patrimonial. Registra el código de licencia y sus vigencias.'; icon = 'ti-code'; color = 'text-purple'; bg = 'bg-purple-lt'; }
+        else { tipoDesc = '<b>Activo General:</b> Requiere código patrimonial. Gestión estándar.'; icon = 'ti-package'; color = 'text-secondary'; bg = 'bg-secondary-lt'; }
+
+        if (tipoDesc) {
+            hintBox.innerHTML = `
+            <div class="p-3 mt-2 rounded d-flex align-items-center gap-3 ${bg} ${color}" style="border: 1px solid currentColor;">
+                <i class="ti ${icon} fs-2 flex-shrink-0"></i>
+                <span class="small mb-0">${tipoDesc}</span>
+            </div>`;
+            hintBox.style.display = 'block';
+        } else {
+            hintBox.style.display = 'none';
+        }
+    }
+
+    /* ── Código Patrimonial (Solución al bloqueo de requerido) ── */
+    const campoCp = document.querySelector(`.campo-codigoPatrimonial${sufijo}`);
+    if (campoCp) {
+        const ocultarCp = esComponente || esSoftware;
+        campoCp.style.display = ocultarCp ? 'none' : '';
+
+        // Agregar o quitar 'required' dinámicamente
+        const inputCp = campoCp.querySelector('input');
+        if (inputCp) {
+            if (ocultarCp) {
+                inputCp.removeAttribute('required');
+                inputCp.value = ''; // Limpiar data basura
+            } else {
+                inputCp.setAttribute('required', 'required');
+            }
+        }
+    }
+
+    /* ── Número de Serie ── */
+    const campoSerie = document.querySelector(`.campo-numeroSerie${sufijo}`);
+    if (campoSerie) campoSerie.style.display = esSoftware ? 'none' : '';
+
+    /* ── Código Licencia ── */
+    const campoLic = document.querySelector(`.campo-codigoLicencia${sufijo}`);
+    if (campoLic) {
+        campoLic.style.display = esSoftware ? '' : 'none';
+
+        // Agregar o quitar 'required' a licencia
+        const inputLic = campoLic.querySelector('input');
+        if (inputLic) {
+            if (esSoftware) inputLic.setAttribute('required', 'required');
+            else {
+                inputLic.removeAttribute('required');
+                inputLic.value = ''; // Limpiar data basura
+            }
+        }
+    }
+
+    /* ── Fecha Adquisición ── */
+    const campoFechaAdq = document.querySelector(`.campo-fechaAdquisicion${sufijo}`);
+    if (campoFechaAdq) campoFechaAdq.style.display = '';
+
+    /* ── Labels fechas garantía / licencia ── */
+    const lblInicio = document.getElementById(`${p}LabelInicioGarantia`);
+    const lblFin = document.getElementById(`${p}LabelFinGarantia`);
+    const tituloFechas = document.getElementById(`${p}TituloFechas`);
+
+    if (esSoftware) {
+        if (lblInicio) lblInicio.textContent = 'Inicio Licencia';
+        if (lblFin) lblFin.textContent = 'Fin Licencia';
+        if (tituloFechas) tituloFechas.textContent = 'Fechas de Licencia';
+    } else {
+        if (lblInicio) lblInicio.textContent = 'Inicio Garantía';
+        if (lblFin) lblFin.textContent = 'Fin Garantía';
+        if (tituloFechas) tituloFechas.textContent = 'Fechas y Garantía';
+    }
+
+    /* ── Opciones de Estado ── */
+    const selectEstado = document.getElementById(`${p}Estado`);
+    if (selectEstado) {
+        const optExpirado = selectEstado.querySelector(`.opt-estado-expirado${sufijo}`);
+        if (optExpirado) optExpirado.style.display = esSoftware ? '' : 'none';
+
+        const optsNoSoftware = ['inoperativo', 'reparacion', 'baja'];
+        optsNoSoftware.forEach(val => {
+            const opt = selectEstado.querySelector(`option[value="${val}"]`);
+            if (opt) opt.style.display = esSoftware ? 'none' : '';
+        });
+
+        const valActual = selectEstado.value;
+        if (esSoftware && optsNoSoftware.includes(valActual)) selectEstado.value = 'disponible';
+        if (!esSoftware && valActual === 'expirado') selectEstado.value = 'disponible';
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
    DOM READY
-===================================== */
+═══════════════════════════════════════════════════════ */
 document.addEventListener("DOMContentLoaded", function () {
 
-    /* --- MAYÚSCULAS en tiempo real --- */
-    ["nuevaDescripcion", "editarDescripcion"].forEach(id => {
-        const input = document.getElementById(id);
-        if (!input) return;
-        input.addEventListener("input", function () {
-            const pos = this.selectionStart;
-            this.value = this.value.toUpperCase();
-            this.setSelectionRange(pos, pos);
+    /* ── Inicializar custom selects ── */
+    const csNuevoActivo = crearCustomSelect('nuevoIdTipoActivo');
+    const csNuevoTipo = crearCustomSelect('nuevoTipoCaracteristica');
+    const csNuevoValor = crearCustomSelect('nuevoValorCaracteristica');
+    const csEditarActivo = crearCustomSelect('editarIdTipoActivo');
+    const csEditarTipo = crearCustomSelect('editarTipoCaracteristica');
+    const csEditarValor = crearCustomSelect('editarValorCaracteristica');
+
+    /* ── Custom select para el modal Armar Equipo ── */
+    const csComponente = crearCustomSelect('armarComponenteSelect');
+
+    /* ════════════════════════════════════════════════
+       TABS FILTRO TIPO ACTIVO
+    ════════════════════════════════════════════════ */
+    document.getElementById('tipoTabNav')?.addEventListener('click', function (e) {
+        const btn = e.target.closest('.tipo-tab-btn');
+        if (!btn) return;
+        document.querySelectorAll('.tipo-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tipo = btn.dataset.tipo;
+        document.querySelectorAll('#tablaActivos tbody tr').forEach(tr => {
+            tr.style.display = (tipo === 'todos' || tr.dataset.tipo === tipo) ? '' : 'none';
         });
     });
 
-    /* --- Iconos: Cambio de Categoría --- */
-    const tipoIcono = document.getElementById("tipoIcono");
-    if (tipoIcono) {
-        tipoIcono.addEventListener("change", function () {
-            generarIconos(this.value,
-                document.getElementById("listaIconos"),
-                document.getElementById("previewIcon"),
-                document.getElementById("iconoActivo")
-            );
+    /* ════════════════════════════════════════════════
+       MODAL AGREGAR ACTIVO
+    ════════════════════════════════════════════════ */
+    document.getElementById('modalAgregarActivo')
+        ?.addEventListener('show.bs.modal', async () => {
+            document.getElementById('formNuevoActivo')?.reset();
+            caracteristicasNuevo.length = 0;
+            renderTabla('tablaNuevoEquipoCaracteristicas', caracteristicasNuevo, 'nuevoCaracteristicasIds');
+            await cargarActivos(csNuevoActivo);
+            await cargarTipos(csNuevoTipo);
+            csNuevoValor.setOptions([{ value: '', label: 'Seleccionar valor...' }]);
+
+            // Ocultar hint
+            const hint = document.getElementById('nuevoTipoActivoHint');
+            if (hint) hint.style.display = 'none';
+
+            // Estado inicial: mostrar campos como Compuesto/Otros (sin tipo seleccionado aún)
+            adaptarModal({ esCompuesto: 0, esPeriferico: 0, esComponente: 0, _esSoftware: false }, 'nuevo');
         });
-    }
 
-    const editarTipoIcono = document.getElementById("editarTipoIcono");
-    if (editarTipoIcono) {
-        editarTipoIcono.addEventListener("change", function () {
-            const inputIcono = document.getElementById("editarIconoActivo");
-            generarIconos(this.value,
-                document.getElementById("editarListaIconos"),
-                document.getElementById("editarPreviewIcon"),
-                inputIcono,
-                inputIcono.value
-            );
+    /* ── Cambio tipo activo AGREGAR → adaptar modal ── */
+    document.getElementById('nuevoIdTipoActivo')
+        ?.addEventListener('change', function () {
+            const id = this.value;
+            const datos = csNuevoActivo._tiposData?.[id] ?? { esCompuesto: 0, esPeriferico: 0, esComponente: 0 };
+            // Software: ninguno de los flags activos
+            datos._esSoftware = !datos.esCompuesto && !datos.esPeriferico && !datos.esComponente;
+            adaptarModal(datos, 'nuevo');
         });
-    }
 
-    /* --- Selección de Iconos (Click en Card) --- */
-    document.addEventListener("click", function (e) {
-        const item = e.target.closest(".icono-item");
-        if (!item) return;
+    /* ── Cambio tipo → valores AGREGAR ── */
+    document.getElementById('nuevoTipoCaracteristica')
+        ?.addEventListener('change', function () {
+            cargarValores(csNuevoValor, this.value);
+        });
 
-        const contenedor = item.closest(".row");
-        contenedor.querySelectorAll(".icono-item").forEach(el => el.classList.remove("border-primary", "bg-primary-lt"));
-        item.classList.add("border-primary", "bg-primary-lt");
+    /* ── Cambio tipo → valores EDITAR ── */
+    document.getElementById('editarTipoCaracteristica')
+        ?.addEventListener('change', function () {
+            cargarValores(csEditarValor, this.value);
+        });
 
-        const icono = item.getAttribute("data-icon");
-        const modal = item.closest(".modal");
+    /* ── Agregar característica AGREGAR ── */
+    document.getElementById('btnAgregarNuevaCaracteristica')
+        ?.addEventListener('click', () => {
+            const idTipo = csNuevoTipo.getValue();
+            const idValor = csNuevoValor.getValue();
+            if (!idTipo || !idValor) { mostrarToast('warning', 'Selecciona un tipo y un valor.'); return; }
+            if (caracteristicasNuevo.some(c => c.idCaracteristica === idValor)) {
+                mostrarToast('warning', 'Esta característica ya fue agregada.'); return;
+            }
+            const selTipo = document.getElementById('nuevoTipoCaracteristica');
+            const selValor = document.getElementById('nuevoValorCaracteristica');
+            caracteristicasNuevo.push({
+                idCaracteristica: idValor,
+                tipo: selTipo.options[selTipo.selectedIndex]?.text ?? idTipo,
+                valor: selValor.options[selValor.selectedIndex]?.text ?? idValor
+            });
+            renderTabla('tablaNuevoEquipoCaracteristicas', caracteristicasNuevo, 'nuevoCaracteristicasIds');
+        });
 
-        if (modal?.id === "modalAgregarActivo") {
-            document.getElementById("previewIcon").innerHTML = `<i class="ti ${icono}"></i>`;
-            document.getElementById("iconoActivo").value = icono;
-        } else if (modal?.id === "modalEditarActivo") {
-            document.getElementById("editarPreviewIcon").innerHTML = `<i class="ti ${icono}"></i>`;
-            document.getElementById("editarIconoActivo").value = icono;
+    /* ── Agregar característica EDITAR ── */
+    document.getElementById('btnAgregarEditarCaracteristica')
+        ?.addEventListener('click', () => {
+            const idTipo = csEditarTipo.getValue();
+            const idValor = csEditarValor.getValue();
+            if (!idTipo || !idValor) { mostrarToast('warning', 'Selecciona un tipo y un valor.'); return; }
+            if (caracteristicasEditar.some(c => c.idCaracteristica === idValor)) {
+                mostrarToast('warning', 'Esta característica ya fue agregada.'); return;
+            }
+            const selTipo = document.getElementById('editarTipoCaracteristica');
+            const selValor = document.getElementById('editarValorCaracteristica');
+            caracteristicasEditar.push({
+                idCaracteristica: idValor,
+                tipo: selTipo.options[selTipo.selectedIndex]?.text ?? idTipo,
+                valor: selValor.options[selValor.selectedIndex]?.text ?? idValor
+            });
+            renderTabla('tablaEditarEquipoCaracteristicas', caracteristicasEditar, 'editarCaracteristicasIds');
+        });
+
+    /* ── Eliminar característica ── */
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btnEliminarCaract');
+        if (!btn) return;
+        const lista = btn.dataset.tabla === 'tablaNuevoEquipoCaracteristicas'
+            ? caracteristicasNuevo : caracteristicasEditar;
+        lista.splice(parseInt(btn.dataset.idx), 1);
+        renderTabla(btn.dataset.tabla, lista, btn.dataset.hidden);
+    });
+
+    /* ════════════════════════════════════════════════
+       BOTÓN EDITAR ACTIVO
+    ════════════════════════════════════════════════ */
+    document.addEventListener('click', async function (e) {
+        const boton = e.target.closest('.btnEditarActivo');
+        if (!boton) return;
+        const fd = new FormData();
+        fd.append('idActivo', boton.getAttribute('data-id'));
+        try {
+            const res = await fetch('modules/inventario/ajax/activos.ajax.php', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.error) { mostrarToast('error', json.error); return; }
+
+            await cargarActivos(csEditarActivo);
+            await cargarTipos(csEditarTipo);
+            csEditarActivo.setValue(String(json.idTipoActivo));
+
+            // Adaptar modal editar según tipo
+            const flags = {
+                esCompuesto: intVal(json.esCompuesto ?? 0),
+                esPeriferico: intVal(json.esPeriferico ?? 0),
+                esComponente: intVal(json.esComponente ?? 0),
+            };
+            flags._esSoftware = !flags.esCompuesto && !flags.esPeriferico && !flags.esComponente;
+            adaptarModal(flags, 'editar');
+
+            document.getElementById('editarIdActivo').value = json.idActivo;
+            document.getElementById('editarCodigoPatrimonial').value = json.codigoPatrimonial ?? '';
+            document.getElementById('editarCodigoLicencia').value = json.codigoLicencia ?? '';
+            document.getElementById('editarNumeroSerie').value = json.numeroSerie ?? '';
+            document.getElementById('editarFechaAdquisicion').value = json.fechaAdquisicion ?? '';
+            document.getElementById('editarFechaInicioGarantia').value = json.fechaInicioGarantia ?? '';
+            document.getElementById('editarFechaFinGarantia').value = json.fechaFinGarantia ?? '';
+            document.getElementById('editarEstado').value = json.estado ?? 'disponible';
+            document.getElementById('editarUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
+            document.getElementById('editarFechaCreacion').textContent = json.fechaCreacion ?? '--';
+            document.getElementById('editarUsuarioModificacion').textContent = json.idUsuarioModifica ?? '--';
+            document.getElementById('editarFechaModificacion').textContent = json.fechaModificacion ?? '--';
+
+            // Reconstruir lista de características con IDs reales de la BD
+            caracteristicasEditar.length = 0;
+            if (Array.isArray(json.caracteristicasDetalle) && json.caracteristicasDetalle.length) {
+                json.caracteristicasDetalle.forEach(c => {
+                    caracteristicasEditar.push({
+                        idCaracteristica: String(c.idCaracteristica),
+                        tipo: c.tipo,
+                        valor: c.valor
+                    });
+                });
+            }
+            renderTabla('tablaEditarEquipoCaracteristicas', caracteristicasEditar, 'editarCaracteristicasIds');
+            csEditarValor.setOptions([{ value: '', label: 'Seleccionar valor...' }]);
+
+            // Re-adaptar al cambiar tipo en editar (una vez)
+            document.getElementById('editarIdTipoActivo').addEventListener('change', function () {
+                const id = this.value;
+                const datos = csEditarActivo._tiposData?.[id] ?? { esCompuesto: 0, esPeriferico: 0, esComponente: 0 };
+                datos._esSoftware = !datos.esCompuesto && !datos.esPeriferico && !datos.esComponente;
+                adaptarModal(datos, 'editar');
+            }, { once: true });
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarActivo')).show();
+        } catch (err) {
+            console.error(err);
+            mostrarToast('error', 'Error al cargar datos del activo.');
         }
     });
 
-    /* --- 1. CARGAR DATOS EN EL MODAL EDITAR --- */
-    document.addEventListener("click", function (e) {
-        const boton = e.target.closest(".btnEditarActivo");
-        if (!boton) return;
-
-        const idActivo = boton.getAttribute("data-id");
-        const datos    = new FormData();
-        datos.append("idActivo", idActivo);
-
-        fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: datos })
-            .then(res => res.json())
-            .then(json => {
-                if (json.resultado === "error") return mostrarToast("error", json.mensaje || "Error al cargar datos.");
-
-                document.getElementById("editarIdActivo").value              = json.idActivos;
-                document.getElementById("editarDescripcion").value           = json.descripcion;
-                document.getElementById("editarIconoActivo").value           = json.icono;
-                document.getElementById("editarCompuesto").checked           = (json.compuesto == 1);
-                document.getElementById("editarEsPeriferico").checked        = (json.esPeriferico == 1);
-                document.getElementById("editarUsuarioCreacion").textContent = json.idUsuarioRegistro;
-                document.getElementById("editarFechaCreacion").textContent   = json.fechaCreacion;
-                document.getElementById("editarPreviewIcon").innerHTML       = `<i class="ti ${json.icono}"></i>`;
-
-                bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarActivo")).show();
-            })
-            .catch(() => mostrarToast("error", "Error al cargar datos."));
-    });
-
-    /* --- 2. FORMULARIO GUARDAR NUEVO --- */
-    const formAgregar = document.getElementById("formNuevoActivo");
-    if (formAgregar) {
-        formAgregar.addEventListener("submit", function (e) {
+    /* ════════════════════════════════════════════════
+       GUARDAR NUEVO ACTIVO
+    ════════════════════════════════════════════════ */
+    document.getElementById('formNuevoActivo')
+        ?.addEventListener('submit', async function (e) {
             e.preventDefault();
-
-            if (!document.getElementById("iconoActivo").value) {
-                return mostrarToast("warning", "Selecciona un icono válido.");
+            const btnSubmit = this.querySelector('[type=submit]');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+            try {
+                const resp = await fetch('modules/inventario/ajax/activos.ajax.php',
+                    { method: 'POST', body: new FormData(this) });
+                const data = await resp.json();
+                manejarRespuestaSP(data, 'modalAgregarActivo', () => {
+                    bootstrap.Modal.getInstance(document.getElementById('modalAgregarActivo')).hide();
+                    setTimeout(() => location.reload(), 1500);
+                });
+            } catch { mostrarToast('error', 'Error de servidor.'); }
+            finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Activo';
             }
-
-            const btn = this.querySelector('[type="submit"]');
-            btn.disabled = true;
-
-            fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
-                .then(res => res.json())
-                .then(res => {
-                    const r = getResultado(res);
-                    const m = getMensaje(res);
-
-                    if (r === "ok") {
-                        bootstrap.Modal.getInstance(document.getElementById("modalAgregarActivo")).hide();
-                        mostrarToast("success", "Activo guardado correctamente.");
-                        setTimeout(() => location.reload(), 1500);
-                    } else if (r === "error_duplicado") {
-                        mostrarToast("warning", "¡Atención! Ya existe un activo con este nombre.");
-                        btn.disabled = false;
-                    } else {
-                        mostrarToast("error", m || "Error al guardar: " + r);
-                        btn.disabled = false;
-                    }
-                })
-                .catch(err => {
-                    mostrarToast("error", "Error de servidor.");
-                    btn.disabled = false;
-                });
         });
-    }
 
-    /* --- 3. FORMULARIO ACTUALIZAR (EDITAR) --- */
-    const formEditar = document.getElementById("formEditarActivo");
-    if (formEditar) {
-        formEditar.addEventListener("submit", function (e) {
+    /* ════════════════════════════════════════════════
+       ACTUALIZAR ACTIVO
+    ════════════════════════════════════════════════ */
+    document.getElementById('formEditarActivo')
+        ?.addEventListener('submit', async function (e) {
             e.preventDefault();
-
-            const btn = this.querySelector('[type="submit"]');
-            btn.disabled = true;
-
-            fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: new FormData(this) })
-                .then(res => res.json())
-                .then(res => {
-                    const r = getResultado(res);
-                    const m = getMensaje(res);
-
-                    if (r === "ok") {
-                        bootstrap.Modal.getInstance(document.getElementById("modalEditarActivo")).hide();
-                        mostrarToast("success", "Activo actualizado correctamente.");
-                        setTimeout(() => location.reload(), 1500);
-                    } else if (r === "error_duplicado") {
-                        mostrarToast("warning", "¡Atención! El nombre ya existe en otro registro.");
-                        btn.disabled = false;
-                    } else {
-                        mostrarToast("error", m || "No se pudo actualizar: " + r);
-                        btn.disabled = false;
-                    }
-                })
-                .catch(() => {
-                    mostrarToast("error", "Error al comunicarse con el servidor.");
-                    btn.disabled = false;
+            const btnSubmit = this.querySelector('[type=submit]');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Actualizando...';
+            try {
+                const resp = await fetch('modules/inventario/ajax/activos.ajax.php',
+                    { method: 'POST', body: new FormData(this) });
+                const data = await resp.json();
+                manejarRespuestaSP(data, 'modalEditarActivo', () => {
+                    bootstrap.Modal.getInstance(document.getElementById('modalEditarActivo')).hide();
+                    setTimeout(() => location.reload(), 1500);
                 });
+            } catch { mostrarToast('error', 'Error al comunicarse con el servidor.'); }
+            finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="ti ti-check me-1"></i>Actualizar Activo';
+            }
         });
-    }
 
-    /* --- 4. ELIMINAR ACTIVO (lógico) --- */
-    document.addEventListener("click", function (e) {
-        const boton = e.target.closest(".btnEliminarActivo");
-        if (!boton) return;
+    /* ════════════════════════════════════════════════
+       MODAL ARMAR EQUIPO — abrir (solo Compuesto)
+    ════════════════════════════════════════════════ */
+    document.addEventListener('click', async function (e) {
+        const btn = e.target.closest('.btnArmarActivo');
+        if (!btn) return;
 
-        const idActivo    = boton.getAttribute("data-id");
-        const descripcion = boton.getAttribute("data-descripcion") || "este activo";
+        const idPadre = btn.getAttribute('data-id');
+        const nombre = btn.getAttribute('data-nombre');
+        const icono = btn.getAttribute('data-icono');
 
-        document.getElementById("eliminarNombreActivo").textContent = descripcion;
-        document.getElementById("confirmarEliminarActivo").setAttribute("data-id", idActivo);
+        document.getElementById('armarIdActivoPadre').value = idPadre;
+        document.getElementById('armarNombrePadre').textContent = nombre;
+        document.getElementById('armarIconoPadre').className = `ti ${icono} fs-2`;
 
-        bootstrap.Modal.getOrCreateInstance(document.getElementById("modalConfirmarEliminar")).show();
+        document.getElementById('armarComponenteInfo').style.display = 'none';
+        document.getElementById('btnAgregarComponente').disabled = true;
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalArmarActivo')).show();
+
+        await Promise.all([
+            cargarComponentesActuales(idPadre),
+            cargarEquiposDisponibles(idPadre),
+        ]);
     });
 
-    const btnConfirmar = document.getElementById("confirmarEliminarActivo");
-    if (btnConfirmar) {
-        btnConfirmar.addEventListener("click", function () {
-            const idActivo = this.getAttribute("data-id");
-            const datos    = new FormData();
-            datos.append("eliminarIdActivo", idActivo);
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — cargar componentes actuales
+    ════════════════════════════════════════════════ */
+    async function cargarComponentesActuales(idPadre) {
+        const lista = document.getElementById('armarListaComponentes');
+        lista.innerHTML = `<div class="text-muted small text-center py-3">
+            <span class="spinner-border spinner-border-sm me-1"></span>Cargando...</div>`;
+
+        try {
+            const fd = new FormData();
+            fd.append('idActivoPadre', idPadre);
+            const res = await fetch('modules/inventario/ajax/activos.ajax.php', { method: 'POST', body: fd });
+            const data = await res.json();
+            renderComponentes(data, idPadre);
+        } catch {
+            lista.innerHTML = '<div class="text-danger small text-center py-3">Error al cargar componentes.</div>';
+        }
+    }
+
+    function renderComponentes(componentes, idPadre) {
+        const lista = document.getElementById('armarListaComponentes');
+        const contador = document.getElementById('armarContador');
+
+        if (!componentes || componentes.length === 0) {
+            contador.textContent = '0';
+            lista.innerHTML = `
+                <div class="componentes-vacio">
+                    <i class="ti ti-inbox fs-2 d-block mb-1"></i>
+                    Sin componentes asignados
+                </div>`;
+            return;
+        }
+
+        contador.textContent = componentes.length;
+        lista.innerHTML = componentes.map(c => {
+            const icono = c.iconoActivo ?? 'ti-package';
+            const serie = c.numeroSerie
+                ? `<span class="text-muted small">S/N: ${escHtml(c.numeroSerie)}</span>` : '';
+            const caract = c.caracteristicas
+                ? `<div class="text-muted small text-truncate">${escHtml(c.caracteristicas)}</div>` : '';
+            return `
+            <div class="componente-card" data-id="${c.idActivo}">
+                <div class="componente-icon">
+                    <i class="ti ${escHtml(icono)}"></i>
+                </div>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="fw-semibold small text-truncate">${escHtml(c.nombreActivo ?? 'Componente')}</div>
+                    ${serie}
+                    ${caract}
+                    ${c.codigoPatrimonial
+                    ? `<span class="badge badge-outline text-muted small">${escHtml(c.codigoPatrimonial)}</span>`
+                    : ''}
+                </div>
+                <button type="button"
+                    class="btn btn-sm btn-icon btn-outline-danger btnQuitarComponente flex-shrink-0"
+                    data-id-hijo="${c.idActivo}"
+                    data-id-padre="${idPadre}"
+                    title="Quitar del equipo">
+                    <i class="ti ti-unlink"></i>
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — cargar activos disponibles
+    ════════════════════════════════════════════════ */
+    async function cargarEquiposDisponibles(idPadre) {
+        try {
+            const res = await fetch(
+                `modules/inventario/ajax/activos.ajax.php?disponibles=1&idPadre=${idPadre}`
+            );
+            const data = await res.json();
+
+            const ops = [{ value: '', label: 'Seleccionar componente...' }];
+            const extra = {};
+            data.forEach(eq => {
+                ops.push({ value: String(eq.idActivo), label: eq.label });
+                extra[String(eq.idActivo)] = eq;
+            });
+            csComponente.setOptions(ops);
+            csComponente._extra = extra;
+        } catch (e) { console.error('[cargarEquiposDisponibles]', e); }
+    }
+
+    /* ── Cambio en select componente → mostrar info ── */
+    document.getElementById('armarComponenteSelect')
+        ?.addEventListener('change', function () {
+            const val = this.value;
+            const infoBox = document.getElementById('armarComponenteInfo');
+            const btnAgregar = document.getElementById('btnAgregarComponente');
+
+            if (!val) {
+                infoBox.style.display = 'none';
+                btnAgregar.disabled = true;
+                return;
+            }
+            const extra = csComponente._extra?.[val];
+            if (extra) {
+                document.getElementById('armarInfoSerie').textContent = extra.numeroSerie || '—';
+                document.getElementById('armarInfoCodigo').textContent = extra.codigoPatrimonial || '—';
+                document.getElementById('armarInfoCaract').textContent = extra.caracteristicas || '—';
+                infoBox.style.display = 'block';
+            }
+            btnAgregar.disabled = false;
+        });
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — agregar componente
+    ════════════════════════════════════════════════ */
+    document.getElementById('btnAgregarComponente')
+        ?.addEventListener('click', async function () {
+            const idPadre = document.getElementById('armarIdActivoPadre').value;
+            const idHijo = csComponente.getValue();
+            if (!idHijo) { mostrarToast('warning', 'Seleccione un componente primero.'); return; }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Agregando...';
+            try {
+                const fd = new FormData();
+                fd.append('accion', 'agregarComponente');
+                fd.append('idActivoPadre', idPadre);
+                fd.append('idActivoHijo', idHijo);
+                const res = await fetch('modules/inventario/ajax/activos.ajax.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                manejarRespuestaSP(data, null, async () => {
+                    csComponente.reset();
+                    document.getElementById('armarComponenteInfo').style.display = 'none';
+                    document.getElementById('btnAgregarComponente').disabled = true;
+                    await Promise.all([
+                        cargarComponentesActuales(idPadre),
+                        cargarEquiposDisponibles(idPadre),
+                    ]);
+                });
+            } catch { mostrarToast('error', 'Error de servidor.'); }
+            finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="ti ti-plus me-1"></i>Agregar al equipo';
+            }
+        });
+
+    /* ════════════════════════════════════════════════
+       ARMAR EQUIPO — quitar componente (delegado)
+    ════════════════════════════════════════════════ */
+    document.getElementById('armarListaComponentes')
+        ?.addEventListener('click', async function (e) {
+            const btn = e.target.closest('.btnQuitarComponente');
+            if (!btn) return;
+
+            const idHijo = btn.getAttribute('data-id-hijo');
+            const idPadre = btn.getAttribute('data-id-padre');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            try {
+                const fd = new FormData();
+                fd.append('accion', 'quitarComponente');
+                fd.append('idActivoHijo', idHijo);
+                const res = await fetch('modules/inventario/ajax/activos.ajax.php', { method: 'POST', body: fd });
+                const data = await res.json();
+                manejarRespuestaSP(data, null, async () => {
+                    await Promise.all([
+                        cargarComponentesActuales(idPadre),
+                        cargarEquiposDisponibles(idPadre),
+                    ]);
+                });
+            } catch { mostrarToast('error', 'Error de servidor.'); }
+            finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-unlink"></i>';
+            }
+        });
+
+    /* ════════════════════════════════════════════════
+       DATATABLES
+    ════════════════════════════════════════════════ */
+    if ($.fn.DataTable.isDataTable('#tablaActivos')) $('#tablaActivos').DataTable().destroy();
+    $('#tablaActivos').DataTable({
+        responsive: true, pageLength: 10, autoWidth: false,
+        dom: `<'card-body border-bottom py-3'<'row g-3 align-items-center'
+              <'col-12 col-md-auto'l>
+              <'col-12 col-md-auto ms-auto'<'d-flex gap-2'Bf>>
+              >>tr<'card-footer d-flex align-items-center py-2'
+              <'m-0 text-muted small'i><'pagination m-0 ms-auto'p>>`,
+        buttons: [
+            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-outline-success btn-sm m-0' },
+            { extend: 'pdfHtml5', text: '<i class="ti ti-file-description"></i>', className: 'btn btn-outline-danger btn-sm m-0' }
+        ],
+        initComplete: function () {
+            $('.dataTables_filter input').addClass('form-control form-control-sm m-0').attr('placeholder', 'Buscar activo...');
+            $('.dataTables_length select').addClass('form-select form-select-sm');
+            $('.dt-buttons').addClass('d-flex gap-2 m-0');
+        }
+    });
+
+    /* ── ELIMINAR ACTIVO ── */
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btnEliminarActivo');
+        if (!btn) return;
+
+        const id = btn.getAttribute('data-id');
+        const nombre = btn.getAttribute('data-nombre') || 'este activo';
+        const esPadre = btn.getAttribute('data-es-padre') === '1';
+
+        if (esPadre) {
+            mostrarToast('warning', 'Para eliminar un activo compuesto, primero quita todos sus componentes desde "Armar Equipo".');
+            return;
+        }
+
+        document.getElementById('eliminarNombreActivo').textContent = nombre;
+        document.getElementById('confirmarEliminarActivo').setAttribute('data-id', id);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarEliminarActivo')).show();
+    });
+
+    const btnConfirmarEq = document.getElementById('confirmarEliminarActivo');
+    if (btnConfirmarEq) {
+        btnConfirmarEq.addEventListener('click', function () {
+            const id = this.getAttribute('data-id');
+            const fd = new FormData();
+            fd.append('eliminarIdActivo', id);
 
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...';
 
-            fetch("modules/inventario/ajax/activos.ajax.php", { method: "POST", body: datos })
-                .then(res => res.json())
+            fetch('modules/inventario/ajax/activos.ajax.php', { method: 'POST', body: fd })
+                .then(r => r.json())
                 .then(json => {
-                    bootstrap.Modal.getInstance(document.getElementById("modalConfirmarEliminar")).hide();
-                    if (json.resultado === "ok") {
-                        mostrarToast("success", json.mensaje || "Activo eliminado correctamente.");
+                    bootstrap.Modal.getInstance(document.getElementById('modalConfirmarEliminarActivo')).hide();
+                    if (json.resultado === 'ok') {
+                        mostrarToast('success', json.mensaje || 'Activo eliminado correctamente.');
                         setTimeout(() => location.reload(), 1500);
                     } else {
-                        mostrarToast("error", json.mensaje || "No se pudo eliminar el activo.");
+                        mostrarToast('error', json.mensaje || 'No se pudo eliminar.');
                     }
                 })
-                .catch(() => mostrarToast("error", "Error al comunicarse con el servidor."))
+                .catch(() => mostrarToast('error', 'Error al comunicarse con el servidor.'))
                 .finally(() => {
                     this.disabled = false;
                     this.innerHTML = '<i class="ti ti-trash me-1"></i>Sí, eliminar';
@@ -274,39 +910,4 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /* --- 5. DATATABLE --- */
-    if ($.fn.DataTable.isDataTable('#tablaActivos')) {
-        $('#tablaActivos').DataTable().destroy();
-    }
-
-    $('#tablaActivos').DataTable({
-        "responsive": true,
-        "pageLength": 10,
-        "autoWidth": false,
-        "dom": `
-        <'card-body border-bottom py-3'
-            <'row g-3 align-items-center'
-                <'col-12 col-md-auto d-flex justify-content-center justify-content-md-start'l>
-                <'col-12 col-md-auto ms-auto'
-                    <'d-flex flex-row flex-nowrap align-items-center justify-content-center justify-content-md-end gap-2'Bf>
-                >
-            >
-        >
-        <'table-responsive'tr>
-        <'card-footer d-flex align-items-center py-2'
-            <'m-0 text-muted small'i>
-            <'pagination m-0 ms-auto'p>
-        >
-    `,
-        "buttons": [
-            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-outline-success btn-sm m-0' },
-            { extend: 'pdfHtml5',   text: '<i class="ti ti-file-description"></i>',  className: 'btn btn-outline-danger btn-sm m-0' }
-        ],
-        "initComplete": function () {
-            $('.dataTables_filter input').addClass('form-control form-control-sm m-0').attr('placeholder', 'Buscar...');
-            $('.dataTables_length select').addClass('form-select form-select-sm');
-            $('.dt-buttons').addClass('d-flex gap-2 m-0');
-            $('#tablaActivos').addClass('text-nowrap');
-        }
-    });
-});
+}); // fin DOMContentLoaded

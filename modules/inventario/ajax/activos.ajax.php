@@ -1,118 +1,99 @@
 <?php
 session_start();
-ini_set('display_errors', 0); // No mostrar errores PHP en output
-error_reporting(E_ALL);
-
 require_once __DIR__ . "/../models/ActivosModel.php";
 require_once __DIR__ . "/../controllers/ActivosController.php";
 
 header('Content-Type: application/json; charset=utf-8');
 
-// Función helper: siempre devuelve JSON limpio con resultado y mensaje
-function responder($data) {
-    if (is_string($data)) {
-        echo json_encode(["resultado" => $data, "mensaje" => $data]);
-    } elseif (is_array($data)) {
-        // Asegurar que siempre existan las claves resultado y mensaje
-        if (!isset($data["resultado"])) $data["resultado"] = "error";
-        if (!isset($data["mensaje"]))   $data["mensaje"]   = "";
-        echo json_encode($data);
-    } else {
-        echo json_encode(["resultado" => "error", "mensaje" => "Respuesta inválida del servidor."]);
-    }
-    exit;
+function responder($data) { echo json_encode($data); exit; }
+
+function fmtFecha($fecha, $formato = "Y-m-d") {
+    if (!$fecha) return null;
+    if ($fecha instanceof DateTime) return $fecha->format($formato);
+    $ts = strtotime($fecha);
+    return $ts ? date($formato, $ts) : null;
 }
 
-class AjaxActivos
-{
-    /*=============================================
-    AGREGAR ACTIVO
-    =============================================*/
-    public function ajaxCrearActivo()
-    {
-        $respuesta = ActivosController::ctrCrearActivo();
-        responder($respuesta ?? "error");
-    }
-
-    /*=============================================
-    EDITAR ACTIVO
-    =============================================*/
-    public function ajaxEditarActivo()
-    {
-        $respuesta = ActivosController::ctrEditarActivo();
-        responder($respuesta ?? "error");
-    }
-
-    /*=============================================
-    CARGAR DATOS PARA MODAL EDITAR
-    =============================================*/
-    public $idActivo;
-
-    public function ajaxMostrarEditarActivo()
-    {
-        $item  = "idActivos";
-        $valor = $this->idActivo;
-
-        $activo = ActivosController::ctrMostrarActivos($item, $valor);
-
-        if (!$activo || $activo === "error") {
-            responder(["resultado" => "error", "mensaje" => "No se encontró el activo."]);
-            return;
-        }
-
-        $respuesta = [
-            "resultado"         => "ok",
-            "idActivos"         => intval($activo["idActivos"]),
-            "descripcion"       => $activo["descripcion"]       ?? "",
-            "icono"             => $activo["icono"]             ?? "",
-            "compuesto"         => intval($activo["compuesto"]  ?? 0),
-            "esPeriferico"      => intval($activo["esPeriferico"] ?? 0),
-            "idUsuarioRegistro" => $activo["idUsuarioRegistro"] ?? "",
-            "fechaCreacion"     => isset($activo["fechaCreacion"])
-                ? ($activo["fechaCreacion"] instanceof DateTime
-                    ? $activo["fechaCreacion"]->format("d/m/Y")
-                    : date("d/m/Y", strtotime($activo["fechaCreacion"])))
-                : ""
-        ];
-
-        echo json_encode($respuesta);
-        exit;
-    }
-
-    /*=============================================
-    ELIMINAR ACTIVO (lógico)
-    =============================================*/
-    public function ajaxEliminarActivo()
-    {
-        $respuesta = ActivosController::ctrEliminarActivo();
-        responder($respuesta ?? ["resultado" => "error", "mensaje" => "Sin respuesta."]);
-    }
+/* ── AGREGAR COMPONENTE ── */
+if (isset($_POST["accion"]) && $_POST["accion"] === "agregarComponente") {
+    $idPadre = intval($_POST["idActivoPadre"] ?? 0);
+    $idHijo  = intval($_POST["idActivoHijo"]  ?? 0);
+    if (!$idPadre || !$idHijo) responder(["resultado" => "error", "mensaje" => "Datos incompletos."]);
+    responder(ActivosController::ctrAgregarComponente($idPadre, $idHijo));
 }
 
-/* ── CREAR ── */
-if (isset($_POST["nuevaDescripcion"])) {
-    $obj = new AjaxActivos();
-    $obj->ajaxCrearActivo();
+/* ── QUITAR COMPONENTE ── */
+if (isset($_POST["accion"]) && $_POST["accion"] === "quitarComponente") {
+    $idHijo = intval($_POST["idActivoHijo"] ?? 0);
+    if (!$idHijo) responder(["resultado" => "error", "mensaje" => "ID de componente no recibido."]);
+    responder(ActivosController::ctrQuitarComponente($idHijo));
 }
 
-/* ── EDITAR ── */
-if (isset($_POST["editarDescripcion"])) {
-    $obj = new AjaxActivos();
-    $obj->ajaxEditarActivo();
-}
-
-/* ── CARGAR PARA MODAL EDITAR ── */
-if (isset($_POST["idActivo"])) {
-    $obj           = new AjaxActivos();
-    $obj->idActivo = $_POST["idActivo"];
-    $obj->ajaxMostrarEditarActivo();
-}
-
-/* ── ELIMINAR ── */
+/* ── ELIMINAR ACTIVO (lógico) ── */
 if (isset($_POST["eliminarIdActivo"])) {
-    $obj = new AjaxActivos();
-    $obj->ajaxEliminarActivo();
+    responder(ActivosController::ctrEliminarActivo());
 }
 
-// Si no coincide nada
-responder(["resultado" => "error", "mensaje" => "Solicitud no reconocida."]);
+/* ── CREAR ACTIVO ── */
+if (isset($_POST["nuevoIdTipoActivo"])) {
+    responder(ActivosController::ctrCrearActivo());
+}
+
+/* ── EDITAR ACTIVO ── */
+if (isset($_POST["editarIdTipoActivo"])) {
+    responder(ActivosController::ctrEditarActivo());
+}
+
+/* ── CARGAR DATOS PARA MODAL EDITAR ── */
+if (isset($_POST["idActivo"])) {
+    $activo = ActivosController::ctrMostrarActivo("idActivo", intval($_POST["idActivo"]));
+    if (!$activo) responder(["error" => "No se encontró el activo."]);
+    $caracteristicasDetalle = ActivosController::ctrMostrarCaracteristicasActivo(intval($_POST["idActivo"]));
+    responder([
+        "idActivo"               => intval($activo["idActivo"]),
+        "idTipoActivo"           => intval($activo["idTipoActivo"]),
+        "idActivoPadre"          => $activo["idActivoPadre"]       ?? null,
+        "codigoPatrimonial"      => $activo["codigoPatrimonial"]   ?? "",
+        "codigoLicencia"         => $activo["codigoLicencia"]      ?? "",
+        "numeroSerie"            => $activo["numeroSerie"]         ?? "",
+        "fechaAdquisicion"       => fmtFecha($activo["fechaAdquisicion"]    ?? null),
+        "fechaInicioGarantia"    => fmtFecha($activo["fechaInicioGarantia"] ?? null),
+        "fechaFinGarantia"       => fmtFecha($activo["fechaFinGarantia"]    ?? null),
+        "estado"                 => $activo["estado"]              ?? "disponible",
+        "esCompuesto"            => intval($activo["esCompuesto"]  ?? 0),
+        "esPeriferico"           => intval($activo["esPeriferico"] ?? 0),
+        "esComponente"           => intval($activo["esComponente"] ?? 0),
+        "idUsuarioRegistro"      => $activo["idUsuarioRegistro"]   ?? "",
+        "fechaCreacion"          => fmtFecha($activo["fechaCreacion"]       ?? null, "d/m/Y H:i:s"),
+        "idUsuarioModifica"      => $activo["idUsuarioModifica"]   ?? "",
+        "fechaModificacion"      => fmtFecha($activo["fechaModificacion"]   ?? null, "d/m/Y H:i:s"),
+        "nombreActivo"           => $activo["nombreActivo"]        ?? "",
+        "caracteristicasDetalle" => $caracteristicasDetalle,
+    ]);
+}
+
+/* ── CARGAR COMPONENTES DEL ACTIVO PADRE ── */
+if (isset($_POST["idActivoPadre"])) {
+    $componentes = ActivosController::ctrMostrarComponentes(intval($_POST["idActivoPadre"]));
+    responder($componentes ?: []);
+}
+
+/* ── ACTIVOS DISPONIBLES ── */
+if (isset($_GET["disponibles"])) {
+    $idPadre     = intval($_GET["idPadre"] ?? 0);
+    $disponibles = ActivosController::ctrActivosDisponibles($idPadre);
+    $result = [];
+    foreach (($disponibles ?: []) as $eq) {
+        $result[] = [
+            "idActivo"          => intval($eq["idActivo"]),
+            "label"             => ($eq["nombreActivo"] ?? 'Activo')
+                                 . (!empty($eq["numeroSerie"])       ? ' — ' . $eq["numeroSerie"]       : '')
+                                 . (!empty($eq["codigoPatrimonial"]) ? ' [' . $eq["codigoPatrimonial"] . ']' : ''),
+            "icono"             => $eq["iconoActivo"]       ?? "ti-package",
+            "numeroSerie"       => $eq["numeroSerie"]       ?? "",
+            "codigoPatrimonial" => $eq["codigoPatrimonial"] ?? "",
+            "caracteristicas"   => $eq["caracteristicas"]   ?? "",
+        ];
+    }
+    responder($result);
+}

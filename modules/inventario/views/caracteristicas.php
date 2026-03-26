@@ -26,7 +26,7 @@
           <div class="card-header">
             <ul class="nav nav-tabs card-header-tabs">
               <li class="nav-item">
-                <a class="nav-link" href="?module=inventario&action=activos"><i class="ti ti-devices me-1"></i> Activos</a>
+                <a class="nav-link" href="?module=inventario&action=tipoActivos"><i class="ti ti-devices me-1"></i>Tipo Activos</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="?module=inventario&action=tipoCaracteristicas"><i class="ti ti-category me-1"></i> Tipo Caracteristicas</a>

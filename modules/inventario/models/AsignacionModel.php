@@ -67,7 +67,7 @@ class AsignacionModel
                 a.fechaCreacion
             FROM inventario.asignacion a
             INNER JOIN inventario.estacion est ON a.idEstacion = est.idEstacion
-            LEFT  JOIN inventario.ip       ip  ON est.idIp    = ip.idIp
+            LEFT  JOIN inventario.ip       ip  ON est.idEstacion = ip.idEstacion
             LEFT  JOIN inventario.ambiente amb ON a.idAmbiente = amb.idAmbiente
             WHERE a.fechaLiberacion IS NULL
             ORDER BY est.nombreEstacion ASC
@@ -168,7 +168,7 @@ class AsignacionModel
         $sql  = "
             SELECT est.idEstacion, est.nombreEstacion, ip.ipAddress
             FROM inventario.estacion est
-            LEFT JOIN inventario.ip ip ON est.idIp = ip.idIp
+            LEFT JOIN inventario.ip ip ON est.idEstacion = ip.idEstacion
             WHERE est.idEstacion NOT IN (
                 SELECT idEstacion FROM inventario.asignacion
                 WHERE fechaLiberacion IS NULL
@@ -191,34 +191,34 @@ class AsignacionModel
         $conn = Conexion::conectar();
         $sql  = "
             SELECT
-                e.idEquipo,
+                e.idActivo,
                 e.codigoPatrimonial,
                 e.numeroSerie,
                 a.descripcion  AS nombreActivo,
                 a.icono        AS iconoActivo,
-                a.compuesto,
+                a.esCompuesto,
                 CASE
                     WHEN UPPER(a.descripcion) = 'SOFTWARE' THEN 'Software'
-                    WHEN a.compuesto = 1 THEN 'Equipo Principal'
+                    WHEN a.esCompuesto = 1 THEN 'Equipo Principal'
                     ELSE 'Periférico'
                 END AS tipoEquipo,
                 STRING_AGG(tc.descripcion + ': ' + c.valor, ', ') AS caracteristicas
-            FROM inventario.estacionEquipo ee
-            INNER JOIN inventario.equipo  e  ON ee.idEquipo          = e.idEquipo
-            INNER JOIN inventario.activos a  ON e.idActivo           = a.idActivos
-            LEFT  JOIN inventario.equipoCaracteristica ec ON e.idEquipo = ec.idEquipo
+            FROM inventario.estacionActivo ee
+            INNER JOIN inventario.activo  e  ON ee.idActivo         = e.idActivo
+            INNER JOIN inventario.tipoActivo a  ON e.idTipoActivo           = a.idTipoActivo
+            LEFT  JOIN inventario.activoCaracteristica ec ON e.idActivo = ec.idActivo
             LEFT  JOIN inventario.caracteristicas      c  ON ec.idCaracteristica = c.idCaracteristica
             LEFT  JOIN inventario.tipoCaracteristica   tc ON c.idTipoCaracteristica = tc.idTipoCaracteristica
             WHERE ee.idEstacion = ?
-            GROUP BY e.idEquipo, e.codigoPatrimonial, e.numeroSerie,
-                     a.descripcion, a.icono, a.compuesto
-            ORDER BY a.compuesto DESC, a.descripcion ASC
+            GROUP BY e.idActivo, e.codigoPatrimonial, e.numeroSerie,
+                     a.descripcion, a.icono, a.esCompuesto
+            ORDER BY a.esCompuesto DESC, a.descripcion ASC
         ";
         $stmt = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
         $rows = [];
         if ($stmt !== false) {
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-                $row['compuesto'] = ($row['compuesto'] === true || $row['compuesto'] === 1);
+                $row['esCompuesto'] = ($row['esCompuesto'] === true || $row['esCompuesto'] === 1);
                 $rows[] = $row;
             }
             sqlsrv_free_stmt($stmt);
