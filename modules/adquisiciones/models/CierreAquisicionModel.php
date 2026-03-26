@@ -9,7 +9,6 @@ class CierreAquisicionModel
 	}
 
 	// Obtiene el registro de cierre para una tecnología y año específico.
-	// Retorna el array con los datos o null si no existe.
 	public function obtenerPorTecnologiaYAnio($idCatalogoTecnologico, $anio)
 	{
 		$sql = "
@@ -40,8 +39,7 @@ class CierreAquisicionModel
 		return $row;
 	}
 
-	// Finaliza la adquisición: inserta o reactiva el registro con Estado=1.
-	// Retorna true si tuvo éxito, false en caso contrario.
+	// Finaliza la adquisición: inserta o reactiva el registro con Estado = 1.
 	public function finalizar($idCatalogoTecnologico, $anio, $idUsuario)
 	{
 		$idCat  = (int) $idCatalogoTecnologico;

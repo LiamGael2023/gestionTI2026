@@ -27,28 +27,20 @@ class CatalogoTecnologicoModel
 					FOR XML PATH(''), TYPE
 				).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS CodigosSiga,
 				CASE 
-					WHEN et.Id IS NOT NULL AND vt.Id IS NOT NULL AND ft.TotalFichas >= 2 THEN 1
+					WHEN ca.Id IS NOT NULL AND ca.Estado = 1 THEN 1
 					ELSE 0
 				END AS EstadoCompleto
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
-			LEFT JOIN adquisiciones.EspecificacionTecnica et 
-				ON et.IdCatalogoTecnologico = ct.Id AND et.Anio = ?
-			LEFT JOIN adquisiciones.VerificacionTecnica vt
-				ON vt.IdCatalogoTecnologico = ct.Id AND vt.Anio = ?
-			LEFT JOIN (
-				SELECT IdCatalogoTecnologico, Anio, COUNT(*) AS TotalFichas
-				FROM adquisiciones.FichaTecnica
-				WHERE Anio = ?
-				GROUP BY IdCatalogoTecnologico, Anio
-			) ft ON ft.IdCatalogoTecnologico = ct.Id AND ft.Anio = ?
+			LEFT JOIN adquisiciones.CierreAquisicion ca
+				ON ca.IdCatalogoTecnologico = ct.Id AND ca.Anio = ?
 			WHERE r.Anio = ? AND ct.Activo = 1
-			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, et.Id, vt.Id, ft.TotalFichas
+			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, ca.Id, ca.Estado
 			ORDER BY ct.Codigo, ct.NombreGenerico
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta]);
+		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta]);
 		if ($stmt === false) {
 			return [];
 		}

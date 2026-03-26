@@ -136,7 +136,7 @@
 			inputId.value = modoFormulario === 'editar' ? String(parseInt(idOrdenCompra, 10) || 0) : '0';
 		}
 		if (inputNumero) {
-			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+			inputNumero.value = generarNumeroOrdenCompra(anioActual).replaceAll('_', ' ');
 		}
 		if (inputFecha) {
 			inputFecha.value = modoFormulario === 'editar' ? String(fechaEntrega || '') : '';
@@ -192,7 +192,7 @@
 			inputId.value = '0';
 		}
 		if (inputNumero) {
-			inputNumero.value = generarNumeroOrdenCompra(anioActual);
+			inputNumero.value = generarNumeroOrdenCompra(anioActual).replaceAll('_', ' ');
 		}
 		if (inputDocumento) {
 			inputDocumento.required = true;
