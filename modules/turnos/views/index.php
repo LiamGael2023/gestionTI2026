@@ -308,7 +308,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
     </select>
 
     <label>Año:</label>
-    <input type="number" id="anioModal" value="<?= date("Y") ?>"
+   <input type="number" id="anioModal" value="<?= $anio ?>"
      class="form-control form-control-sm d-inline w-auto" min="2000" max="<?= date("Y")+5 ?>">
 
     <button type="button" id="btnActualizarModal" class="btn btn-primary btn-sm">Actualizar</button>
@@ -360,6 +360,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 </div>
 <script>
 
+let turnosBDGlobal = [];
 let turnosTemp = [];
 
 $(document).ready(function(){
@@ -371,9 +372,13 @@ $(document).ready(function(){
     });
 
     // Check all
-    $('#checkAll').click(function(){
-        $('.checkItem').prop('checked', $(this).prop('checked'));
-    });
+   $('#checkAll').on('click', function(){
+    let tabla = $('#tablaTrabajadores').DataTable();
+
+    let rows = tabla.rows({ search: 'applied' }).nodes();
+
+    $('input.checkItem', rows).prop('checked', this.checked);
+});
 
 });
 
@@ -422,21 +427,23 @@ $("#btnAgregarHorario").click(function(){
 
     let trabajadores = [];
 
-    $("#tablaTrabajadores tbody tr").each(function(){
+    let tabla = $('#tablaTrabajadores').DataTable();
 
-        let check = $(this).find(".checkItem").prop("checked");
+tabla.rows().every(function(){
+    let fila = $(this.node());
 
-        if(check){
-            trabajadores.push({
-                id: $(this).data("trabajador"),
-                nombre: $(this).find("td:eq(1)").text(),
-                horario: $(this).data("horario"),
-                fechainicio: $(this).data("fechainicio"),
-                fechafin: $(this).data("fechafin")
-            });
-        }
+    let check = fila.find(".checkItem").prop("checked");
 
-    });
+    if(check){
+        trabajadores.push({
+            id: fila.data("trabajador"),
+            nombre: fila.find("td:eq(1)").text(),
+            horario: fila.data("horario"),
+            fechainicio: fila.data("fechainicio"),
+            fechafin: fila.data("fechafin")
+        });
+    }
+});
 
     if(trabajadores.length == 0){
         alert("Seleccione trabajadores");
@@ -476,8 +483,42 @@ $(document).on("change", "#tablaHorarioModal input[type='checkbox']", function()
         checkboxTemporal = $(this);
 
         // Si ya existe un turno para ese trabajador y día, cargar la descripción
-        let turnoExistente = turnosTemp.find(t => t.trabajador == trabajador && t.dia == dia);
-        $("#descripcionTurno").val(turnoExistente ? turnoExistente.descripcion : '');
+       let descripcion = "";
+
+// 🔹 1. Buscar en TEMP (lo que estás editando)
+let turnoTemp = turnosTemp.find(t => t.trabajador == trabajador && t.dia == dia);
+
+if(turnoTemp){
+    descripcion = turnoTemp.descripcion;
+} else {
+
+    // 🔹 2. Buscar en BD
+    let trabajadorBD = turnosBDGlobal.find(t => t.id == trabajador);
+
+    if(trabajadorBD){
+
+        trabajadorBD.turnos.forEach(turno => {
+
+            let fechaInicio = new Date(turno.FechaInicioTurno.date);
+            let fechaFin = new Date(turno.FechaFinTurno.date);
+
+            let fechaCelda = new Date(
+                $("#anioModal").val(),
+                $("#mesModal").val() - 1,
+                dia
+            );
+
+            if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
+                descripcion = turno.Descripcion || "";
+            }
+
+        });
+
+    }
+}
+
+// 👇 cargar al modal
+$("#descripcionTurno").val(descripcion);
 
         // Abrir modal para ingresar descripción
         $("#modalDescripcion").modal("show");
@@ -495,10 +536,7 @@ $("#guardarDescripcion").click(function(){
 
     let descripcion = $("#descripcionTurno").val().trim();
 
-    if(!descripcion){
-        alert("Debe ingresar una descripción");
-        return;
-    }
+   
 
     let trabajador = checkboxTemporal.data("trabajador");
     let dia = checkboxTemporal.data("dia");
@@ -539,34 +577,30 @@ $("#guardarHorarioModal").click(function(){
     }
 
     let datos = [];
-    let agrupados = {};
 
- 
     turnosTemp.forEach(t => {
-        let key = `${t.trabajador}-${t.marcacion}`;
-        if(!agrupados[key]) agrupados[key] = [];
-        agrupados[key].push(t);
+
+        let fila = $("#tablaTrabajadores tbody tr[data-trabajador='"+t.trabajador+"']");
+
+        datos.push({
+            trabajador: t.trabajador,
+            anio: t.anio,
+            mes: t.mes,
+            componente: fila.data("componente"),
+            meta: fila.data("meta"),
+            horario: fila.data("horario") || null,
+
+            // 🔥 CLAVE: MISMO DIA
+            fechainicioturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(t.dia).padStart(2,'0')}`,
+            fechafinturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(t.dia).padStart(2,'0')}`,
+
+            marcacionturno: t.marcacion,
+            descripcion: t.descripcion || ""
+        });
+
     });
 
- 
-    Object.values(agrupados).forEach(lista => {
-        lista.sort((a,b)=>a.dia-b.dia);
-
-        let inicio = lista[0].dia;
-        let fin = lista[0].dia;
-
-        for(let i=1;i<lista.length;i++){
-            if(lista[i].dia === fin + 1){
-                fin = lista[i].dia;
-            } else {
-                datos.push(crearObjeto(lista[i-1], inicio, fin));
-                inicio = lista[i].dia;
-                fin = lista[i].dia;
-            }
-        }
-
-        datos.push(crearObjeto(lista[0], inicio, fin));
-    });
+    console.log("DATOS A GUARDAR:", datos);
 
     $("#guardarHorarioModal").prop("disabled", true);
 
@@ -666,6 +700,7 @@ function cargarTablaHorarioModal(){
     let diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 
     let turnosBD = <?php echo json_encode($trabajadoresJS); ?>;
+    turnosBDGlobal = turnosBD;
     generarLeyenda(turnosBD);
 
     let thead = '<tr><th>Trabajador</th>';
@@ -717,6 +752,7 @@ function cargarTablaHorarioModal(){
 
                     if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
 
+                        descripcion = turno.Descripcion || "";
                         color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
                         clase = "turno-existente";
 

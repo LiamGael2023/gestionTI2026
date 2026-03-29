@@ -49,6 +49,10 @@ static public function ctrListarTurnosTrabajador($id_trabajador, $anio){
     return $respuesta;
 }
 
+public static function ctrActualizarDescripcion($trabajador, $fecha, $descripcion){
+    return TrabajadorModel::mdlActualizarDescripcion($trabajador, $fecha, $descripcion);
+}
+
  static public function ctrGuardarTrabajadorTurno(){
 
         if(isset($_POST["datos"])){
