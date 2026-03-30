@@ -157,11 +157,14 @@ switch ($action) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento registrado correctamente', 'id' => $id]);
 			} else {
 				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
-				$detalle = '';
+				$mensaje = 'No se pudo guardar el requerimiento.';
 				if (is_array($errors) && count($errors) > 0) {
-					$detalle = ' - ' . $errors[0]['message'];
+					// Error 2627 / 2601: violación de clave única (registro duplicado)
+					if (in_array((int) $errors[0]['code'], [2627, 2601], true)) {
+						$mensaje = 'Ya existe un requerimiento con el Nro. de Pedido "' . htmlspecialchars($datos['NroPedidoCompra']) . '" para el año ' . $datos['Anio'] . '.';
+					}
 				}
-				echo json_encode(['success' => false, 'message' => 'No se pudo guardar el requerimiento' . $detalle]);
+				echo json_encode(['success' => false, 'message' => $mensaje]);
 			}
 		} else {
 			echo json_encode(['success' => false, 'message' => 'Datos incompletos']);

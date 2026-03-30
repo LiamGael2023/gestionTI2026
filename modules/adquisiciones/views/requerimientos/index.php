@@ -210,16 +210,16 @@
 
 		const rowHtml = [
 			'<tr data-id="' + id + '">',
-				'<td>' + escapeHtml(nroPedido) + '</td>',
-				'<td>' + escapeHtml(centroCosto) + '</td>',
-				'<td>' + parseInt(anio, 10) + '</td>',
-				'<td>' + badgeEstado + '</td>',
-				'<td class="text-end">',
-					'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
-						'<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(' + id + ')">Detalles</button>',
-						'<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(' + id + ')">Eliminar</button>',
-					'</div>',
-				'</td>',
+			'<td>' + escapeHtml(nroPedido) + '</td>',
+			'<td>' + escapeHtml(centroCosto) + '</td>',
+			'<td>' + parseInt(anio, 10) + '</td>',
+			'<td>' + badgeEstado + '</td>',
+			'<td class="text-end">',
+			'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
+			'<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(' + id + ')">Detalles</button>',
+			'<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(' + id + ')">Eliminar</button>',
+			'</div>',
+			'</td>',
 			'</tr>'
 		].join('');
 
@@ -302,71 +302,73 @@
 	var btnBuscarSiga = document.getElementById('btn-buscar-siga');
 	if (btnBuscarSiga) {
 		btnBuscarSiga.addEventListener('click', function() {
-		const anio = document.getElementById('anio-importar').value.trim();
-		const btn = this;
-		const resultados = document.getElementById('siga-resultados');
-		const sinResultados = document.getElementById('siga-sin-resultados');
-		const loading = document.getElementById('siga-loading');
-		const tbody = document.getElementById('siga-tbody');
+			const anio = document.getElementById('anio-importar').value.trim();
+			const btn = this;
+			const resultados = document.getElementById('siga-resultados');
+			const sinResultados = document.getElementById('siga-sin-resultados');
+			const loading = document.getElementById('siga-loading');
+			const tbody = document.getElementById('siga-tbody');
 
-		if (!/^\d{1,4}$/.test(anio)) {
-			window.adqNotifySafe('warning', 'Validacion', 'Ingrese solo numeros (maximo 4 digitos).');
-			return;
-		}
+			if (!/^\d{1,4}$/.test(anio)) {
+				window.adqNotifySafe('warning', 'Validacion', 'Ingrese solo numeros (maximo 4 digitos).');
+				return;
+			}
 
-		btn.disabled = true;
-		btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Buscando...';
-		if (resultados) resultados.style.display = 'none';
-		if (sinResultados) sinResultados.style.display = 'none';
-		if (loading) loading.style.display = 'block';
+			btn.disabled = true;
+			btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Buscando...';
+			if (resultados) resultados.style.display = 'none';
+			if (sinResultados) sinResultados.style.display = 'none';
+			if (loading) loading.style.display = 'block';
 
-		fetch('index.php?module=adquisiciones&action=buscarPedidosSigaAjax', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-			},
-			body: new URLSearchParams({ anio: anio }).toString()
-		})
-			.then(function(resp) {
-				if (!resp.ok) {
-					throw new Error('Error HTTP');
-				}
-				return resp.json();
-			})
-			.then(function(response) {
-				btn.disabled = false;
-				btn.innerHTML = 'Buscar';
-				if (loading) loading.style.display = 'none';
+			fetch('index.php?module=adquisiciones&action=buscarPedidosSigaAjax', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+					},
+					body: new URLSearchParams({
+						anio: anio
+					}).toString()
+				})
+				.then(function(resp) {
+					if (!resp.ok) {
+						throw new Error('Error HTTP');
+					}
+					return resp.json();
+				})
+				.then(function(response) {
+					btn.disabled = false;
+					btn.innerHTML = 'Buscar';
+					if (loading) loading.style.display = 'none';
 
-				if (!response.success) {
-					window.adqNotifySafe('danger', 'Error al consultar SIGA', response.message || 'No se pudo consultar SIGA.');
-					return;
-				}
+					if (!response.success) {
+						window.adqNotifySafe('danger', 'Error al consultar SIGA', response.message || 'No se pudo consultar SIGA.');
+						return;
+					}
 
-				const pedidos = response.pedidos;
+					const pedidos = response.pedidos;
 
-				if (pedidos.length === 0) {
-					if (sinResultados) sinResultados.style.display = 'block';
-					return;
-				}
+					if (pedidos.length === 0) {
+						if (sinResultados) sinResultados.style.display = 'block';
+						return;
+					}
 
-				if (!tbody) {
-					return;
-				}
-				tbody.innerHTML = '';
+					if (!tbody) {
+						return;
+					}
+					tbody.innerHTML = '';
 
-				pedidos.forEach(function(p) {
-					let accion = '';
-					if (p.YA_IMPORTADO == 1) {
-						accion = '<span class="badge bg-success-lt">Importado</span>';
-					} else {
-						accion = `<button class="badge bg-azure-lt" 
+					pedidos.forEach(function(p) {
+						let accion = '';
+						if (p.YA_IMPORTADO == 1) {
+							accion = '<span class="badge bg-success-lt">Importado</span>';
+						} else {
+							accion = `<button class="badge bg-azure-lt" 
 						onclick="importarPedido('${p.NRO_PEDIDO}', ${anio}, this)">
 						Importar
 					</button>`;
-					}
+						}
 
-					tbody.insertAdjacentHTML('beforeend', `
+						tbody.insertAdjacentHTML('beforeend', `
 					<tr id="fila-${p.NRO_PEDIDO}">
 						<td>${p.NRO_PEDIDO}</td>
 						<td>${p.CENTRO_COSTO}</td>
@@ -375,17 +377,16 @@
 						<td class="text-end">${accion}</td>
 					</tr>
 				`);
-				});
+					});
 
-				if (resultados) resultados.style.display = 'block';
-			})
-			.catch(function() {
-				btn.disabled = false;
-				btn.innerHTML = 'Buscar';
-				if (loading) loading.style.display = 'none';
-				window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
-			},
-		);
+					if (resultados) resultados.style.display = 'block';
+				})
+				.catch(function() {
+					btn.disabled = false;
+					btn.innerHTML = 'Buscar';
+					if (loading) loading.style.display = 'none';
+					window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
+				}, );
 		});
 	}
 
@@ -395,12 +396,15 @@
 		btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
 		fetch('index.php?module=adquisiciones&action=importarPedidoSigaAjax', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-			},
-			body: new URLSearchParams({ nro_pedido: nroPedido, anio: anio }).toString()
-		})
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+				},
+				body: new URLSearchParams({
+					nro_pedido: nroPedido,
+					anio: anio
+				}).toString()
+			})
 			.then(function(resp) {
 				if (!resp.ok) {
 					throw new Error('Error HTTP');
@@ -444,12 +448,12 @@
 			const anio = anioEl ? anioEl.value : '';
 
 			fetch('index.php?module=adquisiciones&action=guardarAjax', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-				},
-				body: new URLSearchParams(new FormData(form)).toString()
-			})
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+					},
+					body: new URLSearchParams(new FormData(form)).toString()
+				})
 				.then(function(resp) {
 					if (!resp.ok) {
 						throw new Error('Error HTTP');
@@ -457,20 +461,20 @@
 					return resp.json();
 				})
 				.then(function(response) {
-				if (response.success) {
-					const modal = bootstrap.Modal.getInstance(document.getElementById('modal-requerimiento'));
-					if (modal) modal.hide();
+					if (response.success) {
+						const modal = bootstrap.Modal.getInstance(document.getElementById('modal-requerimiento'));
+						if (modal) modal.hide();
 
-					agregarFilaRequerimiento(response.id, nroPedido, centroCostoTexto, anio, 0);
-					form.reset();
-					if (anioEl) anioEl.value = String(new Date().getFullYear());
-					if (idCentroCostoEl) idCentroCostoEl.value = idCentroCosto;
-				} else {
-					window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el requerimiento.');
-				}
+						agregarFilaRequerimiento(response.id, nroPedido, centroCostoTexto, anio, 0);
+						form.reset();
+						if (anioEl) anioEl.value = String(new Date().getFullYear());
+						if (idCentroCostoEl) idCentroCostoEl.value = idCentroCosto;
+					} else {
+						window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el requerimiento.');
+					}
 				})
 				.catch(function() {
-				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
+					window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 				});
 		});
 	}
@@ -498,12 +502,14 @@
 		}
 
 		fetch('index.php?module=adquisiciones&action=eliminarAjax', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-			},
-			body: new URLSearchParams({ id: id }).toString()
-		})
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+				},
+				body: new URLSearchParams({
+					id: id
+				}).toString()
+			})
 			.then(function(resp) {
 				if (!resp.ok) {
 					throw new Error('Error HTTP');
@@ -511,18 +517,18 @@
 				return resp.json();
 			})
 			.then(function(response) {
-			if (response.success) {
-				const fila = document.querySelector('tr[data-id="' + id + '"]');
-				if (fila) {
-					fila.remove();
-					asegurarEstadoVacioTablaRequerimientos();
+				if (response.success) {
+					const fila = document.querySelector('tr[data-id="' + id + '"]');
+					if (fila) {
+						fila.remove();
+						asegurarEstadoVacioTablaRequerimientos();
+					}
+				} else {
+					window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el requerimiento.');
 				}
-			} else {
-				window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el requerimiento.');
-			}
 			})
 			.catch(function() {
-			window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
+				window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
 			});
 	}
 </script>
