@@ -1,6 +1,16 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 class Trabajador {
+ private $conn;
+
+
+      public function __construct($conn2)
+    {
+        $this->conn = $conn2;
+    }
 
     static public function mdlMostrarTrabajadoresFiltro($anio, $componente, $meta, $tipotrabajador){
 
@@ -144,6 +154,38 @@ static public function mdlMostrarTurnoTrabajador(){
 
     $datos = [];
 
+    while($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)){
+        $datos[] = $row;
+    }
+
+    sqlsrv_free_stmt($stmt);
+    sqlsrv_close($conn);
+
+    return $datos;
+}
+
+
+static public function mdlMostrarTurnosTrabajadoresModal($id_anio, $id_mes, $trabajadores){
+
+    $conn = Conexion::conectar();
+
+   
+    $ids = implode(",", array_map('intval', $trabajadores));
+
+    $sql = "EXEC BDPERSONAL.Asistencia.pa_Listar_Turnos_Mes_Trabajadores 
+            @id_anio = ?, 
+            @id_mes = ?, 
+            @Ids_Trabajadores = ?";
+
+    $params = array($id_anio, $id_mes, $ids);
+
+    $stmt = sqlsrv_query($conn, $sql, $params);
+
+    if($stmt === false){
+        die(print_r(sqlsrv_errors(), true));
+    }
+
+    $datos = [];
     while($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)){
         $datos[] = $row;
     }

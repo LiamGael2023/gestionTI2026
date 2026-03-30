@@ -1,21 +1,14 @@
 <?php
 
-require_once "../../controllers/trabajadorController.php";
+// error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+require_once "../controllers/trabajadorController.php";
 
-$anio = $_POST["anio"];
+$id_anio = $_POST["anio"];
+$id_mes = $_POST["mes"];
+$trabajadores = $_POST["trabajadores"] ?? [];
 
-$trabajadores = TrabajadorController::ctrMostrarTrabajadoresFiltro($anio, '', '', '');
+$respuesta = TrabajadorController::ctrListarTurnosTrabajadoresModal($id_anio, $id_mes, $trabajadores  );
 
-$data = [];
-
-foreach ($trabajadores as $t){
-
-    $turnos = TrabajadorController::ctrListarTurnosTrabajador($t["Id_Trabajador"], $anio);
-
-    $data[] = [
-        "id" => $t["Id_Trabajador"],
-        "turnos" => $turnos
-    ];
-}
-
-echo json_encode($data);
+echo json_encode($respuesta);

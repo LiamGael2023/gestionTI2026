@@ -280,3 +280,17 @@ cursor:pointer;
     z-index:3;
     background:#f8f9fa;
 }
+.modal {
+    z-index: 2000 !important;
+}
+
+.modal-backdrop {
+    z-index: 1990 !important;
+}
+
+#leyendaMarcacion {
+    pointer-events: none;
+}
+#modalDescripcion {
+    z-index: 1060 !important;
+}

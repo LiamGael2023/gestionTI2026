@@ -352,7 +352,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 
 </div>
       <div class="modal-footer">
-        <button class="btn btn-success" id="guardarHorarioModal">Guardar</button>
+        <button class="btn btn-success" id="guardarHorarioModal">Guardar Turno</button>
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
       </div>
     </div>
@@ -454,6 +454,7 @@ tabla.rows().every(function(){
     turnosTemp = [];
 
     sessionStorage.setItem("trabajadoresHorario", JSON.stringify(trabajadores));
+     turnosBDGlobal = <?php echo json_encode($trabajadoresJS); ?>;
 
     $("#modalHorarioMes").modal("show");
 
@@ -479,14 +480,19 @@ $(document).on("change", "#tablaHorarioModal input[type='checkbox']", function()
 
     if(checked){
 
-        // Guardar referencia para usarla luego
+       
         checkboxTemporal = $(this);
 
-        // Si ya existe un turno para ese trabajador y día, cargar la descripción
+       
        let descripcion = "";
 
-// 🔹 1. Buscar en TEMP (lo que estás editando)
-let turnoTemp = turnosTemp.find(t => t.trabajador == trabajador && t.dia == dia);
+
+let turnoTemp = turnosTemp.find(t =>
+    t.trabajador == trabajador &&
+    t.dia == dia &&
+    t.mes == mes &&
+    t.anio == anio
+);
 
 if(turnoTemp){
     descripcion = turnoTemp.descripcion;
@@ -545,7 +551,12 @@ $("#guardarDescripcion").click(function(){
     let marcacion = $("#marcacion").val();
 
     // Si ya existe, actualizar descripción
-    let index = turnosTemp.findIndex(t => t.trabajador == trabajador && t.dia == dia);
+  let index = turnosTemp.findIndex(t =>
+    t.trabajador == trabajador &&
+    t.dia == dia &&
+    t.mes == mes &&
+    t.anio == anio
+);
     if(index !== -1){
         turnosTemp[index].descripcion = descripcion;
     } else {
@@ -590,7 +601,6 @@ $("#guardarHorarioModal").click(function(){
             meta: fila.data("meta"),
             horario: fila.data("horario") || null,
 
-            // 🔥 CLAVE: MISMO DIA
             fechainicioturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(t.dia).padStart(2,'0')}`,
             fechafinturno: `${t.anio}-${String(t.mes).padStart(2,'0')}-${String(t.dia).padStart(2,'0')}`,
 
@@ -636,10 +646,23 @@ $("#guardarHorarioModal").click(function(){
                 });
             }
 
-            alert("Turnos guardados correctamente");
-            $("#modalHorarioMes").modal("hide");
-            location.reload();
+                      
+                turnosTemp = [];
+                $("#guardarHorarioModal").prop("disabled", false);
 
+                obtenerTurnosActualizados(function(){
+                    cargarTablaHorarioModal();
+
+                   
+                    let alerta = $(
+                        '<div class="alert alert-success alert-dismissible fade show mt-2" role="alert">' +
+                        '<strong>Turnos guardados correctamente</strong>' +
+                        '<button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>' +
+                        '</div>'
+                    );
+                    $(".modal-body").prepend(alerta);
+                    setTimeout(function(){ alerta.alert("close"); }, 3000);
+                });
         },
         error:function(){
             alert("Error al guardar");
@@ -683,7 +706,57 @@ $("#btnUsuariosSeleccionados").click(function(){
 }
     });
 });
+function agruparTurnosPorTrabajador(data){
 
+    let agrupado = {};
+
+    data.forEach(t => {
+
+        let id = t.Id_Trabajador;
+
+        if(!agrupado[id]){
+            agrupado[id] = {
+                id: id,
+                turnos: []
+            };
+        }
+
+        agrupado[id].turnos.push({
+            Id_Marcacion_Tipo: t.Id_Marcacion_Tipo,
+            FechaInicioTurno: t.ProcDias_Fecha_Ini,
+            FechaFinTurno: t.ProcDias_Fecha_Fin,
+            Descripcion: t.ProcDias_Documento,
+            MarcTipo_Descripcion: t.MarcTipo_Descripcion || ""
+        });
+
+    });
+
+    return Object.values(agrupado);
+}
+function obtenerTurnosActualizados(callback){
+
+    let trabajadores = JSON.parse(sessionStorage.getItem("trabajadoresHorario"));
+    let ids = trabajadores.map(t => t.id);
+
+    $.ajax({
+        url: "modules/turnos/ajax/listarTurnosActualizados.ajax.php",
+        method: "POST",
+        data: {
+            anio: $("#anioModal").val(),
+            mes: $("#mesModal").val(),
+            trabajadores: ids 
+        },
+        success: function(res){
+
+            let data = JSON.parse(res);
+
+            console.log("TURNOS ACTUALIZADOS:", data);
+            turnosBDGlobal = agruparTurnosPorTrabajador(data);
+
+            if(callback) callback();
+        }
+    });
+}
 
 // ===============================
 // cargar turnos mes y dias
@@ -699,8 +772,8 @@ function cargarTablaHorarioModal(){
     let diasMes = new Date(anio, mes, 0).getDate();
     let diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 
-    let turnosBD = <?php echo json_encode($trabajadoresJS); ?>;
-    turnosBDGlobal = turnosBD;
+let turnosBD = turnosBDGlobal;
+
     generarLeyenda(turnosBD);
 
     let thead = '<tr><th>Trabajador</th>';
@@ -749,6 +822,14 @@ function cargarTablaHorarioModal(){
                     let diaFin = fechaFin.getDate();
 
                     let fechaCelda = new Date(anio, mes-1, d);
+                if(
+                        fechaCelda >= fechaInicio &&
+                        fechaCelda <= fechaFin &&
+                        fechaInicio.getFullYear() == anio &&
+                        (fechaInicio.getMonth()+1) == mes
+                    ){
+                        descripcion = turno.Descripcion || "";
+                    }
 
                     if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
 
@@ -814,16 +895,41 @@ for(let i=1; i<=80; i++){
 //leyenda
 function generarLeyenda(turnosBD){
 
+    let mes = parseInt($("#mesModal").val());
+    let anio = parseInt($("#anioModal").val());
+
     let usados = {};
 
     turnosBD.forEach(trab => {
 
         trab.turnos.forEach(t => {
 
-            let tipo = t.Id_Marcacion_Tipo;
-            let nombre = t.MarcTipo_Descripcion || ("Tipo " + tipo);
+            let fechaInicio = new Date(t.FechaInicioTurno.date);
+            let fechaFin = new Date(t.FechaFinTurno.date);
 
-            usados[tipo] = nombre;
+            let fechaInicioMes = fechaInicio.getMonth() + 1;
+            let fechaInicioAnio = fechaInicio.getFullYear();
+
+            let fechaFinMes = fechaFin.getMonth() + 1;
+            let fechaFinAnio = fechaFin.getFullYear();
+
+          
+            let dentroDelMes = (
+                (fechaInicioAnio == anio && fechaInicioMes == mes) ||
+                (fechaFinAnio == anio && fechaFinMes == mes)
+            );
+
+            if(dentroDelMes){
+
+    let tipo = t.Id_Marcacion_Tipo;
+    let nombre = t.MarcTipo_Descripcion;
+
+    if(nombre && nombre.trim() !== ""){
+        usados[tipo] = nombre; // 🔥 PRIORIDAD AL NOMBRE REAL
+    } else if(!usados[tipo]){
+        usados[tipo] = "Tipo " + tipo; // fallback SOLO si no existe
+    }
+}
 
         });
 
@@ -850,9 +956,7 @@ function generarLeyenda(turnosBD){
     });
 
     $("#leyendaMarcacion").html(html);
-
 }
-
 
 
 //generar pdf

@@ -1,7 +1,14 @@
 <?php
 
 
-require_once 'modules/turnos/models/trabajador.php';
+// require_once 'modules/turnos/models/trabajador.php';
+
+require_once __DIR__ .'/../models/trabajador.php';
+require_once __DIR__ . "/../../../config/db.php"; 
+
+
+$conn  = Conexion::conectar();
+$model = new Trabajador($conn);
 
 
 class TrabajadorController {
@@ -46,6 +53,11 @@ static public function ctrMostrarMetas($anio, $componente){
 
 static public function ctrListarTurnosTrabajador($id_trabajador, $anio){
     $respuesta = Trabajador::mdlMostrarTurnosTrabajador($id_trabajador, $anio);
+    return $respuesta;
+}
+
+static public function ctrListarTurnosTrabajadoresModal($id_anio, $id_mes,$trabajadores){
+    $respuesta = Trabajador::mdlMostrarTurnosTrabajadoresModal($id_anio, $id_mes,$trabajadores);
     return $respuesta;
 }
 

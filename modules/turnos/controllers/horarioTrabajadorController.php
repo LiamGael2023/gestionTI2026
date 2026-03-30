@@ -9,46 +9,55 @@ require_once __DIR__ .'/../models/horarioTrabajador.php';
 
 $conn  = Conexion::conectar();
 $model = new HorarioTrabajadorModel($conn);
+
 class HorarioTrabajadorController{
 
-    static public function ctrGuardarHorario(){
-     
+   static public function ctrGuardarHorario(){
 
-        if(isset($_POST["datos"])){
+    if(!isset($_POST["datos"])){
+        echo json_encode(["error" => "No llegó datos"]);
+        return;
+    }
+    $lista = json_decode($_POST["datos"], true);
 
-            $lista = json_decode($_POST["datos"], true);
+    if(!$lista){
+        echo json_encode(["error" => "JSON inválido"]);
+        return;
+    }
+    $conn = Conexion::conectar();
 
-            foreach($lista as $fila){
+    $respuestas = [];
 
-                
-                $fecha_inicio = date("Y-m-d", strtotime($fila["fechainicioturno"]));
-                $fecha_fin = date("Y-m-d", strtotime($fila["fechafinturno"]));
+    foreach($lista as $fila){
 
-                 $datos = array(
-                    "anio" => $fila["anio"],
-                    "mes" => $fila["mes"],                       
-                    "trabajador" => $fila["trabajador"],
-                    "componente" => $fila["componente"],
-                    "meta" => $fila["meta"],
-                    "horario" => $fila["horario"],
-                    "fechainicioturno" => $fecha_inicio,       
-                    "fechafinturno" => $fecha_fin,
-                    "marcacionturno" => $fila["marcacionturno"],
-                    "descripcion" => $fila["descripcion"] ?? ""
+        $fecha_inicio = date("Y-m-d", strtotime($fila["fechainicioturno"]));
+        $fecha_fin = date("Y-m-d", strtotime($fila["fechafinturno"]));
 
-                );
+        $datos = array(
+            "anio" => $fila["anio"],
+            "mes" => $fila["mes"],                       
+            "trabajador" => $fila["trabajador"],
+            "componente" => $fila["componente"],
+            "meta" => $fila["meta"],
+            "horario" => $fila["horario"],
+            "fechainicioturno" => $fecha_inicio,       
+            "fechafinturno" => $fecha_fin,
+            "marcacionturno" => $fila["marcacionturno"],
+            "descripcion" => $fila["descripcion"] ?? ""
+        );
 
-                $respuesta = HorarioTrabajadorModel::mdlGuardarHorario($datos);
-
-            }
-
-            echo json_encode($respuesta);
-
-        }
-
+        $respuestas[] = HorarioTrabajadorModel::mdlGuardarHorario($conn, $datos);
     }
 
-      static public function ctrGuardarTrabajador(){
+    sqlsrv_close($conn);
+
+    echo json_encode([
+        "status" => "ok",
+        "data" => $respuestas
+    ]);
+}
+
+    static public function ctrGuardarTrabajador(){
      
 
         if(isset($_POST["datos"])){

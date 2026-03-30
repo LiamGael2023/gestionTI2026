@@ -13,47 +13,48 @@ class HorarioTrabajadorModel{
         $this->conn = $conn2;
     }
 
-    static public function mdlGuardarHorario($datos){
+    static public function mdlGuardarHorario($conn, $datos){
 
-        $conn = Conexion::conectar();
- $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador2
-            @Id_Anio = ?,
-            @Id_Mes = ?,
-            @Id_Trabajador = ?,
-            @Id_Componente = ?,
-            @Id_Meta = ?,
-            @Id_Horario = ?,
-            @FechaInicioTurno = ?,
-            @FechaFinTurno = ?,
-            @Id_marcacion_tipo =?,
-            @DescripcionTurno  = ?";
+    $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador2
+        @Id_Anio = ?,
+        @Id_Mes = ?,
+        @Id_Trabajador = ?,
+        @Id_Componente = ?,
+        @Id_Meta = ?,
+        @Id_Horario = ?,
+        @FechaInicioTurno = ?,
+        @FechaFinTurno = ?,
+        @Id_marcacion_tipo = ?,
+        @DescripcionTurno = ?";
 
-        $params = array(
-            $datos["anio"],
-            $datos["mes"],
-            $datos["trabajador"],
-            $datos["componente"],
-            $datos["meta"],
-            $datos["horario"],
-            $datos["fechainicioturno"],
-            $datos["fechafinturno"],
-            $datos["marcacionturno"],
-            $datos["descripcion"]
-        );
+    $params = array(
+        $datos["anio"],
+        $datos["mes"],
+        $datos["trabajador"],
+        $datos["componente"],
+        $datos["meta"],
+        $datos["horario"],
+        $datos["fechainicioturno"],
+        $datos["fechafinturno"],
+        $datos["marcacionturno"],
+        $datos["descripcion"]
+    );
 
+    $stmt = sqlsrv_query($conn, $sql, $params);
 
-        $stmt = sqlsrv_query($conn, $sql, $params);
-
-        if($stmt === false){
-            echo json_encode(sqlsrv_errors());
-            exit;
-        }
-
-        sqlsrv_free_stmt($stmt);
-        sqlsrv_close($conn);
-
-        return "ok";
+    if($stmt === false){
+        return [
+            "status" => "error",
+            "error" => sqlsrv_errors()
+        ];
     }
+
+    sqlsrv_free_stmt($stmt);
+
+    return [
+        "status" => "ok"
+    ];
+}
 
 static public function mdlGuardarTrabajador($datos){
 
