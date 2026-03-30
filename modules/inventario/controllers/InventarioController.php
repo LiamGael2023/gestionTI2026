@@ -45,6 +45,12 @@ switch ($action) {
         include 'modules/inventario/views/ips.php';
         break;
 
+    case 'reporteAsignacion':
+        require_once 'modules/inventario/models/ReporteAsignacionModel.php';
+        require_once 'modules/inventario/controllers/ReporteAsignacionController.php';
+        include 'modules/inventario/views/reporte_asignacion.php';
+        break;
+
     /* ── ESTACIONES ── */
     case 'estaciones':
         require_once 'modules/inventario/models/EstacionModel.php';

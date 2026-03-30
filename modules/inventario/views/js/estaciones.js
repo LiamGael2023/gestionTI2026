@@ -228,6 +228,12 @@ function renderIpChips(chipsId, hiddenId, ipsArr, csIp, onReload) {
 ════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', function () {
 
+    /* ── GUARDA: este bloque solo corre en el listado (/estaciones).
+       estacion_agregar y estacion_editar tienen su propio DOMContentLoaded
+       en su inline script. Sin esta guarda ambos corren a la vez y los
+       combos quedan apuntando a wrappers duplicados / huérfanos. ── */
+    if (!document.getElementById('tablaEstaciones')) return;
+
     /* Toggle pass */
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('.btnTogglePass');

@@ -7,11 +7,12 @@
 $currentAction = $_GET['action'] ?? 'index';
 
 $menuItems = [
-    ['action' => 'index',        'icon' => 'ti-layout-dashboard', 'label' => 'Dashboard',       'group' => ['index']],
-    ['action' => 'tipoActivos',  'icon' => 'ti-settings',         'label' => 'Configuraciones', 'group' => ['tipoActivos','tipoCaracteristicas','caracteristicas','ubicaciones','ips']],
-    ['action' => 'activos',      'icon' => 'ti-device-desktop',   'label' => 'Activos',         'group' => ['activos']],
-    ['action' => 'estaciones',   'icon' => 'ti-desktop',          'label' => 'Estaciones',      'group' => ['estaciones','agregarEstacion','editarEstacion']],
-    ['action' => 'asignaciones', 'icon' => 'ti-user-check',       'label' => 'Asignaciones',    'group' => ['asignaciones']],
+  ['action' => 'index',        'icon' => 'ti-layout-dashboard', 'label' => 'Dashboard',       'group' => ['index']],
+  ['action' => 'tipoActivos',  'icon' => 'ti-settings',         'label' => 'Configuraciones', 'group' => ['tipoActivos', 'tipoCaracteristicas', 'caracteristicas', 'ubicaciones', 'ips']],
+  ['action' => 'activos',      'icon' => 'ti-device-desktop',   'label' => 'Activos',         'group' => ['activos']],
+  ['action' => 'estaciones',   'icon' => 'ti-desktop',          'label' => 'Estaciones',      'group' => ['estaciones', 'agregarEstacion', 'editarEstacion']],
+  ['action' => 'asignaciones', 'icon' => 'ti-user-check',       'label' => 'Asignaciones',    'group' => ['asignaciones']],
+  ['action' => 'reporteAsignacion', 'icon' => 'ti-chart-bar',   'label' => 'Reporte Activos',   'group' => ['reporteAsignacion']],
 ];
 ?>
 <div class="navbar-expand-md" style="
@@ -24,30 +25,33 @@ $menuItems = [
       <?php foreach ($menuItems as $item):
         $active = in_array($currentAction, $item['group']);
       ?>
-      <li class="nav-item">
-        <a href="?module=inventario&action=<?= $item['action'] ?>"
-           class="nav-link px-3 py-2 d-flex align-items-center gap-2 rounded-2"
-           style="
+        <li class="nav-item">
+          <a href="?module=inventario&action=<?= $item['action'] ?>"
+            class="nav-link px-3 py-2 d-flex align-items-center gap-2 rounded-2"
+            style="
              font-size:.82rem;font-weight:600;white-space:nowrap;
              <?= $active
-               ? 'background:var(--tblr-primary-lt,#e7f0ff);color:var(--tblr-primary,#0054a6);'
-               : 'color:#475569;' ?>
+                ? 'background:var(--tblr-primary-lt,#e7f0ff);color:var(--tblr-primary,#0054a6);'
+                : 'color:#475569;' ?>
              transition:all .15s">
-          <i class="ti <?= $item['icon'] ?>" style="font-size:.95rem"></i>
-          <?= $item['label'] ?>
-        </a>
-      </li>
+            <i class="ti <?= $item['icon'] ?>" style="font-size:.95rem"></i>
+            <?= $item['label'] ?>
+          </a>
+        </li>
       <?php endforeach; ?>
     </ul>
   </div>
 </div>
 
 <style>
-/* Hover en items no activos */
-.navbar-nav .nav-link:hover {
+  /* Hover en items no activos */
+  .navbar-nav .nav-link:hover {
     background: var(--tblr-bg-surface-secondary, #f8fafc) !important;
     color: var(--tblr-primary, #0054a6) !important;
-}
-/* Ocultar scrollbar horizontal en mobile */
-.navbar-nav::-webkit-scrollbar { display: none; }
+  }
+
+  /* Ocultar scrollbar horizontal en mobile */
+  .navbar-nav::-webkit-scrollbar {
+    display: none;
+  }
 </style>
