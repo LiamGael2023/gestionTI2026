@@ -12,7 +12,7 @@ class Horario
                     Hora_Descripcion,
                     Hora_HorIni,
                     Hora_HorFin
-                FROM BDPERSONAL.Asistencia.Tbl_Horario";
+                FROM BD_PERSONAL_2026.Asistencia.Tbl_Horario";
 
     $stmt = sqlsrv_query($conn, $sql);
 

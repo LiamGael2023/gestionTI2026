@@ -16,7 +16,7 @@ class Trabajador {
 
     $conn = Conexion::conectar();
 
-    $sql = "EXEC BDPERSONAL.Escalafon.sp_Listar_Trabajadores_Meta
+    $sql = "EXEC BD_PERSONAL_2026.Escalafon.sp_Listar_Trabajadores_Meta
             @anio = ?,
             @id_componente = ?,
             @id_meta = ?,
@@ -51,8 +51,8 @@ static public function mdlMostrarComponente(){
    $sql = "SELECT DISTINCT
     c.Id_Componente AS Id_Componente,
     c.Comp_Descripcion
-FROM BDPERSONAL.Escalafon.Tbl_Componente c
-INNER JOIN BDPERSONAL.Escalafon.Tbl_Trabajador t 
+FROM BD_PERSONAL_2026.Escalafon.Tbl_Componente c
+INNER JOIN BD_PERSONAL_2026.Escalafon.Tbl_Trabajador t 
     ON t.Id_Componente = c.Id_Componente
 WHERE t.Trab_Estado = 1 and c.Id_Componente =26";
 
@@ -83,8 +83,8 @@ static public function mdlMostrarMetas($anio, $componente){
   $sql = "SELECT DISTINCT
     m.Id_Meta AS Id_Meta,
     m.Meta_Descripcion,m.Id_Componente AS descripcion, m.Id_Anio
-FROM BDPERSONAL.Escalafon.Tbl_Meta m
-INNER JOIN BDPERSONAL.Escalafon.Tbl_Trabajador t 
+FROM BD_PERSONAL_2026.Escalafon.Tbl_Meta m
+INNER JOIN BD_PERSONAL_2026.Escalafon.Tbl_Trabajador t 
     ON t.Id_Meta = m.Id_Meta
 WHERE t.Trab_Estado = 1 AND Id_Anio = ?  and m.Id_Componente = ?";
 
@@ -112,7 +112,7 @@ static public function mdlMostrarTipoTrabajador(){
 
     $conn = Conexion::conectar();
 
-  $sql = "SELECT Id_Trabajador_Tipo, TrabTipo_Descripcion FROM BDPERSONAL.Escalafon.Tbl_Trabajador_tipo";
+  $sql = "SELECT Id_Trabajador_Tipo, TrabTipo_Descripcion FROM BD_PERSONAL_2026.Escalafon.Tbl_Trabajador_tipo";
     $stmt = sqlsrv_query($conn, $sql);
 
     if($stmt === false){
@@ -139,7 +139,7 @@ static public function mdlMostrarTurnoTrabajador(){
 
   $sql = "SELECT DISTINCT
     mt.Id_Marcacion_Tipo, mt.MarcTipo_Descripcion
-    from BDPERSONAL.Asistencia.Tbl_Marcacion_Tipo mt
+    from BD_PERSONAL_2026.Asistencia.Tbl_Marcacion_Tipo mt
 
     where MarcTipo_Estado=1 and Id_Marcacion_Tipo in (62,61,12,42,41)
     order by MarcTipo_Descripcion ASC";
@@ -172,7 +172,7 @@ static public function mdlMostrarTurnosTrabajadoresModal($id_anio, $id_mes, $tra
    
     $ids = implode(",", array_map('intval', $trabajadores));
 
-    $sql = "EXEC BDPERSONAL.Asistencia.pa_Listar_Turnos_Mes_Trabajadores 
+    $sql = "EXEC BD_PERSONAL_2026.Asistencia.pa_Listar_Turnos_Mes_Trabajadores 
             @id_anio = ?, 
             @id_mes = ?, 
             @Ids_Trabajadores = ?";
@@ -198,7 +198,7 @@ static public function mdlMostrarTurnosTrabajadoresModal($id_anio, $id_mes, $tra
 static public function mdlMostrarTurnosTrabajador($id_trabajador, $anio){
     $conn = Conexion::conectar();
 
-    $sql = "EXEC BDPERSONAL.Asistencia.pa_Listar_Turnos_Trabajador @id_trabajador = ?, @anio = ?";
+    $sql = "EXEC BD_PERSONAL_2026.Asistencia.pa_Listar_Turnos_Trabajador @id_trabajador = ?, @anio = ?";
     $params = array($id_trabajador, $anio);
 
     $stmt = sqlsrv_query($conn, $sql, $params);
@@ -223,7 +223,7 @@ static public function mdlMostrarTurnosTrabajador($id_trabajador, $anio){
 
         $conn = Conexion::conectar();
 
-        $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador
+        $sql = "EXEC BD_PERSONAL_2026.Asistencia.Guardar_Turno_Trabajador
             @Id_Trabajador = ?,
             @Id_Componente = ?,
             @Id_Meta = ?,
@@ -254,7 +254,7 @@ static public function mdlMostrarTurnosTrabajador($id_trabajador, $anio){
    static public function mdlMostrarTrabajadorSeleccionados($componente, $meta, $tipotrabajador, $anio){
     $conn = Conexion::conectar();
 
-    $sql = "EXEC BDPERSONAL.Asistencia.pa_ListarTrabajadores_Seleccionados 
+    $sql = "EXEC BD_PERSONAL_2026.Asistencia.pa_ListarTrabajadores_Seleccionados 
             @Id_Componente = ?, 
             @Id_Meta = ?, 
             @Id_Trabajador_Tipo = ?, 
@@ -283,7 +283,7 @@ static public function mdlMostrarTurnosTrabajador($id_trabajador, $anio){
 
     $conn = Conexion::conectar();
 
-    $sql = "EXEC BDPERSONAL.Asistencia.pa_Eliminar_Trabajadores_Seleccionados 
+    $sql = "EXEC BD_PERSONAL_2026.Asistencia.pa_Eliminar_Trabajadores_Seleccionados 
             @Id_Componente = ?, 
             @Id_Meta = ?, 
             @Id_Anio = ?,

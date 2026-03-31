@@ -664,10 +664,16 @@ $("#guardarHorarioModal").click(function(){
                 turnosTemp = [];
                 $("#guardarHorarioModal").prop("disabled", false);
 
-                obtenerTurnosActualizados(function(){
+                 obtenerTurnosActualizados(function(){
                     cargarTablaHorarioModal();
 
-                   
+                  
+                    turnosBDGlobal.forEach(function(trab){
+                        if(trab.turnos && trab.turnos.length > 0){
+                            $("#turno-" + trab.id).html('<span class="badge badge-info">Turno asignado</span>');
+                        }
+                    });
+
                     let alerta = $(
                         '<div class="alert alert-success alert-dismissible fade show mt-2" role="alert">' +
                         '<strong>Turnos guardados correctamente</strong>' +
@@ -821,41 +827,24 @@ let turnosBD = turnosBDGlobal;
             let color = "";
             let clase = "";
 
-            turnosTrab.forEach(turno => {
+           turnosTrab.forEach(turno => {
 
-                let fechaInicio = new Date(turno.FechaInicioTurno.date);
-                let fechaFin = new Date(turno.FechaFinTurno.date);
+    let fi = new Date(turno.FechaInicioTurno.date);
+    let ff = new Date(turno.FechaFinTurno.date);
+    fi.setHours(0,0,0,0);
+    ff.setHours(23,59,59,999);
 
-                let mesTurno = fechaInicio.getMonth() + 1;
-                let anioTurno = fechaInicio.getFullYear();
+    let fechaCelda = new Date(anio, mes-1, d);
 
-              
-                if(mesTurno == mes && anioTurno == anio){
+    // Solo pinta si la celda está dentro del rango Y pertenece al mes/año visible
+    let celdaEnMes = fechaCelda.getFullYear() == anio && (fechaCelda.getMonth()+1) == mes;
 
-                    let diaInicio = fechaInicio.getDate();
-                    let diaFin = fechaFin.getDate();
+    if(celdaEnMes && fechaCelda >= fi && fechaCelda <= ff){
+        color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
+        clase = "turno-existente";
+    }
 
-                    let fechaCelda = new Date(anio, mes-1, d);
-                if(
-                        fechaCelda >= fechaInicio &&
-                        fechaCelda <= fechaFin &&
-                        fechaInicio.getFullYear() == anio &&
-                        (fechaInicio.getMonth()+1) == mes
-                    ){
-                        descripcion = turno.Descripcion || "";
-                    }
-
-                    if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
-
-                        descripcion = turno.Descripcion || "";
-                        color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
-                        clase = "turno-existente";
-
-                    }
-
-}
-
-            });
+});
 
             html += `
             <td class="${clase}" style="background:${color}">
@@ -875,9 +864,10 @@ console.log(turnosBD);
 }
 
 $("#btnActualizarModal").click(function(){
-    cargarTablaHorarioModal();
+    obtenerTurnosActualizados(function(){
+        cargarTablaHorarioModal();
+    });
 });
-
 
 // ===============================
 // AUXILIAR
@@ -912,62 +902,28 @@ function generarLeyenda(turnosBD){
     let mes = parseInt($("#mesModal").val());
     let anio = parseInt($("#anioModal").val());
 
-    let usados = {};
+    // Filtrar turnos solo del mes seleccionado
+    let turnosFiltrados = [];
 
     turnosBD.forEach(trab => {
-
         trab.turnos.forEach(t => {
-
-            let fechaInicio = new Date(t.FechaInicioTurno.date);
-            let fechaFin = new Date(t.FechaFinTurno.date);
-
-            let fechaInicioMes = fechaInicio.getMonth() + 1;
-            let fechaInicioAnio = fechaInicio.getFullYear();
-
-            let fechaFinMes = fechaFin.getMonth() + 1;
-            let fechaFinAnio = fechaFin.getFullYear();
-
-          
-            let dentroDelMes = (
-                (fechaInicioAnio == anio && fechaInicioMes == mes) ||
-                (fechaFinAnio == anio && fechaFinMes == mes)
-            );
-
-            if(dentroDelMes){
-
-    let tipo = t.Id_Marcacion_Tipo;
-    let nombre = t.MarcTipo_Descripcion;
-
-    if(nombre && nombre.trim() !== ""){
-        usados[tipo] = nombre;
-    } else if(!usados[tipo]){
-        usados[tipo] = "Tipo " + tipo; 
-    }
-}
-
+            let fechaTurno = new Date(t.FechaInicioTurno.date);
+            if(fechaTurno.getMonth() === mes-1 && fechaTurno.getFullYear() === anio){
+                turnosFiltrados.push(t);
+            }
         });
+    });
 
+    let usados = {};
+
+    turnosFiltrados.forEach(t => {
+        usados[t.Id_Marcacion_Tipo] = t.MarcTipo_Descripcion || 'Turno';
     });
 
     let html = '';
-
-    Object.keys(usados).forEach(tipo => {
-
-        let color = coloresMarcacion[tipo] || "#17a2b8";
-
-        html += `
-        <span style="
-            display:inline-block;
-            margin-right:10px;
-            padding:5px 10px;
-            background:${color};
-            color:#fff;
-            border-radius:5px;
-            font-size:12px;
-        ">
-            ${usados[tipo]}
-        </span>`;
-    });
+    for(let id in usados){
+        html += `<span class="badge" style="background:${coloresMarcacion[id] || '#17a2b8'}; margin-right:5px;">${usados[id]}</span>`;
+    }
 
     $("#leyendaMarcacion").html(html);
 }
@@ -1084,6 +1040,12 @@ $(document).on("click", ".btnEliminarTurno", function(){
 
 });
 </script>
+</div> 
+    </div> 
+  </div> 
+</div> 
+
 <div id="contenedorPDF" style="position:absolute; left:-9999px; top:0; background:white;"></div>
 </body>
+
 </html>

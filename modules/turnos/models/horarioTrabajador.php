@@ -15,7 +15,7 @@ class HorarioTrabajadorModel{
 
     static public function mdlGuardarHorario($conn, $datos){
 
-    $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Turno_Trabajador2
+    $sql = "EXEC BD_PERSONAL_2026.Asistencia.Guardar_Turno_Trabajador2
         @Id_Anio = ?,
         @Id_Mes = ?,
         @Id_Trabajador = ?,
@@ -60,7 +60,7 @@ static public function mdlGuardarTrabajador($datos){
 
 
         $conn = Conexion::conectar();
- $sql = "EXEC BDPERSONAL.Asistencia.Guardar_Trabajador_Seleccionado_Turno 
+ $sql = "EXEC BD_PERSONAL_2026.Asistencia.Guardar_Trabajador_Seleccionado_Turno 
         @Id_Trabajador = ?, 
         @Id_Componente = ?, 
         @Id_Meta = ?, 
