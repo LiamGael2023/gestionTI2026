@@ -106,43 +106,30 @@
 
 <!-- Modal Importar de SIGA -->
 <div class="modal modal-blur fade" id="modal-importar-siga" tabindex="-1" role="dialog" aria-hidden="true">
-	<div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+	<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title">Importar desde SIGA</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body">
-				<style>
-					#siga-busqueda {
-						display: flex;
-						gap: 0.5rem;
-						width: 100%;
-					}
-
-					#anio-importar {
-						flex: 1 1 auto;
-						min-width: 0;
-					}
-
-					#btn-buscar-siga {
-						white-space: nowrap;
-					}
-				</style>
-
 				<!-- Buscador -->
-				<div id="siga-busqueda" class="mb-3">
-					<input type="text" id="anio-importar" class="form-control"
-						value="<?php echo date('Y'); ?>" inputmode="numeric" pattern="[0-9]*"
-						maxlength="4" placeholder="Año" autocomplete="off">
-					<button type="button" class="btn btn-primary" id="btn-buscar-siga">
-						Buscar
-					</button>
+				<div id="siga-busqueda" class="row g-2 mb-3">
+					<div class="col-12 col-sm">
+						<input type="text" id="anio-importar" class="form-control"
+							value="<?php echo date('Y'); ?>" inputmode="numeric" pattern="[0-9]*"
+							maxlength="4" placeholder="Año" autocomplete="off">
+					</div>
+					<div class="col-12 col-sm-auto d-grid">
+						<button type="button" class="btn btn-primary" id="btn-buscar-siga">
+							Buscar
+						</button>
+					</div>
 				</div>
 
 				<!-- Tabla de resultados -->
-				<div id="siga-resultados" style="display:none;">
-					<table class="table table-vcenter table-striped">
+				<div id="siga-resultados" class="table-responsive" style="display:none;">
+					<table class="table table-vcenter table-striped text-nowrap mb-0">
 						<thead>
 							<tr>
 								<th>Nro. Pedido</th>
