@@ -249,8 +249,16 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 </table>
 </div>
 
+
+<style>
+  /* Asegurar que este modal siempre esté encima del otro */
+  #modalDescripcion.modal {
+      z-index: 1600 !important;
+  }
+</style>
+
 <!-- MODAL DESCRIPCION DE TURNOS-->
-<div class="modal fade" id="modalDescripcion" tabindex="-1" role="dialog" aria-labelledby="modalDescripcionLabel" aria-hidden="true" data-backdrop="static">
+<div class="modal fade" id="modalDescripcion" tabindex="-1" role="dialog" aria-labelledby="modalDescripcionLabel" aria-hidden="true" >
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -269,14 +277,6 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
     </div>
   </div>
 </div>
-
-<style>
-  /* Asegurar que este modal siempre esté encima del otro */
-  #modalDescripcion.modal {
-      z-index: 1600 !important;
-  }
-</style>
-
 <!-- MODALTURNO MENSUAL -->
 <div class="modal fade" id="modalHorarioMes" tabindex="-1" role="dialog" aria-labelledby="modalHorarioMesLabel" aria-hidden="true">
   <div class="modal-dialog modal-xl" role="document">
@@ -372,15 +372,27 @@ $(document).ready(function(){
     });
 
     // Check all
-   $('#checkAll').on('click', function(){
-    let tabla = $('#tablaTrabajadores').DataTable();
+    $('#checkAll').on('click', function(){
+        let tabla = $('#tablaTrabajadores').DataTable();
+        let rows = tabla.rows({ search: 'applied' }).nodes();
+        $('input.checkItem', rows).prop('checked', this.checked);
+    });
 
-    let rows = tabla.rows({ search: 'applied' }).nodes();
+    
+    $(document).on("click", ".modal .close, .modal [data-dismiss='modal']", function(e){
+        e.stopPropagation();
+        let modalId = $(this).closest(".modal").attr("id");
+        $("#" + modalId).modal("hide");
+    });
 
-    $('input.checkItem', rows).prop('checked', this.checked);
+    $("#modalDescripcion").on("hidden.bs.modal", function(){
+    if($("#modalHorarioMes").hasClass("show")){
+        $("body").addClass("modal-open");
+        $(".modal-backdrop").css("z-index", "");
+    }
 });
 
-});
+}); 
 
 
 // ===============================
@@ -527,7 +539,9 @@ if(turnoTemp){
 $("#descripcionTurno").val(descripcion);
 
         // Abrir modal para ingresar descripción
-        $("#modalDescripcion").modal("show");
+     $(".modal-backdrop").css("z-index", "1049");
+$("#modalDescripcion").css("z-index", "1700");
+$("#modalDescripcion").modal("show");
 
     } else {
         // Si se desmarca, eliminamos de turnosTemp
@@ -925,9 +939,9 @@ function generarLeyenda(turnosBD){
     let nombre = t.MarcTipo_Descripcion;
 
     if(nombre && nombre.trim() !== ""){
-        usados[tipo] = nombre; // 🔥 PRIORIDAD AL NOMBRE REAL
+        usados[tipo] = nombre;
     } else if(!usados[tipo]){
-        usados[tipo] = "Tipo " + tipo; // fallback SOLO si no existe
+        usados[tipo] = "Tipo " + tipo; 
     }
 }
 
@@ -957,6 +971,8 @@ function generarLeyenda(turnosBD){
 
     $("#leyendaMarcacion").html(html);
 }
+
+
 
 
 //generar pdf

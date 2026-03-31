@@ -291,6 +291,23 @@ cursor:pointer;
 #leyendaMarcacion {
     pointer-events: none;
 }
+
+/* Fix para modals apilados */
+.modal-backdrop + .modal-backdrop {
+    z-index: 1550;
+}
+
 #modalDescripcion {
-    z-index: 1060 !important;
+    z-index: 1600 !important;
+}
+
+#modalDescripcion + .modal-backdrop {
+    z-index: 1590 !important;
+}
+#modalDescripcion.modal {
+    z-index: 1700 !important;
+}
+/* El backdrop del modalHorarioMes no tape al modalDescripcion */
+.modal-backdrop {
+    z-index: 1040 !important;
 }
