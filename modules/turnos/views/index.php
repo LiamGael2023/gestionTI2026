@@ -133,7 +133,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
             <div class="filtro-item">
                     <label>Meta</label>
                     <select name="meta" id="meta" class="form-control" <?= isset($mapMeta[$idUsuarioLogueado]) ? 'disabled' : '' ?>>
-                        <option value="">Todos</option>
+                        
                         <?php
                         $metas = TrabajadorController::ctrMostrarMetas($anio, $componente);
                         foreach ($metas as $m) {
@@ -145,7 +145,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
             <div class="filtro-item">
                 <label>Tipo Trabajador</label>
                 <select name="tipotrabajador" id="tipotrabajador" class="form-control">
-                    <option value="">Todos</option>
+                    
                     <?php
                     $tipotrabajadores = TrabajadorController::ctrMostrarTipoTrabajador();
                     foreach ($tipotrabajadores as $tt) {

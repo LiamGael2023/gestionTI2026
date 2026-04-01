@@ -112,7 +112,10 @@ static public function mdlMostrarTipoTrabajador(){
 
     $conn = Conexion::conectar();
 
-  $sql = "SELECT Id_Trabajador_Tipo, TrabTipo_Descripcion FROM BD_PERSONAL_2026.Escalafon.Tbl_Trabajador_tipo";
+  $sql = "  SELECT Id_Trabajador_Tipo, TrabTipo_Descripcion 
+  FROM BD_PERSONAL_2026.Escalafon.Tbl_Trabajador_tipo
+  where Id_Trabajador_Tipo in (1,7,3)
+  order by TrabTipo_Descripcion ASC";
     $stmt = sqlsrv_query($conn, $sql);
 
     if($stmt === false){
