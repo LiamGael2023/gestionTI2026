@@ -24,7 +24,6 @@ switch($action) {
         include 'modules/produccion_agraria/controllers/DashboardController.php';
         break;
     case 'guardar':
-        // Lógica de guardado
         break;
     default:
         include 'modules/produccion_agraria/views/index.php';
