@@ -49,6 +49,21 @@ function redireccionarAdquisiciones($url)
 	exit;
 }
 
+function normalizarCodigoMetaRequest($codigoMetaRaw)
+{
+	$codigoMeta = strtoupper(trim((string) $codigoMetaRaw));
+	if ($codigoMeta === '') {
+		return null;
+	}
+
+	$codigoMeta = preg_replace('/[^A-Z0-9]/', '', $codigoMeta);
+	if ($codigoMeta === '') {
+		return null;
+	}
+
+	return substr($codigoMeta, 0, 4);
+}
+
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
 		require_once 'config/db.php';
@@ -147,6 +162,7 @@ switch ($action) {
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
+			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion
 		];
@@ -175,6 +191,7 @@ switch ($action) {
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
+			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion,
 		];

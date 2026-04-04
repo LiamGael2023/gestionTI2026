@@ -14,6 +14,7 @@ class RequerimientoModel
 			SELECT
 				r.Id,
 				r.NroPedidoCompra,
+				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
 				r.Anio,
@@ -34,6 +35,7 @@ class RequerimientoModel
 			GROUP BY
 				r.Id,
 				r.NroPedidoCompra,
+				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
 				r.Anio,
@@ -240,16 +242,19 @@ class RequerimientoModel
 
 	public function guardarRequerimiento($datos)
 	{
+		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null);
+
 		$sql = "
 			INSERT INTO adquisiciones.Requerimiento
-				(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+				(IdCentroCosto, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 			OUTPUT INSERTED.Id
-			VALUES (?, ?, ?, GETDATE(), 0, ?)
+			VALUES (?, ?, ?, ?, GETDATE(), 0, ?)
 		";
 
 		$params = [
 			$datos['IdCentroCosto'],
 			$datos['NroPedidoCompra'],
+			$codigoMeta,
 			$datos['Anio'],
 			$datos['idUsuarioRegistro'] ?? null
 		];
@@ -272,6 +277,7 @@ class RequerimientoModel
 				r.Id,
 				r.NroPedidoCompra,
 				r.IdCentroCosto,
+				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
 				r.Anio,
@@ -693,6 +699,7 @@ class RequerimientoModel
 		$sql = "
 			SELECT 
 				cc.NOMBRE_DEPEND                                            AS NOMBRE_CENTRO_COSTO,
+				RIGHT('0000' + CAST(ISNULL(p.sec_func, 0) AS VARCHAR(4)), 4) AS CODIGO_META,
 				d.GRUPO_BIEN + d.CLASE_BIEN + d.FAMILIA_BIEN + d.ITEM_BIEN AS CODIGO_SIGA,
 				c.NOMBRE_ITEM                                               AS DESCRIPCION,
 				CAST(d.CANT_SOLICITADA AS INT)                              AS CANTIDAD,
@@ -732,8 +739,12 @@ class RequerimientoModel
 
 		$items        = [];
 		$nombreCentro = '';
+		$codigoMeta   = null;
 		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
 			$nombreCentro = $row['NOMBRE_CENTRO_COSTO'];
+			if ($codigoMeta === null && isset($row['CODIGO_META'])) {
+				$codigoMeta = $this->normalizarCodigoMeta((string) $row['CODIGO_META']);
+			}
 			$items[]      = $row;
 		}
 
@@ -777,10 +788,10 @@ class RequerimientoModel
 		if (!$idReq) {
 			$stmtIns = sqlsrv_query($this->db, "
 				INSERT INTO adquisiciones.Requerimiento
-					(IdCentroCosto, NroPedidoCompra, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+					(IdCentroCosto, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 				OUTPUT INSERTED.Id
-				VALUES (?, ?, ?, GETDATE(), 0, ?)
-			", [$idCentro, $nroPedido, $anio, $idUsuarioRegistro]);
+				VALUES (?, ?, ?, ?, GETDATE(), 0, ?)
+			", [$idCentro, $nroPedido, $codigoMeta, $anio, $idUsuarioRegistro]);
 
 			if ($stmtIns === false) {
 				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
@@ -789,6 +800,13 @@ class RequerimientoModel
 
 			$rowId = sqlsrv_fetch_array($stmtIns, SQLSRV_FETCH_ASSOC);
 			$idReq = $rowId['Id'];
+		} elseif ($codigoMeta !== null) {
+			sqlsrv_query($this->db, "
+				UPDATE adquisiciones.Requerimiento
+				SET CodigoMeta = ?
+				WHERE Id = ?
+				  AND (CodigoMeta IS NULL OR LTRIM(RTRIM(CodigoMeta)) = '')
+			", [$codigoMeta, $idReq]);
 		}
 
 		// 5. Insertar ítems
@@ -828,5 +846,20 @@ class RequerimientoModel
 		}
 
 		return ['items' => $totalItems];
+	}
+
+	private function normalizarCodigoMeta($codigoMeta)
+	{
+		$valor = strtoupper(trim((string) $codigoMeta));
+		if ($valor === '') {
+			return null;
+		}
+
+		$valor = preg_replace('/[^A-Z0-9]/', '', $valor);
+		if ($valor === '') {
+			return null;
+		}
+
+		return substr($valor, 0, 4);
 	}
 }

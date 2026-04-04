@@ -26,6 +26,10 @@
 				<span class="fw-semibold text-secondary">Centro:</span>
 				<?php echo htmlspecialchars($requerimiento['NombreCentroCosto']); ?>
 			</div>
+			<div class="mb-2">
+				<span class="fw-semibold text-secondary">Código Meta:</span>
+				<?php echo htmlspecialchars((string) ($requerimiento['CodigoMeta'] ?? '')); ?>
+			</div>
 		</div>
 		<div class="col-md-6">
 			<div class="mb-2">
@@ -118,7 +122,10 @@
 	<div class="modal-dialog modal-lg modal-dialog-centered" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="modal-detalle-title">Pedido de Compra <?php echo htmlspecialchars($requerimiento['NroPedidoCompra']); ?></h5>
+				<h5 class="modal-title" id="modal-detalle-title">
+					Pedido de Compra <?php echo htmlspecialchars($requerimiento['NroPedidoCompra']); ?>
+					<?php if (!empty($requerimiento['CodigoMeta'])): ?> - Meta <?php echo htmlspecialchars((string) $requerimiento['CodigoMeta']); ?><?php endif; ?>
+				</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form id="form-detalle" method="post" action="index.php?module=adquisiciones&action=guardarDetalleForm">
@@ -165,8 +172,17 @@
 <script>
 	const idRequerimiento = <?php echo (int) $requerimiento['Id']; ?>;
 	const nroPedidoCompra = <?php echo json_encode((string) $requerimiento['NroPedidoCompra']); ?>;
+	const codigoMetaRequerimiento = <?php echo json_encode((string) ($requerimiento['CodigoMeta'] ?? '')); ?>;
 	let modoEdicion = false;
 	let estadoActualRequerimiento = <?php echo (int) $requerimiento['Estado']; ?>;
+
+	function descripcionPedidoConMeta() {
+		if (codigoMetaRequerimiento) {
+			return 'Pedido de Compra ' + nroPedidoCompra + ' - Meta ' + codigoMetaRequerimiento;
+		}
+
+		return 'Pedido de Compra ' + nroPedidoCompra;
+	}
 
 	function setValue(id, value) {
 		const el = document.getElementById(id);
@@ -350,7 +366,7 @@
 		setValue('detalle-IdRequerimiento', idRequerimiento);
 		setValue('detalle-UnidadMedida', 'UND');
 		setValue('detalle-IdCatalogoTecnologico', '');
-		setText('modal-detalle-title', 'Agregar Ítem - Pedido de Compra ' + nroPedidoCompra);
+		setText('modal-detalle-title', 'Agregar Ítem - ' + descripcionPedidoConMeta());
 		// Si Bootstrap no se dispara por data-bs-*, este fallback lo abre igual.
 		showModalById('modal-detalle');
 	}
@@ -390,7 +406,7 @@
 		setValue('detalle-DescripcionDetallada', descripcionDetallada);
 		setValue('detalle-Cantidad', cantidad);
 		setValue('detalle-UnidadMedida', unidadMedida);
-		setText('modal-detalle-title', 'Editar Ítem - Pedido de Compra ' + nroPedidoCompra);
+		setText('modal-detalle-title', 'Editar Ítem - ' + descripcionPedidoConMeta());
 
 		showModalById('modal-detalle');
 	}

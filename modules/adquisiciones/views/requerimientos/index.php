@@ -28,6 +28,7 @@
 		<thead>
 			<tr>
 				<th>Nro. de Pedido</th>
+				<th>Código Meta</th>
 				<th>Centro de Costo</th>
 				<th>Año</th>
 				<th>Estado</th>
@@ -39,6 +40,7 @@
 				<?php foreach ($requerimientos as $req): ?>
 					<tr data-id="<?php echo (int) $req['Id']; ?>">
 						<td><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
+						<td><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
 						<td><?php echo htmlspecialchars($req['NombreCentroCosto']); ?></td>
 						<td><?php echo (int) $req['Anio']; ?></td>
 						<td>
@@ -62,7 +64,7 @@
 				<?php endforeach; ?>
 			<?php else: ?>
 				<tr>
-					<td colspan="5" class="text-center text-secondary">No hay requerimientos registrados.</td>
+					<td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td>
 				</tr>
 			<?php endif; ?>
 		</tbody>
@@ -93,6 +95,10 @@
 					<div class="mb-3">
 						<label class="form-label">Nro. de Pedido de Compra</label>
 						<input type="text" name="NroPedidoCompra" id="NroPedidoCompra" class="form-control" placeholder="000000" required maxlength="10">
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Código Meta</label>
+						<input type="text" name="CodigoMeta" id="CodigoMeta" class="form-control" placeholder="0000" maxlength="4" pattern="[A-Za-z0-9]{0,4}" autocomplete="off">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Año</label>
@@ -182,15 +188,15 @@
 
 		const filasDatos = tbody.querySelectorAll('tr[data-id]');
 		if (filasDatos.length === 0) {
-			tbody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary">No hay requerimientos registrados.</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td></tr>';
 		}
 	}
 
-	function agregarFilaRequerimiento(id, nroPedido, centroCosto, anio, estado) {
+	function agregarFilaRequerimiento(id, nroPedido, codigoMeta, centroCosto, anio, estado) {
 		const tbody = document.getElementById('tabla-requerimientos-body');
 		if (!tbody) return;
 
-		const filaVacia = tbody.querySelector('tr td[colspan="5"]');
+		const filaVacia = tbody.querySelector('tr td[colspan="6"]');
 		if (filaVacia) {
 			tbody.innerHTML = '';
 		}
@@ -202,6 +208,7 @@
 		const rowHtml = [
 			'<tr data-id="' + id + '">',
 			'<td>' + escapeHtml(nroPedido) + '</td>',
+			'<td>' + escapeHtml(codigoMeta || '') + '</td>',
 			'<td>' + escapeHtml(centroCosto) + '</td>',
 			'<td>' + parseInt(anio, 10) + '</td>',
 			'<td>' + badgeEstado + '</td>',
@@ -286,6 +293,13 @@
 	if (inputAnioRequerimiento) {
 		inputAnioRequerimiento.addEventListener('input', function() {
 			this.value = this.value.replace(/\D/g, '').slice(0, 4);
+		});
+	}
+
+	var inputCodigoMeta = document.getElementById('CodigoMeta');
+	if (inputCodigoMeta) {
+		inputCodigoMeta.addEventListener('input', function() {
+			this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4);
 		});
 	}
 
@@ -431,11 +445,13 @@
 			const form = this;
 			const idCentroCostoEl = document.getElementById('IdCentroCosto');
 			const nroPedidoEl = document.getElementById('NroPedidoCompra');
+			const codigoMetaEl = document.getElementById('CodigoMeta');
 			const anioEl = document.getElementById('Anio');
 
 			const idCentroCosto = idCentroCostoEl ? idCentroCostoEl.value : '';
 			const centroCostoTexto = idCentroCostoEl && idCentroCostoEl.selectedOptions.length > 0 ? idCentroCostoEl.selectedOptions[0].text.trim() : '';
 			const nroPedido = nroPedidoEl ? nroPedidoEl.value : '';
+			const codigoMeta = codigoMetaEl ? codigoMetaEl.value : '';
 			const anio = anioEl ? anioEl.value : '';
 
 			fetch('index.php?module=adquisiciones&action=guardarAjax', {
@@ -456,7 +472,7 @@
 						const modal = bootstrap.Modal.getInstance(document.getElementById('modal-requerimiento'));
 						if (modal) modal.hide();
 
-						agregarFilaRequerimiento(response.id, nroPedido, centroCostoTexto, anio, 0);
+						agregarFilaRequerimiento(response.id, nroPedido, codigoMeta, centroCostoTexto, anio, 0);
 						form.reset();
 						if (anioEl) anioEl.value = String(new Date().getFullYear());
 						if (idCentroCostoEl) idCentroCostoEl.value = idCentroCosto;
