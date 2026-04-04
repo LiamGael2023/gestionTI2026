@@ -17,6 +17,7 @@ class DetalleRequerimientoModel
 				d.IdCatalogoTecnologico,
 				ct.Codigo AS CodigoTecnologia,
 				d.CodigoSiga,
+				d.Clasificador,
 				d.DescripcionDetallada,
 				d.Cantidad,
 				d.UnidadMedida
@@ -42,14 +43,15 @@ class DetalleRequerimientoModel
 	public function guardarDetalle($datos)
 	{
 		$sql = "INSERT INTO adquisiciones.DetalleRequerimiento 
-		        (IdRequerimiento, IdCatalogoTecnologico, CodigoSiga, DescripcionDetallada, Cantidad, UnidadMedida, idUsuarioRegistro) 
-		        VALUES (?, ?, ?, ?, ?, ?, ?); 
+		        (IdRequerimiento, IdCatalogoTecnologico, CodigoSiga, Clasificador, DescripcionDetallada, Cantidad, UnidadMedida, idUsuarioRegistro) 
+		        VALUES (?, ?, ?, ?, ?, ?, ?, ?); 
 		        SELECT SCOPE_IDENTITY() AS Id;";
 		
 		$params = [
 			$datos['IdRequerimiento'],
 			$datos['IdCatalogoTecnologico'],
 			$datos['CodigoSiga'],
+			$datos['Clasificador'] ?? null,
 			$datos['DescripcionDetallada'],
 			$datos['Cantidad'],
 			$datos['UnidadMedida'],
@@ -73,6 +75,7 @@ class DetalleRequerimientoModel
 		$sql = "UPDATE adquisiciones.DetalleRequerimiento 
 		        SET IdCatalogoTecnologico = ?,
 		            CodigoSiga = ?, 
+		            Clasificador = ?,
 		            DescripcionDetallada = ?, 
 		            Cantidad = ?, 
 		            UnidadMedida = ?,
@@ -83,6 +86,7 @@ class DetalleRequerimientoModel
 		$params = [
 			$datos['IdCatalogoTecnologico'],
 			$datos['CodigoSiga'],
+			$datos['Clasificador'] ?? null,
 			$datos['DescripcionDetallada'],
 			$datos['Cantidad'],
 			$datos['UnidadMedida'],

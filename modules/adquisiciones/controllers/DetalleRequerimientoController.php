@@ -29,6 +29,24 @@ function redireccionarDetalleRequerimiento($url)
 	exit;
 }
 
+function normalizarClasificadorDetalle($valor)
+{
+	$clasificador = trim((string) $valor);
+	if ($clasificador === '') {
+		return null;
+	}
+
+	$clasificador = str_replace('  ', '.', $clasificador);
+	$clasificador = str_replace(' ', '', $clasificador);
+	while (strpos($clasificador, '..') !== false) {
+		$clasificador = str_replace('..', '.', $clasificador);
+	}
+
+	$clasificador = strtoupper(substr($clasificador, 0, 12));
+
+	return $clasificador !== '' ? $clasificador : null;
+}
+
 switch ($action) {
 	case 'requerimiento':
 		$vistaActual = 'detalle';
@@ -50,6 +68,7 @@ switch ($action) {
 			'IdRequerimiento' => isset($_POST['IdRequerimiento']) ? (int) $_POST['IdRequerimiento'] : 0,
 			'IdCatalogoTecnologico' => isset($_POST['IdCatalogoTecnologico']) ? (int) $_POST['IdCatalogoTecnologico'] : 0,
 			'CodigoSiga' => isset($_POST['CodigoSiga']) ? trim($_POST['CodigoSiga']) : '',
+			'Clasificador' => normalizarClasificadorDetalle($_POST['Clasificador'] ?? null),
 			'DescripcionDetallada' => isset($_POST['DescripcionDetallada']) ? trim($_POST['DescripcionDetallada']) : '',
 			'Cantidad' => isset($_POST['Cantidad']) ? (int) $_POST['Cantidad'] : 0,
 			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND',
@@ -80,6 +99,7 @@ switch ($action) {
 		$datos = [
 			'IdCatalogoTecnologico' => isset($_POST['IdCatalogoTecnologico']) ? (int) $_POST['IdCatalogoTecnologico'] : 0,
 			'CodigoSiga' => isset($_POST['CodigoSiga']) ? trim($_POST['CodigoSiga']) : '',
+			'Clasificador' => normalizarClasificadorDetalle($_POST['Clasificador'] ?? null),
 			'DescripcionDetallada' => isset($_POST['DescripcionDetallada']) ? trim($_POST['DescripcionDetallada']) : '',
 			'Cantidad' => isset($_POST['Cantidad']) ? (int) $_POST['Cantidad'] : 0,
 			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND',
@@ -108,6 +128,7 @@ switch ($action) {
 			'IdRequerimiento' => isset($_POST['IdRequerimiento']) ? (int) $_POST['IdRequerimiento'] : 0,
 			'IdCatalogoTecnologico' => isset($_POST['IdCatalogoTecnologico']) ? (int) $_POST['IdCatalogoTecnologico'] : 0,
 			'CodigoSiga' => isset($_POST['CodigoSiga']) ? trim($_POST['CodigoSiga']) : '',
+			'Clasificador' => normalizarClasificadorDetalle($_POST['Clasificador'] ?? null),
 			'DescripcionDetallada' => isset($_POST['DescripcionDetallada']) ? trim($_POST['DescripcionDetallada']) : '',
 			'Cantidad' => isset($_POST['Cantidad']) ? (int) $_POST['Cantidad'] : 0,
 			'UnidadMedida' => isset($_POST['UnidadMedida']) ? strtoupper(trim($_POST['UnidadMedida'])) : 'UND'

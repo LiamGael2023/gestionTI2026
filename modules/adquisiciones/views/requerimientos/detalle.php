@@ -57,6 +57,7 @@
 		<thead>
 			<tr>
 				<th>Códico SIGA</th>
+				<th>Clasificador</th>
 				<th>Descripción</th>
 				<th>Cantidad</th>
 				<th>Tecnología</th>
@@ -71,10 +72,12 @@
 						data-id-catalogo-tecnologico="<?php echo (int) $detalle['IdCatalogoTecnologico']; ?>"
 						data-codigo-tecnologia="<?php echo htmlspecialchars((string) ($detalle['CodigoTecnologia'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
 						data-codigo-siga="<?php echo htmlspecialchars((string) $detalle['CodigoSiga'], ENT_QUOTES, 'UTF-8'); ?>"
+						data-clasificador="<?php echo htmlspecialchars((string) ($detalle['Clasificador'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
 						data-descripcion-detallada="<?php echo htmlspecialchars((string) $detalle['DescripcionDetallada'], ENT_QUOTES, 'UTF-8'); ?>"
 						data-cantidad="<?php echo (int) $detalle['Cantidad']; ?>"
 						data-unidad-medida="<?php echo htmlspecialchars((string) $detalle['UnidadMedida'], ENT_QUOTES, 'UTF-8'); ?>">
 						<td><?php echo htmlspecialchars($detalle['CodigoSiga']); ?></td>
+						<td><?php echo htmlspecialchars((string) ($detalle['Clasificador'] ?? '')); ?></td>
 						<td><?php echo htmlspecialchars($detalle['DescripcionDetallada']); ?></td>
 						<td><?php echo (int) $detalle['Cantidad']; ?></td>
 						<td><?php echo htmlspecialchars((string) ($detalle['CodigoTecnologia'] ?? '')); ?></td>
@@ -92,7 +95,7 @@
 				<?php endforeach; ?>
 			<?php else: ?>
 				<tr>
-					<td colspan="6" class="text-center text-secondary">No hay ítems registrados.</td>
+					<td colspan="7" class="text-center text-secondary">No hay ítems registrados.</td>
 				</tr>
 			<?php endif; ?>
 		</tbody>
@@ -135,6 +138,10 @@
 					<div class="mb-3">
 						<label class="form-label">Código SIGA</label>
 						<input type="text" name="CodigoSiga" id="detalle-CodigoSiga" class="form-control" required maxlength="12">
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Clasificador</label>
+						<input type="text" name="Clasificador" id="detalle-Clasificador" class="form-control" maxlength="12">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Descripción Detallada</label>
@@ -317,10 +324,12 @@
 				' data-id-catalogo-tecnologico="' + escapeHtml(valores.idCatalogoTecnologico) + '"',
 				' data-codigo-tecnologia="' + escapeHtml(valores.codigoTecnologia || '') + '"',
 				' data-codigo-siga="' + escapeHtml(valores.codigoSiga) + '"',
+				' data-clasificador="' + escapeHtml(valores.clasificador || '') + '"',
 				' data-descripcion-detallada="' + escapeHtml(valores.descripcionDetallada) + '"',
 				' data-cantidad="' + parseInt(valores.cantidad, 10) + '"',
 				' data-unidad-medida="' + escapeHtml(valores.unidadMedida) + '">',
 				'<td>' + escapeHtml(valores.codigoSiga) + '</td>',
+				'<td>' + escapeHtml(valores.clasificador || '') + '</td>',
 				'<td>' + escapeHtml(valores.descripcionDetallada) + '</td>',
 				'<td>' + parseInt(valores.cantidad, 10) + '</td>',
 				'<td>' + escapeHtml(valores.codigoTecnologia || '') + '</td>',
@@ -341,7 +350,11 @@
 		}
 
 		const filaVacia = tablaBody.querySelector('tr td[colspan="6"]');
+		const filaVaciaCompat = tablaBody.querySelector('tr td[colspan="7"]');
 		if (filaVacia) {
+			tablaBody.innerHTML = '';
+		}
+		if (filaVaciaCompat) {
 			tablaBody.innerHTML = '';
 		}
 
@@ -366,6 +379,7 @@
 		setValue('detalle-IdRequerimiento', idRequerimiento);
 		setValue('detalle-UnidadMedida', 'UND');
 		setValue('detalle-IdCatalogoTecnologico', '');
+		setValue('detalle-Clasificador', '');
 		setText('modal-detalle-title', 'Agregar Ítem - ' + descripcionPedidoConMeta());
 		// Si Bootstrap no se dispara por data-bs-*, este fallback lo abre igual.
 		showModalById('modal-detalle');
@@ -396,6 +410,7 @@
 
 		const idCatalogoTecnologico = fila.dataset.idCatalogoTecnologico || '';
 		const codigoSiga = fila.dataset.codigoSiga || '';
+		const clasificador = fila.dataset.clasificador || '';
 		const descripcionDetallada = fila.dataset.descripcionDetallada || '';
 		const cantidad = fila.dataset.cantidad || '';
 		const unidadMedida = fila.dataset.unidadMedida || 'UND';
@@ -403,6 +418,7 @@
 		setValue('detalle-Id', id);
 		setValue('detalle-IdCatalogoTecnologico', idCatalogoTecnologico);
 		setValue('detalle-CodigoSiga', codigoSiga);
+		setValue('detalle-Clasificador', clasificador);
 		setValue('detalle-DescripcionDetallada', descripcionDetallada);
 		setValue('detalle-Cantidad', cantidad);
 		setValue('detalle-UnidadMedida', unidadMedida);
@@ -425,6 +441,7 @@
 			idCatalogoTecnologico: formData.get('IdCatalogoTecnologico') || '',
 			codigoTecnologia: obtenerCodigoTecnologiaSeleccionada(),
 			codigoSiga: formData.get('CodigoSiga') || '',
+			clasificador: formData.get('Clasificador') || '',
 			descripcionDetallada: formData.get('DescripcionDetallada') || '',
 			cantidad: formData.get('Cantidad') || 0,
 			unidadMedida: formData.get('UnidadMedida') || 'UND'
@@ -440,6 +457,7 @@
 						form.reset();
 						setValue('detalle-UnidadMedida', 'UND');
 						setValue('detalle-IdCatalogoTecnologico', '');
+						setValue('detalle-Clasificador', '');
 					}
 				} else {
 					window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el item.');
@@ -475,7 +493,7 @@
 
 					const tablaBody = document.getElementById('tabla-detalles');
 					if (tablaBody && tablaBody.querySelectorAll('tr[data-id]').length === 0) {
-						tablaBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay ítems registrados.</td></tr>';
+						tablaBody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary">No hay ítems registrados.</td></tr>';
 					}
 				} else {
 					window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el item.');

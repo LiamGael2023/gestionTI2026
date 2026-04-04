@@ -701,6 +701,11 @@ class RequerimientoModel
 				cc.NOMBRE_DEPEND                                            AS NOMBRE_CENTRO_COSTO,
 				RIGHT('0000' + CAST(ISNULL(p.sec_func, 0) AS VARCHAR(4)), 4) AS CODIGO_META,
 				d.GRUPO_BIEN + d.CLASE_BIEN + d.FAMILIA_BIEN + d.ITEM_BIEN AS CODIGO_SIGA,
+				REPLACE(
+					REPLACE(
+						REPLACE(d.CLASIFICADOR, '  ', '.'),
+					' ', ''),
+				'..', '.')                                                   AS CLASIFICADOR,
 				c.NOMBRE_ITEM                                               AS DESCRIPCION,
 				CAST(d.CANT_SOLICITADA AS INT)                              AS CANTIDAD,
 				LEFT(um.NOMBRE, 5)                                          AS UNIDAD_MEDIDA
@@ -820,16 +825,19 @@ class RequerimientoModel
 
 			if (!$existeItem) {
 				$idCatalogo  = $homologaciones[$item['CODIGO_SIGA']] ?? 1000010;
+				$clasificador = isset($item['CLASIFICADOR']) ? trim((string) $item['CLASIFICADOR']) : '';
+				$clasificador = $clasificador !== '' ? substr($clasificador, 0, 12) : null;
 
 				$stmtInsItem = sqlsrv_query($this->db, "
 					INSERT INTO adquisiciones.DetalleRequerimiento
-						(IdRequerimiento, IdCatalogoTecnologico, CodigoSiga,
+						(IdRequerimiento, IdCatalogoTecnologico, CodigoSiga, Clasificador,
 						 DescripcionDetallada, Cantidad, UnidadMedida, idUsuarioRegistro)
-					VALUES (?, ?, ?, ?, ?, ?, ?)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 				", [
 					$idReq,
 					$idCatalogo,
 					$item['CODIGO_SIGA'],
+					$clasificador,
 					$item['DESCRIPCION'],
 					$item['CANTIDAD'],
 					$item['UNIDAD_MEDIDA'],
@@ -842,6 +850,18 @@ class RequerimientoModel
 				}
 
 				$totalItems++;
+			} else {
+				$clasificador = isset($item['CLASIFICADOR']) ? trim((string) $item['CLASIFICADOR']) : '';
+				$clasificador = $clasificador !== '' ? substr($clasificador, 0, 12) : null;
+
+				if ($clasificador !== null) {
+					sqlsrv_query($this->db, "
+						UPDATE adquisiciones.DetalleRequerimiento
+						SET Clasificador = ?
+						WHERE Id = ?
+						  AND (Clasificador IS NULL OR LTRIM(RTRIM(Clasificador)) = '')
+					", [$clasificador, $existeItem['Id']]);
+				}
 			}
 		}
 
