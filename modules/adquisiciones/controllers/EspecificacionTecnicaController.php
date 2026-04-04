@@ -1,7 +1,7 @@
 <?php
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
 require_once 'modules/adquisiciones/models/EspecificacionTecnicaModel.php';
-require_once 'modules/adquisiciones/models/CierreAquisicionModel.php';
+require_once 'modules/adquisiciones/models/CierreAdquisicionModel.php';
 require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
 require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
@@ -15,7 +15,7 @@ if (!isset($conn) || $conn === null) {
 
 $catalogoModel = new CatalogoTecnologicoModel($conn);
 $especificacionModel = new EspecificacionTecnicaModel($conn);
-$cierreModel = new CierreAquisicionModel($conn);
+$cierreModel = new CierreAdquisicionModel($conn);
 $fichaTecnicaModel = new FichaTecnicaModel($conn);
 $ordenCompraModel = new OrdenCompraModel($conn);
 $verificacionTecnicaModel = new VerificacionTecnicaModel($conn);
@@ -340,7 +340,7 @@ switch ($action) {
 		$fichasTecnicas = $fichaTecnicaModel->listarPorTecnologia($id, $anioFiltro);
 		$ordenCompra = $ordenCompraModel->obtenerPorTecnologia($id, $anioFiltro);
 		$verificacionTecnica = $verificacionTecnicaModel->obtenerPorTecnologia($id, $anioFiltro);
-		$cierreAquisicion = $cierreModel->obtenerPorTecnologiaYAnio($id, $anioFiltro);
+		$cierreAdquisicion = $cierreModel->obtenerPorTecnologiaYAnio($id, $anioFiltro);
 		break;
 
 	case 'verEspecificacionTecnicaAjax':

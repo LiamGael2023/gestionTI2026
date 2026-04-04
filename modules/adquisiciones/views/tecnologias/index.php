@@ -3,12 +3,16 @@
 		<label for="filtroAnioTec" class="form-label mb-0">Filtrar por año:</label>
 	</div>
 	<div class="col-auto">
-		<select id="filtroAnioTec" class="form-select" onchange="filtrarTecnologiasPorAnio()">
-			<?php foreach ($aniosTecnologias as $a): ?>
-				<option value="<?php echo (int) $a; ?>" <?php echo ($anioTecnologias == $a) ? 'selected' : ''; ?>>
-					<?php echo (int) $a; ?>
-				</option>
-			<?php endforeach; ?>
+		<select id="filtroAnioTec" class="form-select" onchange="filtrarTecnologiasPorAnio()" <?php echo empty($aniosTecnologias) ? 'disabled' : ''; ?>>
+			<?php if (empty($aniosTecnologias)): ?>
+				<option value="">Sin registros</option>
+			<?php else: ?>
+				<?php foreach ($aniosTecnologias as $a): ?>
+					<option value="<?php echo (int) $a; ?>" <?php echo ($anioTecnologias == $a) ? 'selected' : ''; ?>>
+						<?php echo (int) $a; ?>
+					</option>
+				<?php endforeach; ?>
+			<?php endif; ?>
 		</select>
 	</div>
 	<div class="col-auto ms-auto">

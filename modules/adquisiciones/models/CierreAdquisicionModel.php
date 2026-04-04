@@ -1,5 +1,5 @@
 <?php
-class CierreAquisicionModel
+class CierreAdquisicionModel
 {
 	private $db;
 
@@ -15,7 +15,7 @@ class CierreAquisicionModel
 			SELECT TOP 1
 				Id, IdCatalogoTecnologico, Anio, FechaFinalizacion,
 				idUsuarioRegistro, idUsuarioModifica, FechaModifica, Estado
-			FROM adquisiciones.CierreAquisicion
+			FROM adquisiciones.CierreAdquisicion
 			WHERE IdCatalogoTecnologico = ? AND Anio = ?
 		";
 
@@ -52,7 +52,7 @@ class CierreAquisicionModel
 		if ($existente) {
 			// Reactiva si estaba desactivado, o responde ok si ya estaba activo
 			$sql = "
-				UPDATE adquisiciones.CierreAquisicion
+				UPDATE adquisiciones.CierreAdquisicion
 				SET Estado = 1,
 				    FechaFinalizacion = GETDATE(),
 				    idUsuarioModifica = ?,
@@ -65,7 +65,7 @@ class CierreAquisicionModel
 
 		// Insertar nuevo registro
 		$sql = "
-			INSERT INTO adquisiciones.CierreAquisicion
+			INSERT INTO adquisiciones.CierreAdquisicion
 				(IdCatalogoTecnologico, Anio, FechaFinalizacion, idUsuarioRegistro, Estado)
 			VALUES (?, ?, GETDATE(), ?, 1)
 		";
@@ -81,7 +81,7 @@ class CierreAquisicionModel
 		$idUser = $idUsuario !== null ? (int) $idUsuario : null;
 
 		$sql = "
-			UPDATE adquisiciones.CierreAquisicion
+			UPDATE adquisiciones.CierreAdquisicion
 			SET Estado = 0,
 			    idUsuarioModifica = ?,
 			    FechaModifica = GETDATE()
@@ -103,7 +103,7 @@ class CierreAquisicionModel
 	{
 		$sql = "
 			SELECT COUNT(*) AS Total
-			FROM adquisiciones.CierreAquisicion
+			FROM adquisiciones.CierreAdquisicion
 			WHERE Anio = ? AND Estado = 1
 		";
 		$stmt = sqlsrv_query($this->db, $sql, [(int) $anio]);

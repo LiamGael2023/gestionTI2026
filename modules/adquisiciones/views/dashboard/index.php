@@ -1,9 +1,6 @@
 <?php
-$anioFiltro = isset($anioFiltro) ? (int) $anioFiltro : (int) date('Y');
+$anioFiltro = isset($anioFiltro) && $anioFiltro !== null ? (int) $anioFiltro : null;
 $aniosDisponibles = isset($aniosDisponibles) && is_array($aniosDisponibles) ? $aniosDisponibles : [];
-if (empty($aniosDisponibles)) {
-	$aniosDisponibles = [$anioFiltro];
-}
 
 $resumen = isset($dashboardResumenGeneral) && is_array($dashboardResumenGeneral)
 	? $dashboardResumenGeneral
@@ -127,12 +124,16 @@ function formatearFechaEntregaDashboard($fecha)
 				<label for="filtroAnioDashboard" class="form-label mb-0">Filtrar por año:</label>
 			</div>
 			<div class="col-auto">
-				<select id="filtroAnioDashboard" name="anio" class="form-select" onchange="this.form.submit()">
-					<?php foreach ($aniosDisponibles as $anio): ?>
-						<option value="<?php echo (int) $anio; ?>" <?php echo (int) $anio === $anioFiltro ? 'selected' : ''; ?>>
-							<?php echo (int) $anio; ?>
-						</option>
-					<?php endforeach; ?>
+				<select id="filtroAnioDashboard" name="anio" class="form-select" onchange="this.form.submit()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
+					<?php if (empty($aniosDisponibles)): ?>
+						<option value="">Sin registros</option>
+					<?php else: ?>
+						<?php foreach ($aniosDisponibles as $anio): ?>
+							<option value="<?php echo (int) $anio; ?>" <?php echo (int) $anio === $anioFiltro ? 'selected' : ''; ?>>
+								<?php echo (int) $anio; ?>
+							</option>
+						<?php endforeach; ?>
+					<?php endif; ?>
 				</select>
 			</div>
 		</div>
@@ -187,7 +188,7 @@ function formatearFechaEntregaDashboard($fecha)
 							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
 						</div>
 					</div>
-					<div class="fw-bold">Tecnologías</div>
+					<div class="fw-bold">Tipo de Equipo</div>
 					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
 					<div class="progress progress-sm mt-3">
 						<?php $pctCompletas = $tecnologiasConReq > 0 ? round(($tecnologiasCompletas / $tecnologiasConReq) * 100) : 0; ?>

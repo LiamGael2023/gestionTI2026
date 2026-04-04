@@ -1,7 +1,7 @@
 <?php
 require_once 'modules/adquisiciones/models/RequerimientoModel.php';
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
-require_once 'modules/adquisiciones/models/CierreAquisicionModel.php';
+require_once 'modules/adquisiciones/models/CierreAdquisicionModel.php';
 
 function cargarVistaRequerimientos($model, $anioFiltro, &$vistaActual, &$requerimientos, &$centrosCosto, &$aniosDisponibles)
 {
@@ -137,7 +137,7 @@ switch ($action) {
 		$dashboardCentroCosto = $model->obtenerDashboardCentroCosto($anioFiltro);
 		$dashboardEstadoDocumental = $model->obtenerDashboardEstadoDocumental($anioFiltro);
 		$dashboardOrdenesProximas = $model->obtenerDashboardOrdenesProximas($anioFiltro, 30, 6);
-		$cierreModel = new CierreAquisicionModel($conn);
+		$cierreModel = new CierreAdquisicionModel($conn);
 		$dashboardFinalizados = $cierreModel->contarFinalizadosPorAnio($anioFiltro);
 		break;
 

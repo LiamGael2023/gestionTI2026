@@ -33,7 +33,7 @@ class CatalogoTecnologicoModel
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
-			LEFT JOIN adquisiciones.CierreAquisicion ca
+			LEFT JOIN adquisiciones.CierreAdquisicion ca
 				ON ca.IdCatalogoTecnologico = ct.Id AND ca.Anio = ?
 			WHERE r.Anio = ? AND ct.Activo = 1
 			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, ca.Id, ca.Estado

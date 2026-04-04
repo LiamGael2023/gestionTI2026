@@ -648,7 +648,7 @@ class RequerimientoModel
 				AND d.TIPO_BIEN     = p.TIPO_BIEN
 				AND d.TIPO_PEDIDO   = p.TIPO_PEDIDO
 				AND d.NRO_PEDIDO    = p.NRO_PEDIDO
-			LEFT JOIN BD_GESTION_TI.adquisiciones.Requerimiento r
+			LEFT JOIN adquisiciones.Requerimiento r
 				ON  r.NroPedidoCompra = p.NRO_PEDIDO
 				AND r.Anio            = p.ANO_EJE
 			WHERE p.ANO_EJE     = ?

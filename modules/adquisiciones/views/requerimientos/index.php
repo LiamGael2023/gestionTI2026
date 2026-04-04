@@ -1,12 +1,16 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
 	<div class="d-flex gap-2 align-items-center flex-wrap">
 		<label class="form-label mb-0 text-nowrap">Filtrar por año:</label>
-		<select id="filtroAnio" class="form-select w-auto" onchange="filtrarPorAnio()">
-			<?php foreach ($aniosDisponibles as $anio): ?>
-				<option value="<?php echo $anio; ?>" <?php echo ($anioFiltro == $anio) ? 'selected' : ''; ?>>
-					<?php echo $anio; ?>
-				</option>
-			<?php endforeach; ?>
+		<select id="filtroAnio" class="form-select w-auto" onchange="filtrarPorAnio()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
+			<?php if (empty($aniosDisponibles)): ?>
+				<option value="">Sin registros</option>
+			<?php else: ?>
+				<?php foreach ($aniosDisponibles as $anio): ?>
+					<option value="<?php echo $anio; ?>" <?php echo ($anioFiltro == $anio) ? 'selected' : ''; ?>>
+						<?php echo $anio; ?>
+					</option>
+				<?php endforeach; ?>
+			<?php endif; ?>
 		</select>
 	</div>
 	<div class="d-flex gap-2">

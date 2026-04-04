@@ -58,9 +58,9 @@ $tieneVerificacion = !empty($verificacionTecnica);
 $puedeRegistrarEspecificacion = $tieneFichas;
 $puedeRegistrarOrdenCompra = $tieneFichas && $tieneEspecificacion;
 $puedeRegistrarVerificacion = $tieneFichas && $tieneEspecificacion && $tieneOrdenCompra;
-$estaFinalizada = !empty($cierreAquisicion) && (int) ($cierreAquisicion['Estado'] ?? 0) === 1;
-$fechaCierre = $estaFinalizada && !empty($cierreAquisicion['FechaFinalizacion'])
-	? htmlspecialchars((string) $cierreAquisicion['FechaFinalizacion'])
+$estaFinalizada = !empty($cierreAdquisicion) && (int) ($cierreAdquisicion['Estado'] ?? 0) === 1;
+$fechaCierre = $estaFinalizada && !empty($cierreAdquisicion['FechaFinalizacion'])
+	? htmlspecialchars((string) $cierreAdquisicion['FechaFinalizacion'])
 	: null;
 $formatearFecha = static function ($fecha) {
 	if (empty($fecha)) {
