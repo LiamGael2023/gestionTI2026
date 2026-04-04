@@ -5,6 +5,7 @@ require_once 'modules/adquisiciones/models/CierreAdquisicionModel.php';
 require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
 require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
+require_once 'modules/adquisiciones/models/PresupuestoTecnologicoModel.php';
 
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
@@ -19,6 +20,7 @@ $cierreModel = new CierreAdquisicionModel($conn);
 $fichaTecnicaModel = new FichaTecnicaModel($conn);
 $ordenCompraModel = new OrdenCompraModel($conn);
 $verificacionTecnicaModel = new VerificacionTecnicaModel($conn);
+$presupuestoModel = new PresupuestoTecnologicoModel($conn);
 $action = $_GET['action'] ?? 'tecnologia';
 $vistaActual = 'tecnologia';
 
@@ -734,6 +736,49 @@ switch ($action) {
 			'finalizado' => !empty($cierre) && (int) $cierre['Estado'] === 1,
 			'fecha'      => !empty($cierre) ? $cierre['FechaFinalizacion'] : null,
 		]);
+
+	case 'obtenerPresupuestoTecnologiaAjax':
+		$idCat = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+		$anio  = isset($_GET['anio']) ? (int) $_GET['anio'] : 0;
+		if ($idCat <= 0 || $anio <= 0) {
+			responderJson(['ok' => false, 'error' => 'Parámetros inválidos']);
+		}
+		$presupuesto = $presupuestoModel->obtenerPorTecnologiaYAnio($idCat, $anio);
+		responderJson([
+			'ok'    => true,
+			'datos' => $presupuesto,
+		]);
+
+	case 'guardarPresupuestoTecnologiaAjax':
+		$input = obtenerInputJsonPost();
+		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
+		$anio  = obtenerEnteroInput($input, 'Anio');
+		$monto = isset($input['Monto']) && $input['Monto'] !== null && $input['Monto'] !== '' ? $input['Monto'] : null;
+		if ($idCat <= 0 || $anio <= 0) {
+			responderJson(['ok' => false, 'error' => 'Faltan campos obligatorios']);
+		}
+		if ($monto !== null && (!is_numeric($monto) || (float) $monto < 0)) {
+			responderJson(['ok' => false, 'error' => 'El monto debe ser un número positivo']);
+		}
+		$existente = $presupuestoModel->obtenerPorTecnologiaYAnio($idCat, $anio);
+		if ($existente) {
+			$ok = $presupuestoModel->actualizar((int) $existente['Id'], ['Monto' => $monto]);
+			if ($ok) {
+				responderJson(['ok' => true, 'accion' => 'actualizado']);
+			}
+			responderErrorSql('No se pudo actualizar el presupuesto.');
+		} else {
+			$resultado = $presupuestoModel->guardar([
+				'IdCatalogoTecnologico' => $idCat,
+				'Anio'                 => $anio,
+				'Monto'                => $monto,
+				'idUsuarioRegistro'    => $idUsuarioSesion,
+			]);
+			if ($resultado) {
+				responderJson(['ok' => true, 'accion' => 'creado']);
+			}
+			responderErrorSql('No se pudo registrar el presupuesto.');
+		}
 
 	default:
 		redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');

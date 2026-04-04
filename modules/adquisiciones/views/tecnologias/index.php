@@ -64,6 +64,10 @@
 							<button class="btn btn-azure-lt btn-accion" type="button" onclick="editarTecnologia(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>)">
 								Editar
 							</button>
+							<button class="btn btn-azure-lt btn-accion" type="button"
+								onclick="abrirModalPresupuesto(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>, <?php echo htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>)">
+								Precio
+							</button>
 						</td>
 					</tr>
 				<?php endforeach; ?>
@@ -74,6 +78,35 @@
 			<?php endif; ?>
 		</tbody>
 	</table>
+</div>
+
+<div class="modal fade" id="modalPresupuestoTecnologia" tabindex="-1" aria-labelledby="modalPresupuestoTecnologiaLabel" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalPresupuestoTecnologiaLabel">Presupuesto anual</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form id="formPresupuestoTecnologia">
+				<input type="hidden" id="presupuestoIdCatalogo" name="IdCatalogoTecnologico">
+				<input type="hidden" id="presupuestoAnio" name="Anio">
+				<div class="modal-body">
+					<div class="mb-2">
+						<span class="text-secondary small" id="presupuestoNombreTec"></span>
+					</div>
+					<div class="mb-0">
+						<label for="presupuestoMonto" class="form-label">Monto (S/)</label>
+						<input type="number" class="form-control" id="presupuestoMonto" name="Monto"
+							min="0" step="0.01" placeholder="0.00">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-link" data-bs-dismiss="modal">Cancelar</button>
+					<button type="submit" class="btn btn-primary" id="btn-guardar-presupuesto">Guardar</button>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
 <div class="modal fade" id="modalNuevaTecnologia" tabindex="-1" aria-labelledby="modalNuevaTecnologiaLabel" aria-hidden="true">
@@ -222,5 +255,74 @@
 		document.getElementById('formNuevaTecnologia').reset();
 		document.getElementById('btn-guardar-tecnologia').disabled = false;
 		document.getElementById('btn-guardar-tecnologia').innerHTML = 'Guardar';
+	});
+
+	function abrirModalPresupuesto(idCatalogo, nombreTec) {
+		const anio = document.getElementById('filtroAnioTec').value;
+		document.getElementById('presupuestoIdCatalogo').value = idCatalogo;
+		document.getElementById('presupuestoAnio').value = anio;
+		document.getElementById('presupuestoNombreTec').textContent = nombreTec + ' — ' + anio;
+		document.getElementById('presupuestoMonto').value = '';
+		document.getElementById('btn-guardar-presupuesto').disabled = false;
+		document.getElementById('btn-guardar-presupuesto').innerHTML = 'Guardar';
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=obtenerPresupuestoTecnologiaAjax&id=' + idCatalogo + '&anio=' + anio,
+			type: 'GET',
+			dataType: 'json',
+			success: function(res) {
+				if (res && res.ok && res.datos) {
+					document.getElementById('presupuestoMonto').value = res.datos.Monto !== null ? res.datos.Monto : '';
+				}
+			}
+		});
+
+		const modal = new bootstrap.Modal(document.getElementById('modalPresupuestoTecnologia'));
+		modal.show();
+	}
+
+	document.getElementById('formPresupuestoTecnologia').addEventListener('submit', function(event) {
+		event.preventDefault();
+
+		const btnGuardar = document.getElementById('btn-guardar-presupuesto');
+		const idCatalogo = parseInt(document.getElementById('presupuestoIdCatalogo').value, 10);
+		const anio       = parseInt(document.getElementById('presupuestoAnio').value, 10);
+		const montoRaw   = document.getElementById('presupuestoMonto').value.trim();
+		const monto      = montoRaw !== '' ? parseFloat(montoRaw) : null;
+
+		if (monto !== null && (isNaN(monto) || monto < 0)) {
+			window.adqNotifySafe('warning', 'Monto inválido', 'Ingrese un monto positivo o déjelo vacío.');
+			return;
+		}
+
+		btnGuardar.disabled = true;
+		btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
+
+		$.ajax({
+			url: 'index.php?module=adquisiciones&action=guardarPresupuestoTecnologiaAjax',
+			type: 'POST',
+			dataType: 'json',
+			contentType: 'application/json',
+			data: JSON.stringify({ IdCatalogoTecnologico: idCatalogo, Anio: anio, Monto: monto }),
+			success: function(res) {
+				btnGuardar.disabled = false;
+				btnGuardar.innerHTML = 'Guardar';
+				if (res && res.ok) {
+					window.adqNotifySafe('success', 'Presupuesto guardado', 'El presupuesto fue registrado correctamente.');
+					bootstrap.Modal.getInstance(document.getElementById('modalPresupuestoTecnologia')).hide();
+				} else {
+					window.adqNotifySafe('danger', 'Error', (res && res.error) ? res.error : 'No se pudo guardar el presupuesto.');
+				}
+			},
+			error: function() {
+				btnGuardar.disabled = false;
+				btnGuardar.innerHTML = 'Guardar';
+				window.adqNotifySafe('danger', 'Error de conexión', 'Ocurrió un error al conectar con el servidor.');
+			}
+		});
+	});
+
+	document.getElementById('modalPresupuestoTecnologia').addEventListener('hidden.bs.modal', function() {
+		document.getElementById('formPresupuestoTecnologia').reset();
 	});
 </script>
