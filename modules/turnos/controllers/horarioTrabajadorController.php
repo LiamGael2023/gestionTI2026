@@ -57,7 +57,7 @@ class HorarioTrabajadorController{
     ]);
 }
 
-    static public function ctrGuardarTrabajador(){
+    static public function ctrGuardarTrabajadorSeleccionado(){
      
 
         if(isset($_POST["datos"])){

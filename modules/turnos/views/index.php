@@ -12,7 +12,7 @@ $idUsuarioLogueado = $_SESSION["usuario_id"] ?? null;
 $anio = $_GET["anio"] ?? 2026;
 $componente = $_GET["componente"] ?? '';
 $meta = $_GET["meta"] ?? '';
-$tipotrabajador = $_GET["tipotrabajador"] ?? '';
+
 
 $mapMeta = [
     // 2361 => 227,
@@ -30,8 +30,7 @@ if(isset($mapMeta[$idUsuarioLogueado])){
 $trabajadores = TrabajadorController::ctrMostrarTrabajadoresFiltro(
     $anio,
     $componente,
-    $meta,
-    $tipotrabajador
+    $meta
 );
 
 
@@ -143,34 +142,23 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
                     </select>
              </div>
             <div class="filtro-item">
-                <label>Tipo Trabajador</label>
-                <select name="tipotrabajador" id="tipotrabajador" class="form-control">
-                    
-                    <?php
-                    $tipotrabajadores = TrabajadorController::ctrMostrarTipoTrabajador();
-                    foreach ($tipotrabajadores as $tt) {
-                        echo '<option value="'.$tt["Id_Trabajador_Tipo"].'" '.($tipotrabajador == $tt["Id_Trabajador_Tipo"] ? 'selected' : '').'>'.$tt["TrabTipo_Descripcion"].'</option>';
-                    }
-                    ?>
-                </select>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-search"></i> Buscar
+                </button>
             </div>
-        </div>
-        </div>
-          <!-- BOTONES -->
-          <div class="d-flex justify-content-end mt-3 flex-wrap" style="gap:10px;">
-            <button type="submit" class="btn btn-primary">
-              <i class="fa fa-search"></i> Buscar
-            </button>
-
-            <button type="button" id="btnAgregarHorario" class="btn btn-success">
+            <div class="filtro-item">
+                 <button type="button" id="btnAgregarHorario" class="btn btn-success">
               <i class="fa fa-calendar"></i> Agregar Turno
             </button>
-
-            <button type="button" id="btnUsuariosSeleccionados" class="btn btn-success">
+            </div>
+            <div class="filtro-item">
+                 <button type="button" id="btnUsuariosSeleccionados" class="btn btn-success">
               <i class="fa fa-users"></i> Usuarios
             </button>
-          </div>
-
+            </div>
+           
+        </div>
+        </div>
         </form>
 
       </div>
@@ -203,6 +191,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
         data-componente="<?= $row['Id_Componente'] ?>"
         data-meta="<?= $row['Id_Meta'] ?>"
         data-anio="<?= $anio ?>"
+        data-tipotrabajador="<?= $row['Id_Trabajador_Tipo'] ?>"
         data-horario="<?= $row['Id_Horario'] ?? '' ?>"
         data-fechainicio="<?= $row['FechaInicioTurno'] ?? '' ?>"
         data-fechafin="<?= $row['FechaFinTurno'] ?? '' ?>"
@@ -313,8 +302,11 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
      class="form-control form-control-sm d-inline w-auto" min="2000" max="<?= date("Y")+5 ?>">
 
     <button type="button" id="btnActualizarModal" class="btn btn-primary btn-sm">Actualizar</button>
-    <button id="btnDescargarReporte" class="btn btn-info">
+    <button id="btnDescargarPDF" class="btn btn-info">
   <i class="fa fa-file-pdf"></i> Descargar Reporte
+</button>
+<button id="btnDescargarExcel" class="btn btn-success">
+  <i class="fa fa-file-excel"></i> Descargar Excel
 </button>
     
    
@@ -409,13 +401,34 @@ $(document).ready(function(){
         language:{ url:"//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json" }
     });
 
-    // Check all
-    $('#checkAll').on('click', function(){
-        let tabla = $('#tablaTrabajadores').DataTable();
-        let rows = tabla.rows({ search: 'applied' }).nodes();
-        $('input.checkItem', rows).prop('checked', this.checked);
+  
+$('#checkAll').on('click', function(){
+    let checked = this.checked;
+    let tabla = $('#tablaTrabajadores').DataTable();
+
+
+    tabla.rows({ search: 'applied' }).every(function(){
+        let fila = $(this.node());
+        let id = fila.data('trabajador');
+
+        if(id === undefined) return;
+
+        if(checked){
+            if(!seleccionadosUsuario.includes(id)){
+                seleccionadosUsuario.push(id);
+            }
+        } else {
+            seleccionadosUsuario = seleccionadosUsuario.filter(x => x != id);
+        }
     });
 
+
+    $('input.checkItem', tabla.rows({ search: 'applied' }).nodes()).prop('checked', checked);
+});
+    
+ $('#tablaTrabajadores').on('draw.dt', function(){
+        marcarChecksVisibles();
+    });
     
     $(document).on("click", ".modal .close, .modal [data-dismiss='modal']", function(e){
         e.stopPropagation();
@@ -475,36 +488,46 @@ $("#componente").change(function(){
 
 $("#btnAgregarHorario").click(function(){
 
+    // 🔥 UNIR BD + USUARIO
+    let seleccionTotal = [...new Set([
+        ...seleccionadosBD,
+        ...seleccionadosUsuario
+    ])];
+
     let trabajadores = [];
 
-    let tabla = $('#tablaTrabajadores').DataTable();
+    let todos = <?php echo json_encode($trabajadoresJS); ?>;
 
-tabla.rows().every(function(){
-    let fila = $(this.node());
+    seleccionTotal.forEach(id => {
 
-    let check = fila.find(".checkItem").prop("checked");
+        let t = todos.find(x => x.id == id);
 
-    if(check){
-        trabajadores.push({
-            id: fila.data("trabajador"),
-            nombre: fila.find("td:eq(1)").text(),
-            horario: fila.data("horario"),
-            fechainicio: fila.data("fechainicio"),
-            fechafin: fila.data("fechafin")
-        });
-    }
-});
+        if(t){
+            trabajadores.push({
+                id: t.id,
+                nombre: t.nombre,
+                horario: null,
+                fechainicio: null,
+                fechafin: null
+            });
+        }
+
+    });
+
+    console.log("BD:", seleccionadosBD);
+    console.log("USER:", seleccionadosUsuario);
+    console.log("TOTAL:", seleccionTotal);
 
     if(trabajadores.length == 0){
         alert("Seleccione trabajadores");
         return;
     }
 
-    // limpiar memoria temporal
     turnosTemp = [];
 
     sessionStorage.setItem("trabajadoresHorario", JSON.stringify(trabajadores));
-     turnosBDGlobal = <?php echo json_encode($trabajadoresJS); ?>;
+
+    turnosBDGlobal = <?php echo json_encode($trabajadoresJS); ?>;
 
     $("#modalHorarioMes").modal("show");
 
@@ -563,21 +586,39 @@ $(document).on("change", "#tablaHorarioModal input[type='checkbox']", function()
             $("#modalDescripcion").css("z-index", "1700");
             $("#modalDescripcion").modal("show");
 
-        } else {
-           $("#sugerenciasObservacion").hide();
-            ultimoCheckMarcado = $(this);
+       
+} else {
+    $("#sugerenciasObservacion").hide();
+    ultimoCheckMarcado = $(this);
 
-            let index = turnosTemp.findIndex(t =>
-                t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
-            );
-            if(index !== -1){
-                turnosTemp[index].marcacion = marcacion;
-            } else {
-                turnosTemp.push({ trabajador, dia, mes, anio, marcacion, descripcion: "" });
-            }
+    let index = turnosTemp.findIndex(t =>
+        t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
+    );
 
-            $("#btnAgregarObservacion").show();
+    if (index !== -1) {
+       
+        turnosTemp[index].marcacion = marcacion;
+    } else {
+      
+        let descripcionBD = "";
+        let trabajadorBD = turnosBDGlobal.find(t => t.id == trabajador);
+        if (trabajadorBD) {
+            trabajadorBD.turnos.forEach(turno => {
+                let fi = new Date(turno.FechaInicioTurno.date);
+                let ff = new Date(turno.FechaFinTurno.date);
+                fi.setHours(0,0,0,0);
+                ff.setHours(23,59,59,999);
+                let fechaCelda = new Date(anio, mes - 1, dia);
+                if (fechaCelda >= fi && fechaCelda <= ff) {
+                    descripcionBD = turno.Descripcion || "";
+                }
+            });
         }
+        turnosTemp.push({ trabajador, dia, mes, anio, marcacion, descripcion: descripcionBD });
+    }
+
+    $("#btnAgregarObservacion").show();
+}
 
     } else {
        
@@ -731,7 +772,7 @@ $("#guardarHorarioModal").click(function(){
                         id: $(this).data("trabajador"),
                         componente: $(this).data("componente"),
                         meta: $(this).data("meta"),
-                        tipotrabajador: $("#tipotrabajador").val(),
+                        tipotrabajador: $(this).data("tipotrabajador"),
                         anio: $("#anio").val()
                     });
                 }
@@ -783,38 +824,75 @@ $("#guardarHorarioModal").click(function(){
 
 
 //traer trabajadores guardados
-$("#btnUsuariosSeleccionados").click(function(){
-
-    let componente = $("#componente").val();
-    let meta = $("#meta").val();
-    let tipotrabajador = $("#tipotrabajador").val();
-    let anio = $("#anio").val();
-
-    $.ajax({
-       url: "turnos/controladores/trabajadorController.php",
-        method:"POST",
-        data:{
-            accion: "traerSeleccionados",
-            componente: componente,
-            meta: meta,
-            tipotrabajador: tipotrabajador,
-            anio: anio
-        },
-       success:function(res){
-    let seleccionados = res; 
+let seleccionadosBD = [];
+let seleccionadosUsuario = [];
+function marcarChecksVisibles(){
 
     $("#tablaTrabajadores tbody tr").each(function(){
+
         let id = $(this).data("trabajador");
 
-        if(seleccionados.includes(id)){
+        if(
+            seleccionadosBD.includes(id) ||
+            seleccionadosUsuario.includes(id)
+        ){
             $(this).find(".checkItem").prop("checked", true);
         } else {
             $(this).find(".checkItem").prop("checked", false);
         }
+
     });
+
 }
-    });
+
+//
+$(document).on("change", ".checkItem", function(){
+
+    let id = $(this).closest("tr").data("trabajador");
+
+    if(this.checked){
+
+        if(!seleccionadosUsuario.includes(id)){
+            seleccionadosUsuario.push(id);
+        }
+
+    } else {
+
+        seleccionadosUsuario = seleccionadosUsuario.filter(x => x != id);
+
+    }
+
 });
+
+$("#btnUsuariosSeleccionados").click(function(){
+
+    let componente = $("#componente").val();
+    let meta = $("#meta").val();
+    let anio = $("#anio").val();
+
+    $.ajax({
+        url: "modules/turnos/ajax/traerUsuariosSeleccionados.ajax.php",
+        method:"POST",
+        dataType: "json",
+        data:{
+            accion: "traerSeleccionados",
+            componente: componente,
+            meta: meta,
+            anio: anio
+        },
+      success:function(res){
+
+        seleccionadosBD = res;
+        marcarChecksVisibles();
+
+    },
+    error:function(xhr){
+        console.log(xhr.responseText);
+    }
+});
+});
+
+
 function agruparTurnosPorTrabajador(data){
 
     let agrupado = {};
@@ -1017,63 +1095,105 @@ function generarLeyenda(turnosBD){
     $("#leyendaMarcacion").html(html);
 }
 
+//excel
+$("#btnDescargarExcel").click(function(){
 
+    let trabajadores = JSON.parse(sessionStorage.getItem("trabajadoresHorario")) || [];
 
+    let datos = {
+        trabajadores: trabajadores,
+        turnos: turnosBDGlobal,
+        mes: $("#mesModal").val(),
+        anio: $("#anioModal").val()
+    };
 
-//generar pdf
-$("#btnDescargarReporte").click(function(){
+    fetch("modules/turnos/reportes/ajax/reporte.ajax.php", {
+        method: "POST",
+        
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(datos)
+    })
+   .then(res => {
+    if (!res.ok) {
+        return res.text().then(t => {
+            console.error("Error 500 del servidor:", t);
+            throw new Error(t);
+        });
+    }
+    return res.blob();
+})
+.then(blob => {
+    if (blob.size < 1000) {
+        blob.text().then(t => console.error("Respuesta sospechosa:", t));
+        alert("Error al generar el Excel. Revisa la consola.");
+        return;
+    }
+    let url = window.URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "Turnos.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+})
+.catch(err => {
+    console.error("Error capturado:", err.message);
+    alert("Error: " + err.message);
+});
 
-    let mes = $("#mesModal option:selected").text();
-    let anio = $("#anioModal").val();
+});
 
-    let original = document.querySelector("#reportePDF");
+// ── Botón Descargar PDF ──────────────────────────────────────────────────────
+$("#btnDescargarPDF").click(function () {
 
+      let trabajadores = JSON.parse(sessionStorage.getItem("trabajadoresHorario")) || [];
 
-    let clon = original.cloneNode(true);
+    let datos = {
+        trabajadores: trabajadores,
+        turnos: turnosBDGlobal,
+        mes: $("#mesModal").val(),
+        anio: $("#anioModal").val()
+    };
 
-   
-    clon.querySelectorAll(".tabla-scroll").forEach(el=>{
-        el.style.overflow = "visible";
-    });
-
-  
-    clon.querySelectorAll("th, td").forEach(el=>{
-        el.style.position = "static";
-        el.style.left = "auto";
-    });
-
-
-    let tabla = clon.querySelector("#tablaHorarioModal");
-    tabla.style.width = "max-content";
-
- 
-    clon.querySelector("#tituloReporte").innerHTML = `<b>Horario - ${mes} ${anio}</b>`;
-
-
-    let contenedor = document.getElementById("contenedorPDF");
-    contenedor.innerHTML = "";
-    contenedor.appendChild(clon);
-
-    html2canvas(clon, {
-        scale: 2,
-        useCORS: true
-    }).then(canvas => {
-
-        const imgData = canvas.toDataURL("image/png");
-
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF('l', 'mm', 'a4');
-
-        let imgWidth = 297;
-        let imgHeight = canvas.height * imgWidth / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-        pdf.save(`Horario_${mes}_${anio}.pdf`);
-
-        // limpiar
-        contenedor.innerHTML = "";
-    });
+    fetch("modules/turnos/reportes/ajax/reportePdf.ajax.php", {
+        method: "POST",
+        
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(datos)
+    })
+   .then(res => {
+    if (!res.ok) {
+        return res.text().then(t => {
+            console.error("Error 500 del servidor:", t);
+            throw new Error(t);
+        });
+    }
+    return res.blob();
+})
+.then(blob => {
+    if (blob.size < 1000) {
+        blob.text().then(t => console.error("Respuesta sospechosa:", t));
+        alert("Error al generar el PDF. Revisa la consola.");
+        return;
+    }
+    let url = window.URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "Turnos.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+})
+.catch(err => {
+    console.error("Error capturado:", err.message);
+    alert("Error: " + err.message);
+});
 
 });
 

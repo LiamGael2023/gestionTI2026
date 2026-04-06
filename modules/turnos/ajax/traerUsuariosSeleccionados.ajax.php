@@ -1,30 +1,18 @@
 <?php
 
+require_once "../controllers/trabajadorController.php";
+require_once "../models/trabajador.php";
 
-$componente = $_POST['componente'];
-$meta = $_POST['meta'];
-$tipotrabajador = $_POST['tipotrabajador'];
-$anio = $_POST['anio'];
+header('Content-Type: application/json');
 
-$conn = Conexion::conectar();
+if ($_POST["accion"] == "traerSeleccionados") {
 
-$sql = "EXEC Asistencia.pa_ListarTrabajadores_Seleccionados
-    @Id_Componente = ?, 
-    @Id_Meta = ?, 
-    @Id_Trabajador_Tipo = ?, 
-    @anio = ?";
+    $data = TrabajadorController::mdlMostrarTrabajadorSeleccionados(
+        $_POST["componente"],
+        $_POST["meta"],
+        $_POST["anio"]
+    );
 
-$params = [$componente, $meta, $tipotrabajador, $anio];
-
-$stmt = sqlsrv_query($conn, $sql, $params);
-
-$ids = [];
-while($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)){
-    $ids[] = $row['Id_Trabajador'];
+    echo json_encode($data);
+    exit;
 }
-
-sqlsrv_free_stmt($stmt);
-sqlsrv_close($conn);
-
-echo json_encode($ids);
-?>

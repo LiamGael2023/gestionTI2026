@@ -14,11 +14,11 @@ $model = new Trabajador($conn);
 class TrabajadorController {
 
 
-   static public function ctrMostrarTrabajadoresFiltro($anio, $componente, $meta,$tipotrabajador){
+   static public function ctrMostrarTrabajadoresFiltro($anio, $componente, $meta){
 
     $tabla = "Escalafon.Tbl_Trabajador";
 
-    $respuesta = Trabajador::mdlMostrarTrabajadoresFiltro($anio, $componente, $meta,$tipotrabajador);
+    $respuesta = Trabajador::mdlMostrarTrabajadoresFiltro($anio, $componente, $meta);
 
     return $respuesta;
 
@@ -120,10 +120,9 @@ if(isset($_POST['accion']) && $_POST['accion'] == "traerSeleccionados"){
 
     $componente = $_POST['componente'] ?? 0;
     $meta = $_POST['meta'] ?? 0;
-    $tipotrabajador = $_POST['tipotrabajador'] ?? 0;
     $anio = $_POST['anio'] ?? date("Y");
 
-    TrabajadorController::ctrMostrarTrabajadorSeleccionados($componente, $meta, $tipotrabajador, $anio);
+    TrabajadorController::ctrMostrarTrabajadorSeleccionados($componente, $meta, $anio);
 }
 
 

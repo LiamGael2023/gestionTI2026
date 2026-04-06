@@ -12,17 +12,16 @@ class Trabajador {
         $this->conn = $conn2;
     }
 
-    static public function mdlMostrarTrabajadoresFiltro($anio, $componente, $meta, $tipotrabajador){
+  static public function mdlMostrarTrabajadoresFiltro($anio, $componente, $meta){
 
     $conn = Conexion::conectar();
 
     $sql = "EXEC BD_PERSONAL_2026.Escalafon.sp_Listar_Trabajadores_Meta
             @anio = ?,
             @id_componente = ?,
-            @id_meta = ?,
-            @id_trabajador_tipo=?";
+            @id_meta = ?";
 
-    $params = array($anio, $componente, $meta,$tipotrabajador);
+    $params = array($anio, $componente, $meta);
 
     $stmt = sqlsrv_query($conn, $sql, $params);
 
@@ -40,7 +39,6 @@ class Trabajador {
     sqlsrv_close($conn);
 
     return $datos;
-
 }
 
 static public function mdlMostrarComponente(){
