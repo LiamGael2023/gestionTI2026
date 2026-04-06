@@ -488,7 +488,6 @@ $("#componente").change(function(){
 
 $("#btnAgregarHorario").click(function(){
 
-    // 🔥 UNIR BD + USUARIO
     let seleccionTotal = [...new Set([
         ...seleccionadosBD,
         ...seleccionadosUsuario
@@ -948,86 +947,81 @@ function obtenerTurnosActualizados(callback){
 // ===============================
 // cargar turnos mes y dias
 // ===============================
-
 function cargarTablaHorarioModal(){
-
+ 
     let trabajadores = JSON.parse(sessionStorage.getItem("trabajadoresHorario"));
-
-    let mes = parseInt($("#mesModal").val());
-    let anio = parseInt($("#anioModal").val());
-
-    let diasMes = new Date(anio, mes, 0).getDate();
+ 
+    let mes   = parseInt($("#mesModal").val());
+    let anio  = parseInt($("#anioModal").val());
+    let diasMes   = new Date(anio, mes, 0).getDate();
     let diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
-
-let turnosBD = turnosBDGlobal;
-
-    generarLeyenda(turnosBD);
-
+ 
+    let turnosBD = turnosBDGlobal;
+ 
+    generarLeyenda(turnosBD);   // leyenda actualizada
+ 
+    // ── Cabecera ──────────────────────────────────────────────────────
     let thead = '<tr><th>Trabajador</th>';
-
-    for(let d=1; d<=diasMes; d++){
-        let date = new Date(anio, mes-1, d);
+    for (let d = 1; d <= diasMes; d++) {
+        let date = new Date(anio, mes - 1, d);
         thead += `<th>${diasSemana[date.getDay()]}</th>`;
     }
-
     thead += '</tr><tr><th></th>';
-
-    for(let d=1; d<=diasMes; d++){
+    for (let d = 1; d <= diasMes; d++) {
         thead += `<th>${d}</th>`;
     }
-
     thead += '</tr>';
-
     $("#tablaHorarioModal thead").html(thead);
-
+ 
+    // ── Filas trabajadores ────────────────────────────────────────────
     let html = '';
-
-    trabajadores.forEach(t=>{
-
+ 
+    trabajadores.forEach(t => {
+ 
         html += `<tr><td>${t.nombre}</td>`;
-
-      
-        let turnosTrab = turnosBD.find(x => x.id == t.id)?.turnos || [];
-
-        for(let d=1; d<=diasMes; d++){
-
-            let color = "";
-            let clase = "";
-
-           turnosTrab.forEach(turno => {
-
-    let fi = new Date(turno.FechaInicioTurno.date);
-    let ff = new Date(turno.FechaFinTurno.date);
-    fi.setHours(0,0,0,0);
-    ff.setHours(23,59,59,999);
-
-    let fechaCelda = new Date(anio, mes-1, d);
-
-    // Solo pinta si la celda está dentro del rango Y pertenece al mes/año visible
-    let celdaEnMes = fechaCelda.getFullYear() == anio && (fechaCelda.getMonth()+1) == mes;
-
-    if(celdaEnMes && fechaCelda >= fi && fechaCelda <= ff){
-        color = coloresMarcacion[turno.Id_Marcacion_Tipo] || "#17a2b8";
-        clase = "turno-existente";
-    }
-
-});
-
+ 
+        // Solo turnos de tipos válidos
+        let turnosTrab = (turnosBD.find(x => x.id == t.id)?.turnos || [])
+            .filter(turno => MARCACIONES_VALIDAS.includes(parseInt(turno.Id_Marcacion_Tipo)));
+ 
+        for (let d = 1; d <= diasMes; d++) {
+ 
+            let bgColor  = "";
+            let fgColor  = "#000";
+            let labelTxt = "";
+            let clase    = "";
+ 
+            turnosTrab.forEach(turno => {
+                let fi = new Date(turno.FechaInicioTurno.date);
+                let ff = new Date(turno.FechaFinTurno.date);
+                fi.setHours(0, 0, 0, 0);
+                ff.setHours(23, 59, 59, 999);
+                let fechaCelda = new Date(anio, mes - 1, d);
+                let celdaEnMes = fechaCelda.getFullYear() === anio &&
+                                 (fechaCelda.getMonth() + 1) === mes;
+ 
+                if (celdaEnMes && fechaCelda >= fi && fechaCelda <= ff) {
+                    let idMar = parseInt(turno.Id_Marcacion_Tipo);
+                    let estilo = coloresMarcacion[idMar];
+                    if (estilo) {
+                        bgColor  = estilo.bg;
+                        fgColor  = estilo.fg;
+                        labelTxt = estilo.label;
+                        clase    = "turno-existente";
+                    }
+                }
+            });
+ 
             html += `
-            <td class="${clase}" style="background:${color}">
-                <input type="checkbox"
-                    data-trabajador="${t.id}"
-                    data-dia="${d}">
+            <td class="${clase}" style="background:${bgColor}; text-align:center;">
+                <input type="checkbox" data-trabajador="${t.id}" data-dia="${d}">
             </td>`;
         }
-
+ 
         html += '</tr>';
-
     });
-
+ 
     $("#tablaHorarioModal tbody").html(html);
-console.log(turnosBD);
-
 }
 
 $("#btnActualizarModal").click(function(){
@@ -1058,40 +1052,75 @@ function crearObjeto(t, inicio, fin){
     };
 
 }
-const colores = ["#28a745","#ead595ff","#e65261ff","#58cadbff","#868e96ff","#288df8ff","#CCA0E8","#F54927"];
-const coloresMarcacion = {};
-for(let i=1; i<=80; i++){
-    coloresMarcacion[i] = colores[(i-1) % colores.length];
+const MARCACIONES_VALIDAS = [62, 61, 12, 42, 41];
+const coloresMarcacion = {
+    62: { bg: "#FFC090", fg: "#000000", label: "TD" }, 
+    61: { bg: "#4BACC6", fg: "#FFFFFF", label: "TN" },  
+    12: { bg: "#00B050", fg: "#FFFFFF", label: "C"  },  
+    42: { bg: "#FFE0FF", fg: "#000000", label: "O"  },  
+    41: { bg: "#4472C4", fg: "#FFFFFF", label: "D"  },  
+};
+function getColorMarcacion(id) {
+    const m = coloresMarcacion[id];
+    return m ? m.bg : "";
 }
+ 
 //leyenda
-function generarLeyenda(turnosBD){
-
-    let mes = parseInt($("#mesModal").val());
+function generarLeyenda(turnosBD) {
+ 
+    let mes  = parseInt($("#mesModal").val());
     let anio = parseInt($("#anioModal").val());
-
-    // Filtrar turnos solo del mes seleccionado
-    let turnosFiltrados = [];
-
+ 
+   
+    let usados = new Set();
+ 
     turnosBD.forEach(trab => {
         trab.turnos.forEach(t => {
+            let idMar = parseInt(t.Id_Marcacion_Tipo);
+            if (!MARCACIONES_VALIDAS.includes(idMar)) return;
+ 
             let fechaTurno = new Date(t.FechaInicioTurno.date);
-            if(fechaTurno.getMonth() === mes-1 && fechaTurno.getFullYear() === anio){
-                turnosFiltrados.push(t);
+            if (fechaTurno.getMonth() === mes - 1 && fechaTurno.getFullYear() === anio) {
+                usados.add(idMar);
             }
         });
     });
-
-    let usados = {};
-
-    turnosFiltrados.forEach(t => {
-        usados[t.Id_Marcacion_Tipo] = t.MarcTipo_Descripcion || 'Turno';
+ 
+  
+    const descripcionMarcacion = {
+        62: "Turno Día",
+        61: "Turno Noche",
+        12: "Compensación",
+        42: "Onomástico",
+        41: "Descanso Semanal",
+    };
+ 
+    let html = '<strong></strong> ';
+ 
+   
+    MARCACIONES_VALIDAS.forEach(id => {
+        let estilo = coloresMarcacion[id];
+        let desc   = descripcionMarcacion[id] || "Turno";
+        let opacity = usados.has(id) ? "1" : "0.35"; // atenuar los no usados en el mes
+ 
+        html += `
+            <span style="
+                display:inline-flex; align-items:center; gap:4px;
+                margin-right:8px; margin-bottom:4px; opacity:${opacity};
+            ">
+                <span style="
+                    background:${estilo.bg};
+                    color:${estilo.fg};
+                    padding:2px 7px;
+                    border-radius:3px;
+                    font-weight:bold;
+                    font-size:12px;
+                    border:1px solid rgba(0,0,0,0.15);
+                ">${estilo.label}</span>
+                <span style="font-size:12px;">${desc}</span>
+            </span>`;
     });
-
-    let html = '';
-    for(let id in usados){
-        html += `<span class="badge" style="background:${coloresMarcacion[id] || '#17a2b8'}; margin-right:5px;">${usados[id]}</span>`;
-    }
-
+ 
     $("#leyendaMarcacion").html(html);
 }
 
