@@ -315,7 +315,7 @@ function adaptarModal(flags, prefijo) {
         if (esCompuesto) { tipoDesc = '<b>Equipo Compuesto:</b> Requiere código patrimonial y permite asignarle componentes internos.'; icon = 'ti-cpu'; color = 'text-azure'; bg = 'bg-azure-lt'; }
         else if (esPeriferico) { tipoDesc = '<b>Periférico:</b> Requiere código patrimonial. Es un equipo independiente.'; icon = 'ti-keyboard'; color = 'text-teal'; bg = 'bg-teal-lt'; }
         else if (esComponente) { tipoDesc = '<b>Componente:</b> No requiere código patrimonial. Debe armarse dentro de un equipo padre.'; icon = 'ti-puzzle'; color = 'text-orange'; bg = 'bg-orange-lt'; }
-        else if (esSoftware) { tipoDesc = '<b>Software:</b> No requiere código patrimonial. Registra el código de licencia y sus vigencias.'; icon = 'ti-code'; color = 'text-purple'; bg = 'bg-purple-lt'; }
+        else if (esSoftware) { tipoDesc = '<b>Software:</b> Requiere código patrimonial. Registra el código de licencia y sus vigencias.'; icon = 'ti-code'; color = 'text-purple'; bg = 'bg-purple-lt'; }
         else { tipoDesc = '<b>Activo General:</b> Requiere código patrimonial. Gestión estándar.'; icon = 'ti-package'; color = 'text-secondary'; bg = 'bg-secondary-lt'; }
 
         if (tipoDesc) {
@@ -333,7 +333,7 @@ function adaptarModal(flags, prefijo) {
     /* ── Código Patrimonial (Solución al bloqueo de requerido) ── */
     const campoCp = document.querySelector(`.campo-codigoPatrimonial${sufijo}`);
     if (campoCp) {
-        const ocultarCp = esComponente || esSoftware;
+        const ocultarCp = esComponente;
         campoCp.style.display = ocultarCp ? 'none' : '';
 
         // Agregar o quitar 'required' dinámicamente

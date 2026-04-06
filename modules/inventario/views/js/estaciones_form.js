@@ -5,6 +5,39 @@
    Las constantes AJAX_EST y URL_LISTA las define cada vista PHP.
 ============================================================= */
 
+/* ── Estilos para ítems enriquecidos del Custom Select ── */
+(function inyectarEstilosCS() {
+    if (document.getElementById('cs-rich-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'cs-rich-styles';
+    s.textContent = `
+        .cs-item-rich {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 10px !important;
+            line-height: 1.3;
+        }
+        .cs-item-label {
+            font-size: .875rem;
+            font-weight: 500;
+            color: inherit;
+        }
+        .cs-item-meta {
+            font-size: .72rem;
+            color: #8b95a5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cs-item-rich:hover .cs-item-meta,
+        .cs-item-rich.cs-selected .cs-item-meta {
+            color: rgba(255,255,255,.75);
+        }
+    `;
+    document.head.appendChild(s);
+})();
+
 /* ── Toast ── */
 function mostrarToast(tipo, mensaje) {
     const colores = { success:'bg-success', error:'bg-danger', warning:'bg-warning', info:'bg-info' };
@@ -122,14 +155,21 @@ function crearCustomSelect(selectId) {
     document.addEventListener('mousedown', e => {
         if (!wrap.contains(e.target)) cerrar();
     });
+
+    /* ── Búsqueda: incluye nombre + CP + S/N + características ── */
     searchIn.addEventListener('input', function() {
         const q = this.value.toLowerCase().trim();
-        renderLista(q ? opciones.filter(o => o.label.toLowerCase().includes(q)) : opciones);
+        renderLista(q
+            ? opciones.filter(o => (o._busqueda ?? o.label.toLowerCase()).includes(q))
+            : opciones);
     });
     searchIn.addEventListener('keydown', e => {
         if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); }
     });
 
+    /* ══════════════════════════════════════════════════════════
+       renderLista — muestra nombre + CP · S/N · características
+    ══════════════════════════════════════════════════════════ */
     function renderLista(items) {
         list.innerHTML = '';
         if (!items.length) {
@@ -139,10 +179,35 @@ function crearCustomSelect(selectId) {
         const val = sel.value;
         items.forEach(o => {
             const li = document.createElement('li');
-            li.textContent   = o.label;
             li.dataset.value = o.value;
             if (!o.value)        li.classList.add('cs-placeholder-item');
             if (o.value === val) li.classList.add('cs-selected');
+
+            if (o.value) {
+                /* Línea principal: nombre del activo */
+                li.classList.add('cs-item-rich');
+                const nombre = document.createElement('span');
+                nombre.className   = 'cs-item-label';
+                nombre.textContent = o.label;
+                li.appendChild(nombre);
+
+                /* Línea secundaria: CP · S/N · características */
+                const partes = [];
+                if (o.codigoPatrimonial) partes.push(`CP: ${o.codigoPatrimonial}`);
+                if (o.numeroSerie)       partes.push(`S/N: ${o.numeroSerie}`);
+                if (o.caracteristicas?.length) {
+                    o.caracteristicas.forEach(c => partes.push(`${c.descripcion}: ${c.valor}`));
+                }
+                if (partes.length) {
+                    const meta = document.createElement('span');
+                    meta.className   = 'cs-item-meta';
+                    meta.textContent = partes.join(' · ');
+                    li.appendChild(meta);
+                }
+            } else {
+                li.textContent = o.label;
+            }
+
             li.addEventListener('mousedown', e => {
                 e.preventDefault();
                 seleccionar(o.value, o.label);
@@ -189,7 +254,8 @@ function crearCustomSelect(selectId) {
 /* ══════════════════════════════════════════════════════════════
    Cargar equipos por tipo desde el servidor
    El AJAX devuelve: { idActivo, label, numeroSerie,
-                       codigoPatrimonial, nombreActivo, iconoActivo }
+                       codigoPatrimonial, nombreActivo, iconoActivo,
+                       caracteristicas: [{descripcion, valor}, ...] }
    Clave siempre: idActivo
 ══════════════════════════════════════════════════════════════ */
 async function cargarEquiposTipo(cs, tipo, idEstacion, excluirIds = []) {
@@ -204,7 +270,24 @@ async function cargarEquiposTipo(cs, tipo, idEstacion, excluirIds = []) {
         cs._data   = {};
         data.forEach(eq => {
             const id = String(eq.idActivo);
-            ops.push({ value: id, label: eq.label });
+            /* Texto plano unificado para el filtro de búsqueda */
+            const metaTexto = [
+                eq.codigoPatrimonial ?? '',
+                eq.numeroSerie       ?? '',
+                ...(eq.caracteristicas ?? []).map(c => `${c.descripcion} ${c.valor}`)
+            ].join(' ');
+            /* Para software, el label visible incluye el código patrimonial */
+            const labelVisible = (tipo === 'software' && eq.codigoPatrimonial)
+                ? `${eq.codigoPatrimonial} — ${eq.label}`
+                : eq.label;
+            ops.push({
+                value:             id,
+                label:             labelVisible,
+                codigoPatrimonial: eq.codigoPatrimonial ?? '',
+                numeroSerie:       eq.numeroSerie       ?? '',
+                caracteristicas:   eq.caracteristicas   ?? [],
+                _busqueda:         (eq.label + ' ' + metaTexto).toLowerCase()
+            });
             cs._data[id] = eq;
         });
         cs.setOptions(ops);

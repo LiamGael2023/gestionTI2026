@@ -1,3 +1,76 @@
+<style>
+/* =========================================
+   DISEÑO PRO: TABLAS RESPONSIVAS (MÓVILES)
+========================================= */
+@media (max-width: 767px) {
+  /* Ocultar encabezados en móvil */
+  .table-mobile-md thead {
+    display: none;
+  }
+  /* Convertir cada fila en una tarjeta flotante */
+  .table-mobile-md tbody tr {
+    display: block;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.25rem;
+    border: 1px solid #e6e8eb;
+    padding: 0.5rem;
+  }
+  /* Ajustar las celdas para que se vean como listas clave-valor */
+  .table-mobile-md tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 0.75rem 1rem !important;
+  }
+  .table-mobile-md tbody td:last-child {
+    border-bottom: none !important;
+    justify-content: flex-end; /* Alinear botones a la derecha */
+    background-color: #f8fafc;
+    border-radius: 0 0 12px 12px;
+    margin: -0.5rem -0.5rem -0.5rem -0.5rem;
+    padding: 0.75rem 1rem !important;
+  }
+  /* Estilizar la etiqueta de datos (data-label) */
+  .table-mobile-md tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+  }
+}
+
+/* =========================================
+   DISEÑO PRO: MODALES Y EFECTOS HOVER
+========================================= */
+.modal-content {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+.modal-header {
+  border-bottom: 1px solid #f1f5f9;
+  background-color: #fcfcfd;
+  border-radius: 16px 16px 0 0;
+}
+.modal-footer {
+  border-top: 1px solid #f1f5f9;
+  background-color: #fcfcfd;
+  border-radius: 0 0 16px 16px;
+}
+.card-sm {
+  transition: all 0.2s ease-in-out;
+}
+.card-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+}
+</style>
 <body>
   <?php
   if (session_status() == PHP_SESSION_NONE) { session_start(); }
@@ -12,14 +85,12 @@
         <div class="page-header d-print-none">
           <div class="row align-items-center">
             <div class="col">
-              <div class="page-pretitle">Inventario</div>
               <h2 class="page-title">Configuraciones</h2>
+              <div class="text-muted mt-1">Gestión de datos base del sistema de inventario.</div>
             </div>
-            <div class="col-auto ms-auto d-print-none">
-              <button class="btn btn-primary d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalAgregarActivo">
-                <i class="ti ti-plus"></i>
-                <span class="d-none d-sm-inline">Agregar Tipo Activo</span>
-                <span class="d-sm-none">Agregar</span>
+            <div class="col-auto ms-auto">
+              <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarActivo">
+                <i class="ti ti-plus me-1"></i> Agregar Tipo Activo
               </button>
             </div>
           </div>
@@ -27,87 +98,49 @@
 
         <!-- TABS -->
         <div class="card mb-4">
-          <div class="card-header p-0 pt-0">
-            <div class="nav-tabs-scrollable">
-              <ul class="nav nav-tabs card-header-tabs nav-fill flex-nowrap" style="overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -ms-overflow-style:none;">
-                <li class="nav-item">
-                  <a class="nav-link active d-flex align-items-center gap-1 text-nowrap px-3" href="?module=inventario&action=tipoActivos">
-                    <i class="ti ti-devices"></i> <span>Tipo Activos</span>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link d-flex align-items-center gap-1 text-nowrap px-3" href="?module=inventario&action=tipoCaracteristicas">
-                    <i class="ti ti-category"></i> <span>Características</span>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link d-flex align-items-center gap-1 text-nowrap px-3" href="?module=inventario&action=caracteristicas">
-                    <i class="ti ti-adjustments"></i> <span>Config.</span>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link d-flex align-items-center gap-1 text-nowrap px-3" href="?module=inventario&action=ubicaciones">
-                    <i class="ti ti-map-pin"></i> <span>Ubicaciones</span>
-                  </a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link d-flex align-items-center gap-1 text-nowrap px-3" href="?module=inventario&action=ips">
-                    <i class="ti ti-network"></i> <span>IPs</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
+          <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+              <li class="nav-item">
+                <a class="nav-link active" href="?module=inventario&action=tipoActivos">
+                  <i class="ti ti-devices me-1"></i> Tipo Activos
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="?module=inventario&action=tipoCaracteristicas">
+                  <i class="ti ti-category me-1"></i> Tipo Caracteristicas
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="?module=inventario&action=caracteristicas">
+                  <i class="ti ti-adjustments me-1"></i> Caracteristicas
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="?module=inventario&action=ubicaciones">
+                  <i class="ti ti-map-pin me-1"></i> Ubicaciones
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="?module=inventario&action=ips">
+                  <i class="ti ti-network me-1"></i> IPs
+                </a>
+              </li>
+            </ul>
           </div>
 
-          <!-- Toolbar manual (NO depende del dom de DataTables) -->
-          <div class="card-body border-bottom py-2 d-none d-md-flex align-items-center gap-2 flex-wrap" id="dtToolbarManual">
-            <div class="d-flex align-items-center gap-2">
-              <span class="text-muted small">Mostrar</span>
-              <select id="dtPageLength" class="form-select form-select-sm" style="width:auto">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-              </select>
-              <span class="text-muted small">registros</span>
-            </div>
-            <div class="ms-auto d-flex align-items-center gap-2">
-              <!-- Visibilidad de columnas -->
-              <div class="dropdown">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
-                  <i class="ti ti-columns me-1"></i>Columnas
-                </button>
-                <div class="dropdown-menu p-2" style="min-width:160px" id="dtColVisMenu">
-                  <!-- Se genera por JS -->
-                </div>
-              </div>
-              <!-- Excel / PDF -->
-              <button class="btn btn-sm btn-outline-success" id="dtBtnExcel">
-                <i class="ti ti-file-spreadsheet me-1"></i>Excel
-              </button>
-              <button class="btn btn-sm btn-outline-danger" id="dtBtnPdf">
-                <i class="ti ti-file-description me-1"></i>PDF
-              </button>
-              <!-- Búsqueda -->
-              <div class="input-group input-group-sm" style="width:200px">
-                <span class="input-group-text"><i class="ti ti-search"></i></span>
-                <input type="text" id="dtSearch" class="form-control" placeholder="Buscar activo...">
-              </div>
-            </div>
-          </div>
-
-          <!-- TABLE desktop -->
-          <div class="card-body p-0 d-none d-md-block">
+          <!-- TABLE -->
+          <div class="card-body p-0">
             <div class="table-responsive">
-              <table id="tablaActivos" class="table table-vcenter card-table table-hover">
+              <table id="tablaActivos" class="table table-vcenter table-hover table-mobile-md card-table">
                 <thead>
                   <tr>
                     <th>Nombre</th>
                     <th>Tipo</th>
                     <th>Compuesto</th>
                     <th>Componente</th>
-                    <th>Registro</th>
-                    <th class="text-end no-hide">Acciones</th>
+                    <th>Fecha de Creación</th>
+                    <th class="d-none d-sm-table-cell">Registrado Por</th>
+                    <th class="text-end">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -125,52 +158,55 @@
                       $esComponente = !empty($value["esComponente"]) && intval($value["esComponente"]) === 1;
                       $esPeriferico = !empty($value["esPeriferico"]) && intval($value["esPeriferico"]) === 1;
 
+                      // Badge de tipo
                       if ($esPeriferico) {
-                          $tipoBadge = '<span class="badge bg-green-lt text-green"><i class="ti ti-mouse me-1"></i>Periférico</span>';
+                          $tipoBadge = '<span class="badge bg-green-lt text-green">
+                                          <i class="ti ti-mouse me-1"></i>Periférico
+                                        </span>';
                       } elseif ($esCompuesto) {
-                          $tipoBadge = '<span class="badge bg-blue-lt text-blue"><i class="ti ti-cpu me-1"></i>Compuesto</span>';
+                          $tipoBadge = '<span class="badge bg-blue-lt text-blue">
+                                          <i class="ti ti-cpu me-1"></i>Compuesto
+                                        </span>';
                       } else {
-                          $tipoBadge = '<span class="badge bg-azure-lt text-azure"><i class="ti ti-package me-1"></i>Simple</span>';
+                          $tipoBadge = '<span class="badge bg-azure-lt text-azure">
+                                          <i class="ti ti-package me-1"></i>Simple
+                                        </span>';
                       }
 
                       $badgeCompuesto  = $esCompuesto
-                          ? '<span class="badge bg-blue-lt text-blue"><i class="ti ti-check"></i></span>'
-                          : '<span class="text-muted">—</span>';
+                          ? '<span class="badge bg-blue-lt text-blue"><i class="ti ti-check me-1"></i>Sí</span>'
+                          : '<span class="badge bg-muted-lt text-muted">No</span>';
 
                       $badgeComponente = $esComponente
-                          ? '<span class="badge bg-purple-lt text-purple"><i class="ti ti-check"></i></span>'
-                          : '<span class="text-muted">—</span>';
+                          ? '<span class="badge bg-purple-lt text-purple"><i class="ti ti-check me-1"></i>Sí</span>'
+                          : '<span class="badge bg-muted-lt text-muted">No</span>';
 
                       echo '
                       <tr>
-                        <td>
-                          <div class="d-flex align-items-center gap-2">
-                            <span class="avatar avatar-sm bg-primary-lt text-primary">
-                              <i class="ti ' . $icono . '"></i>
-                            </span>
-                            <div>
-                              <div class="fw-medium">' . $descripcion . '</div>
-                              <div class="text-muted small">' . $fecha . '</div>
-                            </div>
+                        <td data-label="Nombre">
+                          <div class="d-flex align-items-center">
+                            <i class="ti ' . $icono . ' text-primary me-2 fs-3"></i>
+                            <div class="font-weight-medium">' . $descripcion . '</div>
                           </div>
                         </td>
-                        <td>' . $tipoBadge . '</td>
-                        <td>' . $badgeCompuesto . '</td>
-                        <td>' . $badgeComponente . '</td>
-                        <td>
-                          <span class="badge badge-outline text-secondary fw-normal">
-                            <i class="ti ti-user me-1"></i>ID: ' . $value["idUsuarioRegistro"] . '
-                          </span>
+                        <td data-label="Tipo">' . $tipoBadge . '</td>
+                        <td data-label="Compuesto">' . $badgeCompuesto . '</td>
+                        <td data-label="Componente">' . $badgeComponente . '</td>
+                        <td data-label="Fecha" class="text-muted small">' . $fecha . '</td>
+                        <td data-label="Usuario" class="d-none d-sm-table-cell">
+                          <span class="badge badge-outline text-muted fw-normal">ID: ' . $value["idUsuarioRegistro"] . '</span>
                         </td>
                         <td class="text-end">
-                          <div class="d-flex justify-content-end gap-1">
-                            <button class="btn btn-sm btn-ghost-primary btnEditarActivo"
-                                    data-id="' . $value["idTipoActivo"] . '" title="Editar">
-                              <i class="ti ti-edit me-1"></i>Editar
-                            </button>
-                            <button class="btn btn-sm btn-ghost-danger btnEliminarActivo"
+                          <div class="btn-list justify-content-end">
+                            <button class="btn btn-sm btn-icon btn-outline-primary btnEditarActivo"
                                     data-id="' . $value["idTipoActivo"] . '"
-                                    data-descripcion="' . $descripcion . '" title="Eliminar">
+                                    title="Editar">
+                              <i class="ti ti-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-icon btn-outline-danger btnEliminarActivo"
+                                    data-id="' . $value["idTipoActivo"] . '"
+                                    data-descripcion="' . $descripcion . '"
+                                    title="Eliminar">
                               <i class="ti ti-trash"></i>
                             </button>
                           </div>
@@ -182,107 +218,28 @@
               </table>
             </div>
           </div>
-
-          <!-- CARDS mobile (solo visible en xs/sm) -->
-          <div class="d-md-none">
-            <?php
-            if (!empty($activos)):
-                foreach ($activos as $value):
-                    $descripcion  = htmlspecialchars($value["descripcion"], ENT_QUOTES, 'UTF-8');
-                    $icono        = $value["icono"] ?: 'ti-package';
-                    $fecha        = $value["fechaCreacion"] instanceof DateTime
-                                    ? $value["fechaCreacion"]->format('d/m/Y') : "Sin fecha";
-                    $esCompuesto  = !empty($value["esCompuesto"])  && intval($value["esCompuesto"])  === 1;
-                    $esComponente = !empty($value["esComponente"]) && intval($value["esComponente"]) === 1;
-                    $esPeriferico = !empty($value["esPeriferico"]) && intval($value["esPeriferico"]) === 1;
-
-                    if ($esPeriferico) {
-                        $tipoBadge = '<span class="badge bg-green-lt text-green"><i class="ti ti-mouse me-1"></i>Periférico</span>';
-                    } elseif ($esCompuesto) {
-                        $tipoBadge = '<span class="badge bg-blue-lt text-blue"><i class="ti ti-cpu me-1"></i>Compuesto</span>';
-                    } else {
-                        $tipoBadge = '<span class="badge bg-azure-lt text-azure"><i class="ti ti-package me-1"></i>Simple</span>';
-                    }
-            ?>
-            <div class="mobile-asset-card border-bottom px-3 py-3">
-              <div class="d-flex align-items-start gap-3">
-                <span class="avatar avatar-md bg-primary-lt text-primary flex-shrink-0">
-                  <i class="ti <?= $icono ?> fs-3"></i>
-                </span>
-                <div class="flex-grow-1 min-w-0">
-                  <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                    <span class="fw-semibold text-truncate"><?= $descripcion ?></span>
-                    <?= $tipoBadge ?>
-                  </div>
-                  <div class="d-flex flex-wrap gap-2 mb-2">
-                    <?php if ($esCompuesto): ?>
-                      <span class="badge bg-blue-lt text-blue"><i class="ti ti-components me-1"></i>Compuesto</span>
-                    <?php endif; ?>
-                    <?php if ($esComponente): ?>
-                      <span class="badge bg-purple-lt text-purple"><i class="ti ti-puzzle me-1"></i>Componente</span>
-                    <?php endif; ?>
-                    <?php if ($esPeriferico): ?>
-                      <span class="badge bg-green-lt text-green"><i class="ti ti-mouse me-1"></i>Periférico</span>
-                    <?php endif; ?>
-                    <?php if (!$esCompuesto && !$esComponente && !$esPeriferico): ?>
-                      <span class="text-muted small">Sin categorías adicionales</span>
-                    <?php endif; ?>
-                  </div>
-                  <div class="d-flex align-items-center justify-content-between">
-                    <span class="text-muted small">
-                      <i class="ti ti-calendar me-1"></i><?= $fecha ?>
-                      &nbsp;·&nbsp;
-                      <i class="ti ti-user me-1"></i>ID: <?= $value["idUsuarioRegistro"] ?>
-                    </span>
-                    <div class="d-flex gap-1">
-                      <button class="btn btn-sm btn-ghost-primary btnEditarActivo"
-                              data-id="<?= $value['idTipoActivo'] ?>">
-                        <i class="ti ti-edit"></i>
-                      </button>
-                      <button class="btn btn-sm btn-ghost-danger btnEliminarActivo"
-                              data-id="<?= $value['idTipoActivo'] ?>"
-                              data-descripcion="<?= $descripcion ?>">
-                        <i class="ti ti-trash"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <?php endforeach; ?>
-            <?php else: ?>
-            <div class="text-center py-5 text-muted">
-              <i class="ti ti-inbox fs-1 d-block mb-2"></i>
-              No hay tipos de activo registrados.
-            </div>
-            <?php endif; ?>
-          </div>
-
-        </div><!-- /card -->
+        </div>
 
         <!-- INFO CARDS -->
         <div class="row row-deck row-cards">
           <div class="col-md-4">
-            <div class="card bg-primary-lt border-0">
+            <div class="card bg-primary-lt">
               <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <i class="ti ti-info-circle text-primary fs-4"></i>
+                <div class="d-flex align-items-center">
+                  <i class="ti ti-info-circle text-primary me-2"></i>
                   <strong>Información del Sistema</strong>
                 </div>
-                <p class="text-muted mb-0 small">Las categorías afectan a todos los activos vinculados al sistema.</p>
+                <p class="text-muted mt-2 mb-0">Las categorías afectan a todos los activos vinculados.</p>
               </div>
             </div>
           </div>
           <div class="col-md-4">
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <i class="ti ti-clock text-secondary fs-4"></i>
-                  <strong>Últimos Cambios</strong>
-                </div>
-                <ul class="list-unstyled mb-0 small text-muted">
-                  <li class="d-flex align-items-center gap-2 mb-1"><i class="ti ti-point-filled text-green" style="font-size:.5rem"></i>Nueva ubicación agregada</li>
-                  <li class="d-flex align-items-center gap-2"><i class="ti ti-point-filled text-yellow" style="font-size:.5rem"></i>Categoría editada hace 2 horas</li>
+                <strong>Últimos Cambios</strong>
+                <ul class="mt-2">
+                  <li>Nueva ubicación agregada</li>
+                  <li>Categoría editada hace 2 horas</li>
                 </ul>
               </div>
             </div>
@@ -290,15 +247,9 @@
           <div class="col-md-4">
             <div class="card">
               <div class="card-body">
-                <div class="d-flex align-items-center gap-2 mb-2">
-                  <i class="ti ti-chart-bar text-secondary fs-4"></i>
-                  <strong>Resumen</strong>
-                </div>
-                <div class="d-flex align-items-center justify-content-between">
-                  <span class="text-muted small">Total Tipo Activos</span>
-                  <span class="badge bg-primary-lt text-primary fs-5 fw-bold">
-                    <?= is_array($activos) ? count($activos) : 0 ?>
-                  </span>
+                <strong>Resumen</strong>
+                <div class="mt-2">
+                  <div>Total Tipo Activos: <strong><?= is_array($activos) ? count($activos) : 0 ?></strong></div>
                 </div>
               </div>
             </div>
@@ -315,11 +266,11 @@
      Modal Agregar Activo
 ════════════════════════════════════════ -->
 <div class="modal modal-blur fade" id="modalAgregarActivo" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <form id="formNuevoActivo" method="POST">
 
-        <div class="modal-header py-3">
+        <div class="modal-header py-3 px-4">
           <h5 class="modal-title d-flex align-items-center gap-2">
             <div class="avatar avatar-sm bg-primary-lt text-primary">
               <i class="ti ti-package"></i>
@@ -373,6 +324,7 @@
             <div class="col-12">
               <div class="row g-2">
 
+                <!-- esCompuesto -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -391,6 +343,7 @@
                   </div>
                 </div>
 
+                <!-- esComponente -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -409,6 +362,7 @@
                   </div>
                 </div>
 
+                <!-- Es Periférico -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -450,11 +404,11 @@
      Modal Editar Activo
 ════════════════════════════════════════ -->
 <div class="modal modal-blur fade" id="modalEditarActivo" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <form id="formEditarActivo">
 
-        <div class="modal-header py-3">
+        <div class="modal-header py-3 px-4">
           <h5 class="modal-title d-flex align-items-center gap-2">
             <div class="avatar avatar-sm bg-primary-lt text-primary">
               <i class="ti ti-edit"></i>
@@ -509,6 +463,7 @@
             <div class="col-12">
               <div class="row g-2">
 
+                <!-- esCompuesto -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -527,6 +482,7 @@
                   </div>
                 </div>
 
+                <!-- esComponente -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -545,6 +501,7 @@
                   </div>
                 </div>
 
+                <!-- Es Periférico -->
                 <div class="col-md-4">
                   <div class="card card-sm">
                     <div class="card-body d-flex justify-content-between align-items-center">
@@ -637,5 +594,5 @@
 </div>
 
 
-<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:9999"></div>
+<div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
 <script src="modules/inventario/views/js/tipoActivos.js"></script>

@@ -21,10 +21,7 @@ function mostrarToast(tipo, mensaje) {
     const html = `
     <div class="toast align-items-center text-white ${colores[tipo] || 'bg-secondary'} border-0 mb-2" role="alert">
         <div class="d-flex">
-            <div class="toast-body d-flex align-items-center gap-2">
-                ${tipo === 'success' ? '<i class="ti ti-circle-check"></i>' : tipo === 'error' ? '<i class="ti ti-circle-x"></i>' : '<i class="ti ti-alert-circle"></i>'}
-                ${mensaje}
-            </div>
+            <div class="toast-body">${mensaje}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>
     </div>`;
@@ -55,11 +52,10 @@ function generarIconos(tipo, contenedor, preview, inputHidden, iconoActual = nul
         const seleccionado = (icono === iconoActual) ? "border-primary bg-primary-lt" : "";
         const html = `
         <div class="col-4 col-sm-3">
-            <div class="card card-sm text-center icono-item ${seleccionado}" data-icon="${icono}"
-                 style="cursor:pointer; transition:.15s; border-width:2px;">
+            <div class="card card-sm text-center icono-item ${seleccionado}" data-icon="${icono}" style="cursor:pointer">
                 <div class="card-body p-2">
-                    <i class="ti ${icono} fs-2 text-primary d-block mb-1"></i>
-                    <div class="text-muted" style="font-size:.62rem; line-height:1.2">${icono.replace("ti-", "")}</div>
+                    <i class="ti ${icono} fs-1 text-primary"></i>
+                    <div class="text-muted" style="font-size:0.65rem">${icono.replace("ti-", "")}</div>
                 </div>
             </div>
         </div>`;
@@ -88,7 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    /* --- Iconos: Cambio de Categoría (Agregar) --- */
+    /* --- Iconos: Cambio de Categoría --- */
     const tipoIcono = document.getElementById("tipoIcono");
     if (tipoIcono) {
         tipoIcono.addEventListener("change", function () {
@@ -100,7 +96,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /* --- Iconos: Cambio de Categoría (Editar) --- */
     const editarTipoIcono = document.getElementById("editarTipoIcono");
     if (editarTipoIcono) {
         editarTipoIcono.addEventListener("change", function () {
@@ -120,13 +115,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!item) return;
 
         const contenedor = item.closest(".row");
-        contenedor.querySelectorAll(".icono-item").forEach(el => {
-            el.classList.remove("border-primary", "bg-primary-lt");
-            el.style.transform = '';
-        });
+        contenedor.querySelectorAll(".icono-item").forEach(el => el.classList.remove("border-primary", "bg-primary-lt"));
         item.classList.add("border-primary", "bg-primary-lt");
-        item.style.transform = 'scale(1.05)';
-        setTimeout(() => { item.style.transform = ''; }, 200);
 
         const icono = item.getAttribute("data-icon");
         const modal = item.closest(".modal");
@@ -139,18 +129,6 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("editarIconoActivo").value = icono;
         }
     });
-
-    /* --- Reset modal Agregar al cerrar --- */
-    const modalAgregar = document.getElementById("modalAgregarActivo");
-    if (modalAgregar) {
-        modalAgregar.addEventListener("hidden.bs.modal", function () {
-            document.getElementById("formNuevoActivo").reset();
-            document.getElementById("listaIconos").innerHTML =
-                '<div class="col-12 d-flex align-items-center justify-content-center text-muted small py-3"><i class="ti ti-arrow-up me-1"></i> Seleccione una categoría</div>';
-            document.getElementById("previewIcon").innerHTML = '<i class="ti ti-help"></i>';
-            document.getElementById("iconoActivo").value = '';
-        });
-    }
 
     /* --- 1. CARGAR DATOS EN EL MODAL EDITAR --- */
     document.addEventListener("click", function (e) {
@@ -176,7 +154,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.getElementById("editarFechaCreacion").textContent   = json.fechaCreacion;
                 document.getElementById("editarPreviewIcon").innerHTML       = `<i class="ti ${json.icono}"></i>`;
 
-                // Mostrar el modal
                 bootstrap.Modal.getOrCreateInstance(document.getElementById("modalEditarActivo")).show();
             })
             .catch(() => mostrarToast("error", "Error al cargar datos."));
@@ -194,7 +171,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const btn = this.querySelector('[type="submit"]');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
 
             fetch("modules/inventario/ajax/tipoActivos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
@@ -209,17 +185,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (r === "error_duplicado") {
                         mostrarToast("warning", "¡Atención! Ya existe un tipo de activo con este nombre.");
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Tipo';
                     } else {
                         mostrarToast("error", m || "Error al guardar: " + r);
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Tipo';
                     }
                 })
-                .catch(() => {
+                .catch(err => {
                     mostrarToast("error", "Error de servidor.");
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Tipo';
                 });
         });
     }
@@ -232,7 +205,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const btn = this.querySelector('[type="submit"]');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
 
             fetch("modules/inventario/ajax/tipoActivos.ajax.php", { method: "POST", body: new FormData(this) })
                 .then(res => res.json())
@@ -247,17 +219,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     } else if (r === "error_duplicado") {
                         mostrarToast("warning", "¡Atención! El nombre ya existe en otro registro.");
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Cambios';
                     } else {
                         mostrarToast("error", m || "No se pudo actualizar: " + r);
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Cambios';
                     }
                 })
                 .catch(() => {
                     mostrarToast("error", "Error al comunicarse con el servidor.");
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="ti ti-device-floppy me-1"></i>Guardar Cambios';
                 });
         });
     }
@@ -305,89 +274,49 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    /* ─────────────────────────────────────────
-       5. DATATABLE — toolbar manual, español
-    ───────────────────────────────────────── */
-    if (!document.getElementById('tablaActivos')) return;
-
+    /* --- 5. DATATABLE --- */
     if ($.fn.DataTable.isDataTable('#tablaActivos')) {
         $('#tablaActivos').DataTable().destroy();
     }
 
-    // Columnas que se pueden ocultar (índices 0–4; la 5 = Acciones nunca se oculta)
-    const colNames = ['Nombre', 'Tipo', 'Compuesto', 'Componente', 'Registro'];
-
-    const dt = $('#tablaActivos').DataTable({
-        responsive: false,
-        pageLength: 10,
-        autoWidth: false,
-        // Sin dom personalizado — dejamos que DT maneje su wrapper interno
-        // pero ocultamos los controles nativos con CSS
-        dom: `<'d-none'lBf>` +           // oculta controles nativos
-             `<'table-responsive'tr>` +
-             `<'card-footer d-flex align-items-center py-2'` +
-               `<'text-muted small'i>` +
-               `<'pagination m-0 ms-auto'p>>`,
-        language: {
-            info:           "Mostrando _START_ a _END_ de _TOTAL_ registros",
-            infoEmpty:      "Sin registros disponibles",
-            infoFiltered:   "(filtrado de _MAX_ registros)",
-            lengthMenu:     "Mostrar _MENU_ registros",
-            zeroRecords:    "No se encontraron resultados",
-            search:         "Buscar:",
-            paginate: {
-                first:    "«",
-                last:     "»",
-                next:     "Siguiente →",
-                previous: "← Anterior"
+    $('#tablaActivos').DataTable({
+        "responsive": false, // Apagamos el responsive nativo de DT porque usaremos nuestro CSS de Tarjetas
+        "pageLength": 10,
+        "autoWidth": false,
+        "language": {
+            "search": "", // Quitamos el texto "Buscar:" para dejar solo el placeholder
+            "lengthMenu": "Mostrar _MENU_",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ activos",
+            "paginate": {
+                "previous": "<i class='ti ti-chevron-left'></i>",
+                "next": "<i class='ti ti-chevron-right'></i>"
             }
         },
-        buttons: [
-            { extend: 'excelHtml5', text: 'Excel' },
-            { extend: 'pdfHtml5',   text: 'PDF'   }
+        "dom": `
+        <'card-body border-bottom py-3'
+            <'row d-flex align-items-center gap-3 gap-md-0'
+                <'col-12 col-md-4 d-flex justify-content-center justify-content-md-start'l>
+                <'col-12 col-md-8 d-flex flex-column flex-md-row align-items-center justify-content-md-end gap-2'Bf>
+            >
+        >
+        <'table-responsive'tr>
+        <'card-footer d-flex flex-column flex-md-row align-items-center justify-content-between py-2'
+            <'text-muted small mb-2 mb-md-0'i>
+            <'m-0'p>
+        >
+        `,
+        "buttons": [
+            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet me-1"></i> Excel', className: 'btn btn-outline-success btn-sm' },
+            { extend: 'pdfHtml5',   text: '<i class="ti ti-file-description me-1"></i> PDF',  className: 'btn btn-outline-danger btn-sm' }
         ],
-        columnDefs: [
-            { targets: 5, orderable: false }   // Acciones sin orden
-        ]
+        "initComplete": function () {
+            // Estilizar el input de búsqueda
+            let searchInput = $('.dataTables_filter input');
+            searchInput.addClass('form-control form-control-sm').attr('placeholder', 'Buscar activo...');
+            $('.dataTables_filter').css('margin', '0'); // Resetear margen
+            
+            // Estilizar el select de cantidad
+            $('.dataTables_length select').addClass('form-select form-select-sm w-auto');
+        }
     });
-
-    // Mostrar toolbar manual
-    const toolbar = document.getElementById('dtToolbarManual');
-    if (toolbar) toolbar.classList.remove('d-none');
-
-    /* — Buscador manual — */
-    document.getElementById('dtSearch')?.addEventListener('input', function () {
-        dt.search(this.value).draw();
-    });
-
-    /* — Page length manual — */
-    document.getElementById('dtPageLength')?.addEventListener('change', function () {
-        dt.page.len(parseInt(this.value)).draw();
-    });
-
-    /* — Exportar Excel/PDF via botones ocultos de DT — */
-    document.getElementById('dtBtnExcel')?.addEventListener('click', function () {
-        dt.button('.buttons-excel').trigger();
-    });
-    document.getElementById('dtBtnPdf')?.addEventListener('click', function () {
-        dt.button('.buttons-pdf').trigger();
-    });
-
-    /* — Visibilidad de columnas — */
-    const colMenu = document.getElementById('dtColVisMenu');
-    if (colMenu) {
-        colNames.forEach((name, idx) => {
-            const item = document.createElement('div');
-            item.className = 'form-check mb-1';
-            item.innerHTML = `
-                <input class="form-check-input" type="checkbox" id="col_${idx}" checked>
-                <label class="form-check-label small" for="col_${idx}">${name}</label>`;
-            colMenu.appendChild(item);
-
-            item.querySelector('input').addEventListener('change', function () {
-                dt.column(idx).visible(this.checked);
-            });
-        });
-    }
-
 });
