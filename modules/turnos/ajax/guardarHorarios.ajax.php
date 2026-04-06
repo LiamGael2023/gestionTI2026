@@ -10,5 +10,5 @@ if(isset($_POST["datos"])){
     
 
     $guardar = new HorarioTrabajadorController();
-    $guardar -> ctrGuardarHorario();
+    $guardar -> ctrGuardarTurnoTrabajador();
 }

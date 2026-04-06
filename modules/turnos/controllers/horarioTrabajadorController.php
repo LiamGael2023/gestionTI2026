@@ -12,7 +12,7 @@ $model = new HorarioTrabajadorModel($conn);
 
 class HorarioTrabajadorController{
 
-   static public function ctrGuardarHorario(){
+   static public function ctrGuardarTurnoTrabajador(){
 
     if(!isset($_POST["datos"])){
         echo json_encode(["error" => "No llegó datos"]);
@@ -46,7 +46,7 @@ class HorarioTrabajadorController{
             "descripcion" => $fila["descripcion"] ?? ""
         );
 
-        $respuestas[] = HorarioTrabajadorModel::mdlGuardarHorario($conn, $datos);
+        $respuestas[] = HorarioTrabajadorModel::mdlGuardarTurnoTrabajador($conn, $datos);
     }
 
     sqlsrv_close($conn);

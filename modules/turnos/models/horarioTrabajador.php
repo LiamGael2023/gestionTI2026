@@ -13,7 +13,7 @@ class HorarioTrabajadorModel{
         $this->conn = $conn2;
     }
 
-    static public function mdlGuardarHorario($conn, $datos){
+    static public function mdlGuardarTurnoTrabajador($conn, $datos){
 
     $sql = "EXEC BD_PERSONAL_2026.Asistencia.Guardar_Turno_Trabajador2
         @Id_Anio = ?,

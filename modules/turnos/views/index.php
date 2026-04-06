@@ -18,7 +18,7 @@ $mapMeta = [
     // 2361 => 227,
     // 1321 => 220,
     // 803  => 219,
-    1224  => 227
+    // 1224  => 227
 ];
 
 if(isset($mapMeta[$idUsuarioLogueado])){
@@ -268,6 +268,7 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
         </button>
       </div>
       <div class="modal-body">
+         <div id="sugerenciasObservacion" class="mb-2"></div>
         <textarea id="descripcionTurno" class="form-control" rows="3" placeholder="Ingrese descripción"></textarea>
       </div>
       <div class="modal-footer">
@@ -329,6 +330,11 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
                 ?>
             </select>
         </div>
+     <div class="filtro-item">
+        <button type="button" id="btnAgregarObservacion" class="btn btn-warning btn-sm mt-2" style="display:none;">
+            <i class="fa fa-pencil"></i> Agregar Observación
+        </button>
+    </div>
   </div>
 
   <!-- TABLA HORARIO -->
@@ -363,6 +369,38 @@ $diasSemana = ["Dom","Lun","Mar","Mie","Jue","Vie","Sab"];
 let turnosBDGlobal = [];
 let turnosTemp = [];
 
+// SUGERENCIAS META 220
+
+const sugerenciasMeta220 = [
+    "DESARENADOR Y TANGUCHE",
+    "DESARENADOR",
+    "AGONIA",
+    "CHOROBAL",
+    "CAMARA DE CARGA",
+    "BOCATOMA",
+    "AREA COMERCIAL",
+    "OPER. S.E. CHAO",
+     "OPER. C.H. VIRU",
+    "DPT GENERACION",
+    "TURNOS EXTRA LABORADOS POR FALTA DE PERSONAL",
+    "CAPACITACION TEORICO PRACTICO PRACTICANTES / C.H VIRU"
+];
+
+function cargarSugerenciasObservacion(){
+    let html = '';
+
+    sugerenciasMeta220.forEach(texto => {
+        html += `
+            <button type="button" class="btn btn-sm btn-outline-primary m-1 sugerencia-item">
+                ${texto}
+            </button>
+        `;
+    });
+
+    $("#sugerenciasObservacion").html(html);
+}
+
+//
 $(document).ready(function(){
 
     // DataTable
@@ -478,118 +516,169 @@ tabla.rows().every(function(){
 // ===============================
 // CHECKBOX → GUARDADO TEMPORAL
 // ===============================
-
-let checkboxTemporal = null; // almacenar referencia al checkbox activo
+let checkboxTemporal = null;
+let ultimoCheckMarcado = null; 
 
 $(document).on("change", "#tablaHorarioModal input[type='checkbox']", function(){
 
-    let checked = $(this).prop("checked");
+    let checked    = $(this).prop("checked");
     let trabajador = $(this).data("trabajador");
-    let dia = $(this).data("dia");
-    let anio = $("#anioModal").val();
-    let mes = $("#mesModal").val();
-    let marcacion = $("#marcacion").val();
+    let dia        = $(this).data("dia");
+    let anio       = $("#anioModal").val();
+    let mes        = $("#mesModal").val();
+    let marcacion  = $("#marcacion").val();
+
+    let fila = $("#tablaTrabajadores tbody tr[data-trabajador='" + trabajador + "']");
+    let meta = fila.data("meta");
 
     if(checked){
 
-       
-        checkboxTemporal = $(this);
+        if(meta == 220){
+          
+            checkboxTemporal = $(this);
 
-       
-       let descripcion = "";
-
-
-let turnoTemp = turnosTemp.find(t =>
-    t.trabajador == trabajador &&
-    t.dia == dia &&
-    t.mes == mes &&
-    t.anio == anio
-);
-
-if(turnoTemp){
-    descripcion = turnoTemp.descripcion;
-} else {
-
-    // 🔹 2. Buscar en BD
-    let trabajadorBD = turnosBDGlobal.find(t => t.id == trabajador);
-
-    if(trabajadorBD){
-
-        trabajadorBD.turnos.forEach(turno => {
-
-            let fechaInicio = new Date(turno.FechaInicioTurno.date);
-            let fechaFin = new Date(turno.FechaFinTurno.date);
-
-            let fechaCelda = new Date(
-                $("#anioModal").val(),
-                $("#mesModal").val() - 1,
-                dia
+            let descripcion = "";
+            let turnoTemp = turnosTemp.find(t =>
+                t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
             );
+            if(turnoTemp){
+                descripcion = turnoTemp.descripcion;
+            } else {
+                let trabajadorBD = turnosBDGlobal.find(t => t.id == trabajador);
+                if(trabajadorBD){
+                    trabajadorBD.turnos.forEach(turno => {
+                        let fi = new Date(turno.FechaInicioTurno.date);
+                        let ff = new Date(turno.FechaFinTurno.date);
+                        let fechaCelda = new Date(anio, mes - 1, dia);
+                        if(fechaCelda >= fi && fechaCelda <= ff){
+                            descripcion = turno.Descripcion || "";
+                        }
+                    });
+                }
+            }
+            cargarSugerenciasObservacion();
+            $("#sugerenciasObservacion").show();
+            $("#descripcionTurno").val(descripcion);
+            $(".modal-backdrop").css("z-index", "1049");
+            $("#modalDescripcion").css("z-index", "1700");
+            $("#modalDescripcion").modal("show");
 
-            if(fechaCelda >= fechaInicio && fechaCelda <= fechaFin){
-                descripcion = turno.Descripcion || "";
+        } else {
+           $("#sugerenciasObservacion").hide();
+            ultimoCheckMarcado = $(this);
+
+            let index = turnosTemp.findIndex(t =>
+                t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
+            );
+            if(index !== -1){
+                turnosTemp[index].marcacion = marcacion;
+            } else {
+                turnosTemp.push({ trabajador, dia, mes, anio, marcacion, descripcion: "" });
             }
 
-        });
-
-    }
-}
-
-// 👇 cargar al modal
-$("#descripcionTurno").val(descripcion);
-
-        // Abrir modal para ingresar descripción
-     $(".modal-backdrop").css("z-index", "1049");
-$("#modalDescripcion").css("z-index", "1700");
-$("#modalDescripcion").modal("show");
+            $("#btnAgregarObservacion").show();
+        }
 
     } else {
-        // Si se desmarca, eliminamos de turnosTemp
-        turnosTemp = turnosTemp.filter(t => !(t.trabajador == trabajador && t.dia == dia));
+       
+        turnosTemp = turnosTemp.filter(t =>
+            !(t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio)
+        );
+
+      
+        if(ultimoCheckMarcado &&
+           ultimoCheckMarcado.data("trabajador") == trabajador &&
+           ultimoCheckMarcado.data("dia") == dia){
+            ultimoCheckMarcado = null;
+        }
+
+       
+        let quedanNO227 = false;
+        $("#tablaHorarioModal input[type='checkbox']:checked").each(function(){
+            let trab = $(this).data("trabajador");
+            let f = $("#tablaTrabajadores tbody tr[data-trabajador='" + trab + "']");
+            if(f.data("meta") != 220) quedanNO227 = true;
+        });
+        if(!quedanNO227) $("#btnAgregarObservacion").hide();
+
         console.log("TEMP:", turnosTemp);
+    }
+});
+
+// ===============================
+// CLICK SUGERENCIAS
+// ===============================
+$(document).on("click", ".sugerencia-item", function(){
+
+    let texto = $(this).text();
+    let actual = $("#descripcionTurno").val();
+
+    if(actual.trim() === ""){
+        $("#descripcionTurno").val(texto);
+    }else{
+        $("#descripcionTurno").val(actual + " - " + texto);
     }
 
 });
+// ===============================
+// CLICK EN "AGREGAR OBSERVACIÓN"
+// ===============================
 
-// Guardar descripción desde el modal
-$("#guardarDescripcion").click(function(){
+$(document).on("click", "#btnAgregarObservacion", function(){
 
-    let descripcion = $("#descripcionTurno").val().trim();
+    if(!ultimoCheckMarcado){
+        alert("No hay ningún turno marcado");
+        return;
+    }
+
+    let trabajador = ultimoCheckMarcado.data("trabajador");
+    let dia        = ultimoCheckMarcado.data("dia");
+    let anio       = $("#anioModal").val();
+    let mes        = $("#mesModal").val();
 
    
+    let turnoTemp = turnosTemp.find(t =>
+        t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
+    );
+    $("#descripcionTurno").val(turnoTemp ? turnoTemp.descripcion : "");
 
-    let trabajador = checkboxTemporal.data("trabajador");
-    let dia = checkboxTemporal.data("dia");
-    let anio = $("#anioModal").val();
-    let mes = $("#mesModal").val();
-    let marcacion = $("#marcacion").val();
+   
+    checkboxTemporal = ultimoCheckMarcado;
 
-    // Si ya existe, actualizar descripción
-  let index = turnosTemp.findIndex(t =>
-    t.trabajador == trabajador &&
-    t.dia == dia &&
-    t.mes == mes &&
-    t.anio == anio
-);
+    $(".modal-backdrop").css("z-index", "1049");
+    $("#modalDescripcion").css("z-index", "1700");
+    $("#modalDescripcion").modal("show");
+});
+
+
+// ===============================
+// GUARDAR DESCRIPCIÓN
+// ===============================
+
+$("#guardarDescripcion").click(function(){
+
+    if(!checkboxTemporal) return;
+
+    let descripcion = $("#descripcionTurno").val().trim();
+    let trabajador  = checkboxTemporal.data("trabajador");
+    let dia         = checkboxTemporal.data("dia");
+    let anio        = $("#anioModal").val();
+    let mes         = $("#mesModal").val();
+    let marcacion   = $("#marcacion").val();
+
+    let index = turnosTemp.findIndex(t =>
+        t.trabajador == trabajador && t.dia == dia && t.mes == mes && t.anio == anio
+    );
     if(index !== -1){
         turnosTemp[index].descripcion = descripcion;
     } else {
-        turnosTemp.push({
-            trabajador: trabajador,
-            dia: dia,
-            mes: mes,
-            anio: anio,
-            marcacion: marcacion,
-            descripcion: descripcion
-        });
+        turnosTemp.push({ trabajador, dia, mes, anio, marcacion, descripcion });
     }
 
-    console.log("TEMP:", turnosTemp);
-
+    checkboxTemporal = null;
     $("#modalDescripcion").modal("hide");
+    console.log("TEMP:", turnosTemp);
 });
-
-
 // ===============================
 // GUARDAR
 // ===============================

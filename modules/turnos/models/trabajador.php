@@ -254,16 +254,15 @@ static public function mdlMostrarTurnosTrabajador($id_trabajador, $anio){
         return "ok";
     }
 
-   static public function mdlMostrarTrabajadorSeleccionados($componente, $meta, $tipotrabajador, $anio){
+   static public function mdlMostrarTrabajadorSeleccionados($componente, $meta,  $anio){
     $conn = Conexion::conectar();
 
     $sql = "EXEC BD_PERSONAL_2026.Asistencia.pa_ListarTrabajadores_Seleccionados 
             @Id_Componente = ?, 
             @Id_Meta = ?, 
-            @Id_Trabajador_Tipo = ?, 
             @Id_Anio = ?";
 
-    $params = array($componente, $meta, $tipotrabajador, $anio);
+    $params = array($componente, $meta, $anio);
 
     $stmt = sqlsrv_query($conn, $sql, $params);
 

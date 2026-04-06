@@ -93,13 +93,12 @@ public static function ctrActualizarDescripcion($trabajador, $fecha, $descripcio
     }
 
     
-static public function ctrMostrarTrabajadorSeleccionados($componente, $meta, $tipotrabajador, $anio){
+static public function ctrMostrarTrabajadorSeleccionados($componente, $meta,  $anio){
     $componente = !empty($componente) ? $componente : 0;
     $meta = !empty($meta) ? $meta : 0;
-    $tipotrabajador = !empty($tipotrabajador) ? $tipotrabajador : 0;
     $anio = !empty($anio) ? $anio : date("Y");
 
-    $trabajadores = Trabajador::mdlMostrarTrabajadorSeleccionados($componente, $meta, $tipotrabajador, $anio);
+    $trabajadores = Trabajador::mdlMostrarTrabajadorSeleccionados($componente, $meta,  $anio);
 
     $ids = [];
     foreach($trabajadores as $t){

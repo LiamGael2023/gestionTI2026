@@ -311,3 +311,19 @@ cursor:pointer;
 .modal-backdrop {
     z-index: 1040 !important;
 }
+.chip-sugerencia {
+    display: inline-block;
+    padding: 3px 8px;
+    margin: 3px;
+    font-size: 11px;
+    border-radius: 12px;
+    background-color: #e9f2ff;
+    color: #0d6efd;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.chip-sugerencia:hover {
+    background-color: #0d6efd;
+    color: #fff;
+}
