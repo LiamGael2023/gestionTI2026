@@ -3,10 +3,11 @@ require_once 'modules/adquisiciones/models/RequerimientoModel.php';
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
 require_once 'modules/adquisiciones/models/CierreAdquisicionModel.php';
 
-function cargarVistaRequerimientos($model, $anioFiltro, &$vistaActual, &$requerimientos, &$centrosCosto, &$aniosDisponibles)
+function cargarVistaRequerimientos($model, $anioFiltro, &$vistaActual, &$requerimientos, &$centrosCosto, &$aniosDisponibles, &$metasSiafActivas)
 {
 	$vistaActual = 'requerimientos';
 	$centrosCosto = $model->obtenerCentrosCosto();
+	$metasSiafActivas = $model->obtenerMetasSiafActivas();
 	$aniosDisponibles = $model->obtenerAniosDisponibles();
 	$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
 	$requerimientos = $model->listarRequerimientos($anioFiltro);
@@ -76,6 +77,7 @@ $action = $_GET['action'] ?? 'requerimientos';
 $vistaActual = 'requerimientos';
 $requerimientos = [];
 $centrosCosto = [];
+$metasSiafActivas = [];
 $aniosDisponibles = [];
 $anioFiltro = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
 $dashboardResumenGeneral = [];
@@ -127,7 +129,7 @@ if (in_array($action, $accionesTecnologia, true)) {
 switch ($action) {
 	case 'index':
 	case 'requerimientos':
-		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles);
+		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles, $metasSiafActivas);
 		break;
 
 	case 'tecnologias':
@@ -178,13 +180,14 @@ switch ($action) {
 
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
 			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
-		if ($datos['IdCentroCosto'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			$id = $model->guardarRequerimiento($datos);
 			if ($id) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento registrado correctamente', 'id' => $id]);
@@ -204,9 +207,41 @@ switch ($action) {
 		}
 		exit;
 
+	case 'actualizarAjax':
+		header('Content-Type: application/json');
+
+		$id = isset($_POST['Id']) ? (int) $_POST['Id'] : 0;
+		$datos = [
+			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
+			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
+			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
+			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
+			'idUsuarioModifica' => $idUsuarioSesion,
+		];
+
+		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+			if ($model->actualizarRequerimiento($id, $datos)) {
+				echo json_encode(['success' => true, 'message' => 'Requerimiento actualizado correctamente']);
+			} else {
+				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+				$mensaje = 'No se pudo actualizar el requerimiento.';
+				if (is_array($errors) && count($errors) > 0) {
+					if (in_array((int) $errors[0]['code'], [2627, 2601], true)) {
+						$mensaje = 'Ya existe un requerimiento con el Nro. de Pedido "' . htmlspecialchars($datos['NroPedidoCompra']) . '" para el año ' . $datos['Anio'] . '.';
+					}
+				}
+				echo json_encode(['success' => false, 'message' => $mensaje]);
+			}
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Datos incompletos']);
+		}
+		exit;
+
 	case 'guardarForm':
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
 			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
@@ -216,7 +251,7 @@ switch ($action) {
 		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
 		$urlRedirect = 'index.php?module=adquisiciones&action=requerimientos&anio=' . $anioRedirect;
 
-		if ($datos['IdCentroCosto'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
+		if ($datos['IdCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
 			redireccionarAdquisiciones($urlRedirect);
 		}
 
@@ -414,7 +449,7 @@ switch ($action) {
 		exit;
 
 	default:
-		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles);
+		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles, $metasSiafActivas);
 		break;
 }
 

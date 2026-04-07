@@ -1,4 +1,5 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+	<?php $metasSiafActivasLista = (isset($metasSiafActivas) && is_array($metasSiafActivas)) ? $metasSiafActivas : []; ?>
 	<div class="d-flex gap-2 align-items-center flex-wrap">
 		<label class="form-label mb-0 text-nowrap">Filtrar por año:</label>
 		<select id="filtroAnio" class="form-select w-auto" onchange="filtrarPorAnio()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
@@ -38,7 +39,14 @@
 		<tbody id="tabla-requerimientos-body">
 			<?php if (!empty($requerimientos)): ?>
 				<?php foreach ($requerimientos as $req): ?>
-					<tr data-id="<?php echo (int) $req['Id']; ?>">
+					<tr
+						data-id="<?php echo (int) $req['Id']; ?>"
+						data-id-centro-costo="<?php echo (int) $req['IdCentroCosto']; ?>"
+						data-id-meta-siaf="<?php echo (int) ($req['IdMetaSIAF'] ?? 0); ?>"
+						data-nro-pedido="<?php echo htmlspecialchars((string) $req['NroPedidoCompra'], ENT_QUOTES, 'UTF-8'); ?>"
+						data-codigo-meta="<?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+						data-anio="<?php echo (int) $req['Anio']; ?>"
+					>
 						<td><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
 						<td><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
 						<td><?php echo htmlspecialchars($req['NombreCentroCosto']); ?></td>
@@ -52,6 +60,9 @@
 						</td>
 						<td class="text-end">
 							<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">
+								<button class="btn btn-primary-lt" type="button" onclick="editarRequerimiento(<?php echo (int) $req['Id']; ?>)">
+									Editar
+								</button>
 								<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(<?php echo (int) $req['Id']; ?>)">
 									Detalles
 								</button>
@@ -80,6 +91,7 @@
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form id="form-requerimiento" method="post" action="index.php?module=adquisiciones&action=guardarForm">
+				<input type="hidden" name="Id" id="IdRequerimiento" value="">
 				<div class="modal-body">
 					<div class="mb-3">
 						<label class="form-label">Centro de Costo</label>
@@ -88,6 +100,17 @@
 							<?php foreach ($centrosCosto as $cc): ?>
 								<option value="<?php echo $cc['Id']; ?>">
 									<?php echo htmlspecialchars($cc['Siglas'] . ' - ' . $cc['NombreCentroCosto']); ?>
+								</option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+					<div class="mb-3">
+						<label class="form-label">Meta SIAF</label>
+						<select name="IdMetaSIAF" id="IdMetaSIAF" class="form-select" required>
+							<option value="">Seleccione...</option>
+							<?php foreach ($metasSiafActivasLista as $meta): ?>
+								<option value="<?php echo (int) $meta['Id']; ?>" <?php echo ((string) ($meta['CodigoMeta'] ?? '') === '000') ? 'selected' : ''; ?>>
+									<?php echo htmlspecialchars((string) $meta['CodigoMeta'] . ' - ' . (string) $meta['Descripcion']); ?>
 								</option>
 							<?php endforeach; ?>
 						</select>
@@ -107,7 +130,7 @@
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancelar</button>
-					<button type="submit" class="btn btn-primary">Guardar Requerimiento</button>
+					<button type="submit" class="btn btn-primary" id="btnGuardarRequerimiento">Guardar Requerimiento</button>
 				</div>
 			</form>
 		</div>
@@ -192,7 +215,30 @@
 		}
 	}
 
-	function agregarFilaRequerimiento(id, nroPedido, codigoMeta, centroCosto, anio, estado) {
+	function construirFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado) {
+		const badgeEstado = parseInt(estado, 10) === 1 ?
+			'<span class="badge bg-success-lt">Completo</span>' :
+			'<span class="badge bg-warning-lt text-dark">Pendiente</span>';
+
+		return [
+			'<tr data-id="' + id + '" data-id-centro-costo="' + (idCentroCosto || '') + '" data-id-meta-siaf="' + (idMetaSiaf || '') + '" data-nro-pedido="' + escapeHtml(nroPedido) + '" data-codigo-meta="' + escapeHtml(codigoMeta || '') + '" data-anio="' + parseInt(anio, 10) + '">',
+			'<td>' + escapeHtml(nroPedido) + '</td>',
+			'<td>' + escapeHtml(codigoMeta || '') + '</td>',
+			'<td>' + escapeHtml(centroCosto) + '</td>',
+			'<td>' + parseInt(anio, 10) + '</td>',
+			'<td>' + badgeEstado + '</td>',
+			'<td class="text-end">',
+			'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
+			'<button class="btn btn-primary-lt" type="button" onclick="editarRequerimiento(' + id + ')">Editar</button>',
+			'<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(' + id + ')">Detalles</button>',
+			'<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(' + id + ')">Eliminar</button>',
+			'</div>',
+			'</td>',
+			'</tr>'
+		].join('');
+	}
+
+	function agregarFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado) {
 		const tbody = document.getElementById('tabla-requerimientos-body');
 		if (!tbody) return;
 
@@ -201,33 +247,43 @@
 			tbody.innerHTML = '';
 		}
 
-		const badgeEstado = parseInt(estado, 10) === 1 ?
-			'<span class="badge bg-success-lt">Completo</span>' :
-			'<span class="badge bg-warning-lt text-dark">Pendiente</span>';
+		tbody.insertAdjacentHTML('beforeend', construirFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado));
+	}
 
-		const rowHtml = [
-			'<tr data-id="' + id + '">',
-			'<td>' + escapeHtml(nroPedido) + '</td>',
-			'<td>' + escapeHtml(codigoMeta || '') + '</td>',
-			'<td>' + escapeHtml(centroCosto) + '</td>',
-			'<td>' + parseInt(anio, 10) + '</td>',
-			'<td>' + badgeEstado + '</td>',
-			'<td class="text-end">',
-			'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
-			'<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(' + id + ')">Detalles</button>',
-			'<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(' + id + ')">Eliminar</button>',
-			'</div>',
-			'</td>',
-			'</tr>'
-		].join('');
+	function actualizarFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado) {
+		const tbody = document.getElementById('tabla-requerimientos-body');
+		if (!tbody) return;
 
-		tbody.insertAdjacentHTML('beforeend', rowHtml);
+		const fila = tbody.querySelector('tr[data-id="' + id + '"]');
+		const htmlFila = construirFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado);
+
+		if (fila) {
+			fila.outerHTML = htmlFila;
+			return;
+		}
+
+		tbody.insertAdjacentHTML('beforeend', htmlFila);
 	}
 
 	function nuevoRequerimiento() {
 		const form = document.getElementById('form-requerimiento');
 		if (form) {
 			form.reset();
+		}
+
+		const idRequerimientoEl = document.getElementById('IdRequerimiento');
+		if (idRequerimientoEl) {
+			idRequerimientoEl.value = '';
+		}
+
+		const titulo = document.querySelector('#modal-requerimiento .modal-title');
+		if (titulo) {
+			titulo.textContent = 'Nuevo Requerimiento';
+		}
+
+		const btnGuardar = document.getElementById('btnGuardarRequerimiento');
+		if (btnGuardar) {
+			btnGuardar.textContent = 'Guardar Requerimiento';
 		}
 
 		const inputAnio = document.getElementById('Anio');
@@ -238,6 +294,42 @@
 		const modalEl = document.getElementById('modal-requerimiento');
 		if (modalEl) {
 			new bootstrap.Modal(modalEl).show();
+		}
+	}
+
+	function editarRequerimiento(id) {
+		const fila = document.querySelector('tr[data-id="' + id + '"]');
+		if (!fila) {
+			return;
+		}
+
+		const idRequerimientoEl = document.getElementById('IdRequerimiento');
+		const idCentroCostoEl = document.getElementById('IdCentroCosto');
+		const idMetaSiafEl = document.getElementById('IdMetaSIAF');
+		const nroPedidoEl = document.getElementById('NroPedidoCompra');
+		const codigoMetaEl = document.getElementById('CodigoMeta');
+		const anioEl = document.getElementById('Anio');
+
+		if (idRequerimientoEl) idRequerimientoEl.value = String(id);
+		if (idCentroCostoEl) idCentroCostoEl.value = fila.dataset.idCentroCosto || '';
+		if (idMetaSiafEl) idMetaSiafEl.value = fila.dataset.idMetaSiaf || '';
+		if (nroPedidoEl) nroPedidoEl.value = fila.dataset.nroPedido || '';
+		if (codigoMetaEl) codigoMetaEl.value = fila.dataset.codigoMeta || '';
+		if (anioEl) anioEl.value = fila.dataset.anio || '';
+
+		const titulo = document.querySelector('#modal-requerimiento .modal-title');
+		if (titulo) {
+			titulo.textContent = 'Editar Requerimiento';
+		}
+
+		const btnGuardar = document.getElementById('btnGuardarRequerimiento');
+		if (btnGuardar) {
+			btnGuardar.textContent = 'Actualizar Requerimiento';
+		}
+
+		const modalEl = document.getElementById('modal-requerimiento');
+		if (modalEl) {
+			bootstrap.Modal.getOrCreateInstance(modalEl).show();
 		}
 	}
 
@@ -443,18 +535,23 @@
 			e.preventDefault();
 
 			const form = this;
+			const idRequerimientoEl = document.getElementById('IdRequerimiento');
 			const idCentroCostoEl = document.getElementById('IdCentroCosto');
+			const idMetaSiafEl = document.getElementById('IdMetaSIAF');
 			const nroPedidoEl = document.getElementById('NroPedidoCompra');
 			const codigoMetaEl = document.getElementById('CodigoMeta');
 			const anioEl = document.getElementById('Anio');
 
+			const idRequerimiento = idRequerimientoEl ? idRequerimientoEl.value : '';
 			const idCentroCosto = idCentroCostoEl ? idCentroCostoEl.value : '';
+			const idMetaSiaf = idMetaSiafEl ? idMetaSiafEl.value : '';
 			const centroCostoTexto = idCentroCostoEl && idCentroCostoEl.selectedOptions.length > 0 ? idCentroCostoEl.selectedOptions[0].text.trim() : '';
 			const nroPedido = nroPedidoEl ? nroPedidoEl.value : '';
 			const codigoMeta = codigoMetaEl ? codigoMetaEl.value : '';
 			const anio = anioEl ? anioEl.value : '';
+			const action = idRequerimiento ? 'actualizarAjax' : 'guardarAjax';
 
-			fetch('index.php?module=adquisiciones&action=guardarAjax', {
+			fetch('index.php?module=adquisiciones&action=' + action, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -472,10 +569,23 @@
 						const modal = bootstrap.Modal.getInstance(document.getElementById('modal-requerimiento'));
 						if (modal) modal.hide();
 
-						agregarFilaRequerimiento(response.id, nroPedido, codigoMeta, centroCostoTexto, anio, 0);
+						if (idRequerimiento) {
+							const filaActual = document.querySelector('tr[data-id="' + idRequerimiento + '"]');
+							const estadoActual = filaActual ? (filaActual.querySelector('.bg-success-lt') ? 1 : 0) : 0;
+							actualizarFilaRequerimiento(idRequerimiento, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCostoTexto, anio, estadoActual);
+						} else {
+							agregarFilaRequerimiento(response.id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCostoTexto, anio, 0);
+						}
+
 						form.reset();
+						if (idRequerimientoEl) idRequerimientoEl.value = '';
 						if (anioEl) anioEl.value = String(new Date().getFullYear());
 						if (idCentroCostoEl) idCentroCostoEl.value = idCentroCosto;
+
+						const titulo = document.querySelector('#modal-requerimiento .modal-title');
+						if (titulo) titulo.textContent = 'Nuevo Requerimiento';
+						const btnGuardar = document.getElementById('btnGuardarRequerimiento');
+						if (btnGuardar) btnGuardar.textContent = 'Guardar Requerimiento';
 					} else {
 						window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el requerimiento.');
 					}

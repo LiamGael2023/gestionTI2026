@@ -13,6 +13,8 @@ class RequerimientoModel
 		$sql = "
 			SELECT
 				r.Id,
+				r.IdCentroCosto,
+				r.IdMetaSIAF,
 				r.NroPedidoCompra,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
@@ -34,6 +36,8 @@ class RequerimientoModel
 		$sql .= "
 			GROUP BY
 				r.Id,
+				r.IdCentroCosto,
+				r.IdMetaSIAF,
 				r.NroPedidoCompra,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
@@ -242,17 +246,30 @@ class RequerimientoModel
 
 	public function guardarRequerimiento($datos)
 	{
-		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null);
+		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
+		if ($idMetaSiaf <= 0) {
+			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
+		}
+
+		if ($idMetaSiaf <= 0 || !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
+			return false;
+		}
+
+		if ($idMetaSiaf === null) {
+			return false;
+		}
 
 		$sql = "
 			INSERT INTO adquisiciones.Requerimiento
-				(IdCentroCosto, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+				(IdCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 			OUTPUT INSERTED.Id
-			VALUES (?, ?, ?, ?, GETDATE(), 0, ?)
+			VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?)
 		";
 
 		$params = [
 			$datos['IdCentroCosto'],
+			$idMetaSiaf,
 			$datos['NroPedidoCompra'],
 			$codigoMeta,
 			$datos['Anio'],
@@ -277,6 +294,7 @@ class RequerimientoModel
 				r.Id,
 				r.NroPedidoCompra,
 				r.IdCentroCosto,
+				r.IdMetaSIAF,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
@@ -295,6 +313,49 @@ class RequerimientoModel
 
 		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
 		return $row ? $row : null;
+	}
+
+	public function actualizarRequerimiento($id, $datos)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return false;
+		}
+
+		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
+		if ($idMetaSiaf <= 0) {
+			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
+		}
+
+		if ($idMetaSiaf <= 0 || !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
+			return false;
+		}
+
+		$sql = "
+			UPDATE adquisiciones.Requerimiento
+			SET IdCentroCosto = ?,
+				IdMetaSIAF = ?,
+				NroPedidoCompra = ?,
+				CodigoMeta = ?,
+				Anio = ?,
+				idUsuarioModifica = ?,
+				FechaModifica = GETDATE()
+			WHERE Id = ?
+		";
+
+		$params = [
+			$datos['IdCentroCosto'],
+			$idMetaSiaf,
+			$datos['NroPedidoCompra'],
+			$codigoMeta,
+			$datos['Anio'],
+			$datos['idUsuarioModifica'] ?? null,
+			$id,
+		];
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		return $stmt !== false;
 	}
 
 	public function actualizarEstado($id, $estado, $idUsuarioModifica = null)
@@ -736,6 +797,18 @@ class RequerimientoModel
 		return $this->fetchAll($sql);
 	}
 
+	public function obtenerMetasSiafActivas()
+	{
+		$sql = "
+			SELECT Id, CodigoMeta, Descripcion
+			FROM adquisiciones.MetaSIAF
+			WHERE Activo = 1
+			ORDER BY CodigoMeta
+		";
+
+		return $this->fetchAll($sql);
+	}
+
 	public function agregarMetaSiaf($codigoMeta, $descripcion, $idUsuarioRegistro = null)
 	{
 		$codigoMetaLimpio = $this->normalizarCodigoMetaSiaf($codigoMeta);
@@ -991,6 +1064,7 @@ class RequerimientoModel
 			}
 			$items[]      = $row;
 		}
+		$codigoMeta = $codigoMeta ?? '000';
 
 		if (empty($items)) {
 			throw new Exception('No se encontraron ítems para el pedido ' . $nroPedido);
@@ -1007,6 +1081,10 @@ class RequerimientoModel
 			throw new Exception('Centro de costo no encontrado: ' . $nombreCentro);
 		}
 		$idCentro = $rowCC['Id'];
+		$idMetaSiaf = $this->obtenerIdMetaSiafPorCodigo('000');
+		if ($idMetaSiaf === null) {
+			throw new Exception('No existe Meta SIAF activa con código 000. Registrela antes de importar.');
+		}
 
 		// 3. Cargar homologaciones
 		$stmtHom = sqlsrv_query($this->db, "
@@ -1032,10 +1110,10 @@ class RequerimientoModel
 		if (!$idReq) {
 			$stmtIns = sqlsrv_query($this->db, "
 				INSERT INTO adquisiciones.Requerimiento
-					(IdCentroCosto, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+					(IdCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 				OUTPUT INSERTED.Id
-				VALUES (?, ?, ?, ?, GETDATE(), 0, ?)
-			", [$idCentro, $nroPedido, $codigoMeta, $anio, $idUsuarioRegistro]);
+				VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?)
+			", [$idCentro, $idMetaSiaf, $nroPedido, $codigoMeta, $anio, $idUsuarioRegistro]);
 
 			if ($stmtIns === false) {
 				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
@@ -1044,13 +1122,17 @@ class RequerimientoModel
 
 			$rowId = sqlsrv_fetch_array($stmtIns, SQLSRV_FETCH_ASSOC);
 			$idReq = $rowId['Id'];
-		} elseif ($codigoMeta !== null) {
+		} else {
 			sqlsrv_query($this->db, "
 				UPDATE adquisiciones.Requerimiento
-				SET CodigoMeta = ?
+				SET IdMetaSIAF = COALESCE(IdMetaSIAF, ?),
+				    CodigoMeta = ?
 				WHERE Id = ?
-				  AND (CodigoMeta IS NULL OR LTRIM(RTRIM(CodigoMeta)) = '')
-			", [$codigoMeta, $idReq]);
+				  AND (
+					(CodigoMeta IS NULL OR LTRIM(RTRIM(CodigoMeta)) = '')
+					OR IdMetaSIAF IS NULL
+				  )
+			", [$idMetaSiaf, $codigoMeta, $idReq]);
 		}
 
 		// 5. Insertar ítems
@@ -1136,5 +1218,50 @@ class RequerimientoModel
 		}
 
 		return substr($valor, 0, 4);
+	}
+
+	private function obtenerIdMetaSiafPorCodigo($codigoMeta = '000')
+	{
+		$codigo = trim((string) $codigoMeta);
+		if ($codigo === '') {
+			return null;
+		}
+
+		$sql = "
+			SELECT TOP 1 Id
+			FROM adquisiciones.MetaSIAF
+			WHERE UPPER(LTRIM(RTRIM(CodigoMeta))) = UPPER(LTRIM(RTRIM(?)))
+			  AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$codigo]);
+		if ($stmt === false) {
+			return null;
+		}
+
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		return $row ? (int) $row['Id'] : null;
+	}
+
+	private function existeMetaSiafActivaPorId($idMetaSiaf)
+	{
+		$idMetaSiaf = (int) $idMetaSiaf;
+		if ($idMetaSiaf <= 0) {
+			return false;
+		}
+
+		$sql = "
+			SELECT TOP 1 Id
+			FROM adquisiciones.MetaSIAF
+			WHERE Id = ?
+			  AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$idMetaSiaf]);
+		if ($stmt === false) {
+			return false;
+		}
+
+		return (bool) sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
 	}
 }
