@@ -22,6 +22,10 @@ $ordenesProximas = isset($dashboardOrdenesProximas) && is_array($dashboardOrdene
 	? $dashboardOrdenesProximas
 	: [];
 
+$metaSiafResumen = isset($dashboardMetaSiaf) && is_array($dashboardMetaSiaf)
+	? $dashboardMetaSiaf
+	: [];
+
 $totalRequerimientos = (int) ($resumen['TotalRequerimientos'] ?? 0);
 $requerimientosCompletos = (int) ($resumen['Completos'] ?? 0);
 $requerimientosPendientes = (int) ($resumen['Pendientes'] ?? 0);
@@ -42,6 +46,10 @@ $diasVentanaEntrega = (int) ($ordenesProximas['diasVentana'] ?? 30);
 $listaOrdenesProximas = isset($ordenesProximas['ordenes']) && is_array($ordenesProximas['ordenes'])
 	? $ordenesProximas['ordenes']
 	: [];
+
+$totalMetasSiaf = (int) ($metaSiafResumen['Total'] ?? 0);
+$metasSiafActivas = (int) ($metaSiafResumen['Activos'] ?? 0);
+$metasSiafInactivas = (int) ($metaSiafResumen['Inactivos'] ?? 0);
 
 $porcentajeCompletos = $totalRequerimientos > 0
 	? round(($requerimientosCompletos / $totalRequerimientos) * 100)
@@ -282,6 +290,32 @@ function formatearFechaEntregaDashboard($fecha)
 		</div>
 	</div>
 
+		<div class="row g-3 mb-3">
+		<div class="col-12 col-md-6 col-xl-3">
+			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionMetasSiaf" aria-label="Abrir gestión de metas SIAF">
+				<div class="card-body">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<span class="avatar avatar-md bg-indigo-lt text-indigo"><i class="ti ti-list-numbers"></i></span>
+						<div class="d-flex align-items-center gap-2">
+							<div class="h1 mb-0" id="cardTotalMetasSiaf"><?php echo number_format($totalMetasSiaf); ?></div>
+							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
+						</div>
+					</div>
+					<div class="fw-bold">Metas SIAF</div>
+					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
+					<div class="progress progress-sm mt-3">
+						<?php $pctMetasActivas = $totalMetasSiaf > 0 ? round(($metasSiafActivas / $totalMetasSiaf) * 100) : 0; ?>
+						<div class="progress-bar bg-blue" style="width: <?php echo $pctMetasActivas; ?>%"></div>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
+						<span><?php echo number_format($metasSiafActivas); ?> activas · <?php echo number_format($metasSiafInactivas); ?> inactivas</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
 	<div class="row g-3 mb-3">
 		<div class="col-12">
 			<div class="card">
@@ -503,13 +537,58 @@ function formatearFechaEntregaDashboard($fecha)
 			</div>
 		</div>
 	</div>
+
+	<div class="modal modal-blur fade" id="modalGestionMetasSiaf" tabindex="-1" aria-labelledby="modalGestionMetasSiafLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalGestionMetasSiafLabel">Gestión de Metas SIAF</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-md-3">
+							<label class="form-label" for="msCodigoMeta">Código Meta</label>
+							<input type="text" class="form-control" id="msCodigoMeta" maxlength="4" placeholder="000 o 0000" autocomplete="off">
+						</div>
+						<div class="col-12 col-md-7">
+							<label class="form-label" for="msDescripcion">Descripción</label>
+							<input type="text" class="form-control" id="msDescripcion" maxlength="100">
+						</div>
+						<div class="col-12 col-md-2 d-flex align-items-end">
+							<button type="button" class="btn btn-primary w-100" id="btnGuardarMetaSiaf">Agregar</button>
+						</div>
+					</div>
+					<input type="hidden" id="msIdEditar" value="">
+					<div class="table-responsive">
+						<table class="table table-vcenter card-table table-striped" id="tablaMetasSiafGestion">
+							<thead>
+								<tr>
+									<th>Código Meta</th>
+									<th>Descripción</th>
+									<th>Estado</th>
+									<th class="text-end">Acciones</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="4" class="text-center text-secondary py-4">Cargando...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <script>
 	(function() {
 		var modalCentros = document.getElementById('modalGestionCentrosCosto');
 		var modalTecnologias = document.getElementById('modalGestionTecnologias');
-		if (!modalCentros || !modalTecnologias) {
+		var modalMetasSiaf = document.getElementById('modalGestionMetasSiaf');
+		if (!modalCentros || !modalTecnologias || !modalMetasSiaf) {
 			return;
 		}
 
@@ -551,6 +630,13 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('tecCodigo').value = '';
 			document.getElementById('tecNombre').value = '';
 			document.getElementById('btnGuardarTecnologiaCatalogo').textContent = 'Agregar';
+		}
+
+		function limpiarFormularioMetaSiaf() {
+			document.getElementById('msIdEditar').value = '';
+			document.getElementById('msCodigoMeta').value = '';
+			document.getElementById('msDescripcion').value = '';
+			document.getElementById('btnGuardarMetaSiaf').textContent = 'Agregar';
 		}
 
 		function cargarCentrosCosto() {
@@ -641,6 +727,55 @@ function formatearFechaEntregaDashboard($fecha)
 				},
 				error: function() {
 					$('#tablaTecnologiasGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+				}
+			});
+		}
+
+		function cargarMetasSiaf() {
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=listarMetasSiafAjax',
+				type: 'GET',
+				dataType: 'json',
+				success: function(response) {
+					var tbody = $('#tablaMetasSiafGestion tbody');
+					if (!response || !response.success) {
+						tbody.html('<tr><td colspan="4" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+						return;
+					}
+
+					var data = Array.isArray(response.data) ? response.data : [];
+					if (data.length === 0) {
+						tbody.html('<tr><td colspan="4" class="text-center text-secondary py-4">No hay metas SIAF registradas.</td></tr>');
+						$('#cardTotalMetasSiaf').text('0');
+						return;
+					}
+
+					$('#cardTotalMetasSiaf').text(data.length.toLocaleString('es-PE'));
+
+					var filas = data.map(function(item) {
+						var activo = Number(item.Activo) === 1;
+						var badgeEstado = activo ?
+							'<span class="badge bg-success-lt">Activo</span>' :
+							'<span class="badge bg-secondary-lt">Inactivo</span>';
+						var acciones = activo ?
+							'<button type="button" class="btn btn-primary adq-btn-action js-editar-ms" data-id="' + Number(item.Id) + '" data-codigo="' + escaparHtml(item.CodigoMeta) + '" data-descripcion="' + escaparHtml(item.Descripcion) + '">Editar</button>' +
+							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-ms" data-id="' + Number(item.Id) + '">Inactivar</button>' :
+							'<button type="button" class="btn btn-success adq-btn-action js-activar-ms" data-id="' + Number(item.Id) + '">Activar</button>';
+
+						return '<tr>' +
+							'<td>' + escaparHtml(item.CodigoMeta) + '</td>' +
+							'<td>' + escaparHtml(item.Descripcion) + '</td>' +
+							'<td>' + badgeEstado + '</td>' +
+							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							acciones +
+							'</td>' +
+							'</tr>';
+					}).join('');
+
+					tbody.html(filas);
+				},
+				error: function() {
+					$('#tablaMetasSiafGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
 		}
@@ -849,6 +984,112 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		});
 
+		$('#btnGuardarMetaSiaf').on('click', function() {
+			var id = $('#msIdEditar').val();
+			var codigoMeta = $('#msCodigoMeta').val().trim().replace(/\D/g, '');
+			var descripcion = $('#msDescripcion').val().trim();
+
+			if ((codigoMeta.length !== 3 && codigoMeta.length !== 4) || !descripcion) {
+				notificar('warning', 'Campos obligatorios', 'Debe ingresar un código meta de 3 o 4 dígitos y una descripción.');
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarMetaSiafAjax' : 'agregarMetaSiafAjax'),
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					id: id,
+					codigoMeta: codigoMeta,
+					descripcion: descripcion
+				},
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Operación correcta', response.message || 'Meta SIAF guardada.');
+						limpiarFormularioMetaSiaf();
+						cargarMetasSiaf();
+						return;
+					}
+					notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar meta SIAF.');
+				}
+			});
+		});
+
+		$('#msCodigoMeta').on('input', function() {
+			this.value = this.value.replace(/\D/g, '').slice(0, 4);
+		});
+
+		$('#tablaMetasSiafGestion').on('click', '.js-editar-ms', function() {
+			var btn = $(this);
+			$('#msIdEditar').val(btn.data('id'));
+			$('#msCodigoMeta').val(btn.data('codigo'));
+			$('#msDescripcion').val(btn.data('descripcion'));
+			$('#btnGuardarMetaSiaf').text('Actualizar');
+		});
+
+		$('#tablaMetasSiafGestion').on('click', '.js-eliminar-ms', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Inactivar meta SIAF',
+				mensaje: '¿Desea inactivar esta meta SIAF?',
+				textoAceptar: 'Inactivar',
+				claseAceptar: 'btn-danger'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=eliminarMetaSiafAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Meta inactivada', response.message || 'Meta SIAF inactivada.');
+							limpiarFormularioMetaSiaf();
+							cargarMetasSiaf();
+							return;
+						}
+						notificar('danger', 'No se pudo inactivar', response && response.message ? response.message : 'Error al inactivar meta SIAF.');
+					}
+				});
+			});
+		});
+
+		$('#tablaMetasSiafGestion').on('click', '.js-activar-ms', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Activar meta SIAF',
+				mensaje: '¿Desea activar esta meta SIAF?',
+				textoAceptar: 'Activar',
+				claseAceptar: 'btn-success'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=activarMetaSiafAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Meta activada', response.message || 'Meta SIAF activada.');
+							cargarMetasSiaf();
+							return;
+						}
+						notificar('danger', 'No se pudo activar', response && response.message ? response.message : 'Error al activar meta SIAF.');
+					}
+				});
+			});
+		});
+
 		modalCentros.addEventListener('shown.bs.modal', function() {
 			limpiarFormularioCentro();
 			cargarCentrosCosto();
@@ -857,6 +1098,11 @@ function formatearFechaEntregaDashboard($fecha)
 		modalTecnologias.addEventListener('shown.bs.modal', function() {
 			limpiarFormularioTecnologia();
 			cargarTecnologias();
+		});
+
+		modalMetasSiaf.addEventListener('shown.bs.modal', function() {
+			limpiarFormularioMetaSiaf();
+			cargarMetasSiaf();
 		});
 	})();
 </script>

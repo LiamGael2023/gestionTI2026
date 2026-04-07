@@ -706,6 +706,173 @@ class RequerimientoModel
 		];
 	}
 
+	public function obtenerDashboardMetaSiafResumen()
+	{
+		$sql = "
+			SELECT
+				COUNT(*) AS Total,
+				SUM(CASE WHEN Activo = 1 THEN 1 ELSE 0 END) AS Activos,
+				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
+			FROM adquisiciones.MetaSIAF
+		";
+
+		$resumen = $this->fetchOne($sql);
+
+		return [
+			'Total' => (int) ($resumen['Total'] ?? 0),
+			'Activos' => (int) ($resumen['Activos'] ?? 0),
+			'Inactivos' => (int) ($resumen['Inactivos'] ?? 0),
+		];
+	}
+
+	public function listarMetasSiafGestion()
+	{
+		$sql = "
+			SELECT Id, CodigoMeta, Descripcion, Activo
+			FROM adquisiciones.MetaSIAF
+			ORDER BY CodigoMeta
+		";
+
+		return $this->fetchAll($sql);
+	}
+
+	public function agregarMetaSiaf($codigoMeta, $descripcion, $idUsuarioRegistro = null)
+	{
+		$codigoMetaLimpio = $this->normalizarCodigoMetaSiaf($codigoMeta);
+		$descripcionLimpia = trim((string) $descripcion);
+
+		if ($codigoMetaLimpio === null) {
+			return ['success' => false, 'message' => 'El código meta debe tener 3 o 4 dígitos numéricos.'];
+		}
+
+		if ($descripcionLimpia === '') {
+			return ['success' => false, 'message' => 'Debe ingresar la descripción de la meta.'];
+		}
+
+		$metaExistente = $this->fetchOne(
+			"SELECT TOP 1 Id, Activo FROM adquisiciones.MetaSIAF WHERE UPPER(LTRIM(RTRIM(CodigoMeta))) = UPPER(LTRIM(RTRIM(?)))",
+			[$codigoMetaLimpio]
+		);
+
+		if (!empty($metaExistente)) {
+			if ((int) ($metaExistente['Activo'] ?? 0) === 0) {
+				return ['success' => false, 'message' => 'Ese código meta ya existe y está inactivo. Puede activarlo desde la lista.'];
+			}
+
+			return ['success' => false, 'message' => 'Ya existe una meta registrada con ese código.'];
+		}
+
+		$sql = "
+			INSERT INTO adquisiciones.MetaSIAF (CodigoMeta, Descripcion, Activo, idUsuarioRegistro)
+			VALUES (?, ?, 1, ?)
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$codigoMetaLimpio, $descripcionLimpia, $idUsuarioRegistro]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo registrar la meta SIAF' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Meta SIAF registrada correctamente.'];
+	}
+
+	public function actualizarMetaSiaf($id, $codigoMeta, $descripcion, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		$codigoMetaLimpio = $this->normalizarCodigoMetaSiaf($codigoMeta);
+		$descripcionLimpia = trim((string) $descripcion);
+
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Meta SIAF inválida.'];
+		}
+
+		if ($codigoMetaLimpio === null) {
+			return ['success' => false, 'message' => 'El código meta debe tener 3 o 4 dígitos numéricos.'];
+		}
+
+		if ($descripcionLimpia === '') {
+			return ['success' => false, 'message' => 'Debe ingresar la descripción de la meta.'];
+		}
+
+		$metaDuplicada = $this->fetchOne(
+			"SELECT TOP 1 Id FROM adquisiciones.MetaSIAF WHERE UPPER(LTRIM(RTRIM(CodigoMeta))) = UPPER(LTRIM(RTRIM(?))) AND Id <> ?",
+			[$codigoMetaLimpio, $id]
+		);
+
+		if (!empty($metaDuplicada)) {
+			return ['success' => false, 'message' => 'Ya existe otra meta registrada con ese código.'];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.MetaSIAF
+			SET CodigoMeta = ?,
+				Descripcion = ?,
+				idUsuarioModifica = ?,
+				FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$codigoMetaLimpio, $descripcionLimpia, $idUsuarioModifica, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo actualizar la meta SIAF' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Meta SIAF actualizada correctamente.'];
+	}
+
+	public function eliminarMetaSiaf($id, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Meta SIAF inválida.'];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.MetaSIAF
+			SET Activo = 0,
+				idUsuarioModifica = ?,
+				FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$idUsuarioModifica, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo inactivar la meta SIAF' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Meta SIAF inactivada correctamente.'];
+	}
+
+	public function activarMetaSiaf($id, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Meta SIAF inválida.'];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.MetaSIAF
+			SET Activo = 1,
+				idUsuarioModifica = ?,
+				FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 0
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$idUsuarioModifica, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo activar la meta SIAF' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Meta SIAF activada correctamente.'];
+	}
+
 	public function buscarPedidosSiga(int $anio): array
 	{
 		$sql = "
@@ -938,6 +1105,22 @@ class RequerimientoModel
 		}
 
 		return ['items' => $totalItems];
+	}
+
+	private function normalizarCodigoMetaSiaf($codigoMeta)
+	{
+		$valor = trim((string) $codigoMeta);
+		if ($valor === '') {
+			return null;
+		}
+
+		$valor = preg_replace('/\D/', '', $valor);
+		$longitud = strlen($valor);
+		if ($longitud < 3 || $longitud > 4) {
+			return null;
+		}
+
+		return $valor;
 	}
 
 	private function normalizarCodigoMeta($codigoMeta)

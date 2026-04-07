@@ -83,6 +83,7 @@ $dashboardItemsPorTipo = [];
 $dashboardCentroCosto = [];
 $dashboardEstadoDocumental = [];
 $dashboardOrdenesProximas = [];
+$dashboardMetaSiaf = [];
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 $accionesDetalle = ['guardarDetalleAjax', 'actualizarDetalleAjax', 'eliminarDetalleAjax', 'actualizarEstadoAjax', 'guardarDetalleForm'];
 $accionesTecnologia = [
@@ -167,6 +168,7 @@ switch ($action) {
 		$dashboardCentroCosto = $model->obtenerDashboardCentroCosto($anioFiltro);
 		$dashboardEstadoDocumental = $model->obtenerDashboardEstadoDocumental($anioFiltro);
 		$dashboardOrdenesProximas = $model->obtenerDashboardOrdenesProximas($anioFiltro, 30, 6);
+		$dashboardMetaSiaf = $model->obtenerDashboardMetaSiafResumen();
 		$cierreModel = new CierreAdquisicionModel($conn);
 		$dashboardFinalizados = $cierreModel->contarFinalizadosPorAnio($anioFiltro);
 		break;
@@ -374,6 +376,41 @@ switch ($action) {
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$catalogoModel = new CatalogoTecnologicoModel($conn);
 		echo json_encode($catalogoModel->activarTecnologia($id));
+		exit;
+
+	case 'listarMetasSiafAjax':
+		header('Content-Type: application/json');
+		echo json_encode([
+			'success' => true,
+			'data' => $model->listarMetasSiafGestion(),
+		]);
+		exit;
+
+	case 'agregarMetaSiafAjax':
+		header('Content-Type: application/json');
+		$codigoMeta = isset($_POST['codigoMeta']) ? trim((string) $_POST['codigoMeta']) : '';
+		$descripcion = isset($_POST['descripcion']) ? trim((string) $_POST['descripcion']) : '';
+		echo json_encode($model->agregarMetaSiaf($codigoMeta, $descripcion, $idUsuarioSesion));
+		exit;
+
+	case 'actualizarMetaSiafAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$codigoMeta = isset($_POST['codigoMeta']) ? trim((string) $_POST['codigoMeta']) : '';
+		$descripcion = isset($_POST['descripcion']) ? trim((string) $_POST['descripcion']) : '';
+		echo json_encode($model->actualizarMetaSiaf($id, $codigoMeta, $descripcion, $idUsuarioSesion));
+		exit;
+
+	case 'eliminarMetaSiafAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->eliminarMetaSiaf($id, $idUsuarioSesion));
+		exit;
+
+	case 'activarMetaSiafAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->activarMetaSiaf($id, $idUsuarioSesion));
 		exit;
 
 	default:
