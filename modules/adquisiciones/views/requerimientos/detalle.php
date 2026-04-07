@@ -153,7 +153,7 @@
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Unidad de Medida</label>
-						<input type="text" name="UnidadMedida" id="detalle-UnidadMedida" class="form-control" placeholder="UND" required maxlength="5" value="UND">
+						<input type="text" name="UnidadMedida" id="detalle-UnidadMedida" class="form-control" placeholder="UNIDAD" required maxlength="10" value="UNIDAD">
 					</div>
 					<div class="mb-0">
 						<label class="form-label">Homologar a Catálogo</label>

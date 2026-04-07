@@ -21,7 +21,7 @@ foreach ($centrosCosto as $cc) {
 $totalGeneral = array_sum($totalesPorCentroCosto);
 ?>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
 	<div class="d-flex gap-2 align-items-center flex-wrap">
 		<label class="form-label mb-0 text-nowrap">Filtrar por año:</label>
 		<select id="filtroAnioConsolidado" class="form-select w-auto" onchange="filtrarConsolidadoPorAnio()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
@@ -36,10 +36,15 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 			<?php endif; ?>
 		</select>
 	</div>
-	
-	<button class="btn btn-success" onclick="exportarConsolidado()">
-		Exportar a Excel
-	</button>
+
+	<div class="d-flex gap-2 ms-auto">
+		<button class="btn btn-success" onclick="exportarConsolidado()">
+			Exportar a Excel
+		</button>
+		<button class="btn btn-success" onclick="exportarConsolidadoOficial()">
+			Consolidado
+		</button>
+	</div>
 </div>
 
 <?php if (empty($equipos)): ?>
@@ -112,4 +117,5 @@ function filtrarConsolidadoPorAnio() {
 	window.location.href = url;
 }
 </script>
-<script src="modules/adquisiciones/views/consolidado/exportar.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="modules/adquisiciones/views/consolidado/consolidado.js"></script>

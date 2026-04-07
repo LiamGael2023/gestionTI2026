@@ -145,6 +145,19 @@ switch ($action) {
 		$consolidado = $model->obtenerConsolidado($anioFiltro);
 		break;
 
+	case 'consolidadoFormatoOficialAjax':
+		header('Content-Type: application/json');
+		$aniosDisponibles = $model->obtenerAniosDisponibles();
+		$anioSolicitud = isset($_POST['anio']) && $_POST['anio'] !== '' ? (int) $_POST['anio'] : $anioFiltro;
+		$anioConsulta = resolverAnioFiltro($anioSolicitud, $aniosDisponibles);
+		$filas = $model->obtenerConsolidadoFormatoOficial($anioConsulta);
+		echo json_encode([
+			'success' => true,
+			'anio' => (int) $anioConsulta,
+			'filas' => $filas,
+		]);
+		exit;
+
 	case 'dashboard':
 		$vistaActual = 'dashboard';
 		$aniosDisponibles = $model->obtenerAniosDisponibles();

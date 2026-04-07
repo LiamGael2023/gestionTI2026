@@ -425,6 +425,78 @@ class RequerimientoModel
 		];
 	}
 
+	public function obtenerConsolidadoFormatoOficial($anio)
+	{
+		$sql = "
+			SELECT
+				UPPER(LTRIM(RTRIM(ISNULL(ct.Codigo, '')))) AS TipoCodigo,
+				UPPER(LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN TIPO')))) AS TipoNombre,
+				LTRIM(RTRIM(ISNULL(d.DescripcionDetallada, ''))) AS Componente,
+				LTRIM(RTRIM(ISNULL(d.CodigoSiga, ''))) AS Referencia,
+				UPPER(LTRIM(RTRIM(ISNULL(d.UnidadMedida, '')))) AS UnidadMedida,
+				MAX(pt.Monto) AS PrecioUnitario,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '001' THEN d.Cantidad ELSE 0 END) AS Meta001,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '002' THEN d.Cantidad ELSE 0 END) AS Meta002,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '003' THEN d.Cantidad ELSE 0 END) AS Meta003,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '004' THEN d.Cantidad ELSE 0 END) AS Meta004,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '005' THEN d.Cantidad ELSE 0 END) AS Meta005,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '006' THEN d.Cantidad ELSE 0 END) AS Meta006,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '007' THEN d.Cantidad ELSE 0 END) AS Meta007,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '008' THEN d.Cantidad ELSE 0 END) AS Meta008,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '009' THEN d.Cantidad ELSE 0 END) AS Meta009,
+				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '010' THEN d.Cantidad ELSE 0 END) AS Meta010,
+				SUM(d.Cantidad) AS TotalInicial
+			FROM adquisiciones.DetalleRequerimiento d
+			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
+			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
+			LEFT JOIN adquisiciones.PresupuestoTecnologia pt
+				ON pt.IdCatalogoTecnologico = d.IdCatalogoTecnologico
+				AND pt.Anio = r.Anio
+			WHERE r.Anio = ?
+			GROUP BY
+				ct.Codigo,
+				ct.NombreGenerico,
+				d.DescripcionDetallada,
+				d.CodigoSiga,
+				d.UnidadMedida
+			ORDER BY
+				ct.Codigo,
+				ct.NombreGenerico,
+				d.DescripcionDetallada
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $anio]);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = [
+				'TipoCodigo' => (string) ($row['TipoCodigo'] ?? ''),
+				'TipoNombre' => (string) ($row['TipoNombre'] ?? ''),
+				'Componente' => (string) ($row['Componente'] ?? ''),
+				'Referencia' => (string) ($row['Referencia'] ?? ''),
+				'UnidadMedida' => (string) ($row['UnidadMedida'] ?? ''),
+				'PrecioUnitario' => $row['PrecioUnitario'] !== null ? (float) $row['PrecioUnitario'] : null,
+				'Meta001' => (int) ($row['Meta001'] ?? 0),
+				'Meta002' => (int) ($row['Meta002'] ?? 0),
+				'Meta003' => (int) ($row['Meta003'] ?? 0),
+				'Meta004' => (int) ($row['Meta004'] ?? 0),
+				'Meta005' => (int) ($row['Meta005'] ?? 0),
+				'Meta006' => (int) ($row['Meta006'] ?? 0),
+				'Meta007' => (int) ($row['Meta007'] ?? 0),
+				'Meta008' => (int) ($row['Meta008'] ?? 0),
+				'Meta009' => (int) ($row['Meta009'] ?? 0),
+				'Meta010' => (int) ($row['Meta010'] ?? 0),
+				'TotalInicial' => (int) ($row['TotalInicial'] ?? 0),
+			];
+		}
+
+		sqlsrv_free_stmt($stmt);
+		return $data;
+	}
+
 	private function fetchAll($sql, $params = [])
 	{
 		$stmt = sqlsrv_query($this->db, $sql, $params);
