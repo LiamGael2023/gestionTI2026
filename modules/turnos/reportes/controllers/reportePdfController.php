@@ -62,7 +62,7 @@ class ReporteControllerPDF {
         $pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
         $pdf->SetCreator('Reporte Horario');
         $pdf->SetAuthor('Sistema');
-        $pdf->SetTitle('Horario Ejecutado Personal');
+        $pdf->SetTitle('Turnos Ejecutados Personal');
 
       
         $marginL = 4;
@@ -195,7 +195,13 @@ class ReporteControllerPDF {
             $pdf->Ln();
         }
 
-        $pdf->Output('Turnos_Ejecutado.pdf', 'I');
+      
+        $mesesES  = ['','enero','febrero','marzo','abril','mayo','junio',
+             'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+       $nombreArchivo = 'turnos_' . $mesesES[$mes] . '_' . $anio . '.pdf';
+
+        $pdf->Output($nombreArchivo, 'I');
         exit;
     }
 }

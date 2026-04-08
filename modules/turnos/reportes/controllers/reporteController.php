@@ -89,7 +89,7 @@ class ReporteController {
         // FILA 1 – TÍTULO
         // ════════════════════════════════════════════════════════════════════
         $sheet->mergeCells("A1:{$colUltima}1");
-        $sheet->setCellValue('A1', 'HORARIO EJECUTADO PERSONAL');
+        $sheet->setCellValue('A1', 'TURNOS EJECUTADO PERSONAL');
         $sheet->getStyle('A1')->applyFromArray([
             'font'      => ['bold' => true, 'size' => 16,
                             'color' => ['argb' => self::C_HDR_FG]],
@@ -302,10 +302,8 @@ class ReporteController {
         }
         $sheet->getRowDimension($rowLeyenda)->setRowHeight(15);
 
-        // ════════════════════════════════════════════════════════════════════
-        // CONGELAR PANELES Y CONFIGURACIÓN DE PÁGINA
-        // ════════════════════════════════════════════════════════════════════
-        $sheet->freezePane('B4'); // congela col A + filas 1-3
+    
+        $sheet->freezePane('B4'); 
 
         $sheet->getPageSetup()
             ->setOrientation(\PhpOffice\PhpSpreadsheet\Worksheet\PageSetup::ORIENTATION_LANDSCAPE)
@@ -318,7 +316,11 @@ class ReporteController {
         // OUTPUT
         // ════════════════════════════════════════════════════════════════════
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header('Content-Disposition: attachment;filename="Horario_Ejecutado.xlsx"');
+        $mesesES = ['','enero','febrero','marzo','abril','mayo','junio',
+            'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+        $nombreArchivo = 'turnos_' . $mesesES[$mes] . '_' . $anio . '.xlsx';
+       header('Content-Disposition: attachment;filename="' . $nombreArchivo . '"');
         header('Cache-Control: max-age=0');
 
         $writer = new Xlsx($spreadsheet);
