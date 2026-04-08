@@ -10,16 +10,12 @@ function exportarConsolidado() {
 	}
 
 	var anio = obtenerAnioConsolidado();
-	var headers = [];
-	if (tabla.tHead && tabla.tHead.rows.length > 0) {
-		for (var h = 0; h < tabla.tHead.rows[0].cells.length; h++) {
-			headers.push(textoCelda(tabla.tHead.rows[0].cells[h]));
-		}
-	}
+	var cabeceraInfo = obtenerCabecerasExportacionConsolidado(tabla);
+	var headers = cabeceraInfo.headers;
 
 	var filasHoja = [];
 	var merges = [];
-	var totalCols = Math.max(headers.length, 1);
+	var totalCols = Math.max(cabeceraInfo.totalCols, 1);
 
 	filasHoja.push(['Consolidado de Equipos por Centro de Costo']);
 	merges.push(rango(0, 0, 0, totalCols - 1));
@@ -30,18 +26,39 @@ function exportarConsolidado() {
 	}
 
 	filasHoja.push([]);
-	filasHoja.push(headers);
+	for (var hr = 0; hr < cabeceraInfo.rows.length; hr++) {
+		filasHoja.push(cabeceraInfo.rows[hr]);
+	}
+	for (var hm = 0; hm < cabeceraInfo.merges.length; hm++) {
+		merges.push(desplazarRango(cabeceraInfo.merges[hm], filasHoja.length - cabeceraInfo.rows.length));
+	}
 
 	if (tabla.tBodies && tabla.tBodies.length > 0) {
-		for (var r = 0; r < tabla.tBodies[0].rows.length; r++) {
-			var fila = tabla.tBodies[0].rows[r];
-			filasHoja.push(filaDesdeDom(fila, headers.length));
+		if (cabeceraInfo.source === 'data') {
+			filasHoja = filasHoja.concat(construirFilasConsolidadoDesdeDatos(cabeceraInfo));
+		} else {
+			for (var r = 0; r < tabla.tBodies[0].rows.length; r++) {
+				var fila = tabla.tBodies[0].rows[r];
+				if (Array.isArray(cabeceraInfo.columnIndexes) && cabeceraInfo.columnIndexes.length > 0) {
+					filasHoja.push(filaDesdeDomPorIndices(fila, cabeceraInfo.columnIndexes));
+				} else {
+					filasHoja.push(filaDesdeDom(fila, totalCols));
+				}
+			}
 		}
 	}
 
 	if (tabla.tFoot && tabla.tFoot.rows.length > 0) {
-		for (var f = 0; f < tabla.tFoot.rows.length; f++) {
-			filasHoja.push(filaDesdeDom(tabla.tFoot.rows[f], headers.length));
+		if (cabeceraInfo.source === 'data') {
+			filasHoja.push(construirFilaTotalConsolidadoDesdeDatos(cabeceraInfo));
+		} else {
+			for (var f = 0; f < tabla.tFoot.rows.length; f++) {
+				if (Array.isArray(cabeceraInfo.columnIndexes) && cabeceraInfo.columnIndexes.length > 0) {
+					filasHoja.push(filaDesdeDomPorIndices(tabla.tFoot.rows[f], cabeceraInfo.columnIndexes));
+				} else {
+					filasHoja.push(filaDesdeDom(tabla.tFoot.rows[f], totalCols));
+				}
+			}
 		}
 	}
 
@@ -156,7 +173,7 @@ function exportarFormatoOficialXlsx(filas, anio, metasCabecera) {
 
 	for (var i = 0; i < filas.length; i++) {
 		acumularTotalesItem(totalGeneral, filas[i], metas);
-		filasHoja.push(construirFilaDetalleOficial(filas[i], contadorItem, metas, layout));
+		filasHoja.push(construirFilaDetalleOficial(filas[i], contadorItem, metas));
 		contadorItem++;
 	}
 
@@ -187,7 +204,7 @@ function exportarFormatoOficialXlsx(filas, anio, metasCabecera) {
 	XLSX.writeFile(workbook, 'RESUMEN_Consolidado_Oficial_' + (anio || 'sin_anio') + '.xlsx');
 }
 
-function construirFilaDetalleOficial(fila, contadorItem, metas, layout) {
+function construirFilaDetalleOficial(fila, contadorItem, metas) {
 	var precioUnitario = valorNumeroSeguro(fila.PrecioUnitario);
 	var totalInicial = 0;
 	var montoTotal = 0;
@@ -341,6 +358,309 @@ function filaDesdeDom(tr, totalColumnas) {
 	return fila;
 }
 
+function filaDesdeDomPorIndices(tr, indices) {
+	var fila = [];
+	for (var i = 0; i < indices.length; i++) {
+		var idx = indices[i];
+		if (!tr.cells[idx]) {
+			fila.push('');
+			continue;
+		}
+		var texto = textoCelda(tr.cells[idx]);
+		fila.push(parseNumeroLocal(texto));
+	}
+	return fila;
+}
+
+function construirFilasConsolidadoDesdeDatos(cabeceraInfo) {
+	var equipos = Array.isArray(window.adqConsolidadoEquipos) ? window.adqConsolidadoEquipos : [];
+	var matriz = window.adqConsolidadoMatriz && typeof window.adqConsolidadoMatriz === 'object' ? window.adqConsolidadoMatriz : {};
+	var filas = [];
+
+	for (var i = 0; i < equipos.length; i++) {
+		var equipo = String(equipos[i] || '');
+		var fila = [equipo];
+		var totalFila = 0;
+
+		for (var c = 0; c < cabeceraInfo.columnKeys.length; c++) {
+			var key = cabeceraInfo.columnKeys[c];
+			var cantidad = Number((matriz[equipo] && matriz[equipo][key]) || 0);
+			totalFila += cantidad;
+			fila.push(cantidad > 0 ? cantidad : '');
+		}
+
+		fila.push(totalFila > 0 ? totalFila : '');
+		filas.push(fila);
+	}
+
+	return filas;
+}
+
+function construirFilaTotalConsolidadoDesdeDatos(cabeceraInfo) {
+	var totalesMap = window.adqConsolidadoTotalesPorColumna && typeof window.adqConsolidadoTotalesPorColumna === 'object'
+		? window.adqConsolidadoTotalesPorColumna
+		: {};
+	var fila = ['Total'];
+	var totalGeneral = 0;
+
+	for (var c = 0; c < cabeceraInfo.columnKeys.length; c++) {
+		var key = cabeceraInfo.columnKeys[c];
+		var total = Number(totalesMap[key] || 0);
+		totalGeneral += total;
+		fila.push(total > 0 ? total : '');
+	}
+
+	fila.push(totalGeneral > 0 ? totalGeneral : '');
+	return fila;
+}
+
+function obtenerCabecerasHojaDesdeTabla(tabla) {
+	if (!tabla || !tabla.tHead || !tabla.tHead.rows.length) {
+		return { rows: [], merges: [], headers: [], totalCols: 0 };
+	}
+
+	var rows = [];
+	var merges = [];
+	var ocupadas = [];
+	var totalCols = 0;
+
+	for (var r = 0; r < tabla.tHead.rows.length; r++) {
+		var row = tabla.tHead.rows[r];
+		var salida = [];
+		var col = 0;
+
+		while (ocupadas[r] && ocupadas[r][col]) {
+			salida[col] = '';
+			col++;
+		}
+
+		for (var c = 0; c < row.cells.length; c++) {
+			while (ocupadas[r] && ocupadas[r][col]) {
+				salida[col] = '';
+				col++;
+			}
+
+			var cell = row.cells[c];
+			var texto = textoCelda(cell);
+			var colspan = Math.max(parseInt(cell.colSpan || 1, 10), 1);
+			var rowspan = Math.max(parseInt(cell.rowSpan || 1, 10), 1);
+
+			salida[col] = texto;
+			for (var extra = 1; extra < colspan; extra++) {
+				salida[col + extra] = '';
+			}
+
+			if (colspan > 1 || rowspan > 1) {
+				merges.push(rango(r, col, r + rowspan - 1, col + colspan - 1));
+			}
+
+			for (var rr = 0; rr < rowspan; rr++) {
+				if (!ocupadas[r + rr]) {
+					ocupadas[r + rr] = [];
+				}
+				for (var cc = 0; cc < colspan; cc++) {
+					ocupadas[r + rr][col + cc] = true;
+				}
+			}
+
+			col += colspan;
+		}
+
+		totalCols = Math.max(totalCols, salida.length);
+		rows.push(salida);
+	}
+
+	for (var i = 0; i < rows.length; i++) {
+		while (rows[i].length < totalCols) {
+			rows[i].push('');
+		}
+	}
+
+	var headers = rows.length > 0 ? rows[rows.length - 1].slice() : [];
+	return { rows: rows, merges: merges, headers: headers, totalCols: totalCols };
+}
+
+function obtenerCabecerasExportacionConsolidado(tabla) {
+	var metadata = Array.isArray(window.adqConsolidadoCabeceraCentros) ? window.adqConsolidadoCabeceraCentros : [];
+	var columnasPlano = Array.isArray(window.adqConsolidadoColumnasPlano) ? window.adqConsolidadoColumnasPlano : [];
+	var columnasConDatos = obtenerColumnasConDatosParaExportacion(tabla, columnasPlano);
+
+	if (!metadata.length || !columnasPlano.length || !columnasConDatos.length) {
+		return obtenerCabecerasHojaDesdeTabla(tabla);
+	}
+
+	var columnasConDatosSet = {};
+	for (var x = 0; x < columnasConDatos.length; x++) {
+		columnasConDatosSet[String(columnasConDatos[x].key || '')] = columnasConDatos[x];
+	}
+
+	var tieneGrupos = metadata.some(function(grupo) {
+		if (!Array.isArray(grupo.columnas)) {
+			return false;
+		}
+		var activas = grupo.columnas.filter(function(col) {
+			return !!columnasConDatosSet[String((col && col.key) || '')];
+		});
+		return activas.length > 1;
+	});
+
+	var domTotalCols = obtenerTotalColumnasDom(tabla);
+	var indiceTotalDom = Math.max(domTotalCols - 1, 0);
+	var columnIndexes = [0];
+
+	if (!tieneGrupos) {
+		var headersSimples = ['Equipo'];
+		var columnKeysSimples = [];
+		for (var s = 0; s < columnasConDatos.length; s++) {
+			headersSimples.push(String(columnasConDatos[s].label || ''));
+			columnIndexes.push(columnasConDatos[s].domIndex);
+			columnKeysSimples.push(String(columnasConDatos[s].key || ''));
+		}
+		headersSimples.push('Total');
+		columnIndexes.push(indiceTotalDom);
+		return {
+			rows: [headersSimples],
+			merges: [],
+			headers: headersSimples.slice(),
+			totalCols: headersSimples.length,
+			columnIndexes: columnIndexes,
+			columnKeys: columnKeysSimples,
+			source: columnasConDatos.some(function(col) { return col.domIndex === -1; }) ? 'data' : 'dom',
+		};
+	}
+
+	var totalCols = 2;
+	var fila1 = ['Equipo'];
+	var fila2 = [''];
+	var merges = [rango(0, 0, 1, 0)];
+	var headers = ['Equipo'];
+	var colActual = 1;
+	var columnKeys = [];
+
+	for (var i = 0; i < metadata.length; i++) {
+		var grupo = metadata[i] || {};
+		var columnas = Array.isArray(grupo.columnas) ? grupo.columnas.filter(function(col) {
+			return !!columnasConDatosSet[String((col && col.key) || '')];
+		}) : [];
+		var labelGrupo = String(grupo.label || '');
+		if (!columnas.length) {
+			continue;
+		}
+
+		if (columnas.length > 1) {
+			fila1.push(labelGrupo);
+			for (var espacio = 1; espacio < columnas.length; espacio++) {
+				fila1.push('');
+			}
+			merges.push(rango(0, colActual, 0, colActual + columnas.length - 1));
+			for (var j = 0; j < columnas.length; j++) {
+				var keyColumna = String((columnas[j] && columnas[j].key) || '');
+				var datoColumna = columnasConDatosSet[keyColumna] || {};
+				var labelColumna = String((columnas[j] && columnas[j].label) || '');
+				fila2.push(labelColumna);
+				headers.push(labelColumna);
+				columnIndexes.push(datoColumna.domIndex);
+				columnKeys.push(keyColumna);
+			}
+			colActual += columnas.length;
+			totalCols += columnas.length;
+			continue;
+		}
+
+		var labelSimple = columnas.length === 1 ? String((columnas[0] && columnas[0].label) || labelGrupo) : labelGrupo;
+		var keySimple = String((columnas[0] && columnas[0].key) || '');
+		var datoSimple = columnasConDatosSet[keySimple] || {};
+		fila1.push(labelSimple);
+		fila2.push('');
+		merges.push(rango(0, colActual, 1, colActual));
+		headers.push(labelSimple);
+		columnIndexes.push(datoSimple.domIndex);
+		columnKeys.push(keySimple);
+		colActual += 1;
+		totalCols += 1;
+	}
+
+	fila1.push('Total');
+	fila2.push('');
+	merges.push(rango(0, colActual, 1, colActual));
+	headers.push('Total');
+	columnIndexes.push(indiceTotalDom);
+
+	return {
+		rows: [fila1, fila2],
+		merges: merges,
+		headers: headers,
+		totalCols: totalCols,
+		columnIndexes: columnIndexes,
+		columnKeys: columnKeys,
+		source: columnIndexes.some(function(idx) { return idx === -1; }) ? 'data' : 'dom',
+	};
+}
+
+function obtenerTotalColumnasDom(tabla) {
+	if (!tabla || !tabla.tHead || !tabla.tHead.rows.length) {
+		return 0;
+	}
+	return tabla.tHead.rows[0].cells.length;
+}
+
+function obtenerColumnasConDatosParaExportacion(tabla, columnasPlano) {
+	if (!tabla || !Array.isArray(columnasPlano) || !columnasPlano.length) {
+		return [];
+	}
+
+	var totalesMap = window.adqConsolidadoTotalesPorColumna && typeof window.adqConsolidadoTotalesPorColumna === 'object'
+		? window.adqConsolidadoTotalesPorColumna
+		: null;
+
+	if (totalesMap) {
+		var columnasDesdeTotales = [];
+		for (var t = 0; t < columnasPlano.length; t++) {
+			var keyMeta = String((columnasPlano[t] && columnasPlano[t].key) || '');
+			var totalMeta = Number(totalesMap[keyMeta] || 0);
+			if (totalMeta > 0) {
+				columnasDesdeTotales.push({
+					key: keyMeta,
+					label: String((columnasPlano[t] && columnasPlano[t].label) || ''),
+					domIndex: -1,
+				});
+			}
+		}
+		return columnasDesdeTotales;
+	}
+
+	var totalColsDom = obtenerTotalColumnasDom(tabla);
+	if (totalColsDom < 3) {
+		return [];
+	}
+
+	var totalFila = (tabla.tFoot && tabla.tFoot.rows && tabla.tFoot.rows.length > 0) ? tabla.tFoot.rows[0] : null;
+	var cantidadColumnasCentroDom = totalColsDom - 2;
+	var cantidadColumnasMetadata = columnasPlano.length;
+	if (cantidadColumnasMetadata !== cantidadColumnasCentroDom) {
+		return [];
+	}
+
+	var columnas = [];
+	for (var i = 0; i < columnasPlano.length; i++) {
+		var domIndex = i + 1;
+		var valorTotal = 0;
+		if (totalFila && totalFila.cells[domIndex]) {
+			valorTotal = Number(parseNumeroLocal(textoCelda(totalFila.cells[domIndex])) || 0);
+		}
+
+		if (valorTotal > 0) {
+			columnas.push({
+				key: String((columnasPlano[i] && columnasPlano[i].key) || ''),
+				label: String((columnasPlano[i] && columnasPlano[i].label) || ''),
+				domIndex: domIndex,
+			});
+		}
+	}
+
+	return columnas;
+}
+
 function textoCelda(celda) {
 	if (!celda) {
 		return '';
@@ -414,6 +734,13 @@ function rango(inicioFila, inicioColumna, finFila, finColumna) {
 	return {
 		s: { r: inicioFila, c: inicioColumna },
 		e: { r: finFila, c: finColumna },
+	};
+}
+
+function desplazarRango(merge, offsetFilas) {
+	return {
+		s: { r: merge.s.r + offsetFilas, c: merge.s.c },
+		e: { r: merge.e.r + offsetFilas, c: merge.e.c },
 	};
 }
 

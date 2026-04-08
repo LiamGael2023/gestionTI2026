@@ -37,7 +37,21 @@ class CatalogoTecnologicoModel
 				ON ca.IdCatalogoTecnologico = ct.Id AND ca.Anio = ?
 			WHERE r.Anio = ? AND ct.Activo = 1
 			GROUP BY ct.Codigo, ct.NombreGenerico, ct.Id, ca.Id, ca.Estado
-			ORDER BY ct.Codigo, ct.NombreGenerico
+			ORDER BY
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN LEFT(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo) - 1)
+					ELSE ct.Codigo
+				END,
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN TRY_CAST(
+						LEFT(
+							SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)),
+							PATINDEX('%[^0-9]%', SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)) + 'X') - 1
+						) AS INT
+					)
+					ELSE 0
+				END,
+				ct.NombreGenerico
 		";
 
 		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta]);
@@ -161,7 +175,21 @@ class CatalogoTecnologicoModel
 		$sql = "
 			SELECT Id, Codigo, NombreGenerico, Activo
 			FROM adquisiciones.CatalogoTecnologico
-			ORDER BY Codigo, NombreGenerico
+			ORDER BY
+				CASE
+					WHEN PATINDEX('%[0-9]%', Codigo) > 0 THEN LEFT(Codigo, PATINDEX('%[0-9]%', Codigo) - 1)
+					ELSE Codigo
+				END,
+				CASE
+					WHEN PATINDEX('%[0-9]%', Codigo) > 0 THEN TRY_CAST(
+						LEFT(
+							SUBSTRING(Codigo, PATINDEX('%[0-9]%', Codigo), LEN(Codigo)),
+							PATINDEX('%[^0-9]%', SUBSTRING(Codigo, PATINDEX('%[0-9]%', Codigo), LEN(Codigo)) + 'X') - 1
+						) AS INT
+					)
+					ELSE 0
+				END,
+				NombreGenerico
 		";
 
 		$stmt = sqlsrv_query($this->db, $sql);

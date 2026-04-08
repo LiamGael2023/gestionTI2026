@@ -1,12 +1,48 @@
 <?php
 // Inicializar variables si no existen
-$consolidado = $consolidado ?? ['equipos' => [], 'centrosCosto' => [], 'matriz' => []];
+$consolidado = $consolidado ?? ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => []];
 $aniosDisponibles = $aniosDisponibles ?? [];
 $anioFiltro = $anioFiltro ?? null;
 
 $equipos = $consolidado['equipos'];
 $centrosCosto = $consolidado['centrosCosto'];
+$cabeceraCentros = $consolidado['cabeceraCentros'] ?? [];
 $matriz = $consolidado['matriz'];
+
+$columnasPadreWeb = [];
+foreach ($cabeceraCentros as $grupoCentro) {
+	$columnasGrupo = $grupoCentro['columnas'] ?? [];
+	$keys = [];
+	foreach ($columnasGrupo as $columna) {
+		if (!empty($columna['key'])) {
+			$keys[] = $columna['key'];
+		}
+	}
+
+	if (empty($keys)) {
+		continue;
+	}
+
+	$columnasPadreWeb[] = [
+		'label' => (string) ($grupoCentro['label'] ?? ''),
+		'keys' => $keys,
+	];
+}
+
+$columnasPlano = [];
+foreach ($cabeceraCentros as $grupoCentro) {
+	$columnasGrupo = $grupoCentro['columnas'] ?? [];
+	if (!empty($columnasGrupo)) {
+		foreach ($columnasGrupo as $columna) {
+			$columnasPlano[] = $columna;
+		}
+		continue;
+	}
+	$columnasPlano[] = [
+		'key' => '',
+		'label' => (string) ($grupoCentro['label'] ?? ''),
+	];
+}
 
 // Calcular totales por columna
 $totalesPorCentroCosto = [];
@@ -14,6 +50,15 @@ foreach ($centrosCosto as $cc) {
 	$totalesPorCentroCosto[$cc] = 0;
 	foreach ($equipos as $equipo) {
 		$totalesPorCentroCosto[$cc] += $matriz[$equipo][$cc] ?? 0;
+	}
+}
+
+$totalesPadreWeb = [];
+foreach ($columnasPadreWeb as $columnaPadre) {
+	$label = (string) ($columnaPadre['label'] ?? '');
+	$totalesPadreWeb[$label] = 0;
+	foreach ($columnaPadre['keys'] as $keyColumna) {
+		$totalesPadreWeb[$label] += (int) ($totalesPorCentroCosto[$keyColumna] ?? 0);
 	}
 }
 
@@ -39,10 +84,10 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 
 	<div class="d-flex gap-2 ms-auto">
 		<button class="btn btn-success" onclick="exportarConsolidado()">
-			Exportar a Excel
+			Consolidado
 		</button>
 		<button class="btn btn-success" onclick="exportarConsolidadoOficial()">
-			Consolidado
+			Consolidado Oficial
 		</button>
 	</div>
 </div>
@@ -60,8 +105,8 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 			<thead>
 				<tr>
 					<th>Equipo</th>
-					<?php foreach ($centrosCosto as $cc): ?>
-						<th><?php echo htmlspecialchars($cc); ?></th>
+					<?php foreach ($columnasPadreWeb as $columnaPadre): ?>
+						<th><?php echo htmlspecialchars((string) ($columnaPadre['label'] ?? '')); ?></th>
 					<?php endforeach; ?>
 					<th>Total</th>
 				</tr>
@@ -76,12 +121,15 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 					?>
 					<tr>
 						<td><?php echo htmlspecialchars($equipo); ?></td>
-						<?php foreach ($centrosCosto as $cc): ?>
-							<?php 
-							$cantidad = $matriz[$equipo][$cc] ?? 0;
-						?>
-						<td <?php echo $cantidad == 0 ? 'class="text-muted"' : ''; ?>>
-								<?php echo $cantidad > 0 ? $cantidad : ''; ?>
+						<?php foreach ($columnasPadreWeb as $columnaPadre): ?>
+							<?php
+							$cantidadPadre = 0;
+							foreach ($columnaPadre['keys'] as $keyColumna) {
+								$cantidadPadre += (int) ($matriz[$equipo][$keyColumna] ?? 0);
+							}
+							?>
+							<td <?php echo $cantidadPadre == 0 ? 'class="text-muted"' : ''; ?>>
+								<?php echo $cantidadPadre > 0 ? $cantidadPadre : ''; ?>
 							</td>
 						<?php endforeach; ?>
 					<td class="fw-semibold">
@@ -93,8 +141,8 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 			<tfoot>
 				<tr>
 					<td>Total</td>
-					<?php foreach ($centrosCosto as $cc): ?>
-						<td><?php echo $totalesPorCentroCosto[$cc]; ?></td>
+					<?php foreach ($columnasPadreWeb as $columnaPadre): ?>
+						<td><?php echo (int) ($totalesPadreWeb[(string) ($columnaPadre['label'] ?? '')] ?? 0); ?></td>
 					<?php endforeach; ?>
 					<td><?php echo $totalGeneral; ?></td>
 				</tr>
@@ -104,6 +152,12 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 <?php endif; ?>
 
 <script>
+window.adqConsolidadoCabeceraCentros = <?php echo json_encode($cabeceraCentros, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoColumnasPlano = <?php echo json_encode($columnasPlano, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoTotalesPorColumna = <?php echo json_encode($totalesPorCentroCosto, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoEquipos = <?php echo json_encode($equipos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoMatriz = <?php echo json_encode($matriz, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
 function filtrarConsolidadoPorAnio() {
 	const anio = document.getElementById('filtroAnioConsolidado').value;
 	let url = 'index.php?module=adquisiciones&action=consolidado';

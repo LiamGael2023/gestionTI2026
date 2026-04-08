@@ -1,4 +1,6 @@
 <?php
+require_once 'modules/adquisiciones/helpers.php';
+
 class RequerimientoModel
 {
 	private $db;
@@ -14,16 +16,20 @@ class RequerimientoModel
 			SELECT
 				r.Id,
 				r.IdCentroCosto,
+				r.IdSubCentroCosto,
 				r.IdMetaSIAF,
 				r.NroPedidoCompra,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
+				sc.NombreSubCentroCosto,
+				sc.Siglas AS SiglasSubCentroCosto,
 				r.Anio,
 				r.Estado,
 				COUNT(d.Id) AS TotalItems
 			FROM adquisiciones.Requerimiento r
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = r.IdCentroCosto
+			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = r.IdSubCentroCosto
 			LEFT JOIN adquisiciones.DetalleRequerimiento d ON d.IdRequerimiento = r.Id
 		";
 
@@ -37,11 +43,14 @@ class RequerimientoModel
 			GROUP BY
 				r.Id,
 				r.IdCentroCosto,
+				r.IdSubCentroCosto,
 				r.IdMetaSIAF,
 				r.NroPedidoCompra,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
+				sc.NombreSubCentroCosto,
+				sc.Siglas,
 				r.Anio,
 				r.Estado
 			ORDER BY r.Anio DESC, r.NroPedidoCompra DESC
@@ -75,6 +84,29 @@ class RequerimientoModel
 		}
 
 		return $data;
+	}
+
+	public function obtenerSubCentrosCostoActivos($idCentroCosto = null)
+	{
+		$sql = "
+			SELECT
+				Id,
+				IdCentroCosto,
+				NombreSubCentroCosto,
+				Siglas
+			FROM adquisiciones.SubCentroCosto
+			WHERE Activo = 1
+		";
+
+		$params = [];
+		if ((int) $idCentroCosto > 0) {
+			$sql .= " AND IdCentroCosto = ?";
+			$params[] = (int) $idCentroCosto;
+		}
+
+		$sql .= " ORDER BY IdCentroCosto, NombreSubCentroCosto";
+
+		return $this->fetchAll($sql, $params);
 	}
 
 	public function listarCentrosCostoGestion()
@@ -246,7 +278,10 @@ class RequerimientoModel
 
 	public function guardarRequerimiento($datos)
 	{
-		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$codigoMeta = adqNormalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$idSubCentroCosto = isset($datos['IdSubCentroCosto']) && (int) $datos['IdSubCentroCosto'] > 0
+			? (int) $datos['IdSubCentroCosto']
+			: null;
 		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
 		if ($idMetaSiaf <= 0) {
 			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
@@ -262,13 +297,14 @@ class RequerimientoModel
 
 		$sql = "
 			INSERT INTO adquisiciones.Requerimiento
-				(IdCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+				(IdCentroCosto, IdSubCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 			OUTPUT INSERTED.Id
-			VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?)
+			VALUES (?, ?, ?, ?, ?, ?, GETDATE(), 0, ?)
 		";
 
 		$params = [
 			$datos['IdCentroCosto'],
+			$idSubCentroCosto,
 			$idMetaSiaf,
 			$datos['NroPedidoCompra'],
 			$codigoMeta,
@@ -294,15 +330,19 @@ class RequerimientoModel
 				r.Id,
 				r.NroPedidoCompra,
 				r.IdCentroCosto,
+				r.IdSubCentroCosto,
 				r.IdMetaSIAF,
 				r.CodigoMeta,
 				c.NombreCentroCosto,
 				c.Siglas,
+				sc.NombreSubCentroCosto,
+				sc.Siglas AS SiglasSubCentroCosto,
 				r.Anio,
 				r.Estado,
 				r.FechaRegistro
 			FROM adquisiciones.Requerimiento r
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = r.IdCentroCosto
+			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = r.IdSubCentroCosto
 			WHERE r.Id = ?
 		";
 
@@ -322,7 +362,10 @@ class RequerimientoModel
 			return false;
 		}
 
-		$codigoMeta = $this->normalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$codigoMeta = adqNormalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$idSubCentroCosto = isset($datos['IdSubCentroCosto']) && (int) $datos['IdSubCentroCosto'] > 0
+			? (int) $datos['IdSubCentroCosto']
+			: null;
 		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
 		if ($idMetaSiaf <= 0) {
 			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
@@ -335,6 +378,7 @@ class RequerimientoModel
 		$sql = "
 			UPDATE adquisiciones.Requerimiento
 			SET IdCentroCosto = ?,
+				IdSubCentroCosto = ?,
 				IdMetaSIAF = ?,
 				NroPedidoCompra = ?,
 				CodigoMeta = ?,
@@ -346,6 +390,7 @@ class RequerimientoModel
 
 		$params = [
 			$datos['IdCentroCosto'],
+			$idSubCentroCosto,
 			$idMetaSiaf,
 			$datos['NroPedidoCompra'],
 			$codigoMeta,
@@ -415,16 +460,25 @@ class RequerimientoModel
 
 	public function obtenerConsolidado($anio = null)
 	{
-		// Consulta que obtiene equipos agrupados por centro de costo
+		// Consulta que obtiene equipos agrupados por centro/sub-centro de costo
 		$sql = "
 			SELECT 
-				UPPER(LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN CLASIFICAR')))) AS Equipo,
+				UPPER(
+					CASE
+						WHEN LTRIM(RTRIM(ISNULL(ct.Codigo, ''))) <> '' THEN LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN CLASIFICAR'))) + ' (' + LTRIM(RTRIM(ct.Codigo)) + ')'
+						ELSE LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN CLASIFICAR')))
+					END
+				) AS Equipo,
+				c.Id AS IdCentroCosto,
 				c.Siglas AS CentroCosto,
+				r.IdSubCentroCosto,
+				sc.Siglas AS SubCentroCosto,
 				SUM(d.Cantidad) AS Cantidad
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = r.IdCentroCosto
-			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
+			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = r.IdSubCentroCosto
+			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
 		";
 
 		$params = [];
@@ -433,44 +487,145 @@ class RequerimientoModel
 			$params[] = $anio;
 		}
 
-		$sql .= "
-			GROUP BY ct.NombreGenerico, c.Siglas
-			ORDER BY Equipo, c.Siglas
-		";
+			$sql .= "
+				GROUP BY ct.Codigo, ct.NombreGenerico, c.Id, c.Siglas, r.IdSubCentroCosto, sc.Siglas
+				ORDER BY
+					CASE
+						WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN LEFT(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo) - 1)
+						ELSE ct.Codigo
+					END,
+					CASE
+						WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN TRY_CAST(
+							LEFT(
+								SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)),
+								PATINDEX('%[^0-9]%', SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)) + 'X') - 1
+							) AS INT
+						)
+						ELSE 0
+					END,
+					Equipo, c.Siglas, sc.Siglas
+			";
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if ($stmt === false) {
-			return ['equipos' => [], 'centrosCosto' => [], 'matriz' => []];
+			return ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => []];
 		}
 
-		// Procesar resultados en una estructura matricial
 		$matriz = [];
-		$centrosCostoSet = [];
 		$equiposSet = [];
+		$centrosData = [];
+		$centrosUsados = [];
 
 		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
 			$equipo = $row['Equipo'];
-			$centroCosto = $row['CentroCosto'];
+			$idCentroCosto = (int) ($row['IdCentroCosto'] ?? 0);
+			$centroCosto = trim((string) ($row['CentroCosto'] ?? ''));
+			$idSubCentroCosto = (int) ($row['IdSubCentroCosto'] ?? 0);
+			$subCentroCosto = trim((string) ($row['SubCentroCosto'] ?? ''));
 			$cantidad = (int)$row['Cantidad'];
+			$claveColumna = $idSubCentroCosto > 0 ? 'SC_' . $idSubCentroCosto : 'CC_' . $idCentroCosto;
 
 			if (!isset($matriz[$equipo])) {
 				$matriz[$equipo] = [];
 			}
 
-			$matriz[$equipo][$centroCosto] = $cantidad;
-			$centrosCostoSet[$centroCosto] = true;
+			$matriz[$equipo][$claveColumna] = $cantidad;
+			$centrosUsados[$idCentroCosto] = [
+				'id' => $idCentroCosto,
+				'siglas' => $centroCosto,
+			];
+			if (!isset($centrosData[$idCentroCosto])) {
+				$centrosData[$idCentroCosto] = [
+					'id' => $idCentroCosto,
+					'siglas' => $centroCosto,
+					'columnasUsadas' => [],
+				];
+			}
+			$centrosData[$idCentroCosto]['columnasUsadas'][$claveColumna] = true;
 			$equiposSet[$equipo] = true;
 		}
 
-		// Obtener lista ordenada de centros de costo
-		$centrosCosto = array_keys($centrosCostoSet);
-		sort($centrosCosto);
+		$sqlSubCentros = "
+			SELECT
+				c.Id AS IdCentroCosto,
+				c.Siglas AS CentroCosto,
+				sc.Id AS IdSubCentroCosto,
+				sc.Siglas AS SubCentroCosto
+			FROM adquisiciones.CentroCosto c
+			INNER JOIN adquisiciones.SubCentroCosto sc ON sc.IdCentroCosto = c.Id AND sc.Activo = 1
+			WHERE c.Activo = 1
+			ORDER BY c.Siglas, sc.Siglas
+		";
 
-		// Obtener lista ordenada de equipos
+		$subCentrosPorCentro = [];
+		$stmtSub = sqlsrv_query($this->db, $sqlSubCentros);
+		if ($stmtSub !== false) {
+			while ($rowSub = sqlsrv_fetch_array($stmtSub, SQLSRV_FETCH_ASSOC)) {
+				$idCentro = (int) ($rowSub['IdCentroCosto'] ?? 0);
+				if ($idCentro <= 0) {
+					continue;
+				}
+				if (!isset($subCentrosPorCentro[$idCentro])) {
+					$subCentrosPorCentro[$idCentro] = [];
+				}
+				$subCentrosPorCentro[$idCentro][] = [
+					'id' => (int) ($rowSub['IdSubCentroCosto'] ?? 0),
+					'siglas' => trim((string) ($rowSub['SubCentroCosto'] ?? '')),
+				];
+			}
+		}
+
 		$equipos = array_keys($equiposSet);
-		sort($equipos);
 
-		// Asegurar que cada equipo tenga todas las columnas de centros de costo
+		$centrosOrdenados = array_values($centrosUsados);
+		usort($centrosOrdenados, function ($a, $b) {
+			return strcmp((string) ($a['siglas'] ?? ''), (string) ($b['siglas'] ?? ''));
+		});
+
+		$cabeceraCentros = [];
+		$centrosCosto = [];
+		foreach ($centrosOrdenados as $centro) {
+			$idCentro = (int) ($centro['id'] ?? 0);
+			$siglasCentro = (string) ($centro['siglas'] ?? '');
+			$subCentros = $subCentrosPorCentro[$idCentro] ?? [];
+
+			if (!empty($subCentros)) {
+				$columnasGrupo = [
+					[
+						'key' => 'CC_' . $idCentro,
+						'label' => $siglasCentro,
+					],
+				];
+				foreach ($subCentros as $subCentro) {
+					$columnasGrupo[] = [
+						'key' => 'SC_' . (int) $subCentro['id'],
+						'label' => (string) $subCentro['siglas'],
+					];
+				}
+
+				$cabeceraCentros[] = [
+					'label' => $siglasCentro,
+					'columnas' => $columnasGrupo,
+				];
+
+				foreach ($columnasGrupo as $columna) {
+					$centrosCosto[] = $columna['key'];
+				}
+				continue;
+			}
+
+			$cabeceraCentros[] = [
+				'label' => $siglasCentro,
+				'columnas' => [
+					[
+						'key' => 'CC_' . $idCentro,
+						'label' => $siglasCentro,
+					],
+				],
+			];
+			$centrosCosto[] = 'CC_' . $idCentro;
+		}
+
 		foreach ($equipos as $equipo) {
 			foreach ($centrosCosto as $cc) {
 				if (!isset($matriz[$equipo][$cc])) {
@@ -482,6 +637,7 @@ class RequerimientoModel
 		return [
 			'equipos' => $equipos,
 			'centrosCosto' => $centrosCosto,
+			'cabeceraCentros' => $cabeceraCentros,
 			'matriz' => $matriz
 		];
 	}
@@ -531,7 +687,7 @@ class RequerimientoModel
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 				LEFT JOIN adquisiciones.MetaSIAF ms ON ms.Id = r.IdMetaSIAF
-			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
+			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
 			LEFT JOIN adquisiciones.PresupuestoTecnologia pt
 				ON pt.IdCatalogoTecnologico = d.IdCatalogoTecnologico
 				AND pt.Anio = r.Anio
@@ -541,7 +697,19 @@ class RequerimientoModel
 				ct.Codigo,
 				ct.NombreGenerico
 			ORDER BY
-				ct.Codigo,
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN LEFT(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo) - 1)
+					ELSE ct.Codigo
+				END,
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN TRY_CAST(
+						LEFT(
+							SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)),
+							PATINDEX('%[^0-9]%', SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)) + 'X') - 1
+						) AS INT
+					)
+					ELSE 0
+				END,
 				ct.NombreGenerico
 		";
 
@@ -1184,7 +1352,7 @@ class RequerimientoModel
 		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
 			$nombreCentro = $row['NOMBRE_CENTRO_COSTO'];
 			if ($codigoMeta === null && isset($row['CODIGO_META'])) {
-				$codigoMeta = $this->normalizarCodigoMeta((string) $row['CODIGO_META']);
+				$codigoMeta = adqNormalizarCodigoMeta((string) $row['CODIGO_META']);
 			}
 			$items[]      = $row;
 		}
@@ -1234,10 +1402,10 @@ class RequerimientoModel
 		if (!$idReq) {
 			$stmtIns = sqlsrv_query($this->db, "
 				INSERT INTO adquisiciones.Requerimiento
-					(IdCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
+					(IdCentroCosto, IdSubCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
 				OUTPUT INSERTED.Id
-				VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?)
-			", [$idCentro, $idMetaSiaf, $nroPedido, $codigoMeta, $anio, $idUsuarioRegistro]);
+				VALUES (?, ?, ?, ?, ?, ?, GETDATE(), 0, ?)
+			", [$idCentro, null, $idMetaSiaf, $nroPedido, $codigoMeta, $anio, $idUsuarioRegistro]);
 
 			if ($stmtIns === false) {
 				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
@@ -1329,21 +1497,6 @@ class RequerimientoModel
 		return $valor;
 	}
 
-	private function normalizarCodigoMeta($codigoMeta)
-	{
-		$valor = strtoupper(trim((string) $codigoMeta));
-		if ($valor === '') {
-			return null;
-		}
-
-		$valor = preg_replace('/[^A-Z0-9]/', '', $valor);
-		if ($valor === '') {
-			return null;
-		}
-
-		return substr($valor, 0, 4);
-	}
-
 	private function obtenerIdMetaSiafPorCodigo($codigoMeta = '000')
 	{
 		$codigo = trim((string) $codigoMeta);
@@ -1382,6 +1535,198 @@ class RequerimientoModel
 		";
 
 		$stmt = sqlsrv_query($this->db, $sql, [$idMetaSiaf]);
+		if ($stmt === false) {
+			return false;
+		}
+
+		return (bool) sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+	}
+
+	// ─── SubCentroCosto ───────────────────────────────────────────────────────
+
+	public function obtenerDashboardSubCentrosCostoResumen()
+	{
+		$sql = "
+			SELECT
+				COUNT(*) AS Total,
+				SUM(CASE WHEN Activo = 1 THEN 1 ELSE 0 END) AS Activos,
+				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
+			FROM adquisiciones.SubCentroCosto
+		";
+
+		$resumen = $this->fetchOne($sql);
+
+		return [
+			'Total'    => (int) ($resumen['Total']    ?? 0),
+			'Activos'  => (int) ($resumen['Activos']  ?? 0),
+			'Inactivos'=> (int) ($resumen['Inactivos'] ?? 0),
+		];
+	}
+
+	public function listarSubCentrosCostoGestion()
+	{
+		$sql = "
+			SELECT
+				s.Id,
+				s.IdCentroCosto,
+				c.NombreCentroCosto,
+				s.Siglas,
+				s.NombreSubCentroCosto,
+				s.Activo
+			FROM adquisiciones.SubCentroCosto s
+			INNER JOIN adquisiciones.CentroCosto c ON c.Id = s.IdCentroCosto
+			ORDER BY c.NombreCentroCosto, s.NombreSubCentroCosto
+		";
+
+		return $this->fetchAll($sql);
+	}
+
+	public function agregarSubCentroCosto($idCentroCosto, $siglas, $nombreSubCentroCosto, $idUsuario = null)
+	{
+		$idCentroCosto = (int) $idCentroCosto;
+		$siglasLimpio  = strtoupper(trim((string) $siglas));
+		$nombreLimpio  = trim((string) $nombreSubCentroCosto);
+
+		if ($idCentroCosto <= 0 || $siglasLimpio === '' || $nombreLimpio === '') {
+			return ['success' => false, 'message' => 'Debe completar centro de costo, siglas y nombre.'];
+		}
+
+		if ($this->existeSubCentroCostoDuplicado($idCentroCosto, $siglasLimpio, $nombreLimpio)) {
+			return ['success' => false, 'message' => 'Ya existe un sub-centro de costo con las mismas siglas o nombre en ese centro de costo.'];
+		}
+
+		$sql = "
+			INSERT INTO adquisiciones.SubCentroCosto
+				(IdCentroCosto, NombreSubCentroCosto, Siglas, Activo, idUsuarioRegistro, FechaRegistro)
+			VALUES (?, ?, ?, 1, ?, GETDATE())
+		";
+
+		$params = [$idCentroCosto, $nombreLimpio, $siglasLimpio, $idUsuario];
+		$stmt   = sqlsrv_query($this->db, $sql, $params);
+
+		if ($stmt === false) {
+			$errors  = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo registrar el sub-centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Sub-centro de costo registrado correctamente.'];
+	}
+
+	public function actualizarSubCentroCosto($id, $idCentroCosto, $siglas, $nombreSubCentroCosto, $idUsuario = null)
+	{
+		$id            = (int) $id;
+		$idCentroCosto = (int) $idCentroCosto;
+		$siglasLimpio  = strtoupper(trim((string) $siglas));
+		$nombreLimpio  = trim((string) $nombreSubCentroCosto);
+
+		if ($id <= 0 || $idCentroCosto <= 0 || $siglasLimpio === '' || $nombreLimpio === '') {
+			return ['success' => false, 'message' => 'Datos inválidos para actualizar el sub-centro de costo.'];
+		}
+
+		if ($this->existeSubCentroCostoDuplicado($idCentroCosto, $siglasLimpio, $nombreLimpio, $id)) {
+			return ['success' => false, 'message' => 'Ya existe otro sub-centro de costo con las mismas siglas o nombre en ese centro de costo.'];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.SubCentroCosto
+			SET IdCentroCosto = ?, NombreSubCentroCosto = ?, Siglas = ?,
+			    idUsuarioModifica = ?, FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$params = [$idCentroCosto, $nombreLimpio, $siglasLimpio, $idUsuario, $id];
+		$stmt   = sqlsrv_query($this->db, $sql, $params);
+
+		if ($stmt === false) {
+			$errors  = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo actualizar el sub-centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Sub-centro de costo actualizado correctamente.'];
+	}
+
+	public function eliminarSubCentroCosto($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Sub-centro de costo inválido.'];
+		}
+
+		$sql  = "UPDATE adquisiciones.SubCentroCosto SET Activo = 0 WHERE Id = ? AND Activo = 1";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+
+		if ($stmt === false) {
+			$errors  = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo inactivar el sub-centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Sub-centro de costo eliminado correctamente.'];
+	}
+
+	public function activarSubCentroCosto($id)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return ['success' => false, 'message' => 'Sub-centro de costo inválido.'];
+		}
+
+		$sqlBuscar = "SELECT TOP 1 IdCentroCosto, Siglas, NombreSubCentroCosto FROM adquisiciones.SubCentroCosto WHERE Id = ?";
+		$stmtB     = sqlsrv_query($this->db, $sqlBuscar, [$id]);
+
+		if ($stmtB === false) {
+			$errors  = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo validar el sub-centro de costo' . $detalle];
+		}
+
+		$fila = sqlsrv_fetch_array($stmtB, SQLSRV_FETCH_ASSOC);
+		if (!$fila) {
+			return ['success' => false, 'message' => 'No se encontró el sub-centro de costo.'];
+		}
+
+		$idCC  = (int) ($fila['IdCentroCosto'] ?? 0);
+		$sig   = trim((string) ($fila['Siglas'] ?? ''));
+		$nom   = trim((string) ($fila['NombreSubCentroCosto'] ?? ''));
+
+		if ($this->existeSubCentroCostoDuplicado($idCC, $sig, $nom, $id)) {
+			return ['success' => false, 'message' => 'No se puede activar porque ya existe otro sub-centro de costo activo con las mismas siglas o nombre.'];
+		}
+
+		$sql  = "UPDATE adquisiciones.SubCentroCosto SET Activo = 1 WHERE Id = ? AND Activo = 0";
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+
+		if ($stmt === false) {
+			$errors  = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return ['success' => false, 'message' => 'No se pudo activar el sub-centro de costo' . $detalle];
+		}
+
+		return ['success' => true, 'message' => 'Sub-centro de costo activado correctamente.'];
+	}
+
+	private function existeSubCentroCostoDuplicado($idCentroCosto, $siglas, $nombreSubCentroCosto, $idExcluir = null)
+	{
+		$sql = "
+			SELECT TOP 1 Id
+			FROM adquisiciones.SubCentroCosto
+			WHERE Activo = 1
+			  AND IdCentroCosto = ?
+			  AND (
+				UPPER(LTRIM(RTRIM(Siglas))) = UPPER(LTRIM(RTRIM(?)))
+				OR UPPER(LTRIM(RTRIM(NombreSubCentroCosto))) = UPPER(LTRIM(RTRIM(?)))
+			  )
+		";
+
+		$params = [(int) $idCentroCosto, $siglas, $nombreSubCentroCosto];
+		if ((int) $idExcluir > 0) {
+			$sql    .= " AND Id <> ?";
+			$params[] = (int) $idExcluir;
+		}
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if ($stmt === false) {
 			return false;
 		}

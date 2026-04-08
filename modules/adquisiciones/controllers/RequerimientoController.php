@@ -2,11 +2,13 @@
 require_once 'modules/adquisiciones/models/RequerimientoModel.php';
 require_once 'modules/adquisiciones/models/CatalogoTecnologicoModel.php';
 require_once 'modules/adquisiciones/models/CierreAdquisicionModel.php';
+require_once 'modules/adquisiciones/helpers.php';
 
-function cargarVistaRequerimientos($model, $anioFiltro, &$vistaActual, &$requerimientos, &$centrosCosto, &$aniosDisponibles, &$metasSiafActivas)
+function cargarVistaRequerimientos($model, $anioFiltro, &$vistaActual, &$requerimientos, &$centrosCosto, &$subCentrosCosto, &$aniosDisponibles, &$metasSiafActivas)
 {
 	$vistaActual = 'requerimientos';
 	$centrosCosto = $model->obtenerCentrosCosto();
+	$subCentrosCosto = $model->obtenerSubCentrosCostoActivos();
 	$metasSiafActivas = $model->obtenerMetasSiafActivas();
 	$aniosDisponibles = $model->obtenerAniosDisponibles();
 	$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
@@ -39,32 +41,6 @@ function delegarControladorAdquisiciones($ruta)
 	exit;
 }
 
-function redireccionarAdquisiciones($url)
-{
-	if (!headers_sent()) {
-		header('Location: ' . $url);
-		exit;
-	}
-
-	echo '<script>window.location.href=' . json_encode($url) . ';</script>';
-	exit;
-}
-
-function normalizarCodigoMetaRequest($codigoMetaRaw)
-{
-	$codigoMeta = strtoupper(trim((string) $codigoMetaRaw));
-	if ($codigoMeta === '') {
-		return null;
-	}
-
-	$codigoMeta = preg_replace('/[^A-Z0-9]/', '', $codigoMeta);
-	if ($codigoMeta === '') {
-		return null;
-	}
-
-	return substr($codigoMeta, 0, 4);
-}
-
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
 		require_once 'config/db.php';
@@ -77,6 +53,7 @@ $action = $_GET['action'] ?? 'requerimientos';
 $vistaActual = 'requerimientos';
 $requerimientos = [];
 $centrosCosto = [];
+$subCentrosCosto = [];
 $metasSiafActivas = [];
 $aniosDisponibles = [];
 $anioFiltro = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
@@ -86,6 +63,7 @@ $dashboardCentroCosto = [];
 $dashboardEstadoDocumental = [];
 $dashboardOrdenesProximas = [];
 $dashboardMetaSiaf = [];
+$dashboardSubCentrosCosto = [];
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 $accionesDetalle = ['guardarDetalleAjax', 'actualizarDetalleAjax', 'eliminarDetalleAjax', 'actualizarEstadoAjax', 'guardarDetalleForm'];
 $accionesTecnologia = [
@@ -129,7 +107,7 @@ if (in_array($action, $accionesTecnologia, true)) {
 switch ($action) {
 	case 'index':
 	case 'requerimientos':
-		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles, $metasSiafActivas);
+		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $subCentrosCosto, $aniosDisponibles, $metasSiafActivas);
 		break;
 
 	case 'tecnologias':
@@ -173,6 +151,7 @@ switch ($action) {
 		$dashboardEstadoDocumental = $model->obtenerDashboardEstadoDocumental($anioFiltro);
 		$dashboardOrdenesProximas = $model->obtenerDashboardOrdenesProximas($anioFiltro, 30, 6);
 		$dashboardMetaSiaf = $model->obtenerDashboardMetaSiafResumen();
+		$dashboardSubCentrosCosto = $model->obtenerDashboardSubCentrosCostoResumen();
 		$cierreModel = new CierreAdquisicionModel($conn);
 		$dashboardFinalizados = $cierreModel->contarFinalizadosPorAnio($anioFiltro);
 		break;
@@ -182,14 +161,15 @@ switch ($action) {
 
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
 			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
-			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
+			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
-		if ($datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($datos['IdCentroCosto'] > 0 && $datos['IdSubCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			$id = $model->guardarRequerimiento($datos);
 			if ($id) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento registrado correctamente', 'id' => $id]);
@@ -215,14 +195,15 @@ switch ($action) {
 		$id = isset($_POST['Id']) ? (int) $_POST['Id'] : 0;
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
 			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
-			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
+			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioModifica' => $idUsuarioSesion,
 		];
 
-		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdSubCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			if ($model->actualizarRequerimiento($id, $datos)) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento actualizado correctamente']);
 			} else {
@@ -243,9 +224,10 @@ switch ($action) {
 	case 'guardarForm':
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
+			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
 			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
-			'CodigoMeta' => normalizarCodigoMetaRequest($_POST['CodigoMeta'] ?? null),
+			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion,
 		];
@@ -253,12 +235,12 @@ switch ($action) {
 		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
 		$urlRedirect = 'index.php?module=adquisiciones&action=requerimientos&anio=' . $anioRedirect;
 
-		if ($datos['IdCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
-			redireccionarAdquisiciones($urlRedirect);
+		if ($datos['IdCentroCosto'] <= 0 || $datos['IdSubCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
+			adqRedirigirSeguro($urlRedirect);
 		}
 
 		$model->guardarRequerimiento($datos);
-		redireccionarAdquisiciones($urlRedirect);
+		adqRedirigirSeguro($urlRedirect);
 		break;
 
 	case 'eliminarAjax':
@@ -450,8 +432,46 @@ switch ($action) {
 		echo json_encode($model->activarMetaSiaf($id, $idUsuarioSesion));
 		exit;
 
+	case 'listarSubCentrosCostoAjax':
+		header('Content-Type: application/json');
+		echo json_encode([
+			'success' => true,
+			'data'    => $model->listarSubCentrosCostoGestion(),
+			'centros' => $model->obtenerCentrosCosto(),
+		]);
+		exit;
+
+	case 'agregarSubCentroCostoAjax':
+		header('Content-Type: application/json');
+		$idCC   = isset($_POST['idCentroCosto']) ? (int) $_POST['idCentroCosto'] : 0;
+		$siglas = isset($_POST['siglas']) ? trim((string) $_POST['siglas']) : '';
+		$nombre = isset($_POST['nombreSubCentroCosto']) ? trim((string) $_POST['nombreSubCentroCosto']) : '';
+		echo json_encode($model->agregarSubCentroCosto($idCC, $siglas, $nombre, $idUsuarioSesion));
+		exit;
+
+	case 'actualizarSubCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id     = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$idCC   = isset($_POST['idCentroCosto']) ? (int) $_POST['idCentroCosto'] : 0;
+		$siglas = isset($_POST['siglas']) ? trim((string) $_POST['siglas']) : '';
+		$nombre = isset($_POST['nombreSubCentroCosto']) ? trim((string) $_POST['nombreSubCentroCosto']) : '';
+		echo json_encode($model->actualizarSubCentroCosto($id, $idCC, $siglas, $nombre, $idUsuarioSesion));
+		exit;
+
+	case 'eliminarSubCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->eliminarSubCentroCosto($id));
+		exit;
+
+	case 'activarSubCentroCostoAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		echo json_encode($model->activarSubCentroCosto($id));
+		exit;
+
 	default:
-		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $aniosDisponibles, $metasSiafActivas);
+		$anioFiltro = cargarVistaRequerimientos($model, $anioFiltro, $vistaActual, $requerimientos, $centrosCosto, $subCentrosCosto, $aniosDisponibles, $metasSiafActivas);
 		break;
 }
 

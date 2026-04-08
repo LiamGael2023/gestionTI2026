@@ -1,6 +1,7 @@
 <?php
 require_once 'modules/adquisiciones/models/RequerimientoModel.php';
 require_once 'modules/adquisiciones/models/DetalleRequerimientoModel.php';
+require_once 'modules/adquisiciones/helpers.php';
 
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
@@ -17,17 +18,6 @@ $requerimiento = null;
 $detalles = [];
 $catalogoOpciones = [];
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
-
-function redireccionarDetalleRequerimiento($url)
-{
-	if (!headers_sent()) {
-		header('Location: ' . $url);
-		exit;
-	}
-
-	echo '<script>window.location.href=' . json_encode($url) . ';</script>';
-	exit;
-}
 
 function normalizarClasificadorDetalle($valor)
 {
@@ -57,12 +47,12 @@ switch ($action) {
 			$catalogoOpciones = $model->listarOpcionesCatalogoTecnologico();
 		}
 		if (!$requerimiento) {
-			redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimientos');
+			adqRedirigirSeguro('index.php?module=adquisiciones&action=requerimientos');
 		}
 		break;
 
 	case 'guardarDetalleAjax':
-		header('Content-Type: application/json');
+		adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
 		
 		$datos = [
 			'IdRequerimiento' => isset($_POST['IdRequerimiento']) ? (int) $_POST['IdRequerimiento'] : 0,
@@ -93,7 +83,7 @@ switch ($action) {
 		exit;
 
 	case 'actualizarDetalleAjax':
-		header('Content-Type: application/json');
+		adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
 		
 		$id = isset($_POST['Id']) ? (int) $_POST['Id'] : 0;
 		$datos = [
@@ -150,10 +140,10 @@ switch ($action) {
 			}
 		}
 
-		redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimiento&id=' . (int) $datos['IdRequerimiento']);
+		adqRedirigirSeguro('index.php?module=adquisiciones&action=requerimiento&id=' . (int) $datos['IdRequerimiento']);
 
 	case 'eliminarDetalleAjax':
-		header('Content-Type: application/json');
+		adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		
 		if ($id > 0 && $model->eliminarDetalle($id)) {
@@ -164,7 +154,7 @@ switch ($action) {
 		exit;
 
 	case 'actualizarEstadoAjax':
-		header('Content-Type: application/json');
+		adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$estado = isset($_POST['estado']) ? (int) $_POST['estado'] : 0;
 		
@@ -176,7 +166,7 @@ switch ($action) {
 		exit;
 
 	default:
-		redireccionarDetalleRequerimiento('index.php?module=adquisiciones&action=requerimientos');
+		adqRedirigirSeguro('index.php?module=adquisiciones&action=requerimientos');
 }
 
 include 'modules/adquisiciones/views/index.php';

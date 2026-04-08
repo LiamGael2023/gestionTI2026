@@ -6,6 +6,7 @@ require_once 'modules/adquisiciones/models/FichaTecnicaModel.php';
 require_once 'modules/adquisiciones/models/OrdenCompraModel.php';
 require_once 'modules/adquisiciones/models/VerificacionTecnicaModel.php';
 require_once 'modules/adquisiciones/models/PresupuestoTecnologicoModel.php';
+require_once 'modules/adquisiciones/helpers.php';
 
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
@@ -26,26 +27,8 @@ $vistaActual = 'tecnologia';
 
 function responderJson($payload)
 {
-	enviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
+	adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
 	echo json_encode($payload);
-	exit;
-}
-
-function enviarHeaderSeguro($header)
-{
-	if (!headers_sent()) {
-		header($header);
-	}
-}
-
-function redirigirSeguro($url)
-{
-	if (!headers_sent()) {
-		header('Location: ' . $url);
-		exit;
-	}
-
-	echo '<script>window.location.href=' . json_encode($url) . ';</script>';
 	exit;
 }
 
@@ -251,9 +234,9 @@ function enviarDocumentoPdf($conn, $tabla, $id, $camposNombre)
 		$nombre = 'documento';
 	}
 
-	enviarHeaderSeguro('Content-Type: application/pdf');
-	enviarHeaderSeguro('Content-Disposition: inline; filename="' . $nombre . '.pdf"');
-	enviarHeaderSeguro('Content-Length: ' . strlen($decoded));
+	adqEnviarHeaderSeguro('Content-Type: application/pdf');
+	adqEnviarHeaderSeguro('Content-Disposition: inline; filename="' . $nombre . '.pdf"');
+	adqEnviarHeaderSeguro('Content-Length: ' . strlen($decoded));
 	echo $decoded;
 	exit;
 }
@@ -332,7 +315,7 @@ switch ($action) {
 
 		$tecnologia = $catalogoModel->obtenerPorId($id);
 		if (!$tecnologia) {
-			redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
+			adqRedirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
 		}
 
 		$aniosDisponiblesTec = $catalogoModel->obtenerAniosDisponiblesPorTecnologia($id);
@@ -791,7 +774,7 @@ switch ($action) {
 		}
 
 	default:
-		redirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
+		adqRedirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
 }
 
 include 'modules/adquisiciones/views/index.php';

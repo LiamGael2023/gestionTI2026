@@ -26,6 +26,10 @@ $metaSiafResumen = isset($dashboardMetaSiaf) && is_array($dashboardMetaSiaf)
 	? $dashboardMetaSiaf
 	: [];
 
+$subCentrosCostoResumen = isset($dashboardSubCentrosCosto) && is_array($dashboardSubCentrosCosto)
+	? $dashboardSubCentrosCosto
+	: [];
+
 $totalRequerimientos = (int) ($resumen['TotalRequerimientos'] ?? 0);
 $requerimientosCompletos = (int) ($resumen['Completos'] ?? 0);
 $requerimientosPendientes = (int) ($resumen['Pendientes'] ?? 0);
@@ -50,6 +54,10 @@ $listaOrdenesProximas = isset($ordenesProximas['ordenes']) && is_array($ordenesP
 $totalMetasSiaf = (int) ($metaSiafResumen['Total'] ?? 0);
 $metasSiafActivas = (int) ($metaSiafResumen['Activos'] ?? 0);
 $metasSiafInactivas = (int) ($metaSiafResumen['Inactivos'] ?? 0);
+
+$totalSubCentros = (int) ($subCentrosCostoResumen['Total'] ?? 0);
+$subCentrosActivos = (int) ($subCentrosCostoResumen['Activos'] ?? 0);
+$subCentrosInactivos = (int) ($subCentrosCostoResumen['Inactivos'] ?? 0);
 
 $porcentajeCompletos = $totalRequerimientos > 0
 	? round(($requerimientosCompletos / $totalRequerimientos) * 100)
@@ -290,7 +298,7 @@ function formatearFechaEntregaDashboard($fecha)
 		</div>
 	</div>
 
-		<div class="row g-3 mb-3">
+	<div class="row g-3 mb-3">
 		<div class="col-12 col-md-6 col-xl-3">
 			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionMetasSiaf" aria-label="Abrir gestión de metas SIAF">
 				<div class="card-body">
@@ -309,6 +317,29 @@ function formatearFechaEntregaDashboard($fecha)
 					</div>
 					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
 						<span><?php echo number_format($metasSiafActivas); ?> activas · <?php echo number_format($metasSiafInactivas); ?> inactivas</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="col-12 col-md-6 col-xl-3">
+			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionSubCentrosCosto" aria-label="Abrir gestión de sub-centros de costo">
+				<div class="card-body">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<span class="avatar avatar-md bg-purple-lt text-purple"><i class="ti ti-building-community"></i></span>
+						<div class="d-flex align-items-center gap-2">
+							<div class="h1 mb-0" id="cardTotalSubCentros"><?php echo number_format($totalSubCentros); ?></div>
+							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
+						</div>
+					</div>
+					<div class="fw-bold">Sub-Centros de Costo</div>
+					<div class="text-secondary small">Catálogo activo. Clic para gestionar.</div>
+					<div class="progress progress-sm mt-3">
+						<?php $pctSubActivos = $totalSubCentros > 0 ? round(($subCentrosActivos / $totalSubCentros) * 100) : 0; ?>
+						<div class="progress-bar bg-purple" style="width: <?php echo $pctSubActivos; ?>%"></div>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
+						<span><?php echo number_format($subCentrosActivos); ?> activos · <?php echo number_format($subCentrosInactivos); ?> inactivos</span>
 					</div>
 				</div>
 			</div>
@@ -581,6 +612,57 @@ function formatearFechaEntregaDashboard($fecha)
 			</div>
 		</div>
 	</div>
+
+	<div class="modal modal-blur fade" id="modalGestionSubCentrosCosto" tabindex="-1" aria-labelledby="modalGestionSubCentrosCostoLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalGestionSubCentrosCostoLabel">Gestión de Sub-Centros de Costo</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-md-4">
+							<label class="form-label" for="sccCentroCosto">Centro de Costo</label>
+							<select class="form-select" id="sccCentroCosto">
+								<option value="">Seleccione...</option>
+							</select>
+						</div>
+						<div class="col-12 col-md-2">
+							<label class="form-label" for="sccSiglas">Siglas</label>
+							<input type="text" class="form-control" id="sccSiglas" maxlength="20" placeholder="Ej: RRHH" autocomplete="off">
+						</div>
+						<div class="col-12 col-md-5">
+							<label class="form-label" for="sccNombre">Nombre Sub-Centro de Costo</label>
+							<input type="text" class="form-control" id="sccNombre" maxlength="100" placeholder="Nombre del sub-centro">
+						</div>
+						<div class="col-12 col-md-1 d-flex align-items-end">
+							<button type="button" class="btn btn-primary w-100" id="btnGuardarSubCentroCosto">Agregar</button>
+						</div>
+					</div>
+					<input type="hidden" id="sccIdEditar" value="">
+					<div class="table-responsive">
+						<table class="table table-vcenter card-table table-striped" id="tablaSubCentrosCostoGestion">
+							<thead>
+								<tr>
+									<th>Centro de Costo</th>
+									<th>Siglas</th>
+									<th>Sub-Centro de Costo</th>
+									<th class="text-end">Acciones</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="4" class="text-center text-secondary py-4">Cargando...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
 </div>
 
 <script>
@@ -588,7 +670,8 @@ function formatearFechaEntregaDashboard($fecha)
 		var modalCentros = document.getElementById('modalGestionCentrosCosto');
 		var modalTecnologias = document.getElementById('modalGestionTecnologias');
 		var modalMetasSiaf = document.getElementById('modalGestionMetasSiaf');
-		if (!modalCentros || !modalTecnologias || !modalMetasSiaf) {
+		var modalSubCentros = document.getElementById('modalGestionSubCentrosCosto');
+		if (!modalCentros || !modalTecnologias || !modalMetasSiaf || !modalSubCentros) {
 			return;
 		}
 
@@ -1104,5 +1187,156 @@ function formatearFechaEntregaDashboard($fecha)
 			limpiarFormularioMetaSiaf();
 			cargarMetasSiaf();
 		});
+
+		// ─── Sub-Centros de Costo ─────────────────────────────────────────────
+
+		function limpiarFormularioSubCentro() {
+			document.getElementById('sccIdEditar').value = '';
+			document.getElementById('sccCentroCosto').value = '';
+			document.getElementById('sccSiglas').value = '';
+			document.getElementById('sccNombre').value = '';
+			document.getElementById('btnGuardarSubCentroCosto').textContent = 'Agregar';
+		}
+
+		function poblarSelectCentros(centros) {
+			var sel = document.getElementById('sccCentroCosto');
+			var valorActual = sel.value;
+			sel.innerHTML = '<option value="">Seleccione...</option>';
+			(centros || []).forEach(function(c) {
+				var opt = document.createElement('option');
+				opt.value = Number(c.Id);
+				opt.textContent = escaparHtml(c.NombreCentroCosto) + ' (' + escaparHtml(c.Siglas) + ')';
+				sel.appendChild(opt);
+			});
+			if (valorActual) {
+				sel.value = valorActual;
+			}
+		}
+
+		function cargarSubCentrosCosto() {
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=listarSubCentrosCostoAjax',
+				type: 'GET',
+				dataType: 'json',
+				success: function(response) {
+					var tbody = $('#tablaSubCentrosCostoGestion tbody');
+					if (!response || !response.success) {
+						tbody.html('<tr><td colspan="4" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+						return;
+					}
+
+					poblarSelectCentros(response.centros);
+
+					var data = Array.isArray(response.data) ? response.data : [];
+					$('#cardTotalSubCentros').text(data.length.toLocaleString('es-PE'));
+
+					if (data.length === 0) {
+						tbody.html('<tr><td colspan="4" class="text-center text-secondary py-4">No hay sub-centros de costo registrados.</td></tr>');
+						return;
+					}
+
+					var filas = data.map(function(item) {
+						var acciones =
+							'<button type="button" class="btn btn-primary adq-btn-action js-editar-scc" ' +
+							'data-id="' + Number(item.Id) + '" ' +
+							'data-idcc="' + Number(item.IdCentroCosto) + '" ' +
+							'data-siglas="' + escaparHtml(item.Siglas) + '" ' +
+							'data-nombre="' + escaparHtml(item.NombreSubCentroCosto) + '">Editar</button>' +
+							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-scc" data-id="' + Number(item.Id) + '">Eliminar</button>';
+
+						return '<tr>' +
+							'<td>' + escaparHtml(item.NombreCentroCosto) + '</td>' +
+							'<td>' + escaparHtml(item.Siglas) + '</td>' +
+							'<td>' + escaparHtml(item.NombreSubCentroCosto) + '</td>' +
+							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' + acciones + '</td>' +
+							'</tr>';
+					}).join('');
+
+					tbody.html(filas);
+				},
+				error: function() {
+					$('#tablaSubCentrosCostoGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+				}
+			});
+		}
+
+		$('#btnGuardarSubCentroCosto').on('click', function() {
+			var id = $('#sccIdEditar').val();
+			var idCC = $('#sccCentroCosto').val();
+			var siglas = $('#sccSiglas').val().trim();
+			var nombre = $('#sccNombre').val().trim();
+
+			if (!idCC || !siglas || !nombre) {
+				notificar('warning', 'Campos obligatorios', 'Debe seleccionar el centro de costo, completar siglas y nombre.');
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarSubCentroCostoAjax' : 'agregarSubCentroCostoAjax'),
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					id: id,
+					idCentroCosto: idCC,
+					siglas: siglas,
+					nombreSubCentroCosto: nombre
+				},
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Operación correcta', response.message || 'Sub-centro de costo guardado.');
+						limpiarFormularioSubCentro();
+						cargarSubCentrosCosto();
+						return;
+					}
+					notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar sub-centro de costo.');
+				}
+			});
+		});
+
+		$('#tablaSubCentrosCostoGestion').on('click', '.js-editar-scc', function() {
+			var btn = $(this);
+			$('#sccIdEditar').val(btn.data('id'));
+			$('#sccCentroCosto').val(btn.data('idcc'));
+			$('#sccSiglas').val(btn.data('siglas'));
+			$('#sccNombre').val(btn.data('nombre'));
+			$('#btnGuardarSubCentroCosto').text('Actualizar');
+		});
+
+		$('#tablaSubCentrosCostoGestion').on('click', '.js-eliminar-scc', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Eliminar sub-centro de costo',
+				mensaje: '¿Desea eliminar este sub-centro de costo?',
+				textoAceptar: 'Eliminar',
+				claseAceptar: 'btn-danger'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=eliminarSubCentroCostoAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Sub-centro eliminado', response.message || 'Sub-centro de costo eliminado.');
+							limpiarFormularioSubCentro();
+							cargarSubCentrosCosto();
+							return;
+						}
+						notificar('danger', 'No se pudo eliminar', response && response.message ? response.message : 'Error al eliminar sub-centro de costo.');
+					}
+				});
+			});
+		});
+
+		modalSubCentros.addEventListener('shown.bs.modal', function() {
+			limpiarFormularioSubCentro();
+			cargarSubCentrosCosto();
+		});
+
 	})();
 </script>
