@@ -14,6 +14,14 @@ $resumenCentroCosto = isset($dashboardCentroCosto) && is_array($dashboardCentroC
 	? $dashboardCentroCosto
 	: [];
 
+$resumenCentroCostoConActividad = array_values(array_filter(
+	$resumenCentroCosto,
+	static function ($fila) {
+		return (int) ($fila['TotalRequerimientos'] ?? 0) > 0
+			&& (int) ($fila['TotalItems'] ?? 0) > 0;
+	}
+));
+
 $estadoDocumental = isset($dashboardEstadoDocumental) && is_array($dashboardEstadoDocumental)
 	? $dashboardEstadoDocumental
 	: [];
@@ -460,12 +468,12 @@ function formatearFechaEntregaDashboard($fecha)
 							</tr>
 						</thead>
 						<tbody>
-							<?php if (empty($resumenCentroCosto)): ?>
+							<?php if (empty($resumenCentroCostoConActividad)): ?>
 								<tr>
-									<td colspan="4" class="text-center text-secondary py-4">No hay centros de costo disponibles.</td>
+									<td colspan="4" class="text-center text-secondary py-4">No hay centros de costo con requerimientos e items.</td>
 								</tr>
 							<?php else: ?>
-								<?php foreach ($resumenCentroCosto as $fila): ?>
+								<?php foreach ($resumenCentroCostoConActividad as $fila): ?>
 									<tr>
 										<td class="text-secondary"><?php echo htmlspecialchars((string) ($fila['Siglas'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
 										<td><?php echo htmlspecialchars((string) ($fila['NombreCentroCosto'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>

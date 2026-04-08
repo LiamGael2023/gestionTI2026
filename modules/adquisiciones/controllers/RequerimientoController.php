@@ -169,7 +169,7 @@ switch ($action) {
 			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
-		if ($datos['IdCentroCosto'] > 0 && $datos['IdSubCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			$id = $model->guardarRequerimiento($datos);
 			if ($id) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento registrado correctamente', 'id' => $id]);
@@ -203,7 +203,7 @@ switch ($action) {
 			'idUsuarioModifica' => $idUsuarioSesion,
 		];
 
-		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdSubCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			if ($model->actualizarRequerimiento($id, $datos)) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento actualizado correctamente']);
 			} else {
@@ -235,7 +235,7 @@ switch ($action) {
 		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
 		$urlRedirect = 'index.php?module=adquisiciones&action=requerimientos&anio=' . $anioRedirect;
 
-		if ($datos['IdCentroCosto'] <= 0 || $datos['IdSubCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
+		if ($datos['IdCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
 			adqRedirigirSeguro($urlRedirect);
 		}
 

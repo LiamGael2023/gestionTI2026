@@ -37,6 +37,7 @@
 			<?php if (!empty($tecnologias)): ?>
 				<?php foreach ($tecnologias as $tec): ?>
 					<?php $tieneCodigosDiferentes = isset($tec['TotalCodigosSiga']) && (int) $tec['TotalCodigosSiga'] > 1; ?>
+					<?php $tienePrecioAsignado = isset($tec['TienePrecio']) && (int) $tec['TienePrecio'] === 1; ?>
 					<tr>
 						<td>
 							<?php if ($tieneCodigosDiferentes): ?>
@@ -64,7 +65,8 @@
 							<button class="btn btn-azure-lt btn-accion" type="button" onclick="editarTecnologia(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>)">
 								Editar
 							</button>
-							<button class="btn btn-azure-lt btn-accion" type="button"
+							<button class="btn <?php echo $tienePrecioAsignado ? 'btn-success' : 'btn-azure-lt'; ?> btn-accion btn-precio-tecnologia" type="button"
+								data-id-catalogo="<?php echo (int) $tec['IdCatalogoTecnologico']; ?>"
 								onclick="abrirModalPresupuesto(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>, <?php echo htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>)">
 								Precio
 							</button>
@@ -261,6 +263,7 @@
 		const anio = document.getElementById('filtroAnioTec').value;
 		document.getElementById('presupuestoIdCatalogo').value = idCatalogo;
 		document.getElementById('presupuestoAnio').value = anio;
+		document.getElementById('modalPresupuestoTecnologia').dataset.idCatalogo = String(idCatalogo);
 		document.getElementById('presupuestoNombreTec').textContent = nombreTec + ' — ' + anio;
 		document.getElementById('presupuestoMonto').value = '';
 		document.getElementById('btn-guardar-presupuesto').disabled = false;
@@ -311,6 +314,16 @@
 				btnGuardar.disabled = false;
 				btnGuardar.innerHTML = 'Guardar';
 				if (res && res.ok) {
+					const botonPrecio = document.querySelector('.btn-precio-tecnologia[data-id-catalogo="' + idCatalogo + '"]');
+					if (botonPrecio) {
+						if (monto !== null) {
+							botonPrecio.classList.remove('btn-azure-lt');
+							botonPrecio.classList.add('btn-success');
+						} else {
+							botonPrecio.classList.remove('btn-success');
+							botonPrecio.classList.add('btn-azure-lt');
+						}
+					}
 					window.adqNotifySafe('success', 'Presupuesto guardado', 'El presupuesto fue registrado correctamente.');
 					bootstrap.Modal.getInstance(document.getElementById('modalPresupuestoTecnologia')).hide();
 				} else {

@@ -52,9 +52,21 @@
 						<td><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
 						<td><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
 						<td>
-							<div><?php echo htmlspecialchars($req['NombreCentroCosto']); ?></div>
+							<div>
+								<?php
+								$textoCentroCosto = trim((string) ($req['Siglas'] ?? ''));
+								$nombreCentroCosto = trim((string) ($req['NombreCentroCosto'] ?? ''));
+								echo htmlspecialchars($textoCentroCosto !== '' ? ($textoCentroCosto . ' - ' . $nombreCentroCosto) : $nombreCentroCosto);
+								?>
+							</div>
 							<?php if (!empty($req['NombreSubCentroCosto'])): ?>
-								<div class="text-secondary small"><?php echo htmlspecialchars((string) $req['NombreSubCentroCosto']); ?></div>
+								<div class="text-secondary small">
+									<?php
+									$textoSubCentroCosto = trim((string) ($req['SiglasSubCentroCosto'] ?? ''));
+									$nombreSubCentroCosto = trim((string) ($req['NombreSubCentroCosto'] ?? ''));
+									echo htmlspecialchars($textoSubCentroCosto !== '' ? ($textoSubCentroCosto . ' - ' . $nombreSubCentroCosto) : $nombreSubCentroCosto);
+									?>
+								</div>
 							<?php endif; ?>
 						</td>
 						<td><?php echo (int) $req['Anio']; ?></td>
@@ -113,7 +125,7 @@
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Sub-Centro de Costo</label>
-						<select name="IdSubCentroCosto" id="IdSubCentroCosto" class="form-select" required>
+						<select name="IdSubCentroCosto" id="IdSubCentroCosto" class="form-select">
 							<option value="">Seleccione un centro de costo primero...</option>
 						</select>
 					</div>
@@ -619,7 +631,9 @@
 			const idSubCentroCosto = idSubCentroCostoEl ? idSubCentroCostoEl.value : '';
 			const idMetaSiaf = idMetaSiafEl ? idMetaSiafEl.value : '';
 			const centroCostoTexto = idCentroCostoEl && idCentroCostoEl.selectedOptions.length > 0 ? idCentroCostoEl.selectedOptions[0].text.trim() : '';
-			const subCentroCostoTexto = idSubCentroCostoEl && idSubCentroCostoEl.selectedOptions.length > 0 ? idSubCentroCostoEl.selectedOptions[0].text.trim() : '';
+			const subCentroCostoTexto = idSubCentroCosto
+				? (idSubCentroCostoEl && idSubCentroCostoEl.selectedOptions.length > 0 ? idSubCentroCostoEl.selectedOptions[0].text.trim() : '')
+				: '';
 			const nroPedido = nroPedidoEl ? nroPedidoEl.value : '';
 			const codigoMeta = codigoMetaEl ? codigoMetaEl.value : '';
 			const anio = anioEl ? anioEl.value : '';

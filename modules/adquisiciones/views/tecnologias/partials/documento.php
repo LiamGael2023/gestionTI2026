@@ -92,9 +92,17 @@
 			}
 
 			const BootstrapModal = obtenerBootstrapModal();
-			if (!BootstrapModal && !(typeof $ !== 'undefined' && $.fn.modal)) {
-				cerrarModalFallback(modalElement);
+			if (BootstrapModal) {
+				BootstrapModal.getOrCreateInstance(modalElement).hide();
+				return;
 			}
+
+			if (typeof $ !== 'undefined' && $.fn.modal) {
+				$(modalElement).modal('hide');
+				return;
+			}
+
+			cerrarModalFallback(modalElement);
 		});
 	}
 </script>

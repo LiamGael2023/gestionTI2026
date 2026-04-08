@@ -26,6 +26,16 @@ class CatalogoTecnologicoModel
 					WHERE d2.IdCatalogoTecnologico = ct.Id AND r2.Anio = ?
 					FOR XML PATH(''), TYPE
 				).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS CodigosSiga,
+				CASE
+					WHEN EXISTS (
+						SELECT 1
+						FROM adquisiciones.PresupuestoTecnologia pt
+						WHERE pt.IdCatalogoTecnologico = ct.Id
+						  AND pt.Anio = ?
+						  AND pt.Monto IS NOT NULL
+					) THEN 1
+					ELSE 0
+				END AS TienePrecio,
 				CASE 
 					WHEN ca.Id IS NOT NULL AND ca.Estado = 1 THEN 1
 					ELSE 0
@@ -54,7 +64,7 @@ class CatalogoTecnologicoModel
 				ct.NombreGenerico
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta]);
+		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta, $anioConsulta, $anioConsulta, $anioConsulta]);
 		if ($stmt === false) {
 			return [];
 		}
