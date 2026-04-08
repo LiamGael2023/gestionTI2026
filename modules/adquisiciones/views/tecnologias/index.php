@@ -281,8 +281,11 @@
 		modal.show();
 	}
 
-	document.getElementById('formPresupuestoTecnologia').addEventListener('submit', function(event) {
-		event.preventDefault();
+	const formPresupuestoTecnologia = document.getElementById('formPresupuestoTecnologia');
+	if (formPresupuestoTecnologia && formPresupuestoTecnologia.dataset.boundSubmit !== '1') {
+		formPresupuestoTecnologia.dataset.boundSubmit = '1';
+		formPresupuestoTecnologia.addEventListener('submit', function(event) {
+			event.preventDefault();
 
 		const btnGuardar = document.getElementById('btn-guardar-presupuesto');
 		const idCatalogo = parseInt(document.getElementById('presupuestoIdCatalogo').value, 10);
@@ -298,7 +301,7 @@
 		btnGuardar.disabled = true;
 		btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
 
-		$.ajax({
+			$.ajax({
 			url: 'index.php?module=adquisiciones&action=guardarPresupuestoTecnologiaAjax',
 			type: 'POST',
 			dataType: 'json',
@@ -319,10 +322,15 @@
 				btnGuardar.innerHTML = 'Guardar';
 				window.adqNotifySafe('danger', 'Error de conexión', 'Ocurrió un error al conectar con el servidor.');
 			}
+			});
 		});
-	});
+	}
 
-	document.getElementById('modalPresupuestoTecnologia').addEventListener('hidden.bs.modal', function() {
-		document.getElementById('formPresupuestoTecnologia').reset();
-	});
+	const modalPresupuestoTecnologia = document.getElementById('modalPresupuestoTecnologia');
+	if (modalPresupuestoTecnologia && modalPresupuestoTecnologia.dataset.boundHidden !== '1') {
+		modalPresupuestoTecnologia.dataset.boundHidden = '1';
+		modalPresupuestoTecnologia.addEventListener('hidden.bs.modal', function() {
+			document.getElementById('formPresupuestoTecnologia').reset();
+		});
+	}
 </script>

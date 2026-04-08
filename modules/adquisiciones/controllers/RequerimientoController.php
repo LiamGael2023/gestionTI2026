@@ -153,10 +153,12 @@ switch ($action) {
 		$aniosDisponibles = $model->obtenerAniosDisponibles();
 		$anioSolicitud = isset($_POST['anio']) && $_POST['anio'] !== '' ? (int) $_POST['anio'] : $anioFiltro;
 		$anioConsulta = resolverAnioFiltro($anioSolicitud, $aniosDisponibles);
-		$filas = $model->obtenerConsolidadoFormatoOficial($anioConsulta);
+		$metasCabecera = $model->obtenerMetasCabeceraConsolidado($anioConsulta);
+		$filas = $model->obtenerConsolidadoFormatoOficial($anioConsulta, $metasCabecera);
 		echo json_encode([
 			'success' => true,
 			'anio' => (int) $anioConsulta,
+			'metasCabecera' => $metasCabecera,
 			'filas' => $filas,
 		]);
 		exit;

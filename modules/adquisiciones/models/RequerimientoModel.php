@@ -486,76 +486,153 @@ class RequerimientoModel
 		];
 	}
 
-	public function obtenerConsolidadoFormatoOficial($anio)
+	public function obtenerConsolidadoFormatoOficial($anio, $metasCabecera = [])
 	{
+		$metasNormalizadas = $this->normalizarMetasCabeceraOficial($metasCabecera);
+		$selectMetas = [];
+		$params = [];
+
+		foreach ($metasNormalizadas as $meta) {
+			$idMetaSiaf = (int) ($meta['IdMetaSIAF'] ?? 0);
+			$codigoMeta = $meta['CodigoMeta'];
+			$aliasMeta = $this->obtenerAliasMetaOficial($codigoMeta);
+			$selectMetas[] = "
+				SUM(
+					CASE
+						WHEN (
+							(? > 0 AND r.IdMetaSIAF = ?)
+							OR RIGHT('0000' + LTRIM(RTRIM(ISNULL(ms.CodigoMeta, ISNULL(r.CodigoMeta, '')))), 4) = RIGHT('0000' + ?, 4)
+						)
+						THEN d.Cantidad
+						ELSE 0
+					END
+				) AS [{$aliasMeta}]
+			";
+			$params[] = $idMetaSiaf;
+			$params[] = $idMetaSiaf;
+			$params[] = $codigoMeta;
+		}
+
+		$sqlSelectMetas = '';
+		if (!empty($selectMetas)) {
+			$sqlSelectMetas = implode(",\n", $selectMetas) . ",\n";
+		}
+
 		$sql = "
 			SELECT
 				UPPER(LTRIM(RTRIM(ISNULL(ct.Codigo, '')))) AS TipoCodigo,
 				UPPER(LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN TIPO')))) AS TipoNombre,
-				LTRIM(RTRIM(ISNULL(d.DescripcionDetallada, ''))) AS Componente,
-				LTRIM(RTRIM(ISNULL(d.CodigoSiga, ''))) AS Referencia,
-				UPPER(LTRIM(RTRIM(ISNULL(d.UnidadMedida, '')))) AS UnidadMedida,
+				'' AS Componente,
+				'' AS Referencia,
+				UPPER(LTRIM(RTRIM(ISNULL(MAX(d.UnidadMedida), '')))) AS UnidadMedida,
 				MAX(pt.Monto) AS PrecioUnitario,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '001' THEN d.Cantidad ELSE 0 END) AS Meta001,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '002' THEN d.Cantidad ELSE 0 END) AS Meta002,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '003' THEN d.Cantidad ELSE 0 END) AS Meta003,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '004' THEN d.Cantidad ELSE 0 END) AS Meta004,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '005' THEN d.Cantidad ELSE 0 END) AS Meta005,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '006' THEN d.Cantidad ELSE 0 END) AS Meta006,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '007' THEN d.Cantidad ELSE 0 END) AS Meta007,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '008' THEN d.Cantidad ELSE 0 END) AS Meta008,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '009' THEN d.Cantidad ELSE 0 END) AS Meta009,
-				SUM(CASE WHEN RIGHT('000' + LTRIM(RTRIM(ISNULL(r.CodigoMeta, ''))), 3) = '010' THEN d.Cantidad ELSE 0 END) AS Meta010,
+				{$sqlSelectMetas}
 				SUM(d.Cantidad) AS TotalInicial
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
+				LEFT JOIN adquisiciones.MetaSIAF ms ON ms.Id = r.IdMetaSIAF
 			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
 			LEFT JOIN adquisiciones.PresupuestoTecnologia pt
 				ON pt.IdCatalogoTecnologico = d.IdCatalogoTecnologico
 				AND pt.Anio = r.Anio
 			WHERE r.Anio = ?
 			GROUP BY
+				ct.Id,
 				ct.Codigo,
-				ct.NombreGenerico,
-				d.DescripcionDetallada,
-				d.CodigoSiga,
-				d.UnidadMedida
+				ct.NombreGenerico
 			ORDER BY
 				ct.Codigo,
-				ct.NombreGenerico,
-				d.DescripcionDetallada
+				ct.NombreGenerico
 		";
 
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $anio]);
+		$params[] = (int) $anio;
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if ($stmt === false) {
 			return [];
 		}
 
 		$data = [];
 		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-			$data[] = [
+			$fila = [
 				'TipoCodigo' => (string) ($row['TipoCodigo'] ?? ''),
 				'TipoNombre' => (string) ($row['TipoNombre'] ?? ''),
 				'Componente' => (string) ($row['Componente'] ?? ''),
 				'Referencia' => (string) ($row['Referencia'] ?? ''),
 				'UnidadMedida' => (string) ($row['UnidadMedida'] ?? ''),
 				'PrecioUnitario' => $row['PrecioUnitario'] !== null ? (float) $row['PrecioUnitario'] : null,
-				'Meta001' => (int) ($row['Meta001'] ?? 0),
-				'Meta002' => (int) ($row['Meta002'] ?? 0),
-				'Meta003' => (int) ($row['Meta003'] ?? 0),
-				'Meta004' => (int) ($row['Meta004'] ?? 0),
-				'Meta005' => (int) ($row['Meta005'] ?? 0),
-				'Meta006' => (int) ($row['Meta006'] ?? 0),
-				'Meta007' => (int) ($row['Meta007'] ?? 0),
-				'Meta008' => (int) ($row['Meta008'] ?? 0),
-				'Meta009' => (int) ($row['Meta009'] ?? 0),
-				'Meta010' => (int) ($row['Meta010'] ?? 0),
 				'TotalInicial' => (int) ($row['TotalInicial'] ?? 0),
 			];
+
+			foreach ($metasNormalizadas as $meta) {
+				$aliasMeta = $this->obtenerAliasMetaOficial($meta['CodigoMeta']);
+				$fila[$aliasMeta] = (int) $this->obtenerValorAliasFila($row, $aliasMeta, 0);
+			}
+
+			$data[] = $fila;
 		}
 
 		sqlsrv_free_stmt($stmt);
 		return $data;
+	}
+
+	private function obtenerValorAliasFila(array $row, $alias, $valorDefault = null)
+	{
+		if (array_key_exists($alias, $row)) {
+			return $row[$alias];
+		}
+
+		foreach ($row as $clave => $valor) {
+			if (strcasecmp((string) $clave, (string) $alias) === 0) {
+				return $valor;
+			}
+		}
+
+		return $valorDefault;
+	}
+
+	private function normalizarMetasCabeceraOficial($metasCabecera)
+	{
+		$salida = [];
+		$vistos = [];
+
+		if (!is_array($metasCabecera)) {
+			return $salida;
+		}
+
+		foreach ($metasCabecera as $meta) {
+			if (!is_array($meta)) {
+				continue;
+			}
+
+			$codigo = $this->normalizarCodigoMetaSiaf($meta['CodigoMeta'] ?? null);
+			if ($codigo === null) {
+				continue;
+			}
+
+			$idMetaSiaf = isset($meta['IdMetaSIAF']) ? (int) $meta['IdMetaSIAF'] : 0;
+			if ($idMetaSiaf <= 0 && isset($meta['Id'])) {
+				$idMetaSiaf = (int) $meta['Id'];
+			}
+
+			if (isset($vistos[$codigo])) {
+				continue;
+			}
+
+			$vistos[$codigo] = true;
+			$salida[] = [
+				'CodigoMeta' => $codigo,
+				'IdMetaSIAF' => $idMetaSiaf,
+			];
+		}
+
+		return $salida;
+	}
+
+	private function obtenerAliasMetaOficial($codigoMeta)
+	{
+		$codigo = preg_replace('/[^0-9]/', '', (string) $codigoMeta);
+		$codigo = str_pad($codigo, 4, '0', STR_PAD_LEFT);
+		return 'Meta' . $codigo;
 	}
 
 	private function fetchAll($sql, $params = [])
@@ -807,6 +884,53 @@ class RequerimientoModel
 		";
 
 		return $this->fetchAll($sql);
+	}
+
+	public function obtenerMetasCabeceraConsolidado($anio)
+	{
+		$metas = $this->obtenerMetasSiafActivas();
+		$mapa = [];
+
+		foreach ($metas as $meta) {
+			$codigo = $this->normalizarCodigoMetaSiaf($meta['CodigoMeta'] ?? null);
+			if ($codigo === null) {
+				continue;
+			}
+
+			$mapa[$codigo] = [
+				'Id' => (int) ($meta['Id'] ?? 0),
+				'CodigoMeta' => $codigo,
+				'Descripcion' => trim((string) ($meta['Descripcion'] ?? '')),
+			];
+		}
+
+		$sqlUsadas = "
+			SELECT DISTINCT LTRIM(RTRIM(CodigoMeta)) AS CodigoMeta
+			FROM adquisiciones.Requerimiento
+			WHERE Anio = ?
+			  AND NULLIF(LTRIM(RTRIM(ISNULL(CodigoMeta, ''))), '') IS NOT NULL
+		";
+
+		$usadas = $this->fetchAll($sqlUsadas, [(int) $anio]);
+		foreach ($usadas as $fila) {
+			$codigo = $this->normalizarCodigoMetaSiaf($fila['CodigoMeta'] ?? null);
+			if ($codigo === null || isset($mapa[$codigo])) {
+				continue;
+			}
+
+			$mapa[$codigo] = [
+				'Id' => 0,
+				'CodigoMeta' => $codigo,
+				'Descripcion' => 'META ' . $codigo,
+			];
+		}
+
+		$resultado = array_values($mapa);
+		usort($resultado, function ($a, $b) {
+			return strcmp((string) ($a['CodigoMeta'] ?? ''), (string) ($b['CodigoMeta'] ?? ''));
+		});
+
+		return $resultado;
 	}
 
 	public function agregarMetaSiaf($codigoMeta, $descripcion, $idUsuarioRegistro = null)

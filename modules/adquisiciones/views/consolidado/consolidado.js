@@ -1,12 +1,3 @@
-var CONSOLIDADO_OFICIAL_SECCIONES = [
-	{ id: '1.1', titulo: 'DE EQUIPOS DE COMPUTO DE PROCESAMIENTO DISENO INGENIERIA (T1)', codigos: ['T1'] },
-	{ id: '1.2', titulo: 'DE EQUIPOS DE COMPUTO ESTANDAR (T2)', codigos: ['T2'] },
-	{ id: '1.3', titulo: 'DE EQUIPOS PORTATILES ESTANDAR (T3) Y INGENIERIA (T4), DISENO (T26)', codigos: ['T3', 'T4', 'T26'] },
-	{ id: '1.4', titulo: 'DE EQUIPOS DE IMPRESION (T5, T6, T8)', codigos: ['T5', 'T6', 'T8'] },
-	{ id: '1.5', titulo: 'DE ESCANER (T16)', codigos: ['T16'] },
-	{ id: '1.6', titulo: 'DE DISCOS DUROS EXTERNOS (T27, T28, T29)', codigos: ['T27', 'T28', 'T29'] },
-];
-
 function exportarConsolidado() {
 	if (!xlsxDisponible()) {
 		return;
@@ -90,22 +81,25 @@ function exportarConsolidadoOficial() {
 			}
 
 			var filas = Array.isArray(data.filas) ? data.filas : [];
+			var metasCabecera = normalizarMetasCabeceraOficial(data.metasCabecera);
+			if (metasCabecera.length === 0) {
+				notificar('error', 'No se pudo exportar', 'No hay metas SIAF activas para construir la cabecera del consolidado.');
+				return;
+			}
 			if (filas.length === 0) {
 				notificar('info', 'Sin datos para exportar', 'No hay información para el año seleccionado.');
 				return;
 			}
 
-			exportarFormatoOficialXlsx(filas, String(data.anio || anio || ''));
+			exportarFormatoOficialXlsx(filas, String(data.anio || anio || ''), metasCabecera);
 		})
 		.catch(function(error) {
 			notificar('error', 'No se pudo exportar', error && error.message ? error.message : 'Error inesperado.');
 		});
 }
 
-function exportarFormatoOficialXlsx(filas, anio) {
-	var secciones = construirSeccionesConAnio(anio);
-	var metas = obtenerMetasOficiales();
-	var agrupado = agruparPorSeccion(filas, secciones);
+function exportarFormatoOficialXlsx(filas, anio, metasCabecera) {
+	var metas = metasCabecera;
 	var filasHoja = [];
 	var merges = [];
 	var contadorItem = 1;
@@ -116,6 +110,14 @@ function exportarFormatoOficialXlsx(filas, anio) {
 	var indiceTotalInicial = indiceFinMetas + 1;
 	var indiceMontoTotal = indiceFinMetas + 2;
 	var totalColumnas = indiceMontoTotal + 1;
+	var layout = {
+		columnasFijas: columnasFijas,
+		indiceInicioMetas: indiceInicioMetas,
+		indiceTotalInicial: indiceTotalInicial,
+		indiceMontoTotal: indiceMontoTotal,
+		totalColumnas: totalColumnas,
+	};
+    var totalGeneral = crearTotalesAcumulados(metas);
 
 	var filaCabecera1 = new Array(totalColumnas).fill('');
 	var filaCabecera2 = new Array(totalColumnas).fill('');
@@ -125,8 +127,8 @@ function exportarFormatoOficialXlsx(filas, anio) {
 	filaCabecera1[2] = 'TIPO DE EQUIPO';
 	filaCabecera1[3] = 'DESCRIPCION DEL COMPONENTE';
 	filaCabecera1[4] = 'REFERENCIA';
-	filaCabecera1[5] = 'UNIDAD MEDIDA';
-	filaCabecera1[6] = 'PRECIO UNITARIO';
+	filaCabecera1[5] = 'UNIDAD DE MEDIDA';
+	filaCabecera1[6] = 'PRECIO UNITARIO REFERENCIA';
 	filaCabecera1[indiceInicioMetas] = 'METAS SIAF';
 	filaCabecera1[indiceTotalInicial] = 'TOTAL INICIAL';
 	filaCabecera1[indiceMontoTotal] = 'MONTO TOTAL';
@@ -152,40 +154,13 @@ function exportarFormatoOficialXlsx(filas, anio) {
 	merges.push(rango(0, indiceTotalInicial, 1, indiceTotalInicial));
 	merges.push(rango(0, indiceMontoTotal, 1, indiceMontoTotal));
 
-	for (var s = 0; s < secciones.length; s++) {
-		var seccion = secciones[s];
-		var items = agrupado[seccion.id] || [];
-		if (items.length === 0) {
-			continue;
-		}
-
-		filasHoja.push([seccion.id + ' ' + seccion.titulo]);
-		merges.push(rango(filasHoja.length - 1, 0, filasHoja.length - 1, totalColumnas - 1));
-
-		for (var i = 0; i < items.length; i++) {
-			filasHoja.push(construirFilaDetalleOficial(items[i], contadorItem, metas));
-			contadorItem++;
-		}
-
-		filasHoja.push(construirFilaResumenOficial('SUBTOTAL ' + seccion.id, totalColumnas));
-		merges.push(rango(filasHoja.length - 1, 0, filasHoja.length - 1, 6));
+	for (var i = 0; i < filas.length; i++) {
+		acumularTotalesItem(totalGeneral, filas[i], metas);
+		filasHoja.push(construirFilaDetalleOficial(filas[i], contadorItem, metas, layout));
+		contadorItem++;
 	}
 
-	var otros = agrupado.otros || [];
-	if (otros.length > 0) {
-		filasHoja.push(['OTROS TIPOS']);
-		merges.push(rango(filasHoja.length - 1, 0, filasHoja.length - 1, totalColumnas - 1));
-
-		for (var o = 0; o < otros.length; o++) {
-			filasHoja.push(construirFilaDetalleOficial(otros[o], contadorItem, metas));
-			contadorItem++;
-		}
-
-		filasHoja.push(construirFilaResumenOficial('SUBTOTAL OTROS', totalColumnas));
-		merges.push(rango(filasHoja.length - 1, 0, filasHoja.length - 1, 6));
-	}
-
-	filasHoja.push(construirFilaResumenOficial('TOTAL GENERAL', totalColumnas));
+	filasHoja.push(construirFilaResumenOficial('TOTAL GENERAL', totalGeneral, metas, layout));
 	merges.push(rango(filasHoja.length - 1, 0, filasHoja.length - 1, 6));
 
 	var worksheet = XLSX.utils.aoa_to_sheet(filasHoja, { sheetStubs: true });
@@ -212,18 +187,10 @@ function exportarFormatoOficialXlsx(filas, anio) {
 	XLSX.writeFile(workbook, 'RESUMEN_Consolidado_Oficial_' + (anio || 'sin_anio') + '.xlsx');
 }
 
-function construirSeccionesConAnio(anio) {
-	var prefijo = 'CONSOLIDADO DE REQUERIMIENTO ' + anio + ' ';
-	return CONSOLIDADO_OFICIAL_SECCIONES.map(function(seccion) {
-		return {
-			id: seccion.id,
-			titulo: prefijo + seccion.titulo,
-			codigos: seccion.codigos.slice(),
-		};
-	});
-}
-
-function construirFilaDetalleOficial(fila, contadorItem, metas) {
+function construirFilaDetalleOficial(fila, contadorItem, metas, layout) {
+	var precioUnitario = valorNumeroSeguro(fila.PrecioUnitario);
+	var totalInicial = 0;
+	var montoTotal = 0;
 	var filaHoja = [
 		contadorItem,
 		'',
@@ -231,65 +198,134 @@ function construirFilaDetalleOficial(fila, contadorItem, metas) {
 		'',
 		'',
 		valorTexto(fila.UnidadMedida),
-		valorNumeroSeguro(fila.PrecioUnitario),
+		precioUnitario,
 	];
 
 	for (var meta = 0; meta < metas.length; meta++) {
-		var clave = 'Meta' + metas[meta].codigo;
-		filaHoja.push('');
-		filaHoja.push(valorNumeroPositivo(fila[clave]));
+		var cantidad = obtenerCantidadMetaFila(fila, metas[meta].codigo);
+		var montoMeta = redondearMonto(cantidad * (Number(precioUnitario) || 0));
+		totalInicial += cantidad;
+		montoTotal += montoMeta;
+		filaHoja.push(valorNumeroPositivo(cantidad));
+		filaHoja.push(valorNumeroPositivo(montoMeta));
 	}
 
-	filaHoja.push('');
-	filaHoja.push('');
+	filaHoja.push(valorNumeroPositivo(totalInicial));
+	filaHoja.push(valorNumeroPositivo(redondearMonto(montoTotal)));
 	return filaHoja;
 }
 
-function construirFilaResumenOficial(etiqueta, totalColumnas) {
-	var fila = [etiqueta];
-	for (var indice = 1; indice < totalColumnas; indice++) {
-		fila.push('');
+function construirFilaResumenOficial(etiqueta, totales, metas, layout) {
+	var fila = new Array(layout.totalColumnas).fill('');
+	fila[0] = etiqueta;
+
+	for (var meta = 0; meta < metas.length; meta++) {
+		var colCantidad = layout.indiceInicioMetas + (meta * 2);
+		var colMonto = colCantidad + 1;
+		fila[colCantidad] = valorNumeroPositivo(totales.cantidades[meta]);
+		fila[colMonto] = valorNumeroPositivo(redondearMonto(totales.montos[meta]));
 	}
+
+	fila[layout.indiceTotalInicial] = valorNumeroPositivo(totales.totalInicial);
+	fila[layout.indiceMontoTotal] = valorNumeroPositivo(redondearMonto(totales.montoTotal));
 	return fila;
 }
 
-function obtenerMetasOficiales() {
-	return [
-		{ codigo: '003', nombre: 'PRODUCCION AGRARIA' },
-		{ codigo: '004', nombre: 'CONTROL INTERNO' },
-		{ codigo: '005', nombre: 'DIRECCION TEC. SUPERVISION Y ADMINISTRACION' },
-		{ codigo: '006', nombre: 'MEDIO AMBIENTE' },
-		{ codigo: '007', nombre: 'SANEAMIENTO FISICO LEGAL' },
-		{ codigo: '008', nombre: 'UTF' },
-		{ codigo: '009', nombre: 'SGOYM' },
-		{ codigo: '010', nombre: 'PTAP' },
-	];
+function crearTotalesAcumulados(metas) {
+	return {
+		cantidades: new Array(metas.length).fill(0),
+		montos: new Array(metas.length).fill(0),
+		totalInicial: 0,
+		montoTotal: 0,
+	};
 }
 
-function agruparPorSeccion(filas, secciones) {
-	var salida = { otros: [] };
-	for (var s = 0; s < secciones.length; s++) {
-		salida[secciones[s].id] = [];
+function acumularTotalesItem(totales, fila, metas) {
+	var precioUnitario = Number(valorNumeroSeguro(fila.PrecioUnitario) || 0);
+	for (var meta = 0; meta < metas.length; meta++) {
+		var cantidad = obtenerCantidadMetaFila(fila, metas[meta].codigo);
+		var monto = redondearMonto(cantidad * precioUnitario);
+		totales.cantidades[meta] += cantidad;
+		totales.montos[meta] += monto;
+		totales.totalInicial += cantidad;
+		totales.montoTotal += monto;
+	}
+}
+
+function obtenerCantidadMetaFila(fila, codigoMeta) {
+	if (!fila || typeof fila !== 'object') {
+		return 0;
 	}
 
-	for (var i = 0; i < filas.length; i++) {
-		var fila = filas[i];
-		var codigo = String(fila.TipoCodigo || '').toUpperCase().trim();
-		var seccionEncontrada = null;
-		for (var j = 0; j < secciones.length; j++) {
-			if (secciones[j].codigos.indexOf(codigo) >= 0) {
-				seccionEncontrada = secciones[j].id;
-				break;
-			}
+	var codigo = normalizarCodigoMetaSiaf(codigoMeta);
+	var clave4 = obtenerClaveMetaCampo(codigo);
+	var clave3 = 'Meta' + codigo.padStart(3, '0');
+
+	if (Object.prototype.hasOwnProperty.call(fila, clave4)) {
+		return valorNumeroCantidad(fila[clave4]);
+	}
+
+	if (Object.prototype.hasOwnProperty.call(fila, clave3)) {
+		return valorNumeroCantidad(fila[clave3]);
+	}
+
+	return 0;
+}
+
+function valorNumeroCantidad(valor) {
+	var n = Number(valor || 0);
+	return isNaN(n) ? 0 : n;
+}
+
+function redondearMonto(valor) {
+	return Math.round((Number(valor || 0) + Number.EPSILON) * 100) / 100;
+}
+
+function normalizarMetasCabeceraOficial(metasRaw) {
+	if (!Array.isArray(metasRaw)) {
+		return [];
+	}
+
+	var salida = [];
+	var vistos = {};
+
+	for (var i = 0; i < metasRaw.length; i++) {
+		var meta = metasRaw[i] || {};
+		var codigo = normalizarCodigoMetaSiaf(meta.CodigoMeta || meta.codigo || '');
+		if (!codigo || vistos[codigo]) {
+			continue;
 		}
-		if (seccionEncontrada) {
-			salida[seccionEncontrada].push(fila);
-		} else {
-			salida.otros.push(fila);
-		}
+
+		vistos[codigo] = true;
+		salida.push({
+			codigo: codigo,
+			nombre: valorTexto(meta.Descripcion || meta.nombre || codigo),
+		});
 	}
 
 	return salida;
+}
+
+function normalizarCodigoMetaSiaf(codigo) {
+	var limpio = valorTexto(codigo).replace(/[^0-9]/g, '');
+	if (!limpio) {
+		return '';
+	}
+	if (limpio.length < 3) {
+		limpio = limpio.padStart(3, '0');
+	}
+	if (limpio.length > 4) {
+		limpio = limpio.slice(-4);
+	}
+	return limpio;
+}
+
+function obtenerClaveMetaCampo(codigoMeta) {
+	var codigo = normalizarCodigoMetaSiaf(codigoMeta);
+	if (!codigo) {
+		return '';
+	}
+	return 'Meta' + codigo.padStart(4, '0');
 }
 
 function filaDesdeDom(tr, totalColumnas) {

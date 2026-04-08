@@ -777,6 +777,16 @@ switch ($action) {
 			if ($resultado) {
 				responderJson(['ok' => true, 'accion' => 'creado']);
 			}
+
+			// Idempotencia: si el INSERT fallo pero el registro ya existe, tratarlo como actualizado.
+			$existenteTrasFallo = $presupuestoModel->obtenerPorTecnologiaYAnio($idCat, $anio);
+			if ($existenteTrasFallo) {
+				$ok = $presupuestoModel->actualizar((int) $existenteTrasFallo['Id'], ['Monto' => $monto]);
+				if ($ok) {
+					responderJson(['ok' => true, 'accion' => 'actualizado']);
+				}
+			}
+
 			responderErrorSql('No se pudo registrar el presupuesto.');
 		}
 
