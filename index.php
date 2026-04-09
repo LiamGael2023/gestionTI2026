@@ -96,6 +96,9 @@ if (in_array($module, $modulos_estaticos)) {
             case 'adquisiciones':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Adquisiciones (Cristian)</div></div></div>';
                 break;
+            case 'chatbot':
+                echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Chavibot (Rommel Díaz)</div></div></div>';
+                break;
             default:
                 echo '<div class="container-xl">
                         <div class="alert alert-danger">
