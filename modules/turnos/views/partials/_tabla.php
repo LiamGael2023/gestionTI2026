@@ -6,7 +6,7 @@
         <thead>
           <tr>
             <th><input type="checkbox" id="checkAll"></th>
-            <th>T. Trabajador</th>
+            <th>Tipo Trab.</th>
             <th>Nombre</th>
             <th>Componente</th>
             <th>Meta</th>
