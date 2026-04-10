@@ -6,55 +6,47 @@
  *   1. Navegador web  → tiene $_SESSION['usuario_id']
  *   2. Node.js (WA)   → envía node_token en el POST
  *
- * IMPORTANTE: verificar node_token ANTES de verificar la sesión
+ * IMPORTANTE: node_token se verifica ANTES de la sesión PHP
  */
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-// ── PASO 1: Leer el token que envía Node.js ───────────────────────────────
-$nodeTokenRecibido = trim($_POST['node_token'] ?? '');
-
-// ── PASO 2: Cargar db.php y whatsapp.php ─────────────────────────────────
+// ── Cargar db.php ─────────────────────────────────────────────────────────
 $posiblesDb = [
-    dirname(__DIR__, 3) . '/config/db.php',  // raíz/config/db.php  ← el correcto
+    dirname(__DIR__, 3) . '/config/db.php',
     dirname(__DIR__, 2) . '/config/db.php',
     dirname(__DIR__)    . '/config/db.php',
 ];
 $dbPath = null;
-foreach ($posiblesDb as $ruta) {
-    if (file_exists($ruta)) { $dbPath = $ruta; break; }
-}
+foreach ($posiblesDb as $r) { if (file_exists($r)) { $dbPath = $r; break; } }
 if (!$dbPath) {
     echo json_encode(['error'=>true,'mensaje'=>'db.php no encontrado','rutas'=>$posiblesDb]);
     exit;
 }
 require_once $dbPath;
 
-// Cargar whatsapp.php que define WA_NODE_TOKEN
+// ── Cargar whatsapp.php (define WA_NODE_TOKEN) ────────────────────────────
 $waPath = dirname(__DIR__) . '/config/whatsapp.php';
-if (file_exists($waPath)) {
-    require_once $waPath;
-}
-// Si no existe, definir token por defecto
+if (file_exists($waPath)) require_once $waPath;
 if (!defined('WA_NODE_TOKEN'))    define('WA_NODE_TOKEN',    'chavibot_node_2026');
-if (!defined('API_PERSONAL_URL')) define('API_PERSONAL_URL', 'https://www.chavimochic.gob.pe/api_incidencias/api_personal.php');
+if (!defined('API_PERSONAL_URL')) define('API_PERSONAL_URL', '');
 
-// ── PASO 3: Determinar si viene de Node.js o del navegador ────────────────
-$esNode = ($nodeTokenRecibido !== '' && $nodeTokenRecibido === WA_NODE_TOKEN);
+// ── Verificar origen ──────────────────────────────────────────────────────
+$nodeToken = trim($_POST['node_token'] ?? '');
+$esNode    = ($nodeToken !== '' && $nodeToken === WA_NODE_TOKEN);
 
-// ── PASO 4: Autorización ──────────────────────────────────────────────────
 if (!$esNode) {
-    // Llamada desde el navegador: verificar sesión PHP
-    // Auth.php del sistema guarda exactamente: $_SESSION['usuario_id']
+    // Llamada web: requiere sesión PHP
+    // Auth.php guarda: $_SESSION['usuario_id']
     $uid = intval($_SESSION['usuario_id'] ?? $_SESSION['id_usuario'] ?? 0);
     if ($uid === 0) {
         http_response_code(403);
         echo json_encode([
             'error'        => true,
             'code'         => 'access_denied',
-            'mensaje'      => 'Sesión no válida. Recarga e inicia sesión.',
-            'session_keys' => array_keys($_SESSION), // debug — quitar en producción
+            'mensaje'      => 'Sesión no válida.',
+            'session_keys' => array_keys($_SESSION),
         ]);
         exit;
     }
@@ -66,14 +58,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once dirname(__DIR__) . '/controllers/ChavibotController.php';
-
 $accion = trim($_POST['accion'] ?? '');
 
-// ══════════════════════════════════════════════════════════════════════════
-// ACCIONES WEB (desde el navegador)
-// ══════════════════════════════════════════════════════════════════════════
 switch ($accion) {
 
+    // ══════════════════════════════════════════════════════════════════════
+    // ACCIONES WEB
+    // ══════════════════════════════════════════════════════════════════════
     case 'responder':
         $msg = trim($_POST['mensaje'] ?? '');
         if (!$msg) { echo json_encode(['error'=>true,'respuesta'=>'Mensaje vacío.']); break; }
@@ -97,6 +88,7 @@ switch ($accion) {
         break;
 
     case 'diagnostico':
+        require_once dirname(__DIR__) . '/models/ChavibotModel.php';
         $perfil = ChavibotModel::mdlObtenerPerfil();
         $conn   = Conexion::conectar();
         echo json_encode([
@@ -105,66 +97,77 @@ switch ($accion) {
             'perfil'       => $perfil,
             'sql_ok'       => ($conn !== false),
             'session'      => $_SESSION,
-            'wa_token_ok'  => defined('WA_NODE_TOKEN'),
             'db_path'      => $dbPath,
         ]);
         if ($conn) sqlsrv_close($conn);
         break;
 
     // ══════════════════════════════════════════════════════════════════════
-    // ACCIONES DE NODE.JS (WhatsApp con Baileys)
+    // ACCIONES NODE.JS (WhatsApp)
     // ══════════════════════════════════════════════════════════════════════
 
-    case 'wa_buscar_dni':
-        if (!$esNode) {
-            echo json_encode(['error'=>true,'mensaje'=>'No autorizado.']);
-            break;
-        }
-        $dni = preg_replace('/\D/', '', $_POST['dni'] ?? '');
-        if (strlen($dni) !== 8) {
-            echo json_encode(['error'=>true,'persona'=>null,'mensaje'=>'DNI inválido']);
-            break;
-        }
+    /**
+     * LOGIN WhatsApp: verifica usuario+contraseña contra comun.Usuarios
+     * Igual que AuthController.php pero para WhatsApp
+     */
+    case 'wa_login':
+        if (!$esNode) { echo json_encode(['error'=>true,'usuario'=>null]); break; }
 
-        require_once dirname(__DIR__) . '/models/ChavibotModel.php';
-        $data = ChavibotModel::mdlBuscarPersonalPorDni($dni);
+        $usuarioInput   = trim($_POST['usuario']    ?? '');
+        $contrasenaInput= trim($_POST['contrasena'] ?? '');
 
-        if (empty($data)) {
-            echo json_encode(['error'=>true,'persona'=>null,'mensaje'=>'No encontrado']);
+        if (!$usuarioInput || !$contrasenaInput) {
+            echo json_encode(['error'=>true,'usuario'=>null,'mensaje'=>'Datos incompletos']);
             break;
         }
 
-        // Normalizar respuesta de la API
-        $p = is_array($data[0] ?? null) ? $data[0] : $data;
-
-        // Obtener rol desde comun.Usuarios por documento
-        $rol  = 'usuario';
         $conn = Conexion::conectar();
-        if ($conn) {
-            $stmt = sqlsrv_query($conn,
-                "SELECT LOWER(u.rol) AS rol FROM [comun].[Usuarios] u
-                 WHERE u.documento = ? AND u.activo = 1",
-                [[$dni, SQLSRV_PARAM_IN]]
-            );
-            if ($stmt) {
-                $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-                if ($row) $rol = $row['rol'] ?? 'usuario';
-                sqlsrv_free_stmt($stmt);
+        if (!$conn) {
+            echo json_encode(['error'=>true,'usuario'=>null,'mensaje'=>'Error de BD']);
+            break;
+        }
+
+        // Misma query que AuthModel.php
+        $sql  = "SELECT id_usuario, usuario, contrasenia, nombres, apellidos, rol, sede_id
+                 FROM [comun].[Usuarios]
+                 WHERE usuario = ? AND activo = 1";
+        $stmt = sqlsrv_query($conn, $sql, [[$usuarioInput, SQLSRV_PARAM_IN]]);
+        $user = null;
+
+        if ($stmt) {
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            if ($row && password_verify($contrasenaInput, $row['contrasenia'])) {
+                $user = $row;
             }
-            sqlsrv_close($conn);
+            sqlsrv_free_stmt($stmt);
+        }
+        sqlsrv_close($conn);
+
+        if (!$user) {
+            echo json_encode([
+                'error'   => true,
+                'usuario' => null,
+                'mensaje' => 'Usuario o contraseña incorrectos',
+            ]);
+            break;
         }
 
         echo json_encode([
             'error'   => false,
-            'persona' => [
-                'nombres'   => $p['nombres']   ?? $p['NOMBRES']   ?? '',
-                'apellidos' => $p['apellidos'] ?? $p['APELLIDOS'] ?? '',
-                'area'      => $p['area']       ?? $p['AREA']     ?? '',
-                'rol'       => $rol,
+            'usuario' => [
+                'id_usuario' => $user['id_usuario'],
+                'usuario'    => $user['usuario'],
+                'nombres'    => $user['nombres'],
+                'apellidos'  => $user['apellidos'] ?? '',
+                'rol'        => strtolower($user['rol'] ?? 'usuario'),
+                'area'       => '',  // se puede extender si tienes área en la tabla
             ],
         ]);
         break;
 
+    /**
+     * RESPONDER: procesa una pregunta y devuelve respuesta de Ollama + BD
+     */
     case 'wa_responder':
         if (!$esNode) { echo json_encode(['error'=>true]); break; }
 
@@ -176,24 +179,26 @@ switch ($accion) {
 
         require_once dirname(__DIR__) . '/models/ChavibotModel.php';
 
-        $sesionWA = ChavibotModel::mdlObtenerSesionWA($telefono);
-        $datosWA  = [
-            'telefono'    => $telefono,
-            'sessionId'   => $sesionWA['sessionId'] ?? ('wa_' . $telefono),
-            'idUsuario'   => intval($sesionWA['idUsuario'] ?? 0),
-            'dni'         => trim($_POST['dni']       ?? ''),
-            'nombres'     => trim($_POST['nombres']   ?? '') . ' ' . trim($_POST['apellidos'] ?? ''),
-            'apellidos'   => trim($_POST['apellidos'] ?? ''),
-            'rol'         => trim($_POST['rol']       ?? 'usuario'),
-            'area'        => trim($_POST['area']      ?? ''),
-            'autenticado' => true,
+        // Construir sesionId estable para historial
+        $sessionId = trim($_POST['sessionId'] ?? '') ?: ('wa_' . $telefono);
+
+        $datosWA = [
+            'telefono'   => $telefono,
+            'sessionId'  => $sessionId,
+            'idUsuario'  => intval($_POST['idUsuario'] ?? 0),
+            'dni'        => '',
+            'nombres'    => trim($_POST['nombres']   ?? '') . ' ' . trim($_POST['apellidos'] ?? ''),
+            'apellidos'  => trim($_POST['apellidos'] ?? ''),
+            'rol'        => trim($_POST['rol']       ?? 'usuario'),
+            'area'       => trim($_POST['area']      ?? ''),
+            'autenticado'=> true,
         ];
 
-        $perfil  = ChavibotModel::mdlObtenerPerfil($datosWA);
-        $inicio  = microtime(true);
-        $hist    = ChavibotModel::mdlObtenerHistorial($perfil['sessionId'], 4);
-        $ejes    = ChavibotModel::mdlBuscarRAG($mensaje, $perfil);
-        $ej      = $ejes[0] ?? null;
+        $perfil = ChavibotModel::mdlObtenerPerfil($datosWA);
+        $inicio = microtime(true);
+        $hist   = ChavibotModel::mdlObtenerHistorial($perfil['sessionId'], 4);
+        $ejes   = ChavibotModel::mdlBuscarRAG($mensaje, $perfil);
+        $ej     = $ejes[0] ?? null;
 
         $datos = []; $schema = '';
         if ($ej && !empty($ej['sqlQuery'])) {
@@ -203,22 +208,30 @@ switch ($accion) {
 
         $resp = ChavibotController::_promptYOllama($mensaje, $perfil, $hist, $ej, $datos);
         $resp = ChavibotController::_limpiarWA($resp);
+        $ms   = intval((microtime(true) - $inicio) * 1000);
 
-        $ms = intval((microtime(true) - $inicio) * 1000);
         ChavibotModel::mdlGuardarHistorial([
-            'sessionId'=>$perfil['sessionId'], 'idUsuario'=>$perfil['idUsuario'],
-            'dni'=>$perfil['dni'],             'nombres'=>$perfil['nombres'],
-            'rol'=>$perfil['rol'],             'area'=>$perfil['area'],
-            'pregunta'=>$mensaje,              'respuesta'=>$resp,
-            'schema'=>$schema,                 'filas'=>count($datos),
-            'tiempoMs'=>$ms,                   'canal'=>'whatsapp',
-            'telefono'=>$telefono,
+            'sessionId' => $perfil['sessionId'],
+            'idUsuario' => $perfil['idUsuario'],
+            'dni'       => '',
+            'nombres'   => $perfil['nombres'],
+            'rol'       => $perfil['rol'],
+            'area'      => $perfil['area'],
+            'pregunta'  => $mensaje,
+            'respuesta' => $resp,
+            'schema'    => $schema,
+            'filas'     => count($datos),
+            'tiempoMs'  => $ms,
+            'canal'     => 'whatsapp',
+            'telefono'  => $telefono,
         ]);
-        ChavibotModel::mdlActualizarSesionWA($telefono);
 
         echo json_encode(['error'=>false,'respuesta'=>$resp,'ms'=>$ms]);
         break;
 
+    /**
+     * REGISTRAR: registra sesión WA autenticada en BD
+     */
     case 'wa_registrar':
         if (!$esNode) { echo json_encode(['error'=>true]); break; }
         require_once dirname(__DIR__) . '/models/ChavibotModel.php';
@@ -227,16 +240,19 @@ switch ($accion) {
             ChavibotModel::mdlActualizarSesionWA($tel, [
                 'autenticado' => 1,
                 'pasoAuth'    => 'autenticado',
-                'dni'         => trim($_POST['dni']       ?? ''),
-                'nombres'     => trim($_POST['nombres']   ?? ''),
-                'apellidos'   => trim($_POST['apellidos'] ?? ''),
-                'rol'         => trim($_POST['rol']       ?? 'usuario'),
-                'area'        => trim($_POST['area']      ?? ''),
+                'idUsuario'   => intval($_POST['idUsuario'] ?? 0),
+                'nombres'     => trim($_POST['nombres']     ?? ''),
+                'apellidos'   => trim($_POST['apellidos']   ?? ''),
+                'rol'         => trim($_POST['rol']         ?? 'usuario'),
+                'area'        => trim($_POST['area']        ?? ''),
             ]);
         }
         echo json_encode(['error'=>false,'ok'=>true]);
         break;
 
+    /**
+     * AGREGAR RAG: desde WhatsApp (admin/tecnico)
+     */
     case 'wa_agregar_rag':
         if (!$esNode) { echo json_encode(['error'=>true]); break; }
         require_once dirname(__DIR__) . '/models/ChavibotModel.php';
@@ -256,7 +272,7 @@ switch ($accion) {
         break;
 
     default:
-        echo json_encode(['error'=>true,'mensaje'=>"Acción '{$accion}' no reconocida."]);
+        echo json_encode(['error'=>true,'mensaje'=>"Acción '$accion' desconocida."]);
         break;
 }
 exit;

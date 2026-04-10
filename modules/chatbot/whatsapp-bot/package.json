@@ -1,0 +1,17 @@
+{
+  "name": "chavibot-whatsapp",
+  "version": "1.0.0",
+  "description": "ChaviBot WhatsApp Personal — CHAVIMOCHIC (dentro del proyecto gestionTI)",
+  "main": "chavibot-wa.js",
+  "scripts": {
+    "start": "node chavibot-wa.js",
+    "dev":   "nodemon chavibot-wa.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "node-fetch": "^2.7.0",
+    "pino": "^8.21.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "engines": { "node": ">=18.0.0" }
+}
