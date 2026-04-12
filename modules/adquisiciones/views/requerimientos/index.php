@@ -44,7 +44,7 @@
 						data-id="<?php echo (int) $req['Id']; ?>"
 						data-id-centro-costo="<?php echo (int) $req['IdCentroCosto']; ?>"
 						data-id-sub-centro-costo="<?php echo (int) ($req['IdSubCentroCosto'] ?? 0); ?>"
-						data-id-meta-siaf="<?php echo (int) ($req['IdMetaSIAF'] ?? 0); ?>"
+						data-id-meta-siaf="<?php echo isset($req['IdMetaSIAF']) && (int) $req['IdMetaSIAF'] > 0 ? (int) $req['IdMetaSIAF'] : ''; ?>"
 						data-nro-pedido="<?php echo htmlspecialchars((string) $req['NroPedidoCompra'], ENT_QUOTES, 'UTF-8'); ?>"
 						data-codigo-meta="<?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
 						data-anio="<?php echo (int) $req['Anio']; ?>"
@@ -131,10 +131,10 @@
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Meta SIAF</label>
-						<select name="IdMetaSIAF" id="IdMetaSIAF" class="form-select" required>
+						<select name="IdMetaSIAF" id="IdMetaSIAF" class="form-select">
 							<option value="">Seleccione...</option>
 							<?php foreach ($metasSiafActivasLista as $meta): ?>
-								<option value="<?php echo (int) $meta['Id']; ?>" <?php echo ((string) ($meta['CodigoMeta'] ?? '') === '000') ? 'selected' : ''; ?>>
+								<option value="<?php echo (int) $meta['Id']; ?>">
 									<?php echo htmlspecialchars((string) $meta['CodigoMeta'] . ' - ' . (string) $meta['Descripcion']); ?>
 								</option>
 							<?php endforeach; ?>
@@ -566,7 +566,7 @@
 					btn.innerHTML = 'Buscar';
 					if (loading) loading.style.display = 'none';
 					window.adqNotifySafe('danger', 'Error de conexion', 'Ocurrio un error al conectar con el servidor.');
-				}, );
+				});
 		});
 	}
 

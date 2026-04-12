@@ -389,6 +389,389 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	public function listarTiposSolicitudGestion()
+	{
+		$sql = "
+			SELECT Id, Nombre, Activo
+			FROM adquisiciones.TipoSolicitud
+			ORDER BY Nombre
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = $row;
+		}
+
+		return $data;
+	}
+
+	private function existeTipoSolicitudDuplicado($nombre, $idExcluir = null)
+	{
+		$sql = "
+			SELECT TOP 1 Id, Nombre
+			FROM adquisiciones.TipoSolicitud
+			WHERE UPPER(LTRIM(RTRIM(Nombre))) = UPPER(LTRIM(RTRIM(?)))
+		";
+
+		$params = [$nombre];
+		if ((int) $idExcluir > 0) {
+			$sql .= " AND Id <> ?";
+			$params[] = (int) $idExcluir;
+		}
+
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if ($stmt === false) {
+			return null;
+		}
+
+		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
+	}
+
+	public function agregarTipoSolicitud($nombre, $idUsuarioRegistro = null)
+	{
+		$nombreLimpio = trim((string) $nombre);
+		if ($nombreLimpio === '') {
+			return [
+				'success' => false,
+				'message' => 'Debe ingresar el nombre del tipo de solicitud.',
+			];
+		}
+
+		$duplicado = $this->existeTipoSolicitudDuplicado($nombreLimpio);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'message' => 'Ya existe un tipo de solicitud con ese nombre.',
+			];
+		}
+
+		$sql = "
+			INSERT INTO adquisiciones.TipoSolicitud (Nombre, Activo, FechaRegistro)
+			VALUES (?, 1, GETDATE())
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$nombreLimpio]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo registrar el tipo de solicitud' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tipo de solicitud registrado correctamente.',
+		];
+	}
+
+	public function actualizarTipoSolicitud($id, $nombre, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		$nombreLimpio = trim((string) $nombre);
+
+		if ($id <= 0 || $nombreLimpio === '') {
+			return [
+				'success' => false,
+				'message' => 'Datos inválidos para actualizar tipo de solicitud.',
+			];
+		}
+
+		$duplicado = $this->existeTipoSolicitudDuplicado($nombreLimpio, $id);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'message' => 'Ya existe otro tipo de solicitud con ese nombre.',
+			];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.TipoSolicitud
+			SET Nombre = ?, FechaModifica = GETDATE()
+			WHERE Id = ?
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$nombreLimpio, $id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo actualizar el tipo de solicitud' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tipo de solicitud actualizado correctamente.',
+		];
+	}
+
+	public function eliminarTipoSolicitud($id, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return [
+				'success' => false,
+				'message' => 'Tipo de solicitud inválido.',
+			];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.TipoSolicitud
+			SET Activo = 0, FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 1
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo inactivar el tipo de solicitud' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tipo de solicitud inactivado correctamente.',
+		];
+	}
+
+	public function activarTipoSolicitud($id, $idUsuarioModifica = null)
+	{
+		$id = (int) $id;
+		if ($id <= 0) {
+			return [
+				'success' => false,
+				'message' => 'Tipo de solicitud inválido.',
+			];
+		}
+
+		$sqlBuscar = "SELECT TOP 1 Nombre FROM adquisiciones.TipoSolicitud WHERE Id = ?";
+		$stmtBuscar = sqlsrv_query($this->db, $sqlBuscar, [$id]);
+		if ($stmtBuscar === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo validar el tipo de solicitud' . $detalle,
+			];
+		}
+
+		$fila = sqlsrv_fetch_array($stmtBuscar, SQLSRV_FETCH_ASSOC);
+		if (!$fila) {
+			return [
+				'success' => false,
+				'message' => 'No se encontró el tipo de solicitud.',
+			];
+		}
+
+		$nombre = trim((string) ($fila['Nombre'] ?? ''));
+		$duplicado = $this->existeTipoSolicitudDuplicado($nombre, $id);
+		if (!empty($duplicado)) {
+			return [
+				'success' => false,
+				'message' => 'No se puede activar porque ya existe otro tipo de solicitud con el mismo nombre.',
+			];
+		}
+
+		$sql = "
+			UPDATE adquisiciones.TipoSolicitud
+			SET Activo = 1, FechaModifica = GETDATE()
+			WHERE Id = ? AND Activo = 0
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$id]);
+		if ($stmt === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo activar el tipo de solicitud' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Tipo de solicitud activado correctamente.',
+		];
+	}
+
+	public function listarTiposSolicitudActivos()
+	{
+		$sql = "
+			SELECT Id, Nombre
+			FROM adquisiciones.TipoSolicitud
+			WHERE Activo = 1
+			ORDER BY Nombre
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = $row;
+		}
+
+		return $data;
+	}
+
+	public function listarAsociacionesTecnologiaTipoSolicitud($anio)
+	{
+		$anioConsulta = (int) $anio;
+		if ($anioConsulta <= 0) {
+			$anioConsulta = (int) date('Y');
+		}
+
+		$sql = "
+			SELECT
+				r.Id,
+				r.IdCatalogoTecnologico,
+				r.IdTipoSolicitud,
+				r.Anio,
+				r.Activo,
+				ct.Codigo,
+				ct.NombreGenerico,
+				ts.Nombre AS NombreTipoSolicitud
+			FROM adquisiciones.CatalogoTecnologicoTipoSolicitud r
+			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = r.IdCatalogoTecnologico
+			INNER JOIN adquisiciones.TipoSolicitud ts ON ts.Id = r.IdTipoSolicitud
+			WHERE r.Anio = ?
+			ORDER BY
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN LEFT(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo) - 1)
+					ELSE ct.Codigo
+				END,
+				CASE
+					WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN TRY_CAST(
+						LEFT(
+							SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)),
+							PATINDEX('%[^0-9]%', SUBSTRING(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo), LEN(ct.Codigo)) + 'X') - 1
+						) AS INT
+					)
+					ELSE 0
+				END,
+				ct.NombreGenerico
+		";
+
+		$stmt = sqlsrv_query($this->db, $sql, [$anioConsulta]);
+		if ($stmt === false) {
+			return [];
+		}
+
+		$data = [];
+		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+			$data[] = $row;
+		}
+
+		return $data;
+	}
+
+	public function guardarAsociacionTecnologiaTipoSolicitud($idCatalogoTecnologico, $idTipoSolicitud, $anio, $idUsuario = null)
+	{
+		$idCatalogo = (int) $idCatalogoTecnologico;
+		$idSolicitud = (int) $idTipoSolicitud;
+		$anio = (int) $anio;
+
+		if ($idCatalogo <= 0 || $idSolicitud <= 0 || $anio <= 0) {
+			return [
+				'success' => false,
+				'message' => 'Debe seleccionar tecnología, tipo de solicitud y año válidos.',
+			];
+		}
+
+		$sqlValTec = "SELECT TOP 1 Id, Activo FROM adquisiciones.CatalogoTecnologico WHERE Id = ?";
+		$stmtValTec = sqlsrv_query($this->db, $sqlValTec, [$idCatalogo]);
+		$tecnologia = $stmtValTec ? sqlsrv_fetch_array($stmtValTec, SQLSRV_FETCH_ASSOC) : null;
+		if (!$tecnologia) {
+			return [
+				'success' => false,
+				'message' => 'No se encontró la tecnología seleccionada.',
+			];
+		}
+
+		$sqlValSolicitud = "SELECT TOP 1 Id, Activo FROM adquisiciones.TipoSolicitud WHERE Id = ?";
+		$stmtValSolicitud = sqlsrv_query($this->db, $sqlValSolicitud, [$idSolicitud]);
+		$solicitud = $stmtValSolicitud ? sqlsrv_fetch_array($stmtValSolicitud, SQLSRV_FETCH_ASSOC) : null;
+		if (!$solicitud) {
+			return [
+				'success' => false,
+				'message' => 'No se encontró el tipo de solicitud seleccionado.',
+			];
+		}
+
+		if ((int) ($solicitud['Activo'] ?? 0) !== 1) {
+			return [
+				'success' => false,
+				'message' => 'El tipo de solicitud seleccionado está inactivo.',
+			];
+		}
+
+		$sqlExistente = "
+			SELECT TOP 1 Id
+			FROM adquisiciones.CatalogoTecnologicoTipoSolicitud
+			WHERE IdCatalogoTecnologico = ? AND Anio = ?
+		";
+		$stmtExistente = sqlsrv_query($this->db, $sqlExistente, [$idCatalogo, $anio]);
+		$existente = $stmtExistente ? sqlsrv_fetch_array($stmtExistente, SQLSRV_FETCH_ASSOC) : null;
+
+		if ($existente) {
+			$sqlUpdate = "
+				UPDATE adquisiciones.CatalogoTecnologicoTipoSolicitud
+				SET IdTipoSolicitud = ?,
+					Activo = 1,
+					idUsuarioModifica = ?,
+					FechaModifica = GETDATE()
+				WHERE Id = ?
+			";
+			$stmtUpdate = sqlsrv_query($this->db, $sqlUpdate, [$idSolicitud, $idUsuario, (int) $existente['Id']]);
+			if ($stmtUpdate === false) {
+				$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+				$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+				return [
+					'success' => false,
+					'message' => 'No se pudo actualizar la asociación' . $detalle,
+				];
+			}
+
+			return [
+				'success' => true,
+				'message' => 'Asociación actualizada correctamente.',
+			];
+		}
+
+		$sqlInsert = "
+			INSERT INTO adquisiciones.CatalogoTecnologicoTipoSolicitud
+				(IdCatalogoTecnologico, IdTipoSolicitud, Anio, Activo, idUsuarioRegistro, FechaRegistro)
+			VALUES (?, ?, ?, 1, ?, GETDATE())
+		";
+		$stmtInsert = sqlsrv_query($this->db, $sqlInsert, [$idCatalogo, $idSolicitud, $anio, $idUsuario]);
+		if ($stmtInsert === false) {
+			$errors = sqlsrv_errors(SQLSRV_ERR_ERRORS);
+			$detalle = is_array($errors) && count($errors) > 0 ? ' - ' . $errors[0]['message'] : '';
+			return [
+				'success' => false,
+				'message' => 'No se pudo registrar la asociación' . $detalle,
+			];
+		}
+
+		return [
+			'success' => true,
+			'message' => 'Asociación registrada correctamente.',
+		];
+	}
+
 	public function obtenerPedidosPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -440,7 +823,7 @@ class CatalogoTecnologicoModel
                 dr.CodigoSiga,
                 dr.IdCatalogoTecnologico
             FROM adquisiciones.DetalleRequerimiento dr
-            WHERE dr.IdCatalogoTecnologico <> 1000010
+						WHERE dr.IdCatalogoTecnologico IS NOT NULL
               AND NOT EXISTS (
                 SELECT 1 FROM adquisiciones.HomologacionSiga h
                 WHERE h.CodigoSiga = dr.CodigoSiga
@@ -462,7 +845,7 @@ class CatalogoTecnologicoModel
             INNER JOIN (
                 SELECT DISTINCT CodigoSiga, IdCatalogoTecnologico
                 FROM adquisiciones.DetalleRequerimiento
-                WHERE IdCatalogoTecnologico <> 1000010
+				WHERE IdCatalogoTecnologico IS NOT NULL
             ) dr ON dr.CodigoSiga = h.CodigoSiga
             WHERE h.IdCatalogoTecnologico <> dr.IdCatalogoTecnologico
         ";

@@ -8,6 +8,7 @@ class DetalleRequerimientoModel
 		$this->db = $db;
 	}
 
+	
 	public function listarDetallesPorRequerimiento($idRequerimiento)
 	{
 		$sql = "
@@ -15,14 +16,15 @@ class DetalleRequerimientoModel
 				d.Id,
 				d.IdRequerimiento,
 				d.IdCatalogoTecnologico,
-				ct.Codigo AS CodigoTecnologia,
+				-- Sin homologar
+				ISNULL(ct.Codigo, '') AS CodigoTecnologia,
 				d.CodigoSiga,
 				d.Clasificador,
 				d.DescripcionDetallada,
 				d.Cantidad,
 				d.UnidadMedida
 			FROM adquisiciones.DetalleRequerimiento d
-			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
+			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico
 			WHERE d.IdRequerimiento = ?
 			ORDER BY d.Id
 		";

@@ -283,15 +283,9 @@ class RequerimientoModel
 			? (int) $datos['IdSubCentroCosto']
 			: null;
 		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
-		if ($idMetaSiaf <= 0) {
-			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
-		}
+		$idMetaSiaf = $idMetaSiaf > 0 ? $idMetaSiaf : null;
 
-		if ($idMetaSiaf <= 0 || !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
-			return false;
-		}
-
-		if ($idMetaSiaf === null) {
+		if ($idMetaSiaf !== null && !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
 			return false;
 		}
 
@@ -367,11 +361,9 @@ class RequerimientoModel
 			? (int) $datos['IdSubCentroCosto']
 			: null;
 		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
-		if ($idMetaSiaf <= 0) {
-			$idMetaSiaf = (int) $this->obtenerIdMetaSiafPorCodigo('000');
-		}
+		$idMetaSiaf = $idMetaSiaf > 0 ? $idMetaSiaf : null;
 
-		if ($idMetaSiaf <= 0 || !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
+		if ($idMetaSiaf !== null && !$this->existeMetaSiafActivaPorId($idMetaSiaf)) {
 			return false;
 		}
 
@@ -478,7 +470,7 @@ class RequerimientoModel
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = r.IdCentroCosto
 			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = r.IdSubCentroCosto
-			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
+			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
 		";
 
 		$params = [];
@@ -687,7 +679,7 @@ class RequerimientoModel
 			FROM adquisiciones.DetalleRequerimiento d
 			INNER JOIN adquisiciones.Requerimiento r ON r.Id = d.IdRequerimiento
 				LEFT JOIN adquisiciones.MetaSIAF ms ON ms.Id = r.IdMetaSIAF
-			INNER JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
+			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
 			LEFT JOIN adquisiciones.PresupuestoTecnologia pt
 				ON pt.IdCatalogoTecnologico = d.IdCatalogoTecnologico
 				AND pt.Anio = r.Anio
@@ -840,7 +832,7 @@ class RequerimientoModel
 				COUNT(DISTINCT CASE WHEN r.Estado = 1 THEN r.Id END)         AS Completos,
 				COUNT(DISTINCT CASE WHEN r.Estado = 0 THEN r.Id END)         AS Pendientes,
 				COUNT(DISTINCT dr.Id)                                         AS TotalItems,
-				COUNT(DISTINCT CASE WHEN dr.IdCatalogoTecnologico = 1000010
+				COUNT(DISTINCT CASE WHEN dr.IdCatalogoTecnologico IS NULL
 										THEN dr.Id END)           AS SinHomologar
 			FROM adquisiciones.Requerimiento r
 			LEFT JOIN adquisiciones.DetalleRequerimiento dr
@@ -873,7 +865,7 @@ class RequerimientoModel
 			INNER JOIN adquisiciones.CatalogoTecnologico ct
 				ON ct.Id = dr.IdCatalogoTecnologico
 			WHERE r.Anio = ?
-			  AND dr.IdCatalogoTecnologico <> 1000010
+			  AND dr.IdCatalogoTecnologico IS NOT NULL
 			GROUP BY ct.Codigo, ct.NombreGenerico
 			ORDER BY TotalCantidad DESC
 		";
@@ -945,7 +937,7 @@ class RequerimientoModel
 				SELECT DISTINCT dr2.IdCatalogoTecnologico
 				FROM adquisiciones.DetalleRequerimiento dr2
 				INNER JOIN adquisiciones.Requerimiento r2 ON r2.Id = dr2.IdRequerimiento AND r2.Anio = ?
-				WHERE dr2.IdCatalogoTecnologico <> 1000010
+				WHERE dr2.IdCatalogoTecnologico IS NOT NULL
 			) dr ON dr.IdCatalogoTecnologico = ct.Id
 			WHERE ct.Activo = 1
 		";
@@ -1020,6 +1012,25 @@ class RequerimientoModel
 				SUM(CASE WHEN Activo = 1 THEN 1 ELSE 0 END) AS Activos,
 				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
 			FROM adquisiciones.MetaSIAF
+		";
+
+		$resumen = $this->fetchOne($sql);
+
+		return [
+			'Total' => (int) ($resumen['Total'] ?? 0),
+			'Activos' => (int) ($resumen['Activos'] ?? 0),
+			'Inactivos' => (int) ($resumen['Inactivos'] ?? 0),
+		];
+	}
+
+	public function obtenerDashboardTipoSolicitudResumen()
+	{
+		$sql = "
+			SELECT
+				COUNT(*) AS Total,
+				SUM(CASE WHEN Activo = 1 THEN 1 ELSE 0 END) AS Activos,
+				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
+			FROM adquisiciones.TipoSolicitud
 		";
 
 		$resumen = $this->fetchOne($sql);
@@ -1373,10 +1384,7 @@ class RequerimientoModel
 			throw new Exception('Centro de costo no encontrado: ' . $nombreCentro);
 		}
 		$idCentro = $rowCC['Id'];
-		$idMetaSiaf = $this->obtenerIdMetaSiafPorCodigo('000');
-		if ($idMetaSiaf === null) {
-			throw new Exception('No existe Meta SIAF activa con código 000. Registrela antes de importar.');
-		}
+		$idMetaSiaf = null;
 
 		// 3. Cargar homologaciones
 		$stmtHom = sqlsrv_query($this->db, "
@@ -1437,7 +1445,7 @@ class RequerimientoModel
 			$existeItem = sqlsrv_fetch_array($stmtExisteItem, SQLSRV_FETCH_ASSOC);
 
 			if (!$existeItem) {
-				$idCatalogo  = $homologaciones[$item['CODIGO_SIGA']] ?? 1000010;
+				$idCatalogo  = $homologaciones[$item['CODIGO_SIGA']] ?? null;
 				$clasificador = isset($item['CLASIFICADOR']) ? trim((string) $item['CLASIFICADOR']) : '';
 				$clasificador = $clasificador !== '' ? substr($clasificador, 0, 12) : null;
 

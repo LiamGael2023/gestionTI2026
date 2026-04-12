@@ -34,6 +34,10 @@ $metaSiafResumen = isset($dashboardMetaSiaf) && is_array($dashboardMetaSiaf)
 	? $dashboardMetaSiaf
 	: [];
 
+$tipoSolicitudResumen = isset($dashboardTipoSolicitud) && is_array($dashboardTipoSolicitud)
+	? $dashboardTipoSolicitud
+	: [];
+
 $subCentrosCostoResumen = isset($dashboardSubCentrosCosto) && is_array($dashboardSubCentrosCosto)
 	? $dashboardSubCentrosCosto
 	: [];
@@ -66,6 +70,8 @@ $metasSiafInactivas = (int) ($metaSiafResumen['Inactivos'] ?? 0);
 $totalSubCentros = (int) ($subCentrosCostoResumen['Total'] ?? 0);
 $subCentrosActivos = (int) ($subCentrosCostoResumen['Activos'] ?? 0);
 $subCentrosInactivos = (int) ($subCentrosCostoResumen['Inactivos'] ?? 0);
+
+$totalTiposSolicitud = (int) ($tipoSolicitudResumen['Total'] ?? 0);
 
 $porcentajeCompletos = $totalRequerimientos > 0
 	? round(($requerimientosCompletos / $totalRequerimientos) * 100)
@@ -353,6 +359,28 @@ function formatearFechaEntregaDashboard($fecha)
 			</div>
 		</div>
 
+		<div class="col-12 col-md-6 col-xl-3">
+			<div class="card h-100 adq-card-clickable" role="button" tabindex="0" data-bs-toggle="modal" data-bs-target="#modalGestionTipoSolicitud" aria-label="Abrir gestión de tipo de solicitud">
+				<div class="card-body">
+					<div class="d-flex align-items-start justify-content-between mb-2">
+						<span class="avatar avatar-md bg-yellow-lt text-yellow"><i class="ti ti-file-description"></i></span>
+						<div class="d-flex align-items-center gap-2">
+							<div class="h1 mb-0"><?php echo number_format($totalTiposSolicitud); ?></div>
+							<i class="ti ti-arrow-up-right adq-card-arrow text-secondary" aria-hidden="true"></i>
+						</div>
+					</div>
+					<div class="fw-bold">Tipo de Solicitud</div>
+					<div class="text-secondary small">Clic para cargar tipos y asociarlos por año a cada tecnología.</div>
+					<div class="progress progress-sm mt-3">
+						<div class="progress-bar bg-yellow" style="width: 100%"></div>
+					</div>
+					<div class="d-flex justify-content-between align-items-center mt-2 small text-secondary">
+						<span>Gestión anual de asociación</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
 	</div>
 
 	<div class="row g-3 mb-3">
@@ -577,6 +605,96 @@ function formatearFechaEntregaDashboard($fecha)
 		</div>
 	</div>
 
+	<div class="modal modal-blur fade" id="modalGestionTipoSolicitud" tabindex="-1" aria-labelledby="modalGestionTipoSolicitudLabel" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-scrollable">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="modalGestionTipoSolicitudLabel">Gestión de Tipo de Solicitud</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<div class="row g-3 mb-3">
+						<div class="col-12 col-md-8">
+							<label class="form-label" for="tsNombre">Tipo de Solicitud</label>
+							<input type="text" class="form-control" id="tsNombre" maxlength="120" placeholder="Ej: ACUERDO MARCO DGA">
+						</div>
+						<div class="col-12 col-md-4 d-flex align-items-end">
+							<button type="button" class="btn btn-primary w-100" id="btnGuardarTipoSolicitud">Agregar</button>
+						</div>
+					</div>
+					<input type="hidden" id="tsIdEditar" value="">
+
+					<div class="table-responsive mb-4">
+						<table class="table table-vcenter card-table table-striped" id="tablaTiposSolicitudGestion">
+							<thead>
+								<tr>
+									<th>Nombre</th>
+									<th>Estado</th>
+									<th class="text-end">Acciones</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td colspan="3" class="text-center text-secondary py-4">Cargando...</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					<div class="card border">
+						<div class="card-body">
+							<div class="d-flex justify-content-between align-items-center mb-3">
+								<h4 class="mb-0">Asociar Tecnología por Año</h4>
+								<span class="text-secondary small">Una tecnología solo puede tener un tipo de solicitud por año.</span>
+							</div>
+
+							<div class="row g-3 mb-3">
+								<div class="col-12 col-md-2">
+									<label class="form-label" for="asocAnio">Año</label>
+									<input type="number" class="form-control" id="asocAnio" min="2020" max="2100" value="<?php echo (int) $anioFiltro; ?>">
+								</div>
+								<div class="col-12 col-md-4">
+									<label class="form-label" for="asocTecnologia">Tecnología</label>
+									<select class="form-select" id="asocTecnologia">
+										<option value="">Seleccione...</option>
+									</select>
+								</div>
+								<div class="col-12 col-md-4">
+									<label class="form-label" for="asocTipoSolicitud">Tipo de Solicitud</label>
+									<select class="form-select" id="asocTipoSolicitud">
+										<option value="">Seleccione...</option>
+									</select>
+								</div>
+								<div class="col-12 col-md-2 d-flex align-items-end">
+									<button type="button" class="btn btn-primary w-100" id="btnGuardarAsociacionTecnologiaSolicitud">Guardar</button>
+								</div>
+							</div>
+
+							<div class="table-responsive">
+								<table class="table table-vcenter card-table table-striped" id="tablaAsociacionesTecnologiaSolicitud">
+									<thead>
+										<tr>
+											<th>Año</th>
+											<th>Código</th>
+											<th>Nombre Genérico</th>
+											<th>Tipo de Solicitud</th>
+											<th>Estado</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td colspan="5" class="text-center text-secondary py-4">Cargando...</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<div class="modal modal-blur fade" id="modalGestionMetasSiaf" tabindex="-1" aria-labelledby="modalGestionMetasSiafLabel" aria-hidden="true">
 		<div class="modal-dialog modal-xl modal-dialog-scrollable">
 			<div class="modal-content">
@@ -677,9 +795,10 @@ function formatearFechaEntregaDashboard($fecha)
 	(function() {
 		var modalCentros = document.getElementById('modalGestionCentrosCosto');
 		var modalTecnologias = document.getElementById('modalGestionTecnologias');
+		var modalTipoSolicitud = document.getElementById('modalGestionTipoSolicitud');
 		var modalMetasSiaf = document.getElementById('modalGestionMetasSiaf');
 		var modalSubCentros = document.getElementById('modalGestionSubCentrosCosto');
-		if (!modalCentros || !modalTecnologias || !modalMetasSiaf || !modalSubCentros) {
+		if (!modalCentros || !modalTecnologias || !modalTipoSolicitud || !modalMetasSiaf || !modalSubCentros) {
 			return;
 		}
 
@@ -721,6 +840,12 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('tecCodigo').value = '';
 			document.getElementById('tecNombre').value = '';
 			document.getElementById('btnGuardarTecnologiaCatalogo').textContent = 'Agregar';
+		}
+
+		function limpiarFormularioTipoSolicitud() {
+			document.getElementById('tsIdEditar').value = '';
+			document.getElementById('tsNombre').value = '';
+			document.getElementById('btnGuardarTipoSolicitud').textContent = 'Agregar';
 		}
 
 		function limpiarFormularioMetaSiaf() {
@@ -818,6 +943,124 @@ function formatearFechaEntregaDashboard($fecha)
 				},
 				error: function() {
 					$('#tablaTecnologiasGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+				}
+			});
+		}
+
+		function cargarTiposSolicitud() {
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=listarTiposSolicitudAjax',
+				type: 'GET',
+				dataType: 'json',
+				success: function(response) {
+					var tbody = $('#tablaTiposSolicitudGestion tbody');
+					if (!response || !response.success) {
+						tbody.html('<tr><td colspan="3" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+						return;
+					}
+
+					var data = Array.isArray(response.data) ? response.data : [];
+					if (data.length === 0) {
+						tbody.html('<tr><td colspan="3" class="text-center text-secondary py-4">No hay tipos de solicitud registrados.</td></tr>');
+						return;
+					}
+
+					var filas = data.map(function(item) {
+						var activo = Number(item.Activo) === 1;
+						var badgeEstado = activo ?
+							'<span class="badge bg-success-lt">Activo</span>' :
+							'<span class="badge bg-secondary-lt">Inactivo</span>';
+						var acciones = activo ?
+							'<button type="button" class="btn btn-primary adq-btn-action js-editar-ts" data-id="' + Number(item.Id) + '" data-nombre="' + escaparHtml(item.Nombre) + '">Editar</button>' +
+							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-ts" data-id="' + Number(item.Id) + '">Inactivar</button>' :
+							'<button type="button" class="btn btn-success adq-btn-action js-activar-ts" data-id="' + Number(item.Id) + '">Activar</button>';
+
+						return '<tr>' +
+							'<td>' + escaparHtml(item.Nombre) + '</td>' +
+							'<td>' + badgeEstado + '</td>' +
+							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' + acciones + '</td>' +
+							'</tr>';
+					}).join('');
+
+					tbody.html(filas);
+				},
+				error: function() {
+					$('#tablaTiposSolicitudGestion tbody').html('<tr><td colspan="3" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+				}
+			});
+		}
+
+		function poblarSelectAsociaciones(selectId, items, valueKey, labelBuilder) {
+			var select = document.getElementById(selectId);
+			if (!select) {
+				return;
+			}
+
+			var valorActual = select.value;
+			select.innerHTML = '<option value="">Seleccione...</option>';
+			(items || []).forEach(function(item) {
+				var option = document.createElement('option');
+				option.value = Number(item[valueKey]);
+				option.textContent = labelBuilder(item);
+				select.appendChild(option);
+			});
+
+			if (valorActual) {
+				select.value = valorActual;
+			}
+		}
+
+		function cargarAsociacionesTecnologiaSolicitud() {
+			var anio = Number($('#asocAnio').val()) || new Date().getFullYear();
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=listarTecnologiaTipoSolicitudAjax',
+				type: 'GET',
+				dataType: 'json',
+				data: {
+					anio: anio
+				},
+				success: function(response) {
+					var tbody = $('#tablaAsociacionesTecnologiaSolicitud tbody');
+					if (!response || !response.success) {
+						tbody.html('<tr><td colspan="5" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+						return;
+					}
+
+					var tecnologias = Array.isArray(response.tecnologias) ? response.tecnologias : [];
+					var tiposSolicitud = Array.isArray(response.tiposSolicitud) ? response.tiposSolicitud : [];
+					var asociaciones = Array.isArray(response.data) ? response.data : [];
+
+					poblarSelectAsociaciones('asocTecnologia', tecnologias, 'Id', function(item) {
+						return String(item.Codigo || '') + ' - ' + String(item.NombreGenerico || '');
+					});
+					poblarSelectAsociaciones('asocTipoSolicitud', tiposSolicitud, 'Id', function(item) {
+						return String(item.Nombre || '');
+					});
+
+					if (asociaciones.length === 0) {
+						tbody.html('<tr><td colspan="5" class="text-center text-secondary py-4">No hay asociaciones registradas para el año seleccionado.</td></tr>');
+						return;
+					}
+
+					var filas = asociaciones.map(function(item) {
+						var activo = Number(item.Activo) === 1;
+						var badgeEstado = activo ?
+							'<span class="badge bg-success-lt">Activo</span>' :
+							'<span class="badge bg-secondary-lt">Inactivo</span>';
+
+						return '<tr>' +
+							'<td>' + Number(item.Anio) + '</td>' +
+							'<td>' + escaparHtml(item.Codigo) + '</td>' +
+							'<td>' + escaparHtml(item.NombreGenerico) + '</td>' +
+							'<td>' + escaparHtml(item.NombreTipoSolicitud) + '</td>' +
+							'<td>' + badgeEstado + '</td>' +
+							'</tr>';
+					}).join('');
+
+					tbody.html(filas);
+				},
+				error: function() {
+					$('#tablaAsociacionesTecnologiaSolicitud tbody').html('<tr><td colspan="5" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
 		}
@@ -1075,6 +1318,142 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		});
 
+		$('#btnGuardarTipoSolicitud').on('click', function() {
+			var id = $('#tsIdEditar').val();
+			var nombre = $('#tsNombre').val().trim();
+
+			if (!nombre) {
+				notificar('warning', 'Campos obligatorios', 'Debe completar el nombre del tipo de solicitud.');
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarTipoSolicitudAjax' : 'agregarTipoSolicitudAjax'),
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					id: id,
+					nombre: nombre
+				},
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Operación correcta', response.message || 'Tipo de solicitud guardado.');
+						limpiarFormularioTipoSolicitud();
+						cargarTiposSolicitud();
+						cargarAsociacionesTecnologiaSolicitud();
+						return;
+					}
+					notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar tipo de solicitud.');
+				}
+			});
+		});
+
+		$('#tablaTiposSolicitudGestion').on('click', '.js-editar-ts', function() {
+			var btn = $(this);
+			$('#tsIdEditar').val(btn.data('id'));
+			$('#tsNombre').val(btn.data('nombre'));
+			$('#btnGuardarTipoSolicitud').text('Actualizar');
+		});
+
+		$('#tablaTiposSolicitudGestion').on('click', '.js-eliminar-ts', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Inactivar tipo de solicitud',
+				mensaje: '¿Desea inactivar este tipo de solicitud?',
+				textoAceptar: 'Inactivar',
+				claseAceptar: 'btn-danger'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=eliminarTipoSolicitudAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Tipo inactivado', response.message || 'Tipo de solicitud inactivado.');
+							limpiarFormularioTipoSolicitud();
+							cargarTiposSolicitud();
+							cargarAsociacionesTecnologiaSolicitud();
+							return;
+						}
+						notificar('danger', 'No se pudo inactivar', response && response.message ? response.message : 'Error al inactivar tipo de solicitud.');
+					}
+				});
+			});
+		});
+
+		$('#tablaTiposSolicitudGestion').on('click', '.js-activar-ts', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Activar tipo de solicitud',
+				mensaje: '¿Desea activar este tipo de solicitud?',
+				textoAceptar: 'Activar',
+				claseAceptar: 'btn-success'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=activarTipoSolicitudAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Tipo activado', response.message || 'Tipo de solicitud activado.');
+							cargarTiposSolicitud();
+							cargarAsociacionesTecnologiaSolicitud();
+							return;
+						}
+						notificar('danger', 'No se pudo activar', response && response.message ? response.message : 'Error al activar tipo de solicitud.');
+					}
+				});
+			});
+		});
+
+		$('#btnGuardarAsociacionTecnologiaSolicitud').on('click', function() {
+			var anio = Number($('#asocAnio').val());
+			var idCatalogoTecnologico = Number($('#asocTecnologia').val());
+			var idTipoSolicitud = Number($('#asocTipoSolicitud').val());
+
+			if (!anio || anio < 2020 || anio > 2100 || !idCatalogoTecnologico || !idTipoSolicitud) {
+				notificar('warning', 'Campos obligatorios', 'Debe ingresar año, tecnología y tipo de solicitud válidos.');
+				return;
+			}
+
+			$.ajax({
+				url: 'index.php?module=adquisiciones&action=guardarTecnologiaTipoSolicitudAjax',
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					anio: anio,
+					idCatalogoTecnologico: idCatalogoTecnologico,
+					idTipoSolicitud: idTipoSolicitud
+				},
+				success: function(response) {
+					if (response && response.success) {
+						notificar('success', 'Asociación guardada', response.message || 'Asociación registrada correctamente.');
+						cargarAsociacionesTecnologiaSolicitud();
+						return;
+					}
+					notificar('danger', 'No se pudo guardar', response && response.message ? response.message : 'Error al guardar asociación.');
+				}
+			});
+		});
+
+		$('#asocAnio').on('change', function() {
+			cargarAsociacionesTecnologiaSolicitud();
+		});
+
 		$('#btnGuardarMetaSiaf').on('click', function() {
 			var id = $('#msIdEditar').val();
 			var codigoMeta = $('#msCodigoMeta').val().trim().replace(/\D/g, '');
@@ -1189,6 +1568,12 @@ function formatearFechaEntregaDashboard($fecha)
 		modalTecnologias.addEventListener('shown.bs.modal', function() {
 			limpiarFormularioTecnologia();
 			cargarTecnologias();
+		});
+
+		modalTipoSolicitud.addEventListener('shown.bs.modal', function() {
+			limpiarFormularioTipoSolicitud();
+			cargarTiposSolicitud();
+			cargarAsociacionesTecnologiaSolicitud();
 		});
 
 		modalMetasSiaf.addEventListener('shown.bs.modal', function() {

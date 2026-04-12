@@ -151,6 +151,7 @@ switch ($action) {
 		$dashboardEstadoDocumental = $model->obtenerDashboardEstadoDocumental($anioFiltro);
 		$dashboardOrdenesProximas = $model->obtenerDashboardOrdenesProximas($anioFiltro, 30, 6);
 		$dashboardMetaSiaf = $model->obtenerDashboardMetaSiafResumen();
+		$dashboardTipoSolicitud = $model->obtenerDashboardTipoSolicitudResumen();
 		$dashboardSubCentrosCosto = $model->obtenerDashboardSubCentrosCostoResumen();
 		$cierreModel = new CierreAdquisicionModel($conn);
 		$dashboardFinalizados = $cierreModel->contarFinalizadosPorAnio($anioFiltro);
@@ -162,14 +163,14 @@ switch ($action) {
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
-			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) && (int) $_POST['IdMetaSIAF'] > 0 ? (int) $_POST['IdMetaSIAF'] : null,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
 			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion
 		];
 
-		if ($datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($datos['IdCentroCosto'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			$id = $model->guardarRequerimiento($datos);
 			if ($id) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento registrado correctamente', 'id' => $id]);
@@ -196,14 +197,14 @@ switch ($action) {
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
-			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) && (int) $_POST['IdMetaSIAF'] > 0 ? (int) $_POST['IdMetaSIAF'] : null,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim($_POST['NroPedidoCompra']) : '',
 			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioModifica' => $idUsuarioSesion,
 		];
 
-		if ($id > 0 && $datos['IdCentroCosto'] > 0 && $datos['IdMetaSIAF'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
+		if ($id > 0 && $datos['IdCentroCosto'] > 0 && !empty($datos['NroPedidoCompra']) && $datos['Anio'] > 0) {
 			if ($model->actualizarRequerimiento($id, $datos)) {
 				echo json_encode(['success' => true, 'message' => 'Requerimiento actualizado correctamente']);
 			} else {
@@ -222,24 +223,30 @@ switch ($action) {
 		exit;
 
 	case 'guardarForm':
+		$idRequerimiento = isset($_POST['Id']) ? (int) $_POST['Id'] : 0;
 		$datos = [
 			'IdCentroCosto' => isset($_POST['IdCentroCosto']) ? (int) $_POST['IdCentroCosto'] : 0,
 			'IdSubCentroCosto' => isset($_POST['IdSubCentroCosto']) ? (int) $_POST['IdSubCentroCosto'] : 0,
-			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) ? (int) $_POST['IdMetaSIAF'] : 0,
+			'IdMetaSIAF' => isset($_POST['IdMetaSIAF']) && (int) $_POST['IdMetaSIAF'] > 0 ? (int) $_POST['IdMetaSIAF'] : null,
 			'NroPedidoCompra' => isset($_POST['NroPedidoCompra']) ? trim((string) $_POST['NroPedidoCompra']) : '',
 			'CodigoMeta' => adqNormalizarCodigoMeta($_POST['CodigoMeta'] ?? null),
 			'Anio' => isset($_POST['Anio']) ? (int) $_POST['Anio'] : 0,
 			'idUsuarioRegistro' => $idUsuarioSesion,
+			'idUsuarioModifica' => $idUsuarioSesion,
 		];
 
 		$anioRedirect = $datos['Anio'] > 0 ? $datos['Anio'] : (int) date('Y');
 		$urlRedirect = 'index.php?module=adquisiciones&action=requerimientos&anio=' . $anioRedirect;
 
-		if ($datos['IdCentroCosto'] <= 0 || $datos['IdMetaSIAF'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
+		if ($datos['IdCentroCosto'] <= 0 || $datos['NroPedidoCompra'] === '' || $datos['Anio'] <= 0) {
 			adqRedirigirSeguro($urlRedirect);
 		}
 
-		$model->guardarRequerimiento($datos);
+		if ($idRequerimiento > 0) {
+			$model->actualizarRequerimiento($idRequerimiento, $datos);
+		} else {
+			$model->guardarRequerimiento($datos);
+		}
 		adqRedirigirSeguro($urlRedirect);
 		break;
 
@@ -395,6 +402,70 @@ switch ($action) {
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$catalogoModel = new CatalogoTecnologicoModel($conn);
 		echo json_encode($catalogoModel->activarTecnologia($id));
+		exit;
+
+	case 'listarTiposSolicitudAjax':
+		header('Content-Type: application/json');
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode([
+			'success' => true,
+			'data' => $catalogoModel->listarTiposSolicitudGestion(),
+		]);
+		exit;
+
+	case 'agregarTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$nombre = isset($_POST['nombre']) ? trim((string) $_POST['nombre']) : '';
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->agregarTipoSolicitud($nombre, $idUsuarioSesion));
+		exit;
+
+	case 'actualizarTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$nombre = isset($_POST['nombre']) ? trim((string) $_POST['nombre']) : '';
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->actualizarTipoSolicitud($id, $nombre, $idUsuarioSesion));
+		exit;
+
+	case 'eliminarTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->eliminarTipoSolicitud($id, $idUsuarioSesion));
+		exit;
+
+	case 'activarTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->activarTipoSolicitud($id, $idUsuarioSesion));
+		exit;
+
+	case 'listarTecnologiaTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$anio = isset($_GET['anio']) ? (int) $_GET['anio'] : (int) date('Y');
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		$tecnologiasGestion = $catalogoModel->listarTecnologiasActivas();
+		$tecnologiasActivas = array_values(array_filter($tecnologiasGestion, static function ($item) {
+			return (int) ($item['Activo'] ?? 0) === 1;
+		}));
+		echo json_encode([
+			'success' => true,
+			'anio' => $anio,
+			'tecnologias' => $tecnologiasActivas,
+			'tiposSolicitud' => $catalogoModel->listarTiposSolicitudActivos(),
+			'data' => $catalogoModel->listarAsociacionesTecnologiaTipoSolicitud($anio),
+		]);
+		exit;
+
+	case 'guardarTecnologiaTipoSolicitudAjax':
+		header('Content-Type: application/json');
+		$idCatalogoTecnologico = isset($_POST['idCatalogoTecnologico']) ? (int) $_POST['idCatalogoTecnologico'] : 0;
+		$idTipoSolicitud = isset($_POST['idTipoSolicitud']) ? (int) $_POST['idTipoSolicitud'] : 0;
+		$anioAsociacion = isset($_POST['anio']) ? (int) $_POST['anio'] : 0;
+		$catalogoModel = new CatalogoTecnologicoModel($conn);
+		echo json_encode($catalogoModel->guardarAsociacionTecnologiaTipoSolicitud($idCatalogoTecnologico, $idTipoSolicitud, $anioAsociacion, $idUsuarioSesion));
 		exit;
 
 	case 'listarMetasSiafAjax':
