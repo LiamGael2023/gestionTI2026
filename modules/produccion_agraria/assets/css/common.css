@@ -1,0 +1,118 @@
+/* ========================================
+   PRODUCCION AGRARIA - ESTILOS COMUNES
+   ======================================== */
+
+/* Reset de utilidades */
+.font-weight-medium {
+    font-weight: 500;
+}
+
+.font-weight-semibold {
+    font-weight: 600;
+}
+
+/* Utilidades de color de texto */
+.text-success-custom {
+    color: var(--pa-verde) !important;
+}
+
+/* Espaciado adicional */
+.mb-4-custom {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Container de página */
+.page-body {
+    padding-bottom: 2rem;
+}
+
+/* Controles de formulario más grandes */
+.form-control-lg-custom {
+    padding: 0.75rem 1rem;
+    font-size: 1.125rem;
+}
+
+/* Botón con icono */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+}
+
+.btn-icon i {
+    margin: 0;
+}
+
+/* Lista de botones */
+.btn-list {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-list.flex-nowrap {
+    flex-wrap: nowrap;
+}
+
+/* Estados de carga */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Utilidades de cursor */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Separadores visuales */
+.divider {
+    height: 1px;
+    background: var(--pa-gray-300);
+    margin: var(--pa-spacer) 0;
+}
+
+/* Scroll personalizado */
+.custom-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+    background: var(--pa-gray-200);
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+    background: var(--pa-gray-400);
+    border-radius: 3px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--pa-gray-500);
+}

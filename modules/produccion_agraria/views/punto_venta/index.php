@@ -84,30 +84,14 @@
     </div>
 </div>
 
+<!-- Estilos compartidos del módulo -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
+
 <style>
-    /* Estilos personalizados para Punto de Venta */
-    .form-control-lg, .form-select-lg {
-        font-size: 1rem;
-        padding: 0.75rem 1rem;
-    }
-    
-    .bg-success {
-        background: linear-gradient(135deg, #009540 0%, #00c851 100%) !important;
-    }
-    
-    .btn-success {
-        background: linear-gradient(135deg, #009540 0%, #00c851 100%);
-        border: none;
-    }
-    
-    .btn-success:hover {
-        background: linear-gradient(135deg, #007a33 0%, #009540 100%);
-    }
-    
-    footer.bg-success {
-        background: linear-gradient(135deg, #009540 0%, #007a33 100%) !important;
-    }
-    
+    /* Estilos específicos para Punto de Venta */
     #tabla-items tbody:empty + #mensaje-vacio {
         display: block;
     }

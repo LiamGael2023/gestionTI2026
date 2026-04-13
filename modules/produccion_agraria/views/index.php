@@ -72,20 +72,24 @@
     </div>
 </div>
 
-<style>
-    /* Gradientes para las tarjetas de módulos */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, var(--pech-verde, #009540) 0%, #00c851 100%) !important;
-    }
+<!-- Estilos compartidos del módulo -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
 
-    /* Tarjeta de módulo */
+<style>
+    /* Estilos específicos para las tarjetas de módulos */
     .card-link {
         text-decoration: none;
         color: inherit;
         transition: all 0.3s ease;
         cursor: pointer;
-        border-radius: 8px;
-        overflow: hidden;
+    }
+
+    /* Gradientes para las tarjetas de módulos */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, var(--pech-verde, #009540) 0%, #00c851 100%) !important;
     }
 
     .card-link .card-body {
@@ -124,8 +128,6 @@
     .page-body h2 {
         font-size: 1.5rem;
     }
-
-
 
     /* Font small */
     .font-small {
