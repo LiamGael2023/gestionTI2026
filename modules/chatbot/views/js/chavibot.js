@@ -1,217 +1,157 @@
 /**
- * chavibot.js
- * Lógica del chatbot ChaviBot — CHAVIMOCHIC
- * Maneja: chat, feedback, entrenamiento RAG
+ * chavibot.js — UI WhatsApp-style para ChaviBot
+ * Verde #009540 / Azul #004d99 — colores PECH Tabler
  */
-
 const ChaviBot = (() => {
 
-    // ── Config ───────────────────────────────────────────────────
-    const AJAX_URL = window.CHAVIBOT_AJAX_URL || 'modules/chatbot/ajax/chavibot.ajax.php';
+    const AJAX_URL = window.CHAVIBOT_AJAX_URL || '../ajax/chavibot.ajax.php';
 
-    // ── Estado ───────────────────────────────────────────────────
     let enviando   = false;
-    let idUltimoMsg= 0;
+    let idUltimoMsg = 0;
 
-    // ── DOM refs ─────────────────────────────────────────────────
-    const $msgs     = () => document.getElementById('cb-messages');
-    const $input    = () => document.getElementById('cb-input');
-    const $sendBtn  = () => document.getElementById('cb-send-btn');
+    // ── DOM ──────────────────────────────────────────────────────────────
+    const $msgs    = () => document.getElementById('cb-messages');
+    const $input   = () => document.getElementById('cb-input');
+    const $sendBtn = () => document.getElementById('cb-send-btn');
 
-    // ════════════════════════════════════════════════════════════
-    // INICIALIZAR
-    // ════════════════════════════════════════════════════════════
+    // ── INIT ─────────────────────────────────────────────────────────────
     function init() {
-        // Enter para enviar (Shift+Enter = nueva línea)
         $input()?.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                enviar();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); }
         });
-        // Auto-resize textarea
         $input()?.addEventListener('input', () => {
             const el = $input();
             el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+            el.style.height = Math.min(el.scrollHeight, 100) + 'px';
         });
-
-        // Botón enviar
         $sendBtn()?.addEventListener('click', enviar);
-
-        // Botón toggle panel entrenamiento
-        document.getElementById('cb-btn-train')
-            ?.addEventListener('click', toggleTrainPanel);
-
-        // Formulario entrenamiento
-        document.getElementById('cb-form-rag')
-            ?.addEventListener('submit', submitRAG);
-
-        // Tabs entrenamiento
-        document.querySelectorAll('.cb-tab').forEach(tab => {
-            tab.addEventListener('click', () => switchTab(tab.dataset.tab));
-        });
-
-        // Sugerencias rápidas
-        document.querySelectorAll('.cb-sug-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                $input().value = btn.textContent.trim();
-                enviar();
-            });
-        });
-
-        // Cargar lista RAG si el panel existe
+        document.getElementById('cb-btn-train')?.addEventListener('click', toggleTrain);
+        document.getElementById('cb-form-rag')?.addEventListener('submit', submitRAG);
+        document.querySelectorAll('.cb-tab').forEach(t =>
+            t.addEventListener('click', () => switchTab(t.dataset.tab))
+        );
+        document.querySelectorAll('.cb-sug-btn').forEach(b =>
+            b.addEventListener('click', () => { $input().value = b.textContent.trim(); enviar(); })
+        );
         if (document.getElementById('cb-rag-lista')) cargarRAG();
+
+        // Chip de fecha HOY
+        const chip = document.createElement('div');
+        chip.className = 'cb-date-chip';
+        chip.innerHTML = '<span>HOY</span>';
+        $msgs()?.prepend(chip);
     }
 
-    // ════════════════════════════════════════════════════════════
-    // CHAT — ENVIAR MENSAJE
-    // ════════════════════════════════════════════════════════════
+    // ── ENVIAR ────────────────────────────────────────────────────────────
     async function enviar() {
         if (enviando) return;
-        const input  = $input();
-        const mensaje = input.value.trim();
+        const inp     = $input();
+        const mensaje = inp.value.trim();
         if (!mensaje) return;
 
-        // Ocultar bienvenida y sugerencias
         document.getElementById('cb-bienvenida')?.remove();
         document.getElementById('cb-sugerencias-wrap')?.remove();
 
-        // Mostrar mensaje del usuario
         agregarBurbuja('user', mensaje);
-        input.value = '';
-        input.style.height = 'auto';
+        inp.value = ''; inp.style.height = 'auto';
 
-        // Deshabilitar envío
-        enviando = true;
-        $sendBtn().disabled = true;
-        const typingId = mostrarTyping();
+        enviando = true; $sendBtn().disabled = true;
+        const typId = mostrarTyping();
 
         try {
-            const res  = await post({ accion: 'responder', mensaje });
-            quitarTyping(typingId);
-
+            const res = await post({ accion: 'responder', mensaje });
+            quitarTyping(typId);
             if (res.error) {
-                agregarBurbuja('bot', '⚠️ ' + (res.respuesta || res.mensaje || 'Error desconocido.'));
+                agregarBurbuja('bot', '⚠️ ' + (res.respuesta || res.mensaje || 'Error.'));
             } else {
                 idUltimoMsg = res.idMensaje || 0;
                 agregarBurbuja('bot', res.respuesta, {
-                    schema   : res.schema,
-                    filas    : res.totalFilas,
-                    tiempoMs : res.tiempoMs,
-                    idMensaje: idUltimoMsg,
+                    schema: res.schema, filas: res.totalFilas,
+                    tiempoMs: res.tiempoMs, idMensaje: idUltimoMsg,
                 });
             }
-        } catch (err) {
-            quitarTyping(typingId);
-            agregarBurbuja('bot', '⚠️ Error de conexión. Verifica que el servidor esté activo.');
+        } catch {
+            quitarTyping(typId);
+            agregarBurbuja('bot', '⚠️ Error de conexión. Verifica que Ollama esté activo.');
         }
 
-        enviando = false;
-        $sendBtn().disabled = false;
-        input.focus();
+        enviando = false; $sendBtn().disabled = false; inp.focus();
     }
 
-    // ════════════════════════════════════════════════════════════
-    // BURBUJAS
-    // ════════════════════════════════════════════════════════════
+    // ── BURBUJAS ──────────────────────────────────────────────────────────
     function agregarBurbuja(tipo, texto, meta = {}) {
         const wrap = document.createElement('div');
         wrap.className = `cb-bubble-wrap ${tipo}`;
 
-        const avatar = document.createElement('div');
-        avatar.className = 'cb-avatar';
-        avatar.textContent = tipo === 'bot' ? '🤖' : '👤';
-
-        const contenido = document.createElement('div');
-
         const bubble = document.createElement('div');
         bubble.className = 'cb-bubble';
-        bubble.innerHTML = formatearTexto(texto);
-        contenido.appendChild(bubble);
+        bubble.innerHTML = formatear(texto);
 
-        // Meta info (solo para bot)
-        if (tipo === 'bot') {
-            const metaDiv = document.createElement('div');
-            metaDiv.className = 'cb-bubble-meta';
+        const cont = document.createElement('div');
+        cont.appendChild(bubble);
 
-            const hora = new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
-            metaDiv.innerHTML = `<span>${hora}</span>`;
+        // Meta: hora + ticks (usuario) | hora + schema (bot)
+        const metaDiv = document.createElement('div');
+        metaDiv.className = 'cb-bubble-meta';
+        const hora = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 
-            if (meta.schema) {
-                metaDiv.innerHTML += `<span title="Tabla consultada">📊 ${meta.schema}</span>`;
-            }
-            if (meta.tiempoMs) {
-                metaDiv.innerHTML += `<span>⚡ ${meta.tiempoMs}ms</span>`;
-            }
-            contenido.appendChild(metaDiv);
+        if (tipo === 'user') {
+            metaDiv.innerHTML = `<span>${hora}</span>
+            <svg width="15" height="10" viewBox="0 0 18 10" fill="none">
+              <path stroke="#34b7f1" stroke-width="1.8" stroke-linecap="round" d="M1 5l3.5 3.5L13 1"/>
+              <path stroke="#34b7f1" stroke-width="1.8" stroke-linecap="round" d="M5 5l3.5 3.5L17 1" opacity=".6"/>
+            </svg>`;
+        } else {
+            let extra = `<span>${hora}</span>`;
+            if (meta.schema) extra += `<span>📊 ${esc(meta.schema)}</span>`;
+            if (meta.tiempoMs) extra += `<span>⚡ ${meta.tiempoMs}ms</span>`;
+            metaDiv.innerHTML = extra;
+        }
+        cont.appendChild(metaDiv);
 
-            // Feedback
-            if (meta.idMensaje) {
-                contenido.appendChild(crearFeedback(meta.idMensaje));
-            }
+        // Feedback (solo bot)
+        if (tipo === 'bot' && meta.idMensaje) {
+            cont.appendChild(crearFeedback(meta.idMensaje));
         }
 
-        wrap.appendChild(avatar);
-        wrap.appendChild(contenido);
+        wrap.appendChild(cont);
         $msgs().appendChild(wrap);
-        scrollAbajo();
+        scroll();
     }
 
-    function crearFeedback(idMensaje) {
-        const div = document.createElement('div');
-        div.className = 'cb-feedback';
-        div.innerHTML = `
-            <button class="cb-fb-btn" data-util="1" data-id="${idMensaje}" title="Útil">👍 Útil</button>
-            <button class="cb-fb-btn" data-util="0" data-id="${idMensaje}" title="No útil">👎 Mejorar</button>
-        `;
-        div.querySelectorAll('.cb-fb-btn').forEach(btn => {
-            btn.addEventListener('click', () => enviarFeedback(btn, idMensaje, btn.dataset.util));
-        });
-        return div;
+    function crearFeedback(id) {
+        const d = document.createElement('div');
+        d.className = 'cb-feedback';
+        d.innerHTML = `<button class="cb-fb-btn" data-util="1" data-id="${id}">👍 Útil</button>
+                       <button class="cb-fb-btn" data-util="0" data-id="${id}">👎 Mejorar</button>`;
+        d.querySelectorAll('.cb-fb-btn').forEach(b =>
+            b.addEventListener('click', () => {
+                d.querySelectorAll('.cb-fb-btn').forEach(x => x.classList.remove('activo'));
+                b.classList.add('activo');
+                post({ accion: 'feedback', idMensaje: id, util: b.dataset.util });
+            })
+        );
+        return d;
     }
 
-    async function enviarFeedback(btn, idMensaje, util) {
-        const wrap = btn.parentElement;
-        wrap.querySelectorAll('.cb-fb-btn').forEach(b => b.classList.remove('activo'));
-        btn.classList.add('activo');
-
-        await post({ accion: 'feedback', idMensaje, util });
-    }
-
-    // ════════════════════════════════════════════════════════════
-    // TYPING INDICATOR
-    // ════════════════════════════════════════════════════════════
+    // ── TYPING ────────────────────────────────────────────────────────────
     function mostrarTyping() {
-        const id   = 'typing-' + Date.now();
+        const id   = 'typ-' + Date.now();
         const wrap = document.createElement('div');
-        wrap.className = 'cb-bubble-wrap bot';
-        wrap.id = id;
-        wrap.innerHTML = `
-            <div class="cb-avatar">🤖</div>
-            <div class="cb-bubble" style="padding:0">
-                <div class="cb-typing">
-                    <span></span><span></span><span></span>
-                </div>
-            </div>`;
-        $msgs().appendChild(wrap);
-        scrollAbajo();
+        wrap.className = 'cb-bubble-wrap bot'; wrap.id = id;
+        wrap.innerHTML = `<div class="cb-bubble" style="padding:10px 14px">
+            <div class="cb-typing"><span></span><span></span><span></span></div></div>`;
+        $msgs().appendChild(wrap); scroll();
         return id;
     }
+    function quitarTyping(id) { document.getElementById(id)?.remove(); }
 
-    function quitarTyping(id) {
-        document.getElementById(id)?.remove();
+    // ── ENTRENAMIENTO ─────────────────────────────────────────────────────
+    function toggleTrain() {
+        const p = document.getElementById('cb-train-panel');
+        p?.classList.toggle('oculto');
+        if (!p?.classList.contains('oculto')) cargarRAG();
     }
-
-    // ════════════════════════════════════════════════════════════
-    // PANEL ENTRENAMIENTO
-    // ════════════════════════════════════════════════════════════
-    function toggleTrainPanel() {
-        const panel = document.getElementById('cb-train-panel');
-        panel?.classList.toggle('oculto');
-        if (!panel?.classList.contains('oculto')) cargarRAG();
-    }
-
     function switchTab(tab) {
         document.querySelectorAll('.cb-tab').forEach(t => t.classList.remove('activo'));
         document.querySelector(`[data-tab="${tab}"]`)?.classList.add('activo');
@@ -219,131 +159,86 @@ const ChaviBot = (() => {
         document.getElementById(`cb-tab-${tab}`)?.style.setProperty('display', 'block');
         if (tab === 'lista') cargarRAG();
     }
-
     async function submitRAG(e) {
         e.preventDefault();
         const alerta = document.getElementById('cb-rag-alert');
-        ocultarAlerta(alerta);
-
+        alerta?.classList.remove('show');
         const datos = {
-            accion   : 'agregar_rag',
-            pregunta : document.getElementById('rag-pregunta')?.value.trim(),
-            palabras : document.getElementById('rag-palabras')?.value.trim(),
-            schema   : document.getElementById('rag-schema')?.value.trim(),
-            sql      : document.getElementById('rag-sql')?.value.trim(),
-            respBase : document.getElementById('rag-respbase')?.value.trim(),
-            rol      : document.getElementById('rag-rol')?.value.trim(),
-            area     : document.getElementById('rag-area')?.value.trim(),
-            canal    : document.getElementById('rag-canal')?.value,
+            accion: 'agregar_rag',
+            pregunta: v('rag-pregunta'), palabras: v('rag-palabras'),
+            schema: v('rag-schema'),     sql: v('rag-sql'),
+            respBase: v('rag-respbase'), rol: v('rag-rol'),
+            canal: v('rag-canal'),
         };
-
         if (!datos.pregunta || !datos.sql) {
-            mostrarAlerta(alerta, 'La Pregunta y el SQL son obligatorios.', 'error');
-            return;
+            mostrarAlerta(alerta, 'La Pregunta y el SQL son obligatorios.', 'error'); return;
         }
-
         const btn = e.target.querySelector('button[type=submit]');
-        btn.disabled = true; btn.textContent = 'Guardando...';
-
+        btn.disabled = true; btn.textContent = 'Guardando…';
         try {
             const res = await post(datos);
-            if (res.error) {
-                mostrarAlerta(alerta, res.mensaje, 'error');
-            } else {
-                mostrarAlerta(alerta, res.mensaje, 'ok');
-                e.target.reset();
-                cargarRAG();
-            }
-        } catch {
-            mostrarAlerta(alerta, 'Error de conexión.', 'error');
-        }
-
-        btn.disabled = false; btn.textContent = 'Guardar ejemplo';
+            if (res.error) mostrarAlerta(alerta, res.mensaje, 'error');
+            else { mostrarAlerta(alerta, res.mensaje, 'ok'); e.target.reset(); cargarRAG(); }
+        } catch { mostrarAlerta(alerta, 'Error de conexión.', 'error'); }
+        btn.disabled = false; btn.textContent = '💾 Guardar';
     }
-
     async function cargarRAG() {
         const lista = document.getElementById('cb-rag-lista');
         if (!lista) return;
-        lista.innerHTML = '<p style="color:#94a3b8;font-size:.84rem">Cargando...</p>';
-
+        lista.innerHTML = '<p style="color:var(--txt3);font-size:.82rem;padding:.25rem">Cargando…</p>';
         try {
             const res = await post({ accion: 'listar_rag' });
-            if (res.error || !res.datos?.length) {
-                lista.innerHTML = '<p style="color:#94a3b8;font-size:.84rem">Sin ejemplos aún.</p>';
-                return;
-            }
+            if (!res.datos?.length) { lista.innerHTML = '<p style="color:var(--txt3);font-size:.82rem">Sin ejemplos.</p>'; return; }
             lista.innerHTML = '';
-            res.datos.forEach(ej => lista.appendChild(crearItemRAG(ej)));
-        } catch {
-            lista.innerHTML = '<p style="color:red;font-size:.84rem">Error al cargar.</p>';
-        }
+            res.datos.forEach(ej => lista.appendChild(itemRAG(ej)));
+        } catch { lista.innerHTML = '<p style="color:red;font-size:.82rem">Error al cargar.</p>'; }
     }
-
-    function crearItemRAG(ej) {
-        const div = document.createElement('div');
-        div.className = 'cb-rag-item';
-        div.innerHTML = `
+    function itemRAG(ej) {
+        const d = document.createElement('div');
+        d.className = 'cb-rag-item';
+        d.innerHTML = `
             <div class="cb-rag-item-header">
                 <span class="cb-rag-pregunta">${esc(ej.preguntaEjemplo)}</span>
-                <span class="cb-rag-badge ${ej.activo ? 'activo' : 'inactivo'}">
-                    ${ej.activo ? 'Activo' : 'Inactivo'}
-                </span>
+                <span class="cb-rag-badge ${ej.activo ? 'activo' : 'inactivo'}">${ej.activo ? 'Activo' : 'Inactivo'}</span>
             </div>
-            <div class="cb-rag-schema">📊 ${esc(ej.schemaObjetivo)} · Canal: ${esc(ej.canal)}</div>
+            <div class="cb-rag-schema">📊 ${esc(ej.schemaObjetivo)} · ${esc(ej.canal)}</div>
             <div class="cb-rag-stats">Usado: ${ej.vecesUsado}x · Útil: ${ej.vecesUtil}x · ${esc(ej.fechaCreacion)}</div>
             <div class="cb-rag-actions">
-                <button class="cb-btn-sm" onclick="ChaviBot.toggleRAG(${ej.idEjemplo}, ${ej.activo ? 0 : 1})">
+                <button class="cb-btn-sm" onclick="ChaviBot.toggleRAG(${ej.idEjemplo},${ej.activo?0:1})">
                     ${ej.activo ? 'Desactivar' : 'Activar'}
                 </button>
             </div>`;
-        return div;
+        return d;
     }
-
     async function toggleRAG(id, activo) {
         await post({ accion: 'toggle_rag', id, activo });
         cargarRAG();
     }
 
-    // ════════════════════════════════════════════════════════════
-    // HELPERS
-    // ════════════════════════════════════════════════════════════
-    function formatearTexto(texto) {
-        return texto
+    // ── HELPERS ───────────────────────────────────────────────────────────
+    function formatear(txt) {
+        return txt
             .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g,    '<em>$1</em>')
             .replace(/\n/g,           '<br>');
     }
-
-    function esc(str) {
-        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    function scrollAbajo() {
-        const el = $msgs();
-        if (el) el.scrollTop = el.scrollHeight;
-    }
-
+    function esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function scroll() { const el = $msgs(); if(el) el.scrollTop = el.scrollHeight; }
+    function v(id) { return document.getElementById(id)?.value.trim() || ''; }
     function mostrarAlerta(el, msg, tipo) {
         if (!el) return;
-        el.textContent = msg;
-        el.className = `cb-alert ${tipo} show`;
+        el.textContent = msg; el.className = `cb-alert ${tipo} show`;
         setTimeout(() => el.classList.remove('show'), 4000);
     }
-
-    function ocultarAlerta(el) {
-        if (el) el.classList.remove('show');
-    }
-
     async function post(datos) {
         const body = new FormData();
-        Object.entries(datos).forEach(([k, v]) => body.append(k, v ?? ''));
+        Object.entries(datos).forEach(([k,v]) => body.append(k, v ?? ''));
         const res = await fetch(AJAX_URL, { method: 'POST', body });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
     }
 
-    // API pública
     return { init, toggleRAG };
 })();
 
