@@ -30,14 +30,14 @@
 				<th>Tecnología</th>
 				<th>Nombre Genérico</th>
 				<th>Estado</th>
-				<th class="text-center">Acciones</th>
+				<th class="text-end">Acciones</th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if (!empty($tecnologias)): ?>
 				<?php foreach ($tecnologias as $tec): ?>
 					<?php $tieneCodigosDiferentes = isset($tec['TotalCodigosSiga']) && (int) $tec['TotalCodigosSiga'] > 1; ?>
-					<?php $tienePrecioAsignado = isset($tec['TienePrecio']) && (int) $tec['TienePrecio'] === 1; ?>
+					<?php $tienePresupuestoAsignado = isset($tec['TienePresupuesto']) && (int) $tec['TienePresupuesto'] === 1; ?>
 					<tr>
 						<td>
 							<?php if ($tieneCodigosDiferentes): ?>
@@ -61,16 +61,28 @@
 								<span class="badge bg-warning-lt text-dark">Pendiente</span>
 							<?php endif; ?>
 						</td>
-						<td class="text-center">
-							<button class="btn btn-azure-lt btn-accion" type="button" onclick="editarTecnologia(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>)">
-								Editar
+					<td class="text-end align-middle">
+						<div class="btn-group" role="group">
+							<!-- Editar -->
+							<button type="button"
+								class="btn btn-icon btn-lg"
+								title="Editar"
+								onclick="editarTecnologia(<?= (int)$tec['IdCatalogoTecnologico'] ?>)">
+								<i class="ti ti-edit fs-2"></i>
 							</button>
-							<button class="btn <?php echo $tienePrecioAsignado ? 'btn-success' : 'btn-azure-lt'; ?> btn-accion btn-precio-tecnologia" type="button"
-								data-id-catalogo="<?php echo (int) $tec['IdCatalogoTecnologico']; ?>"
-								onclick="abrirModalPresupuesto(<?php echo (int) $tec['IdCatalogoTecnologico']; ?>, <?php echo htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>)">
-								Precio
+							<!-- Presupuesto -->
+							<button type="button"
+								class="btn btn-icon btn-lg btn-presupuesto-tecnologia <?= $tienePresupuestoAsignado ? 'text-success' : '' ?>"
+								title="Presupuesto"
+								data-id-catalogo="<?= (int)$tec['IdCatalogoTecnologico'] ?>"
+								onclick="abrirModalPresupuesto(
+									<?= (int)$tec['IdCatalogoTecnologico'] ?>, 
+									<?= htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>
+								)">
+								<i class="ti ti-calendar-dollar fs-2"></i>
 							</button>
-						</td>
+						</div>
+					</td>
 					</tr>
 				<?php endforeach; ?>
 			<?php else: ?>
@@ -314,14 +326,12 @@
 				btnGuardar.disabled = false;
 				btnGuardar.innerHTML = 'Guardar';
 				if (res && res.ok) {
-					const botonPrecio = document.querySelector('.btn-precio-tecnologia[data-id-catalogo="' + idCatalogo + '"]');
-					if (botonPrecio) {
+					const botonPresupuesto = document.querySelector('.btn-presupuesto-tecnologia[data-id-catalogo="' + idCatalogo + '"]');
+					if (botonPresupuesto) {
 						if (monto !== null) {
-							botonPrecio.classList.remove('btn-azure-lt');
-							botonPrecio.classList.add('btn-success');
+							botonPresupuesto.classList.add('text-success');
 						} else {
-							botonPrecio.classList.remove('btn-success');
-							botonPrecio.classList.add('btn-azure-lt');
+							botonPresupuesto.classList.remove('text-success');
 						}
 					}
 					window.adqNotifySafe('success', 'Presupuesto guardado', 'El presupuesto fue registrado correctamente.');

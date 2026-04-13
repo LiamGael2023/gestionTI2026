@@ -47,8 +47,7 @@
 						data-id-meta-siaf="<?php echo isset($req['IdMetaSIAF']) && (int) $req['IdMetaSIAF'] > 0 ? (int) $req['IdMetaSIAF'] : ''; ?>"
 						data-nro-pedido="<?php echo htmlspecialchars((string) $req['NroPedidoCompra'], ENT_QUOTES, 'UTF-8'); ?>"
 						data-codigo-meta="<?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-						data-anio="<?php echo (int) $req['Anio']; ?>"
-					>
+						data-anio="<?php echo (int) $req['Anio']; ?>">
 						<td><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
 						<td><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
 						<td>
@@ -77,16 +76,28 @@
 								<span class="badge bg-warning-lt text-dark">Pendiente</span>
 							<?php endif; ?>
 						</td>
-						<td class="text-end">
-							<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">
-								<button class="btn btn-primary-lt" type="button" onclick="editarRequerimiento(<?php echo (int) $req['Id']; ?>)">
-									Editar
+						<td class="text-end align-middle">
+							<div class="btn-group" role="group">
+								<!-- Editar -->
+								<button type="button"
+									class="btn btn-icon btn-lg"
+									title="Editar"
+									onclick="editarRequerimiento(<?= (int)$req['Id'] ?>)">
+									<i class="ti ti-edit fs-2"></i>
 								</button>
-								<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(<?php echo (int) $req['Id']; ?>)">
-									Detalles
+								<!-- Detalles -->
+								<button type="button"
+									class="btn btn-icon btn-lg"
+									title="Detalles"
+									onclick="detalleRequerimiento(<?= (int)$req['Id'] ?>)">
+									<i class="ti ti-list-details fs-2"></i>
 								</button>
-								<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(<?php echo (int) $req['Id']; ?>)">
-									Eliminar
+								<!-- Eliminar -->
+								<button type="button"
+									class="btn btn-icon btn-lg text-danger"
+									title="Eliminar"
+									onclick="eliminarRequerimiento(<?= (int)$req['Id'] ?>)">
+									<i class="ti ti-trash fs-2"></i>
 								</button>
 							</div>
 						</td>
@@ -631,9 +642,9 @@
 			const idSubCentroCosto = idSubCentroCostoEl ? idSubCentroCostoEl.value : '';
 			const idMetaSiaf = idMetaSiafEl ? idMetaSiafEl.value : '';
 			const centroCostoTexto = idCentroCostoEl && idCentroCostoEl.selectedOptions.length > 0 ? idCentroCostoEl.selectedOptions[0].text.trim() : '';
-			const subCentroCostoTexto = idSubCentroCosto
-				? (idSubCentroCostoEl && idSubCentroCostoEl.selectedOptions.length > 0 ? idSubCentroCostoEl.selectedOptions[0].text.trim() : '')
-				: '';
+			const subCentroCostoTexto = idSubCentroCosto ?
+				(idSubCentroCostoEl && idSubCentroCostoEl.selectedOptions.length > 0 ? idSubCentroCostoEl.selectedOptions[0].text.trim() : '') :
+				'';
 			const nroPedido = nroPedidoEl ? nroPedidoEl.value : '';
 			const codigoMeta = codigoMetaEl ? codigoMetaEl.value : '';
 			const anio = anioEl ? anioEl.value : '';

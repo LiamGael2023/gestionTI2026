@@ -81,13 +81,19 @@
 						<td><?php echo htmlspecialchars($detalle['DescripcionDetallada']); ?></td>
 						<td><?php echo (int) $detalle['Cantidad']; ?></td>
 						<td><?php echo htmlspecialchars((string) ($detalle['CodigoTecnologia'] ?? '')); ?></td>
-						<td class="text-end">
-							<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">
-								<button class="btn btn-azure-lt btn-accion" type="button" onclick="editarDetalle(<?php echo (int) $detalle['Id']; ?>)">
-									Editar
+						<td class="text-end align-middle">
+							<div class="btn-group" role="group">
+								<button type="button"
+									class="btn btn-icon btn-lg"
+									title="Editar"
+									onclick="editarDetalle(<?= (int)$detalle['Id'] ?>)">
+									<i class="ti ti-edit fs-2"></i>
 								</button>
-								<button class="btn btn-red-lt" type="button" onclick="eliminarDetalle(<?php echo (int) $detalle['Id']; ?>)">
-									Eliminar
+								<button type="button"
+									class="btn btn-icon btn-lg text-danger"
+									title="Eliminar"
+									onclick="eliminarDetalle(<?= (int)$detalle['Id'] ?>)">
+									<i class="ti ti-trash fs-2"></i>
 								</button>
 							</div>
 						</td>

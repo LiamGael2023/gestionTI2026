@@ -879,15 +879,35 @@ function formatearFechaEntregaDashboard($fecha)
 							'<span class="badge bg-success-lt">Activo</span>' :
 							'<span class="badge bg-secondary-lt">Inactivo</span>';
 						var acciones = activo ?
-							'<button type="button" class="btn btn-primary adq-btn-action js-editar-cc" data-id="' + Number(item.Id) + '" data-siglas="' + escaparHtml(item.Siglas) + '" data-nombre="' + escaparHtml(item.NombreCentroCosto) + '">Editar</button>' +
-							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-cc" data-id="' + Number(item.Id) + '">Inactivar</button>' :
-							'<button type="button" class="btn btn-success adq-btn-action js-activar-cc" data-id="' + Number(item.Id) + '">Activar</button>';
+							// Editar + Inactivar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg js-editar-cc" ' +
+							'title="Editar" ' +
+							'data-id="' + Number(item.Id) + '" ' +
+							'data-siglas="' + escaparHtml(item.Siglas) + '" ' +
+							'data-nombre="' + escaparHtml(item.NombreCentroCosto) + '">' +
+							'<i class="ti ti-edit fs-2"></i>' +
+							'</button>' +
+							'<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-cc" ' +
+							'title="Inactivar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-x fs-2"></i>' +
+							'</button>' +
+							'</div>' :
+							// Activar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg text-success js-activar-cc" ' +
+							'title="Activar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-check fs-2"></i>' +
+							'</button>' +
+							'</div>';
 
 						return '<tr>' +
 							'<td>' + escaparHtml(item.Siglas) + '</td>' +
 							'<td>' + escaparHtml(item.NombreCentroCosto) + '</td>' +
 							'<td>' + badgeEstado + '</td>' +
-							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							'<td class="text-end align-middle">' +
 							acciones +
 							'</td>' +
 							'</tr>';
@@ -921,19 +941,40 @@ function formatearFechaEntregaDashboard($fecha)
 
 					var filas = data.map(function(item) {
 						var activo = Number(item.Activo) === 1;
+
 						var badgeEstado = activo ?
 							'<span class="badge bg-success-lt">Activo</span>' :
 							'<span class="badge bg-secondary-lt">Inactivo</span>';
-						var acciones = activo ?
-							'<button type="button" class="btn btn-primary adq-btn-action js-editar-tec" data-id="' + Number(item.Id) + '" data-codigo="' + escaparHtml(item.Codigo) + '" data-nombre="' + escaparHtml(item.NombreGenerico) + '">Editar</button>' +
-							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-tec" data-id="' + Number(item.Id) + '">Inactivar</button>' :
-							'<button type="button" class="btn btn-success adq-btn-action js-activar-tec" data-id="' + Number(item.Id) + '">Activar</button>';
 
+						var acciones = activo ?
+							// Editar + Inactivar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg js-editar-tec" ' +
+							'title="Editar" ' +
+							'data-id="' + Number(item.Id) + '" ' +
+							'data-codigo="' + escaparHtml(item.Codigo) + '" ' +
+							'data-nombre="' + escaparHtml(item.NombreGenerico) + '">' +
+							'<i class="ti ti-edit fs-2"></i>' +
+							'</button>' +
+							'<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-tec" ' +
+							'title="Inactivar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-x fs-2"></i>' +
+							'</button>' +
+							'</div>' :
+							// Activar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg text-success js-activar-tec" ' +
+							'title="Activar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-check fs-2"></i>' +
+							'</button>' +
+							'</div>';
 						return '<tr>' +
 							'<td>' + escaparHtml(item.Codigo) + '</td>' +
 							'<td>' + escaparHtml(item.NombreGenerico) + '</td>' +
 							'<td>' + badgeEstado + '</td>' +
-							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							'<td class="text-end align-middle">' +
 							acciones +
 							'</td>' +
 							'</tr>';
@@ -1088,19 +1129,40 @@ function formatearFechaEntregaDashboard($fecha)
 
 					var filas = data.map(function(item) {
 						var activo = Number(item.Activo) === 1;
+
 						var badgeEstado = activo ?
 							'<span class="badge bg-success-lt">Activo</span>' :
 							'<span class="badge bg-secondary-lt">Inactivo</span>';
-						var acciones = activo ?
-							'<button type="button" class="btn btn-primary adq-btn-action js-editar-ms" data-id="' + Number(item.Id) + '" data-codigo="' + escaparHtml(item.CodigoMeta) + '" data-descripcion="' + escaparHtml(item.Descripcion) + '">Editar</button>' +
-							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-ms" data-id="' + Number(item.Id) + '">Inactivar</button>' :
-							'<button type="button" class="btn btn-success adq-btn-action js-activar-ms" data-id="' + Number(item.Id) + '">Activar</button>';
 
+						var acciones = activo ?
+							// Editar + Inactivar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg js-editar-ms" ' +
+							'title="Editar" ' +
+							'data-id="' + Number(item.Id) + '" ' +
+							'data-codigo="' + escaparHtml(item.CodigoMeta) + '" ' +
+							'data-descripcion="' + escaparHtml(item.Descripcion) + '">' +
+							'<i class="ti ti-edit fs-2"></i>' +
+							'</button>' +
+							'<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-ms" ' +
+							'title="Inactivar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-x fs-2"></i>' +
+							'</button>' +
+							'</div>' :
+							// Activar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg text-success js-activar-ms" ' +
+							'title="Activar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-check fs-2"></i>' +
+							'</button>' +
+							'</div>';
 						return '<tr>' +
 							'<td>' + escaparHtml(item.CodigoMeta) + '</td>' +
 							'<td>' + escaparHtml(item.Descripcion) + '</td>' +
 							'<td>' + badgeEstado + '</td>' +
-							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' +
+							'<td class="text-end align-middle">' +
 							acciones +
 							'</td>' +
 							'</tr>';
