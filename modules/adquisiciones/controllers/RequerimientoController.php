@@ -124,6 +124,7 @@ switch ($action) {
 		$aniosDisponibles = $model->obtenerAniosDisponibles();
 		$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
 		$consolidado = $model->obtenerConsolidado($anioFiltro);
+		$consolidadoCabeceraExportacion = $model->obtenerCabeceraConsolidadoCompleta();
 		break;
 
 	case 'consolidadoFormatoOficialAjax':
@@ -138,6 +139,16 @@ switch ($action) {
 			'anio' => (int) $anioConsulta,
 			'metasCabecera' => $metasCabecera,
 			'filas' => $filas,
+		]);
+		exit;
+
+	case 'consolidadoCabeceraExportacionAjax':
+		header('Content-Type: application/json');
+		$cabeceraCompleta = $model->obtenerCabeceraConsolidadoCompleta();
+		echo json_encode([
+			'success' => true,
+			'cabeceraCentros' => $cabeceraCompleta['cabeceraCentros'] ?? [],
+			'centrosCosto' => $cabeceraCompleta['centrosCosto'] ?? [],
 		]);
 		exit;
 

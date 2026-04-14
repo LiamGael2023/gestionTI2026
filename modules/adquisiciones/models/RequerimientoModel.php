@@ -461,6 +461,7 @@ class RequerimientoModel
 						ELSE LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN CLASIFICAR')))
 					END
 				) AS Equipo,
+				MAX(UPPER(LTRIM(RTRIM(ISNULL(tsa.NombreTipoSolicitud, ''))))) AS TipoSolicitud,
 				c.Id AS IdCentroCosto,
 				c.Siglas AS CentroCosto,
 				r.IdSubCentroCosto,
@@ -471,6 +472,14 @@ class RequerimientoModel
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = r.IdCentroCosto
 			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = r.IdSubCentroCosto
 			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
+			OUTER APPLY (
+				SELECT TOP 1 ts.Nombre AS NombreTipoSolicitud
+				FROM adquisiciones.CatalogoTecnologicoTipoSolicitud ctts
+				INNER JOIN adquisiciones.TipoSolicitud ts ON ts.Id = ctts.IdTipoSolicitud
+				WHERE ctts.IdCatalogoTecnologico = d.IdCatalogoTecnologico
+					AND ctts.Anio = r.Anio
+				ORDER BY ctts.Activo DESC, ctts.Id DESC
+			) tsa
 		";
 
 		$params = [];
@@ -500,16 +509,17 @@ class RequerimientoModel
 
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if ($stmt === false) {
-			return ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => []];
+			return ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => [], 'tiposSolicitudPorEquipo' => []];
 		}
 
 		$matriz = [];
 		$equiposSet = [];
-		$centrosData = [];
+		$tiposSolicitudPorEquipo = [];
 		$centrosUsados = [];
 
 		while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
 			$equipo = $row['Equipo'];
+			$tipoSolicitud = trim((string) ($row['TipoSolicitud'] ?? ''));
 			$idCentroCosto = (int) ($row['IdCentroCosto'] ?? 0);
 			$centroCosto = trim((string) ($row['CentroCosto'] ?? ''));
 			$idSubCentroCosto = (int) ($row['IdSubCentroCosto'] ?? 0);
@@ -526,16 +536,16 @@ class RequerimientoModel
 				'id' => $idCentroCosto,
 				'siglas' => $centroCosto,
 			];
-			if (!isset($centrosData[$idCentroCosto])) {
-				$centrosData[$idCentroCosto] = [
-					'id' => $idCentroCosto,
-					'siglas' => $centroCosto,
-					'columnasUsadas' => [],
-				];
+			if (!isset($tiposSolicitudPorEquipo[$equipo]) || ($tiposSolicitudPorEquipo[$equipo] === '' && $tipoSolicitud !== '')) {
+				$tiposSolicitudPorEquipo[$equipo] = $tipoSolicitud;
 			}
-			$centrosData[$idCentroCosto]['columnasUsadas'][$claveColumna] = true;
 			$equiposSet[$equipo] = true;
 		}
+
+		$centrosOrdenados = array_values($centrosUsados);
+		usort($centrosOrdenados, function ($a, $b) {
+			return strcmp((string) ($a['siglas'] ?? ''), (string) ($b['siglas'] ?? ''));
+		});
 
 		$sqlSubCentros = "
 			SELECT
@@ -568,11 +578,6 @@ class RequerimientoModel
 		}
 
 		$equipos = array_keys($equiposSet);
-
-		$centrosOrdenados = array_values($centrosUsados);
-		usort($centrosOrdenados, function ($a, $b) {
-			return strcmp((string) ($a['siglas'] ?? ''), (string) ($b['siglas'] ?? ''));
-		});
 
 		$cabeceraCentros = [];
 		$centrosCosto = [];
@@ -630,7 +635,102 @@ class RequerimientoModel
 			'equipos' => $equipos,
 			'centrosCosto' => $centrosCosto,
 			'cabeceraCentros' => $cabeceraCentros,
-			'matriz' => $matriz
+			'matriz' => $matriz,
+			'tiposSolicitudPorEquipo' => $tiposSolicitudPorEquipo,
+		];
+	}
+
+	public function obtenerCabeceraConsolidadoCompleta()
+	{
+		$sqlCentros = "
+			SELECT
+				c.Id,
+				c.Siglas
+			FROM adquisiciones.CentroCosto c
+			ORDER BY c.Id
+		";
+
+		$centrosOrdenados = [];
+		$stmtCentros = sqlsrv_query($this->db, $sqlCentros);
+		if ($stmtCentros !== false) {
+			while ($rowCentro = sqlsrv_fetch_array($stmtCentros, SQLSRV_FETCH_ASSOC)) {
+				$idCentro = (int) ($rowCentro['Id'] ?? 0);
+				if ($idCentro <= 0) {
+					continue;
+				}
+
+				$centrosOrdenados[] = [
+					'id' => $idCentro,
+					'siglas' => trim((string) ($rowCentro['Siglas'] ?? '')),
+				];
+			}
+			sqlsrv_free_stmt($stmtCentros);
+		}
+
+		$sqlSubCentros = "
+			SELECT
+				sc.Id AS IdSubCentroCosto,
+				sc.IdCentroCosto,
+				sc.Siglas AS SubCentroCosto
+			FROM adquisiciones.SubCentroCosto sc
+			INNER JOIN adquisiciones.CentroCosto c ON c.Id = sc.IdCentroCosto
+			ORDER BY sc.IdCentroCosto, sc.Id
+		";
+
+		$subCentrosPorCentro = [];
+		$stmtSub = sqlsrv_query($this->db, $sqlSubCentros);
+		if ($stmtSub !== false) {
+			while ($rowSub = sqlsrv_fetch_array($stmtSub, SQLSRV_FETCH_ASSOC)) {
+				$idCentro = (int) ($rowSub['IdCentroCosto'] ?? 0);
+				if ($idCentro <= 0) {
+					continue;
+				}
+				if (!isset($subCentrosPorCentro[$idCentro])) {
+					$subCentrosPorCentro[$idCentro] = [];
+				}
+				$subCentrosPorCentro[$idCentro][] = [
+					'id' => (int) ($rowSub['IdSubCentroCosto'] ?? 0),
+					'siglas' => trim((string) ($rowSub['SubCentroCosto'] ?? '')),
+				];
+			}
+			sqlsrv_free_stmt($stmtSub);
+		}
+
+		$cabeceraCentros = [];
+		$centrosCosto = [];
+		foreach ($centrosOrdenados as $centro) {
+			$idCentro = (int) ($centro['id'] ?? 0);
+			$siglasCentro = (string) ($centro['siglas'] ?? '');
+			$subCentros = $subCentrosPorCentro[$idCentro] ?? [];
+
+			$columnasGrupo = [];
+			if (!empty($subCentros)) {
+				foreach ($subCentros as $subCentro) {
+					$columnasGrupo[] = [
+						'key' => 'SC_' . (int) $subCentro['id'],
+						'label' => (string) $subCentro['siglas'],
+					];
+				}
+			} else {
+				$columnasGrupo[] = [
+					'key' => 'CC_' . $idCentro,
+					'label' => $siglasCentro,
+				];
+			}
+
+			$cabeceraCentros[] = [
+				'label' => $siglasCentro,
+				'columnas' => $columnasGrupo,
+			];
+
+			foreach ($columnasGrupo as $columna) {
+				$centrosCosto[] = $columna['key'];
+			}
+		}
+
+		return [
+			'cabeceraCentros' => $cabeceraCentros,
+			'centrosCosto' => $centrosCosto,
 		];
 	}
 

@@ -1,13 +1,20 @@
 <?php
 // Inicializar variables si no existen
 $consolidado = $consolidado ?? ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => []];
+$consolidadoCabeceraExportacion = $consolidadoCabeceraExportacion ?? ['cabeceraCentros' => [], 'centrosCosto' => []];
 $aniosDisponibles = $aniosDisponibles ?? [];
 $anioFiltro = $anioFiltro ?? null;
 
 $equipos = $consolidado['equipos'];
 $centrosCosto = $consolidado['centrosCosto'];
 $cabeceraCentros = $consolidado['cabeceraCentros'] ?? [];
+$cabeceraCentrosExportacion = $consolidadoCabeceraExportacion['cabeceraCentros'] ?? [];
 $matriz = $consolidado['matriz'];
+$tiposSolicitudPorEquipo = $consolidado['tiposSolicitudPorEquipo'] ?? [];
+
+if (empty($cabeceraCentrosExportacion)) {
+	$cabeceraCentrosExportacion = $cabeceraCentros;
+}
 
 $columnasPadreWeb = [];
 foreach ($cabeceraCentros as $grupoCentro) {
@@ -39,6 +46,21 @@ foreach ($cabeceraCentros as $grupoCentro) {
 		continue;
 	}
 	$columnasPlano[] = [
+		'key' => '',
+		'label' => (string) ($grupoCentro['label'] ?? ''),
+	];
+}
+
+$columnasPlanoExportacion = [];
+foreach ($cabeceraCentrosExportacion as $grupoCentro) {
+	$columnasGrupo = $grupoCentro['columnas'] ?? [];
+	if (!empty($columnasGrupo)) {
+		foreach ($columnasGrupo as $columna) {
+			$columnasPlanoExportacion[] = $columna;
+		}
+		continue;
+	}
+	$columnasPlanoExportacion[] = [
 		'key' => '',
 		'label' => (string) ($grupoCentro['label'] ?? ''),
 	];
@@ -154,9 +176,12 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 <script>
 window.adqConsolidadoCabeceraCentros = <?php echo json_encode($cabeceraCentros, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoColumnasPlano = <?php echo json_encode($columnasPlano, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoCabeceraCentrosExportacion = <?php echo json_encode($cabeceraCentrosExportacion, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoColumnasPlanoExportacion = <?php echo json_encode($columnasPlanoExportacion, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoTotalesPorColumna = <?php echo json_encode($totalesPorCentroCosto, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoEquipos = <?php echo json_encode($equipos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoMatriz = <?php echo json_encode($matriz, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+window.adqConsolidadoTiposSolicitudPorEquipo = <?php echo json_encode($tiposSolicitudPorEquipo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
 function filtrarConsolidadoPorAnio() {
 	const anio = document.getElementById('filtroAnioConsolidado').value;
@@ -172,4 +197,4 @@ function filtrarConsolidadoPorAnio() {
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="modules/adquisiciones/views/consolidado/consolidado.js"></script>
+<script src="modules/adquisiciones/views/consolidado/consolidado.js?v=<?php echo filemtime(__DIR__ . '/consolidado.js'); ?>"></script>
