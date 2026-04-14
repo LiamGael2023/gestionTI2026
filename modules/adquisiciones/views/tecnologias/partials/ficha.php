@@ -51,7 +51,7 @@
                                 <?php endif; ?>
                             </td>
                             <td class="text-center align-middle">
-                                <div class="btn-group gap-1 justify-content-center" role="group">
+                                <div class="btn-group justify-content-center" role="group">
                                     <!-- Subir -->
                                     <button type="button"
                                         class="btn btn-icon btn-lg <?= $esPrimeraFicha ? 'text-secondary' : '' ?>"

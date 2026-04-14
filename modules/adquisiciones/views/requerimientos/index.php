@@ -268,18 +268,27 @@
 
 		return [
 			'<tr data-id="' + id + '" data-id-centro-costo="' + (idCentroCosto || '') + '" data-id-sub-centro-costo="' + (idSubCentroCosto || '') + '" data-id-meta-siaf="' + (idMetaSiaf || '') + '" data-nro-pedido="' + escapeHtml(nroPedido) + '" data-codigo-meta="' + escapeHtml(codigoMeta || '') + '" data-anio="' + parseInt(anio, 10) + '">',
-			'<td>' + escapeHtml(nroPedido) + '</td>',
-			'<td>' + escapeHtml(codigoMeta || '') + '</td>',
-			'<td>' + construirNombreCentroCosto(centroCosto, subCentroCosto) + '</td>',
-			'<td>' + parseInt(anio, 10) + '</td>',
-			'<td>' + badgeEstado + '</td>',
-			'<td class="text-end">',
-			'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
-			'<button class="btn btn-primary-lt" type="button" onclick="editarRequerimiento(' + id + ')">Editar</button>',
-			'<button class="btn btn-azure-lt" type="button" onclick="detalleRequerimiento(' + id + ')">Detalles</button>',
-			'<button class="btn btn-red-lt" type="button" onclick="eliminarRequerimiento(' + id + ')">Eliminar</button>',
-			'</div>',
-			'</td>',
+				'<td>' + escapeHtml(nroPedido) + '</td>',
+				'<td>' + escapeHtml(codigoMeta || '') + '</td>',
+				'<td>' + construirNombreCentroCosto(centroCosto, subCentroCosto) + '</td>',
+				'<td>' + parseInt(anio, 10) + '</td>',
+				'<td>' + badgeEstado + '</td>',
+				'<td class="text-end align-middle">',
+				'<div class="btn-group" role="group">',
+				// Editar
+				'<button type="button" class="btn btn-icon btn-lg" title="Editar" onclick="editarRequerimiento(' + id + ')">',
+				'<i class="ti ti-edit fs-2"></i>',
+				'</button>',
+				// Detalles
+				'<button type="button" class="btn btn-icon btn-lg" title="Detalles" onclick="detalleRequerimiento(' + id + ')">',
+				'<i class="ti ti-list-details fs-2"></i>',
+				'</button>',
+				// Eliminar
+				'<button type="button" class="btn btn-icon btn-lg text-danger" title="Eliminar" onclick="eliminarRequerimiento(' + id + ')">',
+				'<i class="ti ti-trash fs-2"></i>',
+				'</button>',
+				'</div>',
+				'</td>',
 			'</tr>'
 		].join('');
 	}

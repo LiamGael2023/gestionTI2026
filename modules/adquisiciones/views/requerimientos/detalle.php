@@ -20,24 +20,24 @@
 
 <div class="card mb-3">
 	<div class="card-body">
-	<div class="row">
-		<div class="col-md-6">
-			<div class="mb-2">
-				<span class="fw-semibold text-secondary">Centro:</span>
-				<?php echo htmlspecialchars($requerimiento['NombreCentroCosto']); ?>
+		<div class="row">
+			<div class="col-md-6">
+				<div class="mb-2">
+					<span class="fw-semibold text-secondary">Centro:</span>
+					<?php echo htmlspecialchars($requerimiento['NombreCentroCosto']); ?>
+				</div>
+				<div class="mb-2">
+					<span class="fw-semibold text-secondary">Código Meta:</span>
+					<?php echo htmlspecialchars((string) ($requerimiento['CodigoMeta'] ?? '')); ?>
+				</div>
 			</div>
-			<div class="mb-2">
-				<span class="fw-semibold text-secondary">Código Meta:</span>
-				<?php echo htmlspecialchars((string) ($requerimiento['CodigoMeta'] ?? '')); ?>
+			<div class="col-md-6">
+				<div class="mb-2">
+					<span class="fw-semibold text-secondary">Año:</span>
+					<?php echo (int) $requerimiento['Anio']; ?>
+				</div>
 			</div>
 		</div>
-		<div class="col-md-6">
-			<div class="mb-2">
-				<span class="fw-semibold text-secondary">Año:</span>
-				<?php echo (int) $requerimiento['Anio']; ?>
-			</div>
-		</div>
-	</div>
 	</div>
 </div>
 
@@ -339,11 +339,17 @@
 				'<td>' + escapeHtml(valores.descripcionDetallada) + '</td>',
 				'<td>' + parseInt(valores.cantidad, 10) + '</td>',
 				'<td>' + escapeHtml(valores.codigoTecnologia || '') + '</td>',
-				'<td class="text-end">',
-					'<div class="d-inline-flex gap-2 align-items-center justify-content-end w-100">',
-						'<button class="btn btn-azure-lt btn-accion" type="button" onclick="editarDetalle(' + id + ')">Editar</button>',
-						'<button class="btn btn-red-lt" type="button" onclick="eliminarDetalle(' + id + ')">Eliminar</button>',
-					'</div>',
+				'<td class="text-end align-middle">',
+				'<div class="btn-group" role="group">',
+					// Editar
+					'<button type="button" class="btn btn-icon btn-lg" title="Editar" onclick="editarDetalle(' + id + ')">',
+					'<i class="ti ti-edit fs-2"></i>',
+					'</button>',
+					// Eliminar
+					'<button type="button" class="btn btn-icon btn-lg text-danger" title="Eliminar" onclick="eliminarDetalle(' + id + ')">',
+					'<i class="ti ti-trash fs-2"></i>',
+					'</button>',
+				'</div>',
 				'</td>',
 			'</tr>'
 		].join('');
