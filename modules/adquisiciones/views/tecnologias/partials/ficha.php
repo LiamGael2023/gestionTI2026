@@ -13,7 +13,7 @@
                 <tr>
                     <th>Marca</th>
                     <th>Modelo</th>
-                    <th>Documento</th>
+                    <th class="text-center">Documento</th>
                     <th>Fecha</th>
                     <th>Estado</th>
                     <th class="text-center">Ranking</th>
@@ -30,16 +30,16 @@
                         <tr data-id="<?php echo (int) $ficha['Id']; ?>">
                             <td><?php echo htmlspecialchars($ficha['Marca']); ?></td>
                             <td><?php echo htmlspecialchars($ficha['Modelo']); ?></td>
-                            <td>
+                            <td class="text-center align-middle">
                                 <?php if (!empty($ficha['Documento'])): ?>
-                                    <a href="index.php?module=adquisiciones&action=verFichaTecnicaAjax&id=<?php echo (int) $ficha['Id']; ?>"
-                                        onclick="return abrirPdfEnModal(this.href);"
-                                        class="text-decoration-none text-reset"
-                                        title="Ver PDF">
-                                        <i class="ti ti-file-text icon-action"></i>
-                                    </a>
+                                    <button type="button"
+                                        class="btn btn-icon btn-lg"
+                                        title="Ver PDF"
+                                        onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verFichaTecnicaAjax&id=<?= (int)$ficha['Id'] ?>')">
+                                        <i class="ti ti-file-text fs-2"></i>
+                                    </button>
                                 <?php else: ?>
-                                    <span class="text-secondary">Sin documento</span>
+                                    <span class="text-secondary small">Sin documento</span>
                                 <?php endif; ?>
                             </td>
                             <td><?php echo htmlspecialchars($formatearFecha($ficha['FechaRegistro'])); ?></td>
@@ -50,32 +50,50 @@
                                     <span class="badge bg-warning-lt text-dark">Cargado</span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-center">
-                                <div class="acciones-iconos justify-content-center">
-                                    <i class="ti ti-arrow-up icon-action <?php echo $esPrimeraFicha ? 'text-secondary' : ''; ?>"
+                            <td class="text-center align-middle">
+                                <div class="btn-group gap-1 justify-content-center" role="group">
+                                    <!-- Subir -->
+                                    <button type="button"
+                                        class="btn btn-icon btn-lg <?= $esPrimeraFicha ? 'text-secondary' : '' ?>"
                                         title="Subir prioridad"
-                                        <?php if (!$esPrimeraFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'up')" <?php endif; ?>></i>
-
-                                    <i class="ti ti-arrow-down icon-action <?php echo $esUltimaFicha ? 'text-secondary' : ''; ?>"
+                                        <?= $esPrimeraFicha ? 'disabled' : 'onclick="moverFichaTecnicaRango(' . (int)$ficha['Id'] . ', \'up\')"' ?>>
+                                        <i class="ti ti-arrow-up fs-2"></i>
+                                    </button>
+                                    <!-- Bajar -->
+                                    <button type="button"
+                                        class="btn btn-icon btn-lg <?= $esUltimaFicha ? 'text-secondary' : '' ?>"
                                         title="Bajar prioridad"
-                                        <?php if (!$esUltimaFicha): ?>onclick="moverFichaTecnicaRango(<?php echo (int) $ficha['Id']; ?>, 'down')" <?php endif; ?>></i>
+                                        <?= $esUltimaFicha ? 'disabled' : 'onclick="moverFichaTecnicaRango(' . (int)$ficha['Id'] . ', \'down\')"' ?>>
+                                        <i class="ti ti-arrow-down fs-2"></i>
+                                    </button>
                                 </div>
                             </td>
-                            <td class="text-end">
-                                <div class="acciones-iconos">
+                            <td class="text-end align-middle">
+                                <div class="btn-group" role="group">
                                     <?php if ($estadoFicha === 0): ?>
-                                        <i class="ti ti-send icon-action"
+                                        <!-- Marcar como enviada -->
+                                        <button type="button"
+                                            class="btn btn-icon btn-lg"
                                             title="Marcar como enviada"
-                                            onclick="cambiarEstadoFichaTecnica(<?php echo (int) $ficha['Id']; ?>, 1)"></i>
+                                            onclick="cambiarEstadoFichaTecnica(<?= (int)$ficha['Id'] ?>, 1)">
+                                            <i class="ti ti-send fs-2"></i>
+                                        </button>
                                     <?php else: ?>
-                                        <i class="ti ti-send-off icon-action"
+                                        <!-- Marcar como pendiente -->
+                                        <button type="button"
+                                            class="btn btn-icon btn-lg"
                                             title="Marcar como pendiente"
-                                            onclick="cambiarEstadoFichaTecnica(<?php echo (int) $ficha['Id']; ?>, 0)"></i>
+                                            onclick="cambiarEstadoFichaTecnica(<?= (int)$ficha['Id'] ?>, 0)">
+                                            <i class="ti ti-send-off fs-2"></i>
+                                        </button>
                                     <?php endif; ?>
-
-                                    <i class="ti ti-trash icon-action"
+                                    <!-- Eliminar -->
+                                    <button type="button"
+                                        class="btn btn-icon btn-lg text-danger"
                                         title="Eliminar"
-                                        onclick="eliminarFichaTecnica(<?php echo (int) $ficha['Id']; ?>)"></i>
+                                        onclick="eliminarFichaTecnica(<?= (int)$ficha['Id'] ?>)">
+                                        <i class="ti ti-trash fs-2"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>

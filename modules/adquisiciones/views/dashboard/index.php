@@ -774,6 +774,7 @@ function formatearFechaEntregaDashboard($fecha)
 									<th>Centro de Costo</th>
 									<th>Siglas</th>
 									<th>Sub-Centro de Costo</th>
+									<th>Estado</th>
 									<th class="text-end">Acciones</th>
 								</tr>
 							</thead>
@@ -1012,14 +1013,31 @@ function formatearFechaEntregaDashboard($fecha)
 							'<span class="badge bg-success-lt">Activo</span>' :
 							'<span class="badge bg-secondary-lt">Inactivo</span>';
 						var acciones = activo ?
-							'<button type="button" class="btn btn-primary adq-btn-action js-editar-ts" data-id="' + Number(item.Id) + '" data-nombre="' + escaparHtml(item.Nombre) + '">Editar</button>' +
-							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-ts" data-id="' + Number(item.Id) + '">Inactivar</button>' :
-							'<button type="button" class="btn btn-success adq-btn-action js-activar-ts" data-id="' + Number(item.Id) + '">Activar</button>';
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg js-editar-ts" ' +
+							'title="Editar" ' +
+							'data-id="' + Number(item.Id) + '" ' +
+							'data-nombre="' + escaparHtml(item.Nombre) + '">' +
+							'<i class="ti ti-edit fs-2"></i>' +
+							'</button>' +
+							'<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-ts" ' +
+							'title="Inactivar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-x fs-2"></i>' +
+							'</button>' +
+							'</div>' :
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg text-success js-activar-ts" ' +
+							'title="Activar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-check fs-2"></i>' +
+							'</button>' +
+							'</div>';
 
 						return '<tr>' +
 							'<td>' + escaparHtml(item.Nombre) + '</td>' +
 							'<td>' + badgeEstado + '</td>' +
-							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' + acciones + '</td>' +
+							'<td class="text-end align-middle">' + acciones + '</td>' +
 							'</tr>';
 					}).join('');
 
@@ -1676,7 +1694,7 @@ function formatearFechaEntregaDashboard($fecha)
 				success: function(response) {
 					var tbody = $('#tablaSubCentrosCostoGestion tbody');
 					if (!response || !response.success) {
-						tbody.html('<tr><td colspan="4" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
+						tbody.html('<tr><td colspan="5" class="text-center text-danger py-4">No se pudo cargar la lista.</td></tr>');
 						return;
 					}
 
@@ -1686,31 +1704,54 @@ function formatearFechaEntregaDashboard($fecha)
 					$('#cardTotalSubCentros').text(data.length.toLocaleString('es-PE'));
 
 					if (data.length === 0) {
-						tbody.html('<tr><td colspan="4" class="text-center text-secondary py-4">No hay sub-centros de costo registrados.</td></tr>');
+						tbody.html('<tr><td colspan="5" class="text-center text-secondary py-4">No hay sub-centros de costo registrados.</td></tr>');
 						return;
 					}
 
 					var filas = data.map(function(item) {
-						var acciones =
-							'<button type="button" class="btn btn-primary adq-btn-action js-editar-scc" ' +
+						var activo = Number(item.Activo) === 1;
+						var badgeEstado = activo ?
+							'<span class="badge bg-success-lt">Activo</span>' :
+							'<span class="badge bg-secondary-lt">Inactivo</span>';
+						var acciones = activo ?
+							// Editar + Inactivar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg js-editar-scc" ' +
+							'title="Editar" ' +
 							'data-id="' + Number(item.Id) + '" ' +
 							'data-idcc="' + Number(item.IdCentroCosto) + '" ' +
 							'data-siglas="' + escaparHtml(item.Siglas) + '" ' +
-							'data-nombre="' + escaparHtml(item.NombreSubCentroCosto) + '">Editar</button>' +
-							'<button type="button" class="btn btn-danger adq-btn-action js-eliminar-scc" data-id="' + Number(item.Id) + '">Eliminar</button>';
+							'data-nombre="' + escaparHtml(item.NombreSubCentroCosto) + '">' +
+							'<i class="ti ti-edit fs-2"></i>' +
+							'</button>' +
+							'<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-scc" ' +
+							'title="Inactivar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-x fs-2"></i>' +
+							'</button>' +
+							'</div>' :
+							// Activar
+							'<div class="btn-group" role="group">' +
+							'<button type="button" class="btn btn-icon btn-lg text-success js-activar-scc" ' +
+							'title="Activar" ' +
+							'data-id="' + Number(item.Id) + '">' +
+							'<i class="ti ti-eye-check fs-2"></i>' +
+							'</button>' +
+							'</div>';
 
 						return '<tr>' +
 							'<td>' + escaparHtml(item.NombreCentroCosto) + '</td>' +
 							'<td>' + escaparHtml(item.Siglas) + '</td>' +
 							'<td>' + escaparHtml(item.NombreSubCentroCosto) + '</td>' +
-							'<td class="text-end d-flex justify-content-end flex-wrap gap-1">' + acciones + '</td>' +
+							'<td>' + badgeEstado + '</td>' +
+							'<td class="text-end align-middle">' + acciones + '</td>' +
 							'</tr>';
 					}).join('');
 
 					tbody.html(filas);
 				},
 				error: function() {
-					$('#tablaSubCentrosCostoGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
+					$('#tablaSubCentrosCostoGestion tbody').html('<tr><td colspan="5" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
 		}
@@ -1760,9 +1801,9 @@ function formatearFechaEntregaDashboard($fecha)
 		$('#tablaSubCentrosCostoGestion').on('click', '.js-eliminar-scc', function() {
 			var id = $(this).data('id');
 			window.adqConfirmSafe({
-				titulo: 'Eliminar sub-centro de costo',
-				mensaje: '¿Desea eliminar este sub-centro de costo?',
-				textoAceptar: 'Eliminar',
+				titulo: 'Inactivar sub-centro de costo',
+				mensaje: '¿Desea inactivar este sub-centro de costo?',
+				textoAceptar: 'Inactivar',
 				claseAceptar: 'btn-danger'
 			}).then(function(confirmado) {
 				if (!confirmado) {
@@ -1777,12 +1818,42 @@ function formatearFechaEntregaDashboard($fecha)
 					},
 					success: function(response) {
 						if (response && response.success) {
-							notificar('success', 'Sub-centro eliminado', response.message || 'Sub-centro de costo eliminado.');
+							notificar('success', 'Sub-centro inactivado', response.message || 'Sub-centro de costo inactivado.');
 							limpiarFormularioSubCentro();
 							cargarSubCentrosCosto();
 							return;
 						}
-						notificar('danger', 'No se pudo eliminar', response && response.message ? response.message : 'Error al eliminar sub-centro de costo.');
+						notificar('danger', 'No se pudo inactivar', response && response.message ? response.message : 'Error al inactivar sub-centro de costo.');
+					}
+				});
+			});
+		});
+
+		$('#tablaSubCentrosCostoGestion').on('click', '.js-activar-scc', function() {
+			var id = $(this).data('id');
+			window.adqConfirmSafe({
+				titulo: 'Activar sub-centro de costo',
+				mensaje: '¿Desea activar este sub-centro de costo?',
+				textoAceptar: 'Activar',
+				claseAceptar: 'btn-success'
+			}).then(function(confirmado) {
+				if (!confirmado) {
+					return;
+				}
+				$.ajax({
+					url: 'index.php?module=adquisiciones&action=activarSubCentroCostoAjax',
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						id: id
+					},
+					success: function(response) {
+						if (response && response.success) {
+							notificar('success', 'Sub-centro activado', response.message || 'Sub-centro de costo activado.');
+							cargarSubCentrosCosto();
+							return;
+						}
+						notificar('danger', 'No se pudo activar', response && response.message ? response.message : 'Error al activar sub-centro de costo.');
 					}
 				});
 			});

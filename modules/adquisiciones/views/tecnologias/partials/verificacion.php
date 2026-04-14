@@ -9,18 +9,23 @@
 						<strong>Fecha y Hora:</strong> <?php echo htmlspecialchars($formatearFecha($verificacionTecnica['FechaRegistro'])); ?>
 					</div>
 					<div class="col text-end">
-						<div class="acciones-iconos">
+						<div class="btn-group justify-content-end" role="group">
 							<?php if (!empty($verificacionTecnica['Documento'])): ?>
-								<a href="index.php?module=adquisiciones&action=verVerificacionTecnicaAjax&id=<?php echo (int) $verificacionTecnica['Id']; ?>"
-									onclick="return abrirPdfEnModal(this.href);"
-									class="text-decoration-none text-reset"
-									title="Ver PDF">
-									<i class="ti ti-file-text icon-action"></i>
-								</a>
+								<!-- Ver PDF -->
+								<button type="button"
+									class="btn btn-icon btn-lg"
+									title="Ver PDF"
+									onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verVerificacionTecnicaAjax&id=<?= (int)$verificacionTecnica['Id'] ?>')">
+									<i class="ti ti-file-text fs-2"></i>
+								</button>
 							<?php endif; ?>
-							<i class="ti ti-trash icon-action"
+							<!-- Eliminar -->
+							<button type="button"
+								class="btn btn-icon btn-lg text-danger"
 								title="Eliminar"
-								onclick="eliminarVerificacionTecnica(<?php echo (int) $verificacionTecnica['Id']; ?>)"></i>
+								onclick="eliminarVerificacionTecnica(<?= (int)$verificacionTecnica['Id'] ?>)">
+								<i class="ti ti-trash fs-2"></i>
+							</button>
 						</div>
 					</div>
 				</div>

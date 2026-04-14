@@ -16,19 +16,24 @@
 						<tr>
 							<td><?php echo htmlspecialchars($formatearFecha($especificacionTecnica['FechaRegistro'])); ?></td>
 							<td><?php echo htmlspecialchars(str_replace('_', ' ', (string) ($especificacionTecnica['Codigo'] ?? ''))); ?></td>
-							<td class="text-end">
-								<div class="acciones-iconos">
+							<td class="text-end align-middle">
+								<div class="btn-group" role="group">
 									<?php if (!empty($especificacionTecnica['Documento'])): ?>
-										<a href="index.php?module=adquisiciones&action=verEspecificacionTecnicaAjax&id=<?php echo (int) $especificacionTecnica['Id']; ?>"
-											onclick="return abrirPdfEnModal(this.href);"
-											class="text-decoration-none text-reset"
-											title="Ver PDF">
-											<i class="ti ti-file-text icon-action"></i>
-										</a>
+										<!-- Ver PDF -->
+										<button type="button"
+											class="btn btn-icon btn-lg"
+											title="Ver PDF"
+											onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verEspecificacionTecnicaAjax&id=<?= (int)$especificacionTecnica['Id'] ?>')">
+											<i class="ti ti-file-text fs-2"></i>
+										</button>
 									<?php endif; ?>
-									<i class="ti ti-trash icon-action"
+									<!-- Eliminar -->
+									<button type="button"
+										class="btn btn-icon btn-lg text-danger"
 										title="Eliminar"
-										onclick="eliminarEspecificacionTecnica(<?php echo (int) $especificacionTecnica['Id']; ?>)"></i>
+										onclick="eliminarEspecificacionTecnica(<?= (int)$especificacionTecnica['Id'] ?>)">
+										<i class="ti ti-trash fs-2"></i>
+									</button>
 								</div>
 							</td>
 						</tr>

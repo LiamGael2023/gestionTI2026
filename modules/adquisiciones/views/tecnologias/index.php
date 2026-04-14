@@ -63,12 +63,12 @@
 						</td>
 					<td class="text-end align-middle">
 						<div class="btn-group" role="group">
-							<!-- Editar -->
+							<!-- Detalles -->
 							<button type="button"
 								class="btn btn-icon btn-lg"
-								title="Editar"
+								title="Detalles"
 								onclick="editarTecnologia(<?= (int)$tec['IdCatalogoTecnologico'] ?>)">
-								<i class="ti ti-edit fs-2"></i>
+								<i class="ti ti-list-details fs-2"></i>
 							</button>
 							<!-- Presupuesto -->
 							<button type="button"
@@ -127,7 +127,7 @@
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="modalNuevaTecnologiaLabel">Agregar nueva tecnologia</h5>
+				<h5 class="modal-title" id="modalNuevaTecnologiaLabel">Agregar nueva tecnología</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form id="formNuevaTecnologia">
