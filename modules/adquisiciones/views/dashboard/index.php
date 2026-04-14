@@ -1738,7 +1738,6 @@ function formatearFechaEntregaDashboard($fecha)
 							'<i class="ti ti-eye-check fs-2"></i>' +
 							'</button>' +
 							'</div>';
-
 						return '<tr>' +
 							'<td>' + escaparHtml(item.NombreCentroCosto) + '</td>' +
 							'<td>' + escaparHtml(item.Siglas) + '</td>' +
