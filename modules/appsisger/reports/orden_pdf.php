@@ -13,6 +13,7 @@ function labelValue($pdf, $x, $y, $label, $value, $w1=30, $w2=30){
     $pdf->Cell($w2,5,$value,0,1);
 }
 
+
 function generarPDFOrden($d){
 
     $pdf = new TCPDF('P', 'mm', 'A5', true, 'UTF-8', false);
@@ -24,12 +25,19 @@ function generarPDFOrden($d){
     $pdf->SetMargins(8, 8, 8);
     $pdf->AddPage();
 
+    $pdf->StartTransform();
+    $pdf->SetAlpha(0.25);
+    $pdf->Image(__DIR__.'/../images/chavimochicfondo.jpg', 10, 8, 148, 210, '', '', '', false, 300, '', false, false, 0);
+     $pdf->SetAlpha(1);
+    $pdf->StopTransform();
+
+
   
-    $pdf->Rect(8, 8, 132, 194);
+    $pdf->Rect(8, 8, 132, 182);
 
    
-    $pdf->Image(__DIR__.'/../logo_pech.png', 10, 10, 25);
-    $pdf->Image(__DIR__.'/logo_der.png', 110, 10, 25);
+    $pdf->Image(__DIR__.'/../images/logo_pech.png', 15, 15, 30);
+    $pdf->Image(__DIR__.'/../images/logo_pech.png', 105, 15, 30);
 
 
     $pdf->SetFont('helvetica','B',11);
