@@ -41,6 +41,244 @@ function delegarControladorAdquisiciones($ruta)
 	exit;
 }
 
+function descargarConsolidadoNoOficialXlsx($model, $anioSolicitado)
+{
+	// Evita que avisos E_DEPRECATED de dependencias antiguas contaminen la salida binaria del XLSX.
+	error_reporting(error_reporting() & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+	@ini_set('display_errors', '0');
+
+	$autoload = 'libs/vendor/autoload.php';
+	if (!file_exists($autoload)) {
+		http_response_code(500);
+		header('Content-Type: text/plain; charset=UTF-8');
+		echo 'No se encontró el autoload de Composer en libs/vendor/autoload.php';
+		return;
+	}
+
+	require_once $autoload;
+
+	$aniosDisponibles = $model->obtenerAniosDisponibles();
+	$anioConsulta = resolverAnioFiltro($anioSolicitado, $aniosDisponibles);
+	$consolidado = $model->obtenerConsolidado($anioConsulta);
+	$cabeceraExportacion = $model->obtenerCabeceraConsolidadoCompleta();
+
+	$equipos = array_values($consolidado['equipos'] ?? []);
+	$matriz = $consolidado['matriz'] ?? [];
+	$tiposSolicitudPorEquipo = $consolidado['tiposSolicitudPorEquipo'] ?? [];
+	$cabeceraCentros = $cabeceraExportacion['cabeceraCentros'] ?? [];
+
+	$columnasAgrupadas = [];
+	$columnKeys = [];
+	foreach ($cabeceraCentros as $grupo) {
+		$labelGrupo = trim((string) ($grupo['label'] ?? ''));
+		$columnas = is_array($grupo['columnas'] ?? null) ? $grupo['columnas'] : [];
+		$columnasValidas = [];
+		foreach ($columnas as $col) {
+			$key = trim((string) ($col['key'] ?? ''));
+			$label = trim((string) ($col['label'] ?? ''));
+			if ($key === '') {
+				continue;
+			}
+			$columnasValidas[] = ['key' => $key, 'label' => $label !== '' ? $label : $key];
+			$columnKeys[] = $key;
+		}
+		if (!empty($columnasValidas)) {
+			$columnasAgrupadas[] = [
+				'label' => $labelGrupo,
+				'columnas' => $columnasValidas,
+			];
+		}
+	}
+
+	usort($equipos, static function ($a, $b) use ($tiposSolicitudPorEquipo) {
+		$equipoA = (string) $a;
+		$equipoB = (string) $b;
+		$tipoA = strtoupper(trim((string) ($tiposSolicitudPorEquipo[$equipoA] ?? '')));
+		$tipoB = strtoupper(trim((string) ($tiposSolicitudPorEquipo[$equipoB] ?? '')));
+
+		if ($tipoA !== $tipoB) {
+			if ($tipoA === '') {
+				return 1;
+			}
+			if ($tipoB === '') {
+				return -1;
+			}
+			return strcmp($tipoA, $tipoB);
+		}
+
+		return strcmp(strtoupper($equipoA), strtoupper($equipoB));
+	});
+
+	$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+	$spreadsheet->getDefaultStyle()->getFont()->setName('Calibri')->setSize(9);
+	$sheet = $spreadsheet->getActiveSheet();
+	$sheet->setTitle('Consolidado');
+
+	$totalCols = 3 + count($columnKeys);
+	$lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+
+	$sheet->setCellValue('A1', 'CONSOLIDADO DE EQUIPOS POR CENTRO DE COSTO');
+	$sheet->mergeCells('A1:' . $lastColLetter . '1');
+	$sheet->setCellValue('A2', 'ANIO: ' . (string) $anioConsulta);
+	$sheet->mergeCells('A2:' . $lastColLetter . '2');
+
+	$sheet->setCellValue('A4', 'EQUIPO');
+	$sheet->setCellValue('B4', 'TIPO DE SOLICITUD');
+	$sheet->mergeCells('A4:A5');
+	$sheet->mergeCells('B4:B5');
+
+	$colActual = 3;
+	foreach ($columnasAgrupadas as $grupo) {
+		$cols = $grupo['columnas'];
+		if (count($cols) > 1) {
+			$inicio = $colActual;
+			$fin = $colActual + count($cols) - 1;
+			$sheet->setCellValueByColumnAndRow($inicio, 4, strtoupper((string) ($grupo['label'] ?? '')));
+			$sheet->mergeCells(
+				\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($inicio) . '4:' .
+				\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fin) . '4'
+			);
+			foreach ($cols as $columna) {
+				$sheet->setCellValueByColumnAndRow($colActual, 5, strtoupper((string) ($columna['label'] ?? '')));
+				$colActual++;
+			}
+			continue;
+		}
+
+		$labelSimple = strtoupper((string) ($cols[0]['label'] ?? ($grupo['label'] ?? '')));
+		$sheet->setCellValueByColumnAndRow($colActual, 4, $labelSimple);
+		$sheet->mergeCells(
+			\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colActual) . '4:' .
+			\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colActual) . '5'
+		);
+		$colActual++;
+	}
+
+	$sheet->setCellValueByColumnAndRow($colActual, 4, 'TOTAL');
+	$sheet->mergeCells(
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colActual) . '4:' .
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colActual) . '5'
+	);
+
+	$filaData = 6;
+	$totalesPorColumna = array_fill_keys($columnKeys, 0);
+	$totalGeneral = 0;
+
+	foreach ($equipos as $equipo) {
+		$equipoKey = (string) $equipo;
+		$tipoSolicitud = (string) ($tiposSolicitudPorEquipo[$equipoKey] ?? '');
+		$sheet->setCellValueByColumnAndRow(1, $filaData, $equipoKey);
+		$sheet->setCellValueByColumnAndRow(2, $filaData, strtoupper(trim($tipoSolicitud)));
+
+		$totalFila = 0;
+		$colData = 3;
+		foreach ($columnKeys as $key) {
+			$valor = (int) (($matriz[$equipoKey][$key] ?? 0));
+			if ($valor > 0) {
+				$sheet->setCellValueByColumnAndRow($colData, $filaData, $valor);
+			}
+			$totalesPorColumna[$key] += $valor;
+			$totalFila += $valor;
+			$colData++;
+		}
+
+		if ($totalFila > 0) {
+			$sheet->setCellValueByColumnAndRow($colData, $filaData, $totalFila);
+		}
+		$totalGeneral += $totalFila;
+		$filaData++;
+	}
+
+	$sheet->setCellValueByColumnAndRow(1, $filaData, 'TOTAL');
+	$sheet->setCellValueByColumnAndRow(2, $filaData, '');
+	$colTotal = 3;
+	foreach ($columnKeys as $key) {
+		$sheet->setCellValueByColumnAndRow($colTotal, $filaData, (int) ($totalesPorColumna[$key] ?? 0));
+		$colTotal++;
+	}
+	$sheet->setCellValueByColumnAndRow($colTotal, $filaData, $totalGeneral);
+
+	$sheet->getStyle('A1:' . $lastColLetter . '1')->getFont()->setBold(true);
+	$sheet->getStyle('A4:' . $lastColLetter . '5')->getFont()->setBold(true);
+	$sheet->getStyle('A' . $filaData . ':' . $lastColLetter . $filaData)->getFont()->setBold(true);
+	$sheet->getStyle('A1:' . $lastColLetter . $filaData)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+	$sheet->getStyle('A4:' . $lastColLetter . '5')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+	$sheet->getStyle('A4:' . $lastColLetter . '5')->getAlignment()->setWrapText(false);
+	$sheet->getStyle('A6:A' . $filaData)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+	$sheet->getStyle('B6:B' . $filaData)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT);
+	$sheet->getStyle('A6:B' . $filaData)->getAlignment()->setWrapText(true);
+	if ($totalCols >= 3) {
+		$primerNumero = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3);
+		$sheet->getStyle($primerNumero . '6:' . $lastColLetter . $filaData)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+		$sheet->getStyle($primerNumero . '6:' . $lastColLetter . $filaData)->getFont()->setSize(11);
+	}
+	$sheet->getStyle('A1:' . $lastColLetter . $filaData)->getFont()->setName('Calibri')->setSize(9);
+	if ($totalCols >= 3) {
+		$primerNumero = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3);
+		$sheet->getStyle($primerNumero . '6:' . $lastColLetter . $filaData)->getFont()->setSize(11);
+	}
+	$sheet->getStyle('A4:' . $lastColLetter . $filaData)
+		->getBorders()
+		->getAllBorders()
+		->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+	$sheet->getRowDimension(4)->setRowHeight(20);
+	$sheet->getRowDimension(5)->setRowHeight(20);
+
+	// Calculo manual de anchos para evitar que AutoSize colapse columnas en algunos entornos.
+	$maxLens = array_fill(1, $totalCols, 0);
+	for ($col = 1; $col <= $totalCols; $col++) {
+		$valorCab4 = (string) $sheet->getCellByColumnAndRow($col, 4)->getCalculatedValue();
+		$valorCab5 = (string) $sheet->getCellByColumnAndRow($col, 5)->getCalculatedValue();
+		$maxLens[$col] = max($maxLens[$col], mb_strlen(trim($valorCab4), 'UTF-8'), mb_strlen(trim($valorCab5), 'UTF-8'));
+	}
+
+	for ($row = 6; $row <= $filaData; $row++) {
+		for ($col = 1; $col <= $totalCols; $col++) {
+			$valor = (string) $sheet->getCellByColumnAndRow($col, $row)->getCalculatedValue();
+			$len = mb_strlen(trim($valor), 'UTF-8');
+			if ($len > $maxLens[$col]) {
+				$maxLens[$col] = $len;
+			}
+		}
+	}
+
+	for ($col = 1; $col <= $totalCols; $col++) {
+		$letra = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+		$base = max(1, (int) $maxLens[$col]);
+
+		if ($col === 1) {
+			$ancho = max(34, min(60, $base + 3));
+		} elseif ($col === 2) {
+			$ancho = max(27, min(45, $base + 3));
+		} elseif ($col === $totalCols) {
+			$ancho = max(9, min(14, $base + 2));
+		} else {
+			$ancho = max(8.5, min(14, $base + 1.2));
+		}
+
+		$sheet->getColumnDimension($letra)->setWidth($ancho);
+	}
+
+	$fileName = 'Consolidado_Equipos_' . $anioConsulta . '.xlsx';
+	if (function_exists('ob_get_level')) {
+		while (ob_get_level() > 0) {
+			ob_end_clean();
+		}
+	}
+	header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	header('Content-Disposition: attachment;filename="' . $fileName . '"');
+	header('Cache-Control: max-age=0');
+	header('Cache-Control: max-age=1');
+	header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+	header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+	header('Cache-Control: cache, must-revalidate');
+	header('Pragma: public');
+
+	$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+	$writer->save('php://output');
+	exit;
+}
+
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
 		require_once 'config/db.php';
@@ -150,6 +388,10 @@ switch ($action) {
 			'cabeceraCentros' => $cabeceraCompleta['cabeceraCentros'] ?? [],
 			'centrosCosto' => $cabeceraCompleta['centrosCosto'] ?? [],
 		]);
+		exit;
+
+	case 'consolidadoNoOficialXlsxAjax':
+		descargarConsolidadoNoOficialXlsx($model, $anioFiltro);
 		exit;
 
 	case 'dashboard':

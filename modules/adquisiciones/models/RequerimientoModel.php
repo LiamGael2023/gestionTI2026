@@ -647,6 +647,7 @@ class RequerimientoModel
 				c.Id,
 				c.Siglas
 			FROM adquisiciones.CentroCosto c
+			WHERE c.Activo = 1
 			ORDER BY c.Id
 		";
 
@@ -674,6 +675,7 @@ class RequerimientoModel
 				sc.Siglas AS SubCentroCosto
 			FROM adquisiciones.SubCentroCosto sc
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = sc.IdCentroCosto
+			WHERE sc.Activo = 1 AND c.Activo = 1
 			ORDER BY sc.IdCentroCosto, sc.Id
 		";
 
