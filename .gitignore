@@ -1,11 +1,75 @@
-# Ignorar credenciales de base de datos
+#############################################
+# 🔐 CONFIGURACIÓN Y ARCHIVOS SENSIBLES
+#############################################
+
+config/permisos.php
 config/db.php
 config/config.php
 
-# Ignorar archivos temporales y logs de IIS/PHP
-C:\windows\Temp\
-error_log
-*.log
+#############################################
+# 📦 DEPENDENCIAS (Composer / Librerías)
+#############################################
 
-# Carpetas de editores
+vendor/
+composer.lock
+composer.phar
+
+#############################################
+# 📂 LIBRERÍAS INCLUIDAS MANUALMENTE
+#############################################
+
+modules/certificados/models/libs/fpdf/
+modules/certificados/PHPMailer-master/
+
+#############################################
+# 📁 ARCHIVOS GENERADOS / SUBIDAS
+#############################################
+
+modules/uploads/
+uploads/
+
+modules/certificados/controllers/tmp/
+modules/certificados/controllers/boletas/
+modules/certificados/tramites/
+
+#############################################
+# 📊 ARCHIVOS TEMPORALES / REPORTES
+#############################################
+
+*.log
+error_log
+*.tmp
+*.xlsx
+*.xls
+*.pdf
+
+#############################################
+# 🖥️ SISTEMA OPERATIVO / IIS / WINDOWS
+#############################################
+
+Thumbs.db
+.DS_Store
+desktop.ini
+
+C:\Windows\Temp\
+C:\inetpub\temp\
+
+#############################################
+# 🧠 EDITORES
+#############################################
+
 .vscode/
+.idea/
+
+#############################################
+# 🌐 CONFIGURACIÓN LOCAL WEB
+#############################################
+
+web.config
+
+#############################################
+# 🔥 ARCHIVOS PERSONALES O PRUEBAS
+#############################################
+
+prueba.php
+debug.php
