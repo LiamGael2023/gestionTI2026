@@ -145,48 +145,12 @@ function cargarCabeceraCompletaExportacion() {
 }
 
 function exportarConsolidadoOficial() {
-	if (!xlsxDisponible()) {
-		return;
-	}
-
 	var anio = obtenerAnioConsolidado();
-	var body = new URLSearchParams();
-	body.append('anio', anio || '');
-
-	fetch('index.php?module=adquisiciones&action=consolidadoFormatoOficialAjax', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-		},
-		body: body.toString(),
-	})
-		.then(function(response) {
-			if (!response.ok) {
-				throw new Error('No se pudo obtener la data del consolidado.');
-			}
-			return response.json();
-		})
-		.then(function(data) {
-			if (!data || data.success !== true) {
-				throw new Error((data && data.message) ? data.message : 'Respuesta invalida del servidor.');
-			}
-
-			var filas = Array.isArray(data.filas) ? data.filas : [];
-			var metasCabecera = normalizarMetasCabeceraOficial(data.metasCabecera);
-			if (metasCabecera.length === 0) {
-				notificar('error', 'No se pudo exportar', 'No hay metas SIAF activas para construir la cabecera del consolidado.');
-				return;
-			}
-			if (filas.length === 0) {
-				notificar('info', 'Sin datos para exportar', 'No hay información para el año seleccionado.');
-				return;
-			}
-
-			exportarFormatoOficialXlsx(filas, String(data.anio || anio || ''), metasCabecera);
-		})
-		.catch(function(error) {
-			notificar('error', 'No se pudo exportar', error && error.message ? error.message : 'Error inesperado.');
-		});
+	var url = 'index.php?module=adquisiciones&action=consolidadoOficialXlsxAjax';
+	if (anio) {
+		url += '&anio=' + encodeURIComponent(anio);
+	}
+	window.location.href = url;
 }
 
 function exportarFormatoOficialXlsx(filas, anio, metasCabecera) {

@@ -279,6 +279,245 @@ function descargarConsolidadoNoOficialXlsx($model, $anioSolicitado)
 	exit;
 }
 
+function descargarConsolidadoOficialXlsx($model, $anioSolicitado)
+{
+	error_reporting(error_reporting() & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+	@ini_set('display_errors', '0');
+
+	$autoload = 'libs/vendor/autoload.php';
+	if (!file_exists($autoload)) {
+		http_response_code(500);
+		header('Content-Type: text/plain; charset=UTF-8');
+		echo 'No se encontró el autoload de Composer en libs/vendor/autoload.php';
+		return;
+	}
+
+	require_once $autoload;
+
+	$aniosDisponibles = $model->obtenerAniosDisponibles();
+	$anioConsulta = resolverAnioFiltro($anioSolicitado, $aniosDisponibles);
+	$metasCabecera = $model->obtenerMetasCabeceraConsolidado($anioConsulta);
+	$filas = $model->obtenerConsolidadoFormatoOficial($anioConsulta, $metasCabecera);
+
+	$metas = [];
+	$vistos = [];
+	foreach ($metasCabecera as $meta) {
+		$codigo = preg_replace('/[^0-9]/', '', (string) ($meta['CodigoMeta'] ?? ''));
+		if ($codigo === '') {
+			continue;
+		}
+		if (strlen($codigo) < 3) {
+			$codigo = str_pad($codigo, 3, '0', STR_PAD_LEFT);
+		}
+		if (strlen($codigo) > 4) {
+			$codigo = substr($codigo, -4);
+		}
+		if (isset($vistos[$codigo])) {
+			continue;
+		}
+		$vistos[$codigo] = true;
+		$metas[] = [
+			'codigo' => $codigo,
+			'nombre' => trim((string) ($meta['Descripcion'] ?? $codigo)),
+			'alias' => 'Meta' . str_pad($codigo, 4, '0', STR_PAD_LEFT),
+		];
+	}
+
+	$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+	$spreadsheet->getDefaultStyle()->getFont()->setName('Tahoma')->setSize(9);
+	$sheet = $spreadsheet->getActiveSheet();
+	$sheet->setTitle('Consolidado Oficial');
+
+	$columnasFijas = 7;
+	$columnasMetas = count($metas) * 2;
+	$indiceInicioMetas = $columnasFijas + 1;
+	$indiceFinMetas = $indiceInicioMetas + $columnasMetas - 1;
+	$indiceTotalInicial = $indiceFinMetas + 1;
+	$indiceMontoTotal = $indiceFinMetas + 2;
+	$totalColumnas = $indiceMontoTotal;
+	$lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalColumnas);
+
+	$sheet->setCellValue('A1', 'N');
+	$sheet->setCellValue('B1', 'USUARIO ASIGNADO');
+	$sheet->setCellValue('C1', 'TIPO DE EQUIPO');
+	$sheet->setCellValue('D1', 'DESCRIPCION DEL COMPONENTE');
+	$sheet->setCellValue('E1', 'REFERENCIA');
+	$sheet->setCellValue('F1', 'UNIDAD DE MEDIDA');
+	$sheet->setCellValue('G1', 'PRECIO UNITARIO REFERENCIA');
+	$sheet->mergeCells('A1:A2');
+	$sheet->mergeCells('B1:B2');
+	$sheet->mergeCells('C1:C2');
+	$sheet->mergeCells('D1:D2');
+	$sheet->mergeCells('E1:E2');
+	$sheet->mergeCells('F1:F2');
+	$sheet->mergeCells('G1:G2');
+
+	if (!empty($metas)) {
+		$sheet->setCellValueByColumnAndRow($indiceInicioMetas, 1, 'METAS SIAF');
+		$sheet->mergeCells(
+			\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceInicioMetas) . '1:' .
+			\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceFinMetas) . '1'
+		);
+		$colMeta = $indiceInicioMetas;
+		foreach ($metas as $meta) {
+			$sheet->setCellValueByColumnAndRow($colMeta, 2, $meta['codigo']);
+			$sheet->setCellValueByColumnAndRow($colMeta + 1, 2, strtoupper($meta['nombre']));
+			$colMeta += 2;
+		}
+	}
+
+	$sheet->setCellValueByColumnAndRow($indiceTotalInicial, 1, 'TOTAL INICIAL');
+	$sheet->setCellValueByColumnAndRow($indiceMontoTotal, 1, 'MONTO TOTAL');
+	$sheet->mergeCells(
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceTotalInicial) . '1:' .
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceTotalInicial) . '2'
+	);
+	$sheet->mergeCells(
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceMontoTotal) . '1:' .
+		\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceMontoTotal) . '2'
+	);
+
+	$filaData = 3;
+	$contador = 1;
+	$totalesCantidades = array_fill(0, count($metas), 0);
+	$totalesMontos = array_fill(0, count($metas), 0.0);
+	$totalInicialGeneral = 0;
+	$montoTotalGeneral = 0.0;
+
+	foreach ($filas as $fila) {
+		$tipoCodigo = trim((string) ($fila['TipoCodigo'] ?? ''));
+		$tipoNombre = trim((string) ($fila['TipoNombre'] ?? ''));
+		$tipoEquipo = $tipoCodigo !== '' && $tipoNombre !== '' ? $tipoCodigo . ': ' . $tipoNombre : ($tipoCodigo !== '' ? $tipoCodigo : $tipoNombre);
+		$precioUnitario = isset($fila['PrecioUnitario']) ? (float) $fila['PrecioUnitario'] : 0.0;
+
+		$sheet->setCellValueByColumnAndRow(1, $filaData, $contador);
+		$sheet->setCellValueByColumnAndRow(2, $filaData, '');
+		$sheet->setCellValueByColumnAndRow(3, $filaData, $tipoEquipo);
+		$sheet->setCellValueByColumnAndRow(4, $filaData, trim((string) ($fila['Componente'] ?? '')));
+		$sheet->setCellValueByColumnAndRow(5, $filaData, trim((string) ($fila['Referencia'] ?? '')));
+		$sheet->setCellValueByColumnAndRow(6, $filaData, trim((string) ($fila['UnidadMedida'] ?? '')));
+		$sheet->setCellValueByColumnAndRow(7, $filaData, $precioUnitario > 0 ? $precioUnitario : '');
+
+		$colMeta = $indiceInicioMetas;
+		$totalInicialFila = 0;
+		$montoTotalFila = 0.0;
+		foreach ($metas as $indexMeta => $meta) {
+			$cantidad = isset($fila[$meta['alias']]) ? (int) $fila[$meta['alias']] : 0;
+			$monto = round($cantidad * $precioUnitario, 2);
+			if ($cantidad > 0) {
+				$sheet->setCellValueByColumnAndRow($colMeta, $filaData, $cantidad);
+			}
+			if ($monto > 0) {
+				$sheet->setCellValueByColumnAndRow($colMeta + 1, $filaData, $monto);
+			}
+			$totalesCantidades[$indexMeta] += $cantidad;
+			$totalesMontos[$indexMeta] += $monto;
+			$totalInicialFila += $cantidad;
+			$montoTotalFila += $monto;
+			$colMeta += 2;
+		}
+
+		if ($totalInicialFila > 0) {
+			$sheet->setCellValueByColumnAndRow($indiceTotalInicial, $filaData, $totalInicialFila);
+		}
+		if ($montoTotalFila > 0) {
+			$sheet->setCellValueByColumnAndRow($indiceMontoTotal, $filaData, round($montoTotalFila, 2));
+		}
+
+		$totalInicialGeneral += $totalInicialFila;
+		$montoTotalGeneral += $montoTotalFila;
+		$contador++;
+		$filaData++;
+	}
+
+	$sheet->setCellValueByColumnAndRow(1, $filaData, 'TOTAL GENERAL');
+	$sheet->mergeCells('A' . $filaData . ':G' . $filaData);
+	$colMeta = $indiceInicioMetas;
+	foreach ($metas as $indexMeta => $meta) {
+		if ($totalesCantidades[$indexMeta] > 0) {
+			$sheet->setCellValueByColumnAndRow($colMeta, $filaData, $totalesCantidades[$indexMeta]);
+		}
+		if ($totalesMontos[$indexMeta] > 0) {
+			$sheet->setCellValueByColumnAndRow($colMeta + 1, $filaData, round($totalesMontos[$indexMeta], 2));
+		}
+		$colMeta += 2;
+	}
+	$sheet->setCellValueByColumnAndRow($indiceTotalInicial, $filaData, $totalInicialGeneral);
+	$sheet->setCellValueByColumnAndRow($indiceMontoTotal, $filaData, round($montoTotalGeneral, 2));
+
+	$sheet->getStyle('A1:' . $lastColLetter . '2')->getFont()->setName('Tahoma')->setSize(12)->setBold(true);
+	$sheet->getStyle('A1:' . $lastColLetter . $filaData)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+	$sheet->getStyle('A1:' . $lastColLetter . '2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+	$sheet->getStyle('A1:' . $lastColLetter . '2')->getAlignment()->setWrapText(true);
+	$sheet->getStyle('A1:' . $lastColLetter . $filaData)->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+	$sheet->getStyle('A' . $filaData . ':' . $lastColLetter . $filaData)->getFont()->setBold(true);
+	$sheet->getRowDimension(1)->setRowHeight(26);
+	$sheet->getRowDimension(2)->setRowHeight(150);
+
+	if (!empty($metas)) {
+		$metaStartLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceInicioMetas);
+		$metaEndLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($indiceFinMetas);
+		$sheet->getStyle($metaStartLetter . '2:' . $metaEndLetter . '2')->getAlignment()->setTextRotation(90);
+		$sheet->getStyle($metaStartLetter . '2:' . $metaEndLetter . '2')->getAlignment()->setWrapText(true);
+		$sheet->getStyle($metaStartLetter . '2:' . $metaEndLetter . '2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+		$sheet->getStyle($metaStartLetter . '2:' . $metaEndLetter . '2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+
+		$colMeta = $indiceInicioMetas;
+		foreach ($metas as $meta) {
+			$codeLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colMeta);
+			$nameLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colMeta + 1);
+			$sheet->getStyle($nameLetter . '2')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+			$sheet->getStyle($nameLetter . '2')->getFill()->getStartColor()->setARGB('FFD9D9D9');
+			$sheet->getStyle($codeLetter . '2')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+			$sheet->getStyle($codeLetter . '2')->getFill()->getStartColor()->setARGB('FFFFFFFF');
+			$colMeta += 2;
+		}
+	}
+
+	for ($col = 1; $col <= $totalColumnas; $col++) {
+		$letter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+		if ($col === 1) {
+			$width = 8;
+		} elseif ($col === 2) {
+			$width = 22;
+		} elseif ($col === 3) {
+			$width = 34;
+		} elseif ($col === 4) {
+			$width = 28;
+		} elseif ($col === 5) {
+			$width = 16;
+		} elseif ($col === 6 || $col === 7) {
+			$width = 14;
+		} elseif ($col === $indiceTotalInicial || $col === $indiceMontoTotal) {
+			$width = 14;
+		} else {
+			$esColumnaCodigoMeta = (($col - $indiceInicioMetas) % 2 === 0);
+			$width = $esColumnaCodigoMeta ? 7 : 18;
+		}
+		$sheet->getColumnDimension($letter)->setWidth($width);
+	}
+
+	if (function_exists('ob_get_level')) {
+		while (ob_get_level() > 0) {
+			ob_end_clean();
+		}
+	}
+
+	$fileName = 'RESUMEN_Consolidado_Oficial_' . $anioConsulta . '.xlsx';
+	header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+	header('Content-Disposition: attachment;filename="' . $fileName . '"');
+	header('Cache-Control: max-age=0');
+	header('Cache-Control: max-age=1');
+	header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+	header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+	header('Cache-Control: cache, must-revalidate');
+	header('Pragma: public');
+
+	$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+	$writer->save('php://output');
+	exit;
+}
+
 if (!isset($conn) || $conn === null) {
 	if (!class_exists('Conexion')) {
 		require_once 'config/db.php';
@@ -378,6 +617,10 @@ switch ($action) {
 			'metasCabecera' => $metasCabecera,
 			'filas' => $filas,
 		]);
+		exit;
+
+	case 'consolidadoOficialXlsxAjax':
+		descargarConsolidadoOficialXlsx($model, $anioFiltro);
 		exit;
 
 	case 'consolidadoCabeceraExportacionAjax':

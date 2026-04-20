@@ -232,7 +232,7 @@
 </div>
 
 <script>
-	const subCentrosCostoData = <?php echo json_encode($subCentrosCostoLista, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+	window.adqSubCentrosCostoData = <?php echo json_encode($subCentrosCostoLista, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
 	function escapeHtml(texto) {
 		return String(texto)
@@ -322,6 +322,7 @@
 
 	function obtenerSubCentrosPorCentro(idCentroCosto) {
 		const idCentro = parseInt(idCentroCosto, 10) || 0;
+		const subCentrosCostoData = Array.isArray(window.adqSubCentrosCostoData) ? window.adqSubCentrosCostoData : [];
 		return subCentrosCostoData.filter(function(item) {
 			return parseInt(item.IdCentroCosto, 10) === idCentro;
 		});
