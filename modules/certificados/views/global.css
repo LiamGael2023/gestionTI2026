@@ -1,0 +1,11 @@
+.page-wrapper{
+    padding: 20px 15px;
+}
+
+.page-header{
+    margin-bottom: 15px;
+}
+
+.page-body .container-xl{
+    max-width: 1200px;
+}

@@ -102,7 +102,7 @@ if(isset($_SESSION['usuario_id'])){
                 
                 <?php foreach($menu_items as $item): ?>
                 <li class="nav-item <?php echo ($mod_actual == $item['nombre']) ? 'active' : ''; ?>">
-                  <a class="nav-link" href="<?php echo $item['nombre']; ?>" >
+                  <a class="nav-link" href="?route=<?php echo $item['nombre']; ?>" >
                     <span class="nav-link-icon d-md-none d-lg-inline-block">
                         <i class="ti ti-<?php echo $item['icono']; ?>"></i>
                     </span>

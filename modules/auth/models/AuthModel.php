@@ -3,31 +3,24 @@ class AuthModel {
     private $db;
 
     public function __construct($db) {
-        if (!$db) {
-            die("Error: No se pudo establecer la conexión a la base de datos en el Modelo.");
-        }
+        if (!$db) die("Error: No se pudo conectar a la base de datos");
         $this->db = $db;
     }
 
-    /**
-     * Busca un usuario por su nombre de usuario (login)
-     */
+    // Buscar usuario activo por usuario
     public function buscarUsuario($usuario) {
-        $sql = "SELECT id_usuario, usuario, contrasenia, nombres, apellidos, rol 
-                FROM comun.Usuarios 
+        $sql = "SELECT id_usuario, nombres, correo, contrasenia, rol, usuario, apellidos
+                FROM comun.Usuarios
                 WHERE usuario = ? AND activo = 1";
-        $stmt = sqlsrv_query($this->db, $sql, array($usuario));
-        
+        $stmt = sqlsrv_query($this->db, $sql, [$usuario]);
         if ($stmt === false) return false;
-        
         return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
     }
 
-    /**
-     * Registra el último acceso (Opcional, pero muy útil para auditoría)
-     */
+    // Registrar último acceso
     public function registrarAcceso($id_usuario) {
-        $sql = "UPDATE comun.Usuarios SET ultimo_acceso = GETDATE() WHERE id_usuario = ?";
-        sqlsrv_query($this->db, $sql, array($id_usuario));
+        $sql = "UPDATE comun.Usuarios SET fecha_creacion = GETDATE() WHERE id_usuario = ?";
+        sqlsrv_query($this->db, $sql, [$id_usuario]);
     }
 }
+?>

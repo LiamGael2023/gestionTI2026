@@ -4,10 +4,15 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Output buffering para permitir que los módulos controlen la salida (AJAX, JSON, etc.)
+ob_start();
+
 require_once 'config/config.php';
 require_once 'config/db.php';
 require_once 'core/Auth.php';
+//require_once __DIR__.'/config/permisos.php';
 
+//repararPermisosUploads();
 // =================================================================================
 // 2. ROUTER HÍBRIDO
 // =================================================================================
