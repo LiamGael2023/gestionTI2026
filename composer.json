@@ -1,0 +1,17 @@
+{
+    "name": "sopotec/gestion-ti",
+    "description": "SISTEMA DE CERTIFICADOS DIGITALES CHAVIMOCHIC",
+    "autoload": {
+        "psr-4": {
+            "Sopotec\\GestionTi\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "FRANKLIN UQUICHE SANZ"
+        }
+    ],
+    "require": {
+        "phpoffice/phpspreadsheet": "^5.5"
+    }
+}
