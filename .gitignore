@@ -10,38 +10,19 @@ config/config.php
 # 📦 DEPENDENCIAS (Composer / Librerías)
 #############################################
 
-vendor/
-composer.lock
-composer.phar
-
 #############################################
 # 📂 LIBRERÍAS INCLUIDAS MANUALMENTE
 #############################################
 
-modules/certificados/models/libs/fpdf/
-modules/certificados/PHPMailer-master/
 
 #############################################
 # 📁 ARCHIVOS GENERADOS / SUBIDAS
 #############################################
 
-modules/uploads/
-uploads/
-
-modules/certificados/controllers/tmp/
-modules/certificados/controllers/boletas/
-modules/certificados/tramites/
-
+modules/uploads/backups
 #############################################
 # 📊 ARCHIVOS TEMPORALES / REPORTES
 #############################################
-
-*.log
-error_log
-*.tmp
-*.xlsx
-*.xls
-*.pdf
 
 #############################################
 # 🖥️ SISTEMA OPERATIVO / IIS / WINDOWS
