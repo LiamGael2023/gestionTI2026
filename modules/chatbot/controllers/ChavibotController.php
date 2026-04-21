@@ -104,7 +104,8 @@ class ChavibotController
             'telefono'=>$perfil['telefono'],
         ]);
 
-        return ['respuesta'=>$resp,'idMensaje'=>$id,'schema'=>$schema,
+        // NO exponer schema/tabla al frontend
+        return ['respuesta'=>$resp,'idMensaje'=>$id,
                 'totalFilas'=>count($datos),'tiempoMs'=>$ms,
                 'usuario'=>$perfil['nombres'],'rol'=>$perfil['rol']];
     }
@@ -113,39 +114,48 @@ class ChavibotController
     static public function _promptYOllama(
         string $msg, array $p, array $hist, ?array $ej, array $datos
     ): string {
+        // Instrucciones del sistema
         $pr  = "Eres ChaviBot, asistente inteligente del área de TI de CHAVIMOCHIC.\n";
         $pr .= "Respondes siempre en español, de forma clara y profesional.\n";
-        $pr .= "Solo usas los datos proporcionados. Nunca inventas información.\n";
+        $pr .= "REGLAS IMPORTANTES:\n";
+        $pr .= "- NUNCA menciones nombres de tablas, schemas, bases de datos ni SQL.\n";
+        $pr .= "- NUNCA uses términos como: inventario.activo, chaviBot, BD_GESTION_TI, SELECT, JOIN, etc.\n";
+        $pr .= "- Presenta la información de forma natural, como si la supieras tú mismo.\n";
+        $pr .= "- Solo usas los datos proporcionados. Nunca inventas información.\n";
+        $pr .= "- Si no hay datos, dilo claramente sin jerga técnica.\n";
         if ($p['canal'] === 'whatsapp')
-            $pr .= "Canal WhatsApp: respuesta muy breve (máx 4 líneas), sin markdown.\n";
+            $pr .= "- Canal WhatsApp: respuesta muy breve (máx 5 líneas), sin markdown complejo.\n";
+        else
+            $pr .= "- Usa formato claro con saltos de línea. Puedes usar listas con guiones.\n";
 
-        $pr .= "\n=== USUARIO ===\n";
+        $pr .= "\n=== CONTEXTO DEL USUARIO ===\n";
         $pr .= "Nombre: {$p['nombres']} | Rol: {$p['rol']} | Área: {$p['area']}\n";
-        if ($p['rol'] === 'admin') $pr .= "→ Puede ver TODA la información.\n";
+        if ($p['rol'] === 'admin') $pr .= "→ Tiene acceso completo a toda la información.\n";
         elseif ($p['rol'] === 'tecnico') $pr .= "→ Ve información técnica de su área.\n";
-        else $pr .= "→ Solo ve información de su área/usuario.\n";
+        else $pr .= "→ Ve información relacionada a su área y usuario.\n";
 
         if (!empty($hist)) {
-            $pr .= "\n=== CONVERSACIÓN RECIENTE ===\n";
+            $pr .= "\n=== CONVERSACIÓN PREVIA ===\n";
             foreach ($hist as $h)
-                $pr .= "[{$h['hora']}] U: {$h['pregunta']}\n[{$h['hora']}] B: {$h['respuesta']}\n";
+                $pr .= "Usuario preguntó: {$h['pregunta']}\nBot respondió: {$h['respuesta']}\n\n";
         }
 
-        if ($ej) {
-            $pr .= "\n=== DATOS DE BD_GESTION_TI ===\nTabla: {$ej['schemaObjetivo']}\n";
-            if ($ej['respuestaBase']) $pr .= "Descripción: {$ej['respuestaBase']}\n";
+        if ($ej && $ej['respuestaBase']) {
+            $pr .= "\n=== CONTEXTO DE LA CONSULTA ===\n";
+            $pr .= "{$ej['respuestaBase']}\n";
         }
 
         if (!empty($datos)) {
-            $pr .= "Registros (" . count($datos) . "):\n";
+            $pr .= "\n=== DATOS ENCONTRADOS (" . count($datos) . " registros) ===\n";
             $pr .= json_encode($datos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+            $pr .= "\n→ Presenta estos datos de forma clara y natural. NO menciones de dónde vienen.\n";
         } elseif ($ej) {
-            $pr .= "La consulta no retornó datos en este momento.\n";
+            $pr .= "\n=== RESULTADO ===\nNo se encontraron datos para esta consulta en este momento.\n";
         } else {
-            $pr .= "\n=== NOTA ===\nNo hay consulta específica. Responde con conocimiento general de TI.\n";
+            $pr .= "\n=== NOTA ===\nNo tengo datos específicos para esto. Responde con conocimiento general de TI si aplica.\n";
         }
 
-        $pr .= "\n=== PREGUNTA ===\n{$msg}\n\nRespuesta:";
+        $pr .= "\n=== PREGUNTA DEL USUARIO ===\n{$msg}\n\nRespuesta (sin mencionar tablas, schemas ni código SQL):";
 
         $payload = json_encode([
             'model'   => 'llama3.1',
