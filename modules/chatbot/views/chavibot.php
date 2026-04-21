@@ -64,11 +64,11 @@ $ajaxUrl = (defined('BASE_URL') ? BASE_URL : '') . '/modules/chatbot/ajax/chavib
     <!-- Sugerencias rápidas -->
     <div id="cb-sugerencias-wrap">
       <div class="cb-sugerencias">
-        <button class="cb-sug-btn">🎫 Tickets abiertos</button>
+        <!-- <button class="cb-sug-btn">🎫 Tickets abiertos</button>
         <button class="cb-sug-btn">💻 Equipos disponibles</button>
         <button class="cb-sug-btn">🧪 Stock bajo</button>
         <button class="cb-sug-btn">🏢 Salas hoy</button>
-        <button class="cb-sug-btn">📜 Certificados</button>
+        <button class="cb-sug-btn">📜 Certificados</button> -->
       </div>
     </div>
 
