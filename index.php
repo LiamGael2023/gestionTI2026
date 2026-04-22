@@ -13,7 +13,8 @@ require_once 'core/Auth.php';
 // =================================================================================
 
 $module = 'dashboard'; 
-$action = 'index';    
+$action = 'index';
+$subaction = null;
 
 if (isset($_GET['route'])) {
     $ruta = rtrim($_GET['route'], '/');
@@ -22,11 +23,17 @@ if (isset($_GET['route'])) {
     if (isset($partes[1])) {
         $action = $partes[1];
     }
+    if (isset($partes[2])) {
+        $subaction = $partes[2];
+    }
 } 
 elseif (isset($_GET['module'])) {
     $module = $_GET['module'];
     if (isset($_GET['action'])) {
         $action = $_GET['action'];
+    }
+    if (isset($_GET['subaction'])) {
+        $subaction = $_GET['subaction'];
     }
 }
 
