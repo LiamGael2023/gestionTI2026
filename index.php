@@ -1,7 +1,10 @@
 <?php
-// 1. Configuración y Errores
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+// 1. Iniciar output buffering inmediatamente para evitar envío prematuro de headers
+ob_start();
+
+// 1. Configuración y Errores (deshabilitado en producción)
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 require_once 'config/config.php';
@@ -54,7 +57,27 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
 
 Auth::check(); 
 
-include 'public/header.php'; 
+// Detectar si es petición AJAX (acciones que retornan JSON)
+$acciones_ajax = [
+    'obtener_clase', 'guardar_clase', 'eliminar_clase',
+    'obtener_centro', 'guardar_centro', 'eliminar_centro',
+    'obtener_uit', 'guardar_uit', 'eliminar_uit',
+    'obtener_cliente', 'guardar_cliente', 'eliminar_cliente',
+    'obtener_producto', 'guardar_producto', 'eliminar_producto',
+    'obtener_lotes', 'obtener_kardex', 'guardar_lote', 'guardar_merma',
+    'obtener_precio_actual', 'guardar_precio',
+    'buscar_producto', 'buscar_clientes', 'guardar_venta',
+    'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
+    'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher'
+];
+$es_ajax = in_array($action, $acciones_ajax);
+
+// DEBUG: Log para verificar detección AJAX
+error_log("[Router] module=$module, action=$action, es_ajax=" . ($es_ajax ? 'true' : 'false'));
+
+if (!$es_ajax) {
+    include 'public/header.php'; 
+}
 
 // Módulos que siempre deben estar presentes o tienen lógica manual
 $modulos_estaticos = ['dashboard', 'usuarios', 'sistemas'];
@@ -80,10 +103,13 @@ if (in_array($module, $modulos_estaticos)) {
     $nombreControlador = ucfirst($module) . "Controller.php";
     $pathFull = "modules/$module/controllers/$nombreControlador";
 
-    
-
     if (file_exists($pathFull)) {
         include $pathFull;
+        // Si era AJAX, terminar aquí para no incluir footer
+        if ($es_ajax) {
+            error_log("[Router] AJAX detected, terminating before footer");
+            exit;
+        }
     } else {
         // Fallback para los módulos que aún son solo un "echo" (Soporte, Certificados, etc.)
         switch ($module) {

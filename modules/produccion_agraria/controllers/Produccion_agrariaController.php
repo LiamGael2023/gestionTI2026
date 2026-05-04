@@ -1,8 +1,12 @@
 <?php
-require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
-
-$model = new Produccion_agrariaModel($conn);
 $action = $_GET['action'] ?? 'index';
+
+// Solo cargar modelo si no es acción AJAX de bandeja
+$acciones_ajax_bandeja = ['obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo'];
+if (!in_array($action, $acciones_ajax_bandeja)) {
+    require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
+    $model = new Produccion_agrariaModel($conn);
+}
 
 switch($action) {
     case 'inventario':
@@ -17,6 +21,49 @@ switch($action) {
     case 'tablas':
         include 'modules/produccion_agraria/controllers/TablasController.php';
         break;
+    // Acciones AJAX del submódulo tablas - CLASE
+    case 'obtener_clase':
+    case 'guardar_clase':
+    case 'eliminar_clase':
+    // Acciones AJAX - CENTRO_PRODUCCION
+    case 'obtener_centro':
+    case 'guardar_centro':
+    case 'eliminar_centro':
+    // Acciones AJAX - UIT
+    case 'obtener_uit':
+    case 'guardar_uit':
+    case 'eliminar_uit':
+    // Acciones AJAX - CLIENTE
+    case 'obtener_cliente':
+    case 'guardar_cliente':
+    case 'eliminar_cliente':
+        include 'modules/produccion_agraria/controllers/TablasController.php';
+        break;
+    // Acciones AJAX - INVENTARIO/PRODUCTO
+    case 'obtener_producto':
+    case 'guardar_producto':
+    case 'eliminar_producto':
+    case 'obtener_lotes':
+    case 'obtener_kardex':
+    case 'guardar_lote':
+    case 'guardar_merma':
+    case 'obtener_precio_actual':
+    case 'guardar_precio':
+        include 'modules/produccion_agraria/controllers/InventarioController.php';
+        break;
+    // Acciones AJAX - PUNTO DE VENTA
+    case 'buscar_producto':
+    case 'buscar_clientes':
+    case 'guardar_venta':
+        include 'modules/produccion_agraria/controllers/PuntoVentaController.php';
+        break;
+    // Acciones AJAX - BANDEJA DE PROFORMAS
+    case 'obtener_proforma':
+    case 'procesar_proforma':
+    case 'anular_proforma':
+    case 'siguiente_correlativo':
+        include 'modules/produccion_agraria/controllers/BandejaController.php';
+        break;
     case 'reportes':
         include 'modules/produccion_agraria/controllers/ReportesController.php';
         break;
@@ -29,4 +76,3 @@ switch($action) {
         include 'modules/produccion_agraria/views/index.php';
         break;
 }
-?>

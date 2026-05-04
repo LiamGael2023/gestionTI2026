@@ -1,3 +1,56 @@
+<style>
+/* Animaciones para filtrado de tabla */
+tbody tr {
+    transition: all 0.3s ease-in-out;
+    opacity: 1;
+}
+
+tbody tr.filtrando {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+tbody tr.mostrando {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Spinner de carga */
+.filtro-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.filtro-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
 <div class="breadcrumb">
     <div class="container-xl">
         <ol class="breadcrumb">
@@ -28,14 +81,9 @@
                         <label class="form-label fw-semibold">Centro de Producción</label>
                         <select class="form-select" id="filtro-centro">
                             <option value="">Todos los centros</option>
-                            <option value="CP01">Centro 1 - Huaral</option>
-                            <option value="CP02">Centro 2 - Huacho</option>
-                            <option value="CP03">Centro 3 - Barranca</option>
-                            <option value="CP04">Centro 4 - Oyón</option>
-                            <option value="CP05">Centro 5 - Sayán</option>
-                            <option value="CP06">Centro 6 - Huaura</option>
-                            <option value="CP07">Centro 7 - Pativilca</option>
-                            <option value="CP08">Centro 8 - Supe</option>
+                            <?php foreach ($centros as $centro): ?>
+                            <option value="<?php echo $centro['id_centro']; ?>"><?php echo htmlspecialchars($centro['nombre_centro']); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     
@@ -44,10 +92,9 @@
                         <label class="form-label fw-semibold">Clase de Producto</label>
                         <select class="form-select" id="filtro-clase">
                             <option value="">Todas las clases</option>
-                            <option value="hongos">Hongos</option>
-                            <option value="plantones">Plantones</option>
-                            <option value="frutas">Frutas</option>
-                            <option value="insectos">Insectos</option>
+                            <?php foreach ($clases as $clase): ?>
+                            <option value="<?php echo $clase['id_clase']; ?>"><?php echo htmlspecialchars($clase['nombre_clase']); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     
@@ -71,61 +118,17 @@
             </div>
         </div>
         
-        <!-- 2. WIDGETS DE RESUMEN -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card bg-gradient-primary text-white">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="ti ti-coins fs-1"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h5 class="mb-1">S/. 245,680.00</h5>
-                            <small>Valorización Total de Stock</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-gradient-warning text-white">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="ti ti-alert-circle fs-1"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h5 class="mb-1">12</h5>
-                            <small>Alertas de Merma (última semana)</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-gradient-danger text-white">
-                    <div class="card-body d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="ti ti-clock-exclamation fs-1"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h5 class="mb-1">8</h5>
-                            <small>Lotes por Vencer (PEPS)</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 3. ACCIONES GLOBALES -->
-        <div class="d-flex gap-2 mb-4">
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-ingresar-produccion">
-                <i class="ti ti-package-import me-2"></i>Ingresar Producción
-            </button>
-        </div>
         
         <!-- 4. TABLA DE PRODUCTOS (NIVEL 1) -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0">Productos en Inventario</h4>
-                <span class="text-muted">6 productos activos</span>
+                <div>
+                    <span class="text-muted me-3"><?php echo count($productos); ?> productos registrados</span>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-producto" onclick="limpiarFormProducto()">
+                        <i class="ti ti-plus me-1"></i>Nuevo Producto
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -133,187 +136,156 @@
                         <thead>
                             <tr>
                                 <th>Producto</th>
-                                <th class="w-1 text-center">Stock Total</th>
-                                <th class="w-1 text-center">Lotes Activos</th>
-                                <th class="w-1">Estado General</th>
+                                <th>Nombre Científico</th>
+                                <th>Clase</th>
+                                <th>Centro</th>
+                                <th class="w-1 text-center">Unidad</th>
+                                <th class="w-1 text-center">Maneja Stock</th>
                                 <th class="w-1 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Producto 1: Hongos Shiitake -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD001" onclick="mostrarLotes('PRD001', 'Hongos Shiitake')">
+                            <?php foreach ($productos as $producto): ?>
+                            <tr data-id="<?php echo $producto['id_producto']; ?>" data-centro="<?php echo $producto['id_centro']; ?>" data-clase="<?php echo $producto['id_clase']; ?>" data-nombre="<?php echo strtolower(htmlspecialchars($producto['nombre'])); ?>">
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">🍄</span>
+                                        <span class="avatar avatar-sm bg-success-lt me-2">📦</span>
                                         <div>
-                                            <div class="font-weight-medium">Hongos Shiitake</div>
-                                            <div class="text-muted small">Hongos | Código: PRD001</div>
+                                            <div class="font-weight-medium"><?php echo htmlspecialchars($producto['nombre']); ?></div>
+                                            <div class="text-muted small">Código: PRD<?php echo str_pad($producto['id_producto'], 3, '0', STR_PAD_LEFT); ?></div>
                                         </div>
                                     </div>
                                 </td>
+                                <td class="fst-italic text-muted"><?php echo htmlspecialchars($producto['nombre_cientifico'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($producto['nombre_clase'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($producto['nombre_centro'] ?? '-'); ?></td>
+                                <td class="text-center"><?php echo htmlspecialchars($producto['unidad_medida']); ?></td>
                                 <td class="text-center">
-                                    <span class="badge bg-success fs-6">703</span>
+                                    <?php if ($producto['maneja_stock']): ?>
+                                    <span class="badge bg-success">Sí</span>
+                                    <?php else: ?>
+                                    <span class="badge bg-secondary">No</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <span class="badge bg-outline-primary">3 lotes</span>
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="badge bg-success">1 Nuevo</span>
-                                        <span class="badge bg-warning">1 Rotación</span>
-                                        <span class="badge bg-danger">1 Crítico</span>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD001', 'Hongos Shiitake')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
+                                    <?php if ($producto['maneja_stock']): ?>
+                                    <button class="btn btn-sm btn-info me-1" onclick="mostrarLotes(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars($producto['nombre'], ENT_QUOTES); ?>')" title="Ver Lotes y Stock">
+                                        <i class="ti ti-box"></i>
+                                    </button>
+                                    <?php endif; ?>
+                                    <button class="btn btn-sm btn-primary me-1" onclick="editarProducto(<?php echo $producto['id_producto']; ?>)" title="Editar">
+                                        <i class="ti ti-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="eliminarProducto(<?php echo $producto['id_producto']; ?>)" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
                                     </button>
                                 </td>
                             </tr>
-                            
-                            <!-- Producto 2: Plantones de Fresa -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD002" onclick="mostrarLotes('PRD002', 'Plantones de Fresa')">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">🌱</span>
-                                        <div>
-                                            <div class="font-weight-medium">Plantones de Fresa</div>
-                                            <div class="text-muted small">Plantones | Código: PRD002</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-success fs-6">1,200</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-outline-primary">1 lote</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-success">Nuevo</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD002', 'Plantones de Fresa')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
-                                    </button>
-                                </td>
+                            <?php endforeach; ?>
+                            <?php if (empty($productos)): ?>
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">No hay productos registrados</td>
                             </tr>
-                            
-                            <!-- Producto 3: Fresa Premium -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD003" onclick="mostrarLotes('PRD003', 'Fresa Premium')">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">🍓</span>
-                                        <div>
-                                            <div class="font-weight-medium">Fresa Premium</div>
-                                            <div class="text-muted small">Frutas | Código: PRD003</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-success fs-6">85</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-outline-primary">1 lote</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-warning">Rotación</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD003', 'Fresa Premium')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
-                                    </button>
-                                </td>
-                            </tr>
-                            
-                            <!-- Producto 4: Chinche depredadora -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD004" onclick="mostrarLotes('PRD004', 'Chinche depredadora')">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">🐞</span>
-                                        <div>
-                                            <div class="font-weight-medium">Chinche depredadora</div>
-                                            <div class="text-muted small">Insectos | Código: PRD004</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-success fs-6">2,500</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-outline-primary">1 lote</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-success">Nuevo</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD004', 'Chinche depredadora')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
-                                    </button>
-                                </td>
-                            </tr>
-                            
-                            <!-- Producto 5: Plantones de Palta -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD005" onclick="mostrarLotes('PRD005', 'Plantones de Palta')">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-warning-lt me-2">🌱</span>
-                                        <div>
-                                            <div class="font-weight-medium">Plantones de Palta</div>
-                                            <div class="text-muted small">Plantones | Código: PRD005</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-warning fs-6">8</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-outline-primary">1 lote</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-danger">Stock Crítico</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD005', 'Plantones de Palta')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
-                                    </button>
-                                </td>
-                            </tr>
-                            
-                            <!-- Producto 6: Hongos Oyster -->
-                            <tr class="cursor-pointer producto-row" data-producto="PRD006" onclick="mostrarLotes('PRD006', 'Hongos Oyster')">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">🍄</span>
-                                        <div>
-                                            <div class="font-weight-medium">Hongos Oyster</div>
-                                            <div class="text-muted small">Hongos | Código: PRD006</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-success fs-6">750</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge bg-outline-primary">1 lote</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-success">Nuevo</span>
-                                </td>
-                                <td class="text-center">
-                                    <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); mostrarLotes('PRD006', 'Hongos Oyster')">
-                                        <i class="ti ti-box me-1"></i>Ver Lotes
-                                    </button>
-                                </td>
-                            </tr>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
             <div class="card-footer d-flex align-items-center">
-                <p class="m-0 text-muted">Mostrando 6 productos</p>
+                <p class="m-0 text-muted">Mostrando <?php echo count($productos); ?> productos</p>
             </div>
         </div>
         
+    </div>
+</div>
+
+<!-- Modal: Formulario Producto -->
+<div class="modal fade" id="modal-producto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-producto-titulo">Nuevo Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-producto">
+                <div class="modal-body">
+                    <input type="hidden" id="id_producto" name="id_producto">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label required">Nombre del Producto</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre Científico</label>
+                            <input type="text" class="form-control" id="nombre_cientifico" name="nombre_cientifico" placeholder="Ej: Lentinula edodes">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label required">Unidad de Medida</label>
+                            <input type="text" class="form-control" id="unidad_medida" name="unidad_medida" required placeholder="Ej: kg, unidades, cajas">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Maneja Stock</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="maneja_stock" name="maneja_stock" value="1" checked>
+                                <label class="form-check-label" for="maneja_stock">Sí</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Clase</label>
+                            <select class="form-select" id="id_clase" name="id_clase" required>
+                                <option value="">Seleccione...</option>
+                                <?php foreach ($clases as $clase): ?>
+                                <option value="<?php echo $clase['id_clase']; ?>"><?php echo htmlspecialchars($clase['nombre_clase']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Centro de Producción</label>
+                            <select class="form-select" id="id_centro" name="id_centro" required>
+                                <option value="">Seleccione...</option>
+                                <?php foreach ($centros as $centro): ?>
+                                <option value="<?php echo $centro['id_centro']; ?>"><?php echo htmlspecialchars($centro['nombre_centro']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Precio</label>
+                            <select class="form-select" id="tipo_precio" name="tipo_precio" onchange="togglePorcentajeUIT()">
+                                <option value="">Seleccione...</option>
+                                <option value="Variable">Variable</option>
+                                <option value="UIT">Porcentaje UIT</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="campo-porcentaje-uit" style="display: none;">
+                            <label class="form-label required">Porcentaje UIT (%)</label>
+                            <input type="number" step="0.0001" class="form-control" id="porcentaje_uit" name="porcentaje_uit" placeholder="Ej: 0.0350 = 3.5%" oninput="calcularPrecioUIT()">
+                            <small class="form-hint">Ejemplo: 0.0350 = 3.5% de una UIT</small>
+                        </div>
+                        <div class="col-md-6" id="campo-precio-uit" style="display: none;">
+                            <label class="form-label">Precio Calculado (S/)</label>
+                            <input type="text" class="form-control bg-light" id="precio_calculado" readonly>
+                            <small class="form-hint text-muted">Precio basado en UIT actual (<?php echo date('Y'); ?>)</small>
+                        </div>
+                        <div class="col-md-6" id="campo-precio-actual" style="display: none;">
+                            <label class="form-label">Precio Actual (S/)</label>
+                            <input type="text" class="form-control bg-light" id="precio_actual" readonly>
+                            <small class="form-hint text-muted">Último precio registrado en historial</small>
+                        </div>
+                        <div class="col-md-6" id="campo-nuevo-precio" style="display: none;">
+                            <label class="form-label">Nuevo Precio (S/)</label>
+                            <input type="number" step="0.01" class="form-control" id="nuevo_precio" name="nuevo_precio" placeholder="0.00">
+                            <small class="form-hint">Dejar vacío para mantener el precio actual</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="ti ti-check me-1"></i>Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -390,10 +362,13 @@
                 
                 <!-- SECCIÓN 1: LOTES ACTIVOS -->
                 <div class="card mb-4">
-                    <div class="card-header bg-primary-lt">
+                    <div class="card-header bg-primary-lt d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">
                             <i class="ti ti-packages me-2"></i>Lotes Activos - Stock por Lote
                         </h5>
+                        <button class="btn btn-success btn-sm" onclick="mostrarModalNuevoLote()">
+                            <i class="ti ti-plus me-1"></i>Nuevo Lote
+                        </button>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -451,70 +426,42 @@
     </div>
 </div>
 
-<!-- MODAL: Ingresar Producción -->
-<div class="modal fade" id="modal-ingresar-produccion" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- MODAL: Nuevo Lote -->
+<div class="modal fade" id="modal-nuevo-lote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="ti ti-package-import me-2"></i>Ingresar Producción</h5>
+                <h5 class="modal-title"><i class="ti ti-package-import me-2"></i>Nuevo Lote</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
+            <form id="form-nuevo-lote">
+                <div class="modal-body">
+                    <input type="hidden" id="lote-id-producto" name="id_producto">
+                    <div class="mb-3">
+                        <label class="form-label required">Código de Lote</label>
+                        <input type="text" class="form-control" id="lote-codigo" name="codigo_lote" required placeholder="Ej: LOT-2025-001">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stock Inicial</label>
+                        <input type="number" class="form-control" id="lote-stock" name="stock_inicial" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Centro de Producción</label>
-                        <select class="form-select">
-                            <option value="">Seleccione centro</option>
-                            <option>Centro 1 - Huaral</option>
-                            <option>Centro 2 - Huacho</option>
-                            <option>Centro 3 - Barranca</option>
+                        <select class="form-select" id="lote-centro" name="id_centro">
+                            <option value="">Seleccione centro...</option>
+                            <?php foreach ($centros as $centro): ?>
+                            <option value="<?php echo $centro['id_centro']; ?>"><?php echo htmlspecialchars($centro['nombre_centro']); ?></option>
+                            <?php endforeach; ?>
                         </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Fecha de Producción</label>
-                        <input type="date" class="form-control" value="2025-04-13">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Clase de Producto</label>
-                        <select class="form-select">
-                            <option value="">Seleccione clase</option>
-                            <option>Hongos</option>
-                            <option>Plantones</option>
-                            <option>Frutas</option>
-                            <option>Insectos</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Producto</label>
-                        <select class="form-select">
-                            <option value="">Seleccione producto</option>
-                            <option>Hongos Shiitake</option>
-                            <option>Hongos Oyster</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Cantidad Producida</label>
-                        <input type="number" class="form-control" placeholder="0">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Unidad de Medida</label>
-                        <select class="form-select">
-                            <option>Unidades</option>
-                            <option>Kilogramos</option>
-                            <option>Cajas</option>
-                            <option>Bolsas</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Observaciones</label>
-                        <textarea class="form-control" rows="2" placeholder="Notas adicionales..."></textarea>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success">Registrar Ingreso</button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="ti ti-check me-1"></i>Crear Lote
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -527,48 +474,44 @@
                 <h5 class="modal-title"><i class="ti ti-alert-triangle me-2"></i>Reportar Merma</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="ti ti-info-circle me-2"></i>La merma descontará automáticamente del stock del lote seleccionado.
-                </div>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Centro de Producción</label>
-                        <select class="form-select">
-                            <option>Centro 1 - Huaral</option>
-                        </select>
+            <form id="form-merma">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="ti ti-info-circle me-2"></i>La merma descontará automáticamente del stock del lote seleccionado.
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Producto y Lote</label>
-                        <select class="form-select">
-                            <option>Hongos Shiitake - Lote: 2025-04-08 (Stock: 180)</option>
-                            <option>Plantones de Fresa - Lote: 2025-04-10 (Stock: 1200)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Tipo de Merma</label>
-                        <select class="form-select">
-                            <option>Vencimiento / Caducidad</option>
-                            <option>Deterioro / Daño físico</option>
-                            <option>Plaga / Enfermedad</option>
-                            <option>Errores de proceso</option>
-                            <option>Otros</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Cantidad Afectada</label>
-                        <input type="number" class="form-control" placeholder="0">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">Motivo Detallado</label>
-                        <textarea class="form-control" rows="3" placeholder="Describa las causas de la merma..."></textarea>
+                    <input type="hidden" id="merma-id-producto" name="id_producto">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Lote</label>
+                            <select class="form-select" id="merma-id-lote" name="id_lote" required>
+                                <option value="">Seleccione lote...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Merma</label>
+                            <select class="form-select" id="merma-tipo" name="tipo_merma" required>
+                                <option value="Vencimiento">Vencimiento / Caducidad</option>
+                                <option value="Deterioro">Deterioro / Daño físico</option>
+                                <option value="Plaga">Plaga / Enfermedad</option>
+                                <option value="Proceso">Errores de proceso</option>
+                                <option value="Otro">Otros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cantidad Afectada</label>
+                            <input type="number" class="form-control" id="merma-cantidad" name="cantidad" min="1" required placeholder="0">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Motivo Detallado</label>
+                            <textarea class="form-control" id="merma-motivo" name="motivo" rows="3" placeholder="Describa las causas de la merma..."></textarea>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning">Reportar Merma</button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning">Reportar Merma</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -673,147 +616,283 @@
 </div>
 
 <script>
-// Datos de ejemplo: Lotes por producto
-const lotesPorProducto = {
-    'PRD001': [
-        { lote: '2025-04-13', stock: 500, antiguedad: 2, estado: 'Nuevo', estadoClass: 'bg-success' },
-        { lote: '2025-04-08', stock: 180, antiguedad: 7, estado: 'Rotación', estadoClass: 'bg-warning' },
-        { lote: '2025-03-25', stock: 23, antiguedad: 21, estado: 'Crítico', estadoClass: 'bg-danger' }
-    ],
-    'PRD002': [
-        { lote: '2025-04-10', stock: 1200, antiguedad: 5, estado: 'Nuevo', estadoClass: 'bg-success' }
-    ],
-    'PRD003': [
-        { lote: '2025-04-05', stock: 85, antiguedad: 10, estado: 'Rotación', estadoClass: 'bg-warning' }
-    ],
-    'PRD004': [
-        { lote: '2025-04-12', stock: 2500, antiguedad: 3, estado: 'Nuevo', estadoClass: 'bg-success' }
-    ],
-    'PRD005': [
-        { lote: '2025-03-15', stock: 8, antiguedad: 31, estado: 'Stock Crítico', estadoClass: 'bg-danger' }
-    ],
-    'PRD006': [
-        { lote: '2025-04-11', stock: 750, antiguedad: 4, estado: 'Nuevo', estadoClass: 'bg-success' }
-    ]
-};
-
-// Datos de ejemplo: Kardex por producto (agregado, no por lote)
-const kardexPorProducto = {
-    'PRD001': [
-        { fecha: '08/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP01', lote: '2025-04-13', entrada: 500, salida: 0, stock: 500 },
-        { fecha: '10/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0125', lote: '2025-04-08', entrada: 0, salida: 150, stock: 350 },
-        { fecha: '12/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0130', lote: '2025-03-25', entrada: 0, salida: 100, stock: 250 },
-        { fecha: '13/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0135', lote: '2025-03-25', entrada: 0, salida: 47, stock: 203 },
-        { fecha: '13/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP02', lote: '2025-04-08', entrada: 180, salida: 0, stock: 383 },
-        { fecha: '14/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0140', lote: '2025-04-08', entrada: 0, salida: 200, stock: 183 },
-        { fecha: '15/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP01', lote: '2025-04-13', entrada: 500, salida: 0, stock: 683 },
-        { fecha: '15/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0142', lote: '2025-04-13', entrada: 0, salida: 100, stock: 583 },
-        { fecha: '16/04/2025', tipo: 'Merma', tipoClass: 'bg-danger', documento: 'Merma por deterioro', lote: '2025-03-25', entrada: 0, salida: 23, stock: 560 },
-        { fecha: '16/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0145', lote: '2025-04-13', entrada: 0, salida: 120, stock: 440 },
-        { fecha: '17/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0148', lote: '2025-04-13', entrada: 0, salida: 80, stock: 360 },
-        { fecha: '18/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP03', lote: '2025-04-18', entrada: 300, salida: 0, stock: 660 }
-    ],
-    'PRD002': [
-        { fecha: '10/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP01', lote: '2025-04-10', entrada: 1200, salida: 0, stock: 1200 },
-        { fecha: '12/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0132', lote: '2025-04-10', entrada: 0, salida: 200, stock: 1000 },
-        { fecha: '15/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0140', lote: '2025-04-10', entrada: 0, salida: 150, stock: 850 },
-        { fecha: '17/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0146', lote: '2025-04-10', entrada: 0, salida: 300, stock: 550 }
-    ],
-    'PRD003': [
-        { fecha: '05/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP02', lote: '2025-04-05', entrada: 200, salida: 0, stock: 200 },
-        { fecha: '08/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0120', lote: '2025-04-05', entrada: 0, salida: 50, stock: 150 },
-        { fecha: '10/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0126', lote: '2025-04-05', entrada: 0, salida: 40, stock: 110 },
-        { fecha: '12/04/2025', tipo: 'Merma', tipoClass: 'bg-danger', documento: 'Merma por maduración excesiva', lote: '2025-04-05', entrada: 0, salida: 15, stock: 95 },
-        { fecha: '14/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0138', lote: '2025-04-05', entrada: 0, salida: 60, stock: 35 },
-        { fecha: '16/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0144', lote: '2025-04-05', entrada: 0, salida: 35, stock: 0 }
-    ],
-    'PRD004': [
-        { fecha: '12/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP01', lote: '2025-04-12', entrada: 2500, salida: 0, stock: 2500 },
-        { fecha: '15/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0141', lote: '2025-04-12', entrada: 0, salida: 500, stock: 2000 },
-        { fecha: '18/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0150', lote: '2025-04-12', entrada: 0, salida: 800, stock: 1200 }
-    ],
-    'PRD005': [
-        { fecha: '15/03/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP03', lote: '2025-03-15', entrada: 500, salida: 0, stock: 500 },
-        { fecha: '20/03/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0085', lote: '2025-03-15', entrada: 0, salida: 150, stock: 350 },
-        { fecha: '25/03/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0095', lote: '2025-03-15', entrada: 0, salida: 200, stock: 150 },
-        { fecha: '01/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0105', lote: '2025-03-15', entrada: 0, salida: 100, stock: 50 },
-        { fecha: '05/04/2025', tipo: 'Merma', tipoClass: 'bg-danger', documento: 'Merma por defecto genético', lote: '2025-03-15', entrada: 0, salida: 30, stock: 20 },
-        { fecha: '08/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0122', lote: '2025-03-15', entrada: 0, salida: 12, stock: 8 }
-    ],
-    'PRD006': [
-        { fecha: '11/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP02', lote: '2025-04-11', entrada: 750, salida: 0, stock: 750 },
-        { fecha: '14/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0136', lote: '2025-04-11', entrada: 0, salida: 200, stock: 550 },
-        { fecha: '16/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0143', lote: '2025-04-11', entrada: 0, salida: 150, stock: 400 },
-        { fecha: '18/04/2025', tipo: 'Salida', tipoClass: 'bg-warning', documento: 'Venta #PRO-2025-0149', lote: '2025-04-11', entrada: 0, salida: 100, stock: 300 },
-        { fecha: '20/04/2025', tipo: 'Entrada', tipoClass: 'bg-primary', documento: 'Ingreso de Producción - CP01', lote: '2025-04-20', entrada: 450, salida: 0, stock: 750 }
-    ]
-};
-
-// Mostrar detalle de producto (lotes + kardex)
+// Mostrar detalle de producto (lotes + kardex) - Carga desde BD vía AJAX
 function mostrarLotes(productoId, nombreProducto) {
+    // Guardar producto actual para crear lotes
+    productoActualId = productoId;
+    productoActualNombre = nombreProducto;
+    
     const modal = new bootstrap.Modal(document.getElementById('modal-detalle-producto'));
     
-    // Actualizar título y subtítulo
+    // Actualizar título
     document.getElementById('modal-producto-titulo').textContent = nombreProducto;
-    document.getElementById('modal-producto-subtitulo').textContent = `Código: ${productoId} | Clase: ${getClaseProducto(productoId)}`;
+    document.getElementById('modal-producto-subtitulo').textContent = `ID: ${productoId}`;
     
-    // Obtener lotes del producto
-    const lotes = lotesPorProducto[productoId] || [];
-    const kardex = kardexPorProducto[productoId] || [];
+    // Mostrar loading
+    document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando lotes...</p></td></tr>';
+    document.getElementById('modal-tbody-kardex').innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando movimientos...</p></td></tr>';
     
-    // Calcular resumen
-    const stockTotal = lotes.reduce((sum, lote) => sum + lote.stock, 0);
-    const totalEntradas = kardex.filter(m => m.tipo === 'Entrada').reduce((sum, m) => sum + m.entrada, 0);
-    const totalSalidas = kardex.filter(m => m.tipo === 'Salida').reduce((sum, m) => sum + m.salida, 0);
-    
-    // Actualizar resumen en el modal
-    document.getElementById('modal-stock-total').textContent = stockTotal.toLocaleString() + ' unid.';
-    document.getElementById('modal-lotes-activos').textContent = lotes.length;
-    document.getElementById('modal-total-entradas').textContent = totalEntradas.toLocaleString() + ' unid.';
-    document.getElementById('modal-total-salidas').textContent = totalSalidas.toLocaleString() + ' unid.';
-    
-    // Generar HTML de lotes
-    const tbodyLotes = document.getElementById('modal-tbody-lotes');
-    tbodyLotes.innerHTML = lotes.map((lote) => `
-        <tr class="${lote.estado === 'Crítico' || lote.estado === 'Stock Crítico' ? 'table-danger' : ''}">
-            <td>
-                <code>${lote.lote}</code>
-            </td>
-            <td class="text-center">
-                <span class="badge ${lote.stock < 50 ? 'bg-warning' : 'bg-success'} fs-6">${lote.stock.toLocaleString()}</span>
-            </td>
-            <td>
-                <span class="${lote.antiguedad > 20 ? 'text-danger fw-bold' : lote.antiguedad > 7 ? 'text-warning' : 'text-success'}">
-                    <i class="ti ti-clock me-1"></i>${lote.antiguedad} días
-                </span>
-            </td>
-            <td class="text-center">
-                <span class="badge ${lote.estadoClass}">${lote.estado}</span>
-            </td>
-            <td class="text-center">
-                <button class="btn btn-white btn-icon" data-bs-toggle="modal" data-bs-target="#modal-merma" title="Registrar Merma">
-                    <i class="ti ti-minus text-danger"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-    
-    // Generar HTML de kardex
-    const tbodyKardex = document.getElementById('modal-tbody-kardex');
-    tbodyKardex.innerHTML = kardex.map((mov) => `
-        <tr>
-            <td>${mov.fecha}</td>
-            <td><span class="badge ${mov.tipoClass}">${mov.tipo}</span></td>
-            <td>${mov.documento}</td>
-            <td><code>${mov.lote}</code></td>
-            <td class="text-end ${mov.entrada > 0 ? 'text-success fw-bold' : ''}">${mov.entrada > 0 ? '+' + mov.entrada.toLocaleString() : '-'}</td>
-            <td class="text-end ${mov.salida > 0 ? 'text-warning fw-bold' : ''}">${mov.salida > 0 ? '-' + mov.salida.toLocaleString() : '-'}</td>
-            <td class="text-end fw-bold">${mov.stock.toLocaleString()}</td>
-        </tr>
-    `).join('');
-    
-    // Mostrar modal
     modal.show();
+    
+    // Cargar lotes
+    fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_lotes&id_producto=${productoId}`)
+        .then(r => r.text())
+        .then(text => {
+            const trimmed = text.trim();
+            const jsonStart = trimmed.indexOf('{');
+            const jsonEnd = trimmed.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) return { lotes: [], stock_total: 0 };
+            return JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        })
+        .then(data => {
+            const lotes = data.lotes || [];
+            const stockTotal = data.stock_total || 0;
+            
+            // Actualizar resumen
+            document.getElementById('modal-stock-total').textContent = stockTotal.toLocaleString() + ' unid.';
+            document.getElementById('modal-lotes-activos').textContent = lotes.length;
+            
+            // Generar HTML de lotes
+            const tbodyLotes = document.getElementById('modal-tbody-lotes');
+            if (lotes.length === 0) {
+                tbodyLotes.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No hay lotes activos</td></tr>';
+            } else {
+                tbodyLotes.innerHTML = lotes.map((lote) => {
+                    const estadoClass = lote.estado_texto === 'Agotado' ? 'bg-secondary' : 
+                                       lote.estado_texto === 'Stock Crítico' ? 'bg-danger' :
+                                       lote.estado_texto === 'Por Vencer' ? 'bg-warning' : 'bg-success';
+                    const rowClass = lote.estado_texto === 'Stock Crítico' ? 'table-danger' : '';
+                    return `
+                        <tr class="${rowClass}">
+                            <td><code>${lote.codigo_lote}</code></td>
+                            <td class="text-center">
+                                <span class="badge ${lote.stock_actual < 50 ? 'bg-warning' : 'bg-success'} fs-6">${parseInt(lote.stock_actual).toLocaleString()}</span>
+                            </td>
+                            <td>
+                                <span class="${lote.antiguedad_dias > 20 ? 'text-danger fw-bold' : lote.antiguedad_dias > 7 ? 'text-warning' : 'text-success'}">
+                                    <i class="ti ti-clock me-1"></i>${lote.antiguedad_dias} días
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge ${estadoClass}">${lote.estado_texto}</span>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-white btn-icon" onclick="mostrarModalMerma(${lote.id_lote}, '${lote.codigo_lote}', ${lote.stock_actual})" title="Registrar Merma">
+                                    <i class="ti ti-minus text-danger"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        })
+        .catch(err => {
+            document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Error al cargar lotes</td></tr>';
+        });
+    
+    // Cargar kardex
+    fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_kardex&id_producto=${productoId}`)
+        .then(r => r.text())
+        .then(text => {
+            const trimmed = text.trim();
+            const jsonStart = trimmed.indexOf('{');
+            const jsonEnd = trimmed.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) return { movimientos: [] };
+            return JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        })
+        .then(data => {
+            const movimientos = data.movimientos || [];
+            
+            // Calcular totales (REINTEGRO es entrada - devuelve stock al sistema)
+            const totalEntradas = movimientos.filter(m => m.tipo_movimiento === 'Entrada' || m.tipo_movimiento === 'INGRESO' || m.tipo_movimiento === 'REINTEGRO').reduce((sum, m) => sum + (m.cantidad || 0), 0);
+            const totalSalidas = movimientos.filter(m => m.tipo_movimiento === 'Salida' || m.tipo_movimiento === 'VENTA' || m.tipo_movimiento === 'MERMA' || m.tipo_movimiento === 'DONACION' || m.tipo_movimiento === 'REAJUSTE').reduce((sum, m) => sum + (m.cantidad || 0), 0);
+            
+            document.getElementById('modal-total-entradas').textContent = totalEntradas.toLocaleString() + ' unid.';
+            document.getElementById('modal-total-salidas').textContent = totalSalidas.toLocaleString() + ' unid.';
+            
+            // Generar HTML de kardex
+            const tbodyKardex = document.getElementById('modal-tbody-kardex');
+            if (movimientos.length === 0) {
+                tbodyKardex.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No hay movimientos registrados</td></tr>';
+            } else {
+                tbodyKardex.innerHTML = movimientos.map((mov) => {
+                    const tipoClass = mov.tipo_movimiento === 'Entrada' || mov.tipo_movimiento === 'INGRESO' || mov.tipo_movimiento === 'REINTEGRO' ? 'bg-primary' : 
+                                     mov.tipo_movimiento === 'Merma' || mov.tipo_movimiento === 'DONACION' ? 'bg-danger' : 'bg-warning';
+                    const esEntrada = mov.tipo_movimiento === 'Entrada' || mov.tipo_movimiento === 'INGRESO' || mov.tipo_movimiento === 'REINTEGRO';
+                    const cantidad = parseInt(mov.cantidad) || 0;
+                    return `
+                        <tr>
+                            <td>${new Date(mov.fecha).toLocaleDateString('es-PE')}</td>
+                            <td><span class="badge ${tipoClass}">${mov.tipo_movimiento}</span></td>
+                            <td>${mov.documento || '-'}</td>
+                            <td><code>${mov.codigo_lote || '-'}</code></td>
+                            <td class="text-end ${esEntrada ? 'text-success fw-bold' : ''}">${esEntrada ? '+' + cantidad.toLocaleString() : '-'}</td>
+                            <td class="text-end ${!esEntrada ? 'text-warning fw-bold' : ''}">${!esEntrada ? '-' + cantidad.toLocaleString() : '-'}</td>
+                            <td class="text-end fw-bold">${parseInt(mov.saldo_final || 0).toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        })
+        .catch(err => {
+            document.getElementById('modal-tbody-kardex').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Error al cargar movimientos</td></tr>';
+        });
+}
+
+// Variables globales para el producto actual en el modal
+let productoActualId = null;
+let productoActualNombre = null;
+let loteActualId = null;
+let loteActualStock = null;
+
+// Mostrar modal para reportar merma
+function mostrarModalMerma(idLote, codigoLote, stockActual) {
+    loteActualId = idLote;
+    loteActualStock = stockActual;
+    
+    // Cerrar el modal de detalle temporalmente
+    const modalDetalle = bootstrap.Modal.getInstance(document.getElementById('modal-detalle-producto'));
+    if (modalDetalle) {
+        modalDetalle.hide();
+    }
+    
+    // Configurar el formulario
+    document.getElementById('merma-id-producto').value = productoActualId;
+    const selectLote = document.getElementById('merma-id-lote');
+    selectLote.innerHTML = `<option value="${idLote}">${codigoLote} (Stock: ${stockActual})</option>`;
+    selectLote.value = idLote;
+    document.getElementById('merma-cantidad').value = '';
+    document.getElementById('merma-motivo').value = '';
+    
+    // Mostrar modal merma
+    const modalMerma = new bootstrap.Modal(document.getElementById('modal-reportar-merma'));
+    modalMerma.show();
+    
+    // Al cerrar modal de merma, reabrir modal de detalle
+    document.getElementById('modal-reportar-merma').addEventListener('hidden.bs.modal', function() {
+        mostrarLotes(productoActualId, productoActualNombre);
+    }, { once: true });
+}
+
+// Guardar merma
+function guardarMerma(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(document.getElementById('form-merma'));
+    const cantidad = parseFloat(formData.get('cantidad')) || 0;
+    
+    // Validar que no exceda el stock
+    if (cantidad > loteActualStock) {
+        Swal.fire('Advertencia', 'La cantidad no puede exceder el stock actual del lote (' + loteActualStock + ')', 'warning');
+        return;
+    }
+    
+    const data = {
+        id_lote: parseInt(formData.get('id_lote')),
+        id_producto: parseInt(formData.get('id_producto')),
+        tipo_merma: formData.get('tipo_merma'),
+        cantidad: cantidad,
+        motivo: formData.get('motivo')
+    };
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_merma', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.text())
+    .then(text => {
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+            return;
+        }
+        const result = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        if (result.success) {
+            Swal.fire({ icon: 'success', title: 'Guardado', text: 'Merma registrada exitosamente', timer: 1500, showConfirmButton: false });
+            bootstrap.Modal.getInstance(document.getElementById('modal-reportar-merma')).hide();
+        } else {
+            Swal.fire('Error', result.message || 'No se pudo registrar la merma', 'error');
+        }
+    })
+    .catch(err => {
+        Swal.fire('Error', 'Error de conexión', 'error');
+    });
+}
+
+// Mostrar modal para crear nuevo lote
+function mostrarModalNuevoLote() {
+    if (!productoActualId) {
+        Swal.fire('Advertencia', 'Seleccione un producto', 'warning');
+        return;
+    }
+    
+    // Cerrar el modal de detalle temporalmente
+    const modalDetalle = bootstrap.Modal.getInstance(document.getElementById('modal-detalle-producto'));
+    if (modalDetalle) {
+        modalDetalle.hide();
+    }
+    
+    // Configurar el formulario
+    document.getElementById('lote-id-producto').value = productoActualId;
+    document.getElementById('lote-codigo').value = '';
+    document.getElementById('lote-stock').value = '0';
+    document.getElementById('lote-centro').value = '';
+    
+    // Mostrar modal nuevo lote
+    const modalLote = new bootstrap.Modal(document.getElementById('modal-nuevo-lote'));
+    modalLote.show();
+    
+    // Al cerrar modal de lote, reabrir modal de detalle
+    document.getElementById('modal-nuevo-lote').addEventListener('hidden.bs.modal', function() {
+        mostrarLotes(productoActualId, productoActualNombre);
+    }, { once: true });
+}
+
+// Guardar nuevo lote
+function guardarLote(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(document.getElementById('form-nuevo-lote'));
+    const data = {
+        id_producto: parseInt(formData.get('id_producto')),
+        codigo_lote: formData.get('codigo_lote'),
+        stock_inicial: parseFloat(formData.get('stock_inicial')) || 0,
+        id_centro: formData.get('id_centro') || null
+    };
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_lote', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.text())
+    .then(text => {
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+            return;
+        }
+        const result = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        if (result.success) {
+            Swal.fire({ icon: 'success', title: 'Guardado', text: 'Lote creado exitosamente', timer: 1500, showConfirmButton: false });
+            bootstrap.Modal.getInstance(document.getElementById('modal-nuevo-lote')).hide();
+            // El evento hidden.bs.modal recargará el modal de detalle
+        } else {
+            Swal.fire('Error', result.message || 'No se pudo crear el lote', 'error');
+        }
+    })
+    .catch(err => {
+        Swal.fire('Error', 'Error de conexión', 'error');
+    });
 }
 
 // Helper para obtener clase del producto
@@ -843,4 +922,381 @@ function toggleStockCritico() {
         // Aquí se mostraría toda la tabla
     }
 }
+
+// ========================================
+// GESTIÓN DE PRODUCTOS - CRUD
+// ========================================
+
+let modalProducto = null;
+let formProducto = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    formProducto = document.getElementById('form-producto');
+    const modalEl = document.getElementById('modal-producto');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        modalProducto = new bootstrap.Modal(modalEl);
+    }
+    if (formProducto) {
+        formProducto.addEventListener('submit', handleSubmitProducto);
+    }
+});
+
+// Toggle visibilidad de campos según tipo de precio
+function togglePorcentajeUIT() {
+    const tipoPrecio = document.getElementById('tipo_precio').value;
+    const campoPorcentaje = document.getElementById('campo-porcentaje-uit');
+    const campoPrecioUIT = document.getElementById('campo-precio-uit');
+    const campoPrecioActual = document.getElementById('campo-precio-actual');
+    const campoNuevoPrecio = document.getElementById('campo-nuevo-precio');
+    const inputPorcentaje = document.getElementById('porcentaje_uit');
+    
+    if (tipoPrecio === 'UIT') {
+        campoPorcentaje.style.display = 'block';
+        campoPrecioUIT.style.display = 'block';
+        campoPrecioActual.style.display = 'none';
+        campoNuevoPrecio.style.display = 'none';
+        inputPorcentaje.required = true;
+        calcularPrecioUIT();
+    } else if (tipoPrecio === 'Variable') {
+        campoPorcentaje.style.display = 'none';
+        campoPrecioUIT.style.display = 'none';
+        campoPrecioActual.style.display = 'block';
+        campoNuevoPrecio.style.display = 'block';
+        inputPorcentaje.required = false;
+        inputPorcentaje.value = '';
+        document.getElementById('precio_calculado').value = '';
+    } else {
+        campoPorcentaje.style.display = 'none';
+        campoPrecioUIT.style.display = 'none';
+        campoPrecioActual.style.display = 'none';
+        campoNuevoPrecio.style.display = 'none';
+        inputPorcentaje.required = false;
+        inputPorcentaje.value = '';
+        document.getElementById('precio_calculado').value = '';
+        document.getElementById('precio_actual').value = '';
+        document.getElementById('nuevo_precio').value = '';
+    }
+}
+
+// Calcular precio basado en porcentaje de UIT
+function calcularPrecioUIT() {
+    const porcentaje = parseFloat(document.getElementById('porcentaje_uit').value) || 0;
+    const uitActual = <?php echo $uitActual ? $uitActual : 0; ?>;
+    
+    if (uitActual > 0 && porcentaje > 0) {
+        const precioCalculado = (uitActual * porcentaje).toFixed(2);
+        document.getElementById('precio_calculado').value = precioCalculado;
+    } else {
+        document.getElementById('precio_calculado').value = '';
+    }
+}
+
+function limpiarFormProducto() {
+    document.getElementById('id_producto').value = '';
+    document.getElementById('nombre').value = '';
+    document.getElementById('nombre_cientifico').value = '';
+    document.getElementById('unidad_medida').value = '';
+    document.getElementById('maneja_stock').checked = true;
+    document.getElementById('id_clase').value = '';
+    document.getElementById('id_centro').value = '';
+    document.getElementById('tipo_precio').value = '';
+    document.getElementById('porcentaje_uit').value = '';
+    document.getElementById('modal-producto-titulo').textContent = 'Nuevo Producto';
+    togglePorcentajeUIT();
+}
+
+function editarProducto(id) {
+    fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_producto&id=${id}`)
+        .then(r => r.text())
+        .then(text => {
+            const trimmed = text.trim();
+            const jsonStart = trimmed.indexOf('{');
+            const jsonEnd = trimmed.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) {
+                Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+                return;
+            }
+            try {
+                const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+                if (data && data.id_producto) {
+                    document.getElementById('id_producto').value = data.id_producto;
+                    document.getElementById('nombre').value = data.nombre;
+                    document.getElementById('nombre_cientifico').value = data.nombre_cientifico || '';
+                    document.getElementById('unidad_medida').value = data.unidad_medida;
+                    document.getElementById('maneja_stock').checked = data.maneja_stock == 1;
+                    document.getElementById('id_clase').value = data.id_clase;
+                    document.getElementById('id_centro').value = data.id_centro;
+                    document.getElementById('tipo_precio').value = data.tipo_precio || '';
+                    document.getElementById('porcentaje_uit').value = data.porcentaje_uit || '';
+                    document.getElementById('modal-producto-titulo').textContent = 'Editar Producto';
+                    togglePorcentajeUIT();
+                    // Si es UIT, recalcular el precio
+                    if (data.tipo_precio === 'UIT') {
+                        calcularPrecioUIT();
+                    }
+                    // Cargar precio actual desde historial
+                    if (data.tipo_precio === 'Variable') {
+                        cargarPrecioActual(data.id_producto);
+                    }
+                    if (modalProducto) modalProducto.show();
+                } else {
+                    Swal.fire('Error', 'No se encontró el producto', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Error al procesar respuesta', 'error');
+            }
+        })
+        .catch(err => {
+            Swal.fire('Error', 'Error al obtener datos', 'error');
+        });
+}
+
+// Cargar precio actual desde historial_precio
+function cargarPrecioActual(idProducto) {
+    fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_precio_actual&id_producto=${idProducto}`)
+        .then(r => r.text())
+        .then(text => {
+            const trimmed = text.trim();
+            const jsonStart = trimmed.indexOf('{');
+            const jsonEnd = trimmed.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) {
+                return;
+            }
+            try {
+                const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+                if (data && data.precio_oficial) {
+                    document.getElementById('precio_actual').value = data.precio_oficial;
+                } else {
+                    document.getElementById('precio_actual').value = 'Sin precio registrado';
+                }
+            } catch (e) {
+                // Ignorar error
+            }
+        })
+        .catch(err => {
+            // Ignorar error
+        });
+}
+
+function eliminarProducto(id) {
+    Swal.fire({
+        title: '¿Eliminar producto?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('id_producto', id);
+            
+            fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=eliminar_producto', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.text())
+            .then(text => {
+                const trimmed = text.trim();
+                const jsonStart = trimmed.indexOf('{');
+                const jsonEnd = trimmed.lastIndexOf('}');
+                if (jsonStart === -1 || jsonEnd === -1) {
+                    Swal.fire('Error', 'Respuesta inválida', 'error');
+                    return;
+                }
+                try {
+                    const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+                    if (data.success) {
+                        Swal.fire('Eliminado', 'El producto fue eliminado', 'success')
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', data.message || 'No se pudo eliminar', 'error');
+                    }
+                } catch (e) {
+                    Swal.fire('Error', 'Error al procesar respuesta', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Error', 'Error de conexión', 'error');
+            });
+        }
+    });
+}
+
+function handleSubmitProducto(e) {
+    e.preventDefault();
+    const formData = new FormData(formProducto);
+    
+    // Asegurar que maneja_stock se envíe correctamente
+    if (!document.getElementById('maneja_stock').checked) {
+        formData.delete('maneja_stock');
+    }
+    
+    // Guardar producto primero
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_producto', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.text())
+    .then(text => {
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+            return;
+        }
+        try {
+            const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+            if (data.success) {
+                // Si es Variable y se ingresó un nuevo precio, guardarlo en historial
+                const tipoPrecio = document.getElementById('tipo_precio').value;
+                const nuevoPrecio = document.getElementById('nuevo_precio').value;
+                
+                if (tipoPrecio === 'Variable' && nuevoPrecio && nuevoPrecio.trim() !== '') {
+                    const precioData = {
+                        id_producto: data.id || document.getElementById('id_producto').value,
+                        precio_oficial: parseFloat(nuevoPrecio)
+                    };
+                    
+                    return fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_precio', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(precioData)
+                    }).then(r => r.json());
+                }
+                
+                return Promise.resolve({ success: true });
+            } else {
+                Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
+                return Promise.reject(data.message);
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Error al procesar respuesta', 'error');
+            return Promise.reject(e);
+        }
+    })
+    .then(result => {
+        if (result.success) {
+            if (modalProducto) modalProducto.hide();
+            Swal.fire({
+                icon: 'success',
+                title: 'Guardado',
+                text: 'El producto se guardó correctamente',
+                timer: 1500,
+                showConfirmButton: false
+            }).then(() => location.reload());
+        } else {
+            Swal.fire('Error', 'No se pudo guardar el precio', 'error');
+        }
+    })
+    .catch(err => {
+        if (err !== 'No se pudo guardar') {
+            Swal.fire('Error', 'Error de conexión', 'error');
+        }
+    });
+}
+
+// Función para aplicar filtros con animación
+function aplicarFiltros() {
+    const filtroCentro = document.getElementById('filtro-centro').value;
+    const filtroClase = document.getElementById('filtro-clase').value;
+    const busqueda = document.getElementById('buscar-global').value.toLowerCase().trim();
+    const tbody = document.querySelector('tbody');
+    
+    // Agregar clase de loading al contenedor
+    if (tbody) tbody.classList.add('filtro-loading');
+    
+    const filas = document.querySelectorAll('tbody tr[data-id]');
+    
+    // Primera fase: desvanecer todas las filas
+    filas.forEach(fila => {
+        fila.classList.add('filtrando');
+        fila.classList.remove('mostrando');
+    });
+    
+    // Esperar a que termine la animación de desvanecimiento
+    setTimeout(() => {
+        let visibles = 0;
+        
+        filas.forEach(fila => {
+            const centroId = fila.getAttribute('data-centro');
+            const claseId = fila.getAttribute('data-clase');
+            const nombre = fila.getAttribute('data-nombre');
+            
+            const coincideCentro = !filtroCentro || centroId === filtroCentro;
+            const coincideClase = !filtroClase || claseId === filtroClase;
+            const coincideBusqueda = !busqueda || nombre.includes(busqueda);
+            
+            if (coincideCentro && coincideClase && coincideBusqueda) {
+                fila.style.display = '';
+                fila.classList.remove('filtrando');
+                fila.classList.add('mostrando');
+                visibles++;
+            } else {
+                fila.style.display = 'none';
+                fila.classList.remove('filtrando', 'mostrando');
+            }
+        });
+        
+        // Actualizar contador
+        const contador = document.querySelector('.card-header .text-muted.me-3');
+        if (contador) {
+            contador.textContent = visibles + ' productos mostrados';
+        }
+        
+        // Quitar loading
+        if (tbody) tbody.classList.remove('filtro-loading');
+        
+        // Limpiar clase mostrando después de la animación
+        setTimeout(() => {
+            filas.forEach(fila => {
+                if (fila.style.display !== 'none') {
+                    fila.classList.remove('mostrando');
+                }
+            });
+        }, 400);
+        
+    }, 300); // Esperar 300ms para la animación de desvanecimiento
+}
+
+// Inicializar event listeners para formularios
+document.addEventListener('DOMContentLoaded', function() {
+    const formNuevoLote = document.getElementById('form-nuevo-lote');
+    if (formNuevoLote) {
+        formNuevoLote.addEventListener('submit', guardarLote);
+    }
+    
+    const formMerma = document.getElementById('form-merma');
+    if (formMerma) {
+        formMerma.addEventListener('submit', guardarMerma);
+    }
+    
+    // Event listeners para filtros
+    const filtroCentro = document.getElementById('filtro-centro');
+    const filtroClase = document.getElementById('filtro-clase');
+    const buscarGlobal = document.getElementById('buscar-global');
+    let timeoutBusqueda = null;
+    
+    if (filtroCentro) {
+        filtroCentro.addEventListener('change', aplicarFiltros);
+    }
+    
+    if (filtroClase) {
+        filtroClase.addEventListener('change', aplicarFiltros);
+    }
+    
+    if (buscarGlobal) {
+        buscarGlobal.addEventListener('input', function() {
+            // Debounce para búsqueda: esperar 300ms después de que el usuario deje de escribir
+            clearTimeout(timeoutBusqueda);
+            timeoutBusqueda = setTimeout(aplicarFiltros, 300);
+        });
+    }
+});
+
 </script>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
