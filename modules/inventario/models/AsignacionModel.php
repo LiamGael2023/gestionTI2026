@@ -140,11 +140,46 @@ class AsignacionModel
     static public function mdlListarAmbientes()
     {
         $conn = Conexion::conectar();
-        $sql  = "
-            SELECT a.idAmbiente, a.descripcion, u.descripcion AS nombreUbicacion
+        /* CTE recursivo: sube desde la ubicación del ambiente hasta la raíz (sede).
+           Devuelve por cada ambiente:
+             - idUbicacion        : la ubicación directa donde está el ambiente
+             - nombreUbicacion    : descripción de esa ubicación directa
+             - idSede             : id del nodo raíz (idUbicacionPadre IS NULL)
+             - nombreSede         : descripción del nodo raíz
+        */
+        $sql = "
+            WITH jerarquia AS (
+                -- Ancla: todas las ubicaciones con su nivel
+                SELECT
+                    idUbicacion,
+                    idUbicacionPadre,
+                    descripcion,
+                    idUbicacion      AS idRaiz,
+                    descripcion      AS nombreRaiz
+                FROM inventario.ubicacion
+                WHERE idUbicacionPadre IS NULL
+
+                UNION ALL
+
+                SELECT
+                    u.idUbicacion,
+                    u.idUbicacionPadre,
+                    u.descripcion,
+                    j.idRaiz,
+                    j.nombreRaiz
+                FROM inventario.ubicacion u
+                INNER JOIN jerarquia j ON u.idUbicacionPadre = j.idUbicacion
+            )
+            SELECT
+                a.idAmbiente,
+                a.idUbicacion,
+                a.descripcion,
+                j.descripcion  AS nombreUbicacion,
+                j.idRaiz       AS idSede,
+                j.nombreRaiz   AS nombreSede
             FROM inventario.ambiente a
-            LEFT JOIN inventario.ubicacion u ON a.idUbicacion = u.idUbicacion
-            ORDER BY a.descripcion ASC
+            LEFT JOIN jerarquia j ON a.idUbicacion = j.idUbicacion
+            ORDER BY j.nombreRaiz ASC, j.descripcion ASC, a.descripcion ASC
         ";
         $stmt = sqlsrv_query($conn, $sql);
         $rows = [];
@@ -152,8 +187,11 @@ class AsignacionModel
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
                 $rows[] = [
                     "idAmbiente"      => intval($row["idAmbiente"]),
+                    "idUbicacion"     => $row["idUbicacion"] !== null ? intval($row["idUbicacion"]) : null,
                     "descripcion"     => $row["descripcion"],
                     "nombreUbicacion" => $row["nombreUbicacion"] ?? "",
+                    "idSede"          => $row["idSede"]          !== null ? intval($row["idSede"]) : null,
+                    "nombreSede"      => $row["nombreSede"]       ?? "",
                 ];
             sqlsrv_free_stmt($stmt);
         }

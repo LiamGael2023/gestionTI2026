@@ -45,14 +45,23 @@ class TipoActivosModel
     {
         $conn = Conexion::conectar();
 
+        // JOIN con comun.Usuarios para traer nombres y apellidos del registrador
+        $joinSql = "
+            SELECT
+                ta.*,
+                LTRIM(RTRIM(ISNULL(u.nombres, '') + ' ' + ISNULL(u.apellidos, ''))) AS nombreUsuario
+            FROM inventario.tipoActivo ta
+            LEFT JOIN comun.Usuarios u ON u.id_usuario = ta.idUsuarioRegistro
+        ";
+
         if ($item != null) {
-            $sql    = "SELECT * FROM $tabla WHERE $item = ? AND activo = 1";
+            $sql    = $joinSql . " WHERE ta.$item = ? AND ta.activo = 1";
             $params = array($valor);
             $stmt   = sqlsrv_query($conn, $sql, $params);
             if ($stmt === false) { sqlsrv_close($conn); return "error"; }
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
-            $sql  = "SELECT * FROM $tabla WHERE activo = 1 ORDER BY descripcion ASC";
+            $sql  = $joinSql . " WHERE ta.activo = 1 ORDER BY ta.descripcion ASC";
             $stmt = sqlsrv_query($conn, $sql);
             if ($stmt === false) { sqlsrv_close($conn); return "error"; }
             $resultado = array();

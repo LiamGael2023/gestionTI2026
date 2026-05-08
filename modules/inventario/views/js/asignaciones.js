@@ -263,6 +263,7 @@ function resetModalAsignar() {
     document.getElementById('nuevoTrabajadorAsignado').value     = '';
     document.getElementById('inputDniResponsable').value         = '';
     document.getElementById('btnGuardarAsignacion').disabled     = true;
+    _todosAmbientes = [];
 }
 
 /* ═════════════════════════════════════════════════════════
@@ -292,7 +293,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Custom selects ── */
     const csEstacion = crearCustomSelectAsig('nuevoIdEstacionSelect');
-    const csAmbiente = crearCustomSelectAsig('nuevoIdAmbiente');
+    const csUbicacion = crearCustomSelectAsig('nuevoIdUbicacion');
+    const csAmbiente  = crearCustomSelectAsig('nuevoIdAmbiente');
+
+    /* ── Datos completos de ambientes (para filtrar por sede) ── */
+    let _todosAmbientes = [];
+
+    function filtrarAmbientesPorSede(idSede) {
+        const filtrados = idSede
+            ? _todosAmbientes.filter(a => String(a.idSede) === String(idSede))
+            : _todosAmbientes;
+        const ops = [{ value: '', label: 'Sin ambiente' }];
+        filtrados.forEach(a => ops.push({ value: String(a.idAmbiente), label: a.label }));
+        csAmbiente.setOptions(ops);
+    }
+
+    /* ── Cambio en combo sede → filtrar ambientes ── */
+    document.getElementById('nuevoIdUbicacion')?.addEventListener('change', function () {
+        filtrarAmbientesPorSede(this.value);
+    });
 
     /* ── Cambio en combo estación → cargar equipos ── */
     document.getElementById('nuevoIdEstacionSelect')?.addEventListener('change', function () {
@@ -324,9 +343,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 csEstacion.setOptions(opsEst);
 
-                const opsAmb = [{ value: '', label: 'Sin ambiente' }];
-                ambientes.forEach(a => opsAmb.push({ value: String(a.idAmbiente), label: a.label || a.descripcion }));
-                csAmbiente.setOptions(opsAmb);
+                // Guardar ambientes completos para filtrado
+                _todosAmbientes = ambientes;
+
+                // Cargar combo de sedes (nodos raíz únicos)
+                const sedesMap = {};
+                ambientes.forEach(a => {
+                    if (a.idSede && a.nombreSede && !sedesMap[a.idSede]) {
+                        sedesMap[a.idSede] = a.nombreSede;
+                    }
+                });
+                const opsSedes = [{ value: '', label: 'Todas las sedes' }];
+                Object.entries(sedesMap)
+                    .sort((x, y) => x[1].localeCompare(y[1]))
+                    .forEach(([id, nombre]) => opsSedes.push({ value: id, label: nombre }));
+                csUbicacion.setOptions(opsSedes);
+
+                filtrarAmbientesPorSede('');
 
             } catch (e) {
                 mostrarToastAsig('error', 'Error al cargar datos.');
@@ -356,9 +389,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const ambientes = await fetch(AJAX_ASIG + '?listarAmbientes=1').then(r => r.json());
-            const opsAmb = [{ value: '', label: 'Sin ambiente' }];
-            ambientes.forEach(a => opsAmb.push({ value: String(a.idAmbiente), label: a.label || a.descripcion }));
-            csAmbiente.setOptions(opsAmb);
+
+            // Guardar ambientes completos para filtrado
+            _todosAmbientes = ambientes;
+
+            // Cargar combo de sedes
+            const sedesMap = {};
+            ambientes.forEach(a => {
+                if (a.idSede && a.nombreSede && !sedesMap[a.idSede]) {
+                    sedesMap[a.idSede] = a.nombreSede;
+                }
+            });
+            const opsSedes = [{ value: '', label: 'Todas las sedes' }];
+            Object.entries(sedesMap)
+                .sort((x, y) => x[1].localeCompare(y[1]))
+                .forEach(([id, nombre]) => opsSedes.push({ value: id, label: nombre }));
+            csUbicacion.setOptions(opsSedes);
+
+            filtrarAmbientesPorSede('');
         } catch (e) {
             mostrarToastAsig('error', 'Error al cargar ambientes.');
         }

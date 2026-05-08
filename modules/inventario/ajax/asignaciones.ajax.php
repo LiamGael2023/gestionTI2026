@@ -17,14 +17,18 @@ if (isset($_GET['listarAmbientes'])) {
     $ambientes = AsignacionController::ctrListarAmbientes();
     $result    = [];
     foreach ($ambientes as $a) {
+        // Label: "RELACIONES PUBLICAS — SEGUNDO PISO"
         $label = $a['descripcion'];
         if (!empty($a['nombreUbicacion'])) {
             $label .= ' — ' . $a['nombreUbicacion'];
         }
         $result[] = [
             'idAmbiente'      => $a['idAmbiente'],
+            'idUbicacion'     => $a['idUbicacion']  ?? null,
             'descripcion'     => $a['descripcion'],
             'nombreUbicacion' => $a['nombreUbicacion'] ?? '',
+            'idSede'          => $a['idSede']        ?? null,
+            'nombreSede'      => $a['nombreSede']    ?? '',
             'label'           => $label,
         ];
     }

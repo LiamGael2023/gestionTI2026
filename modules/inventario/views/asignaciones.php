@@ -373,6 +373,12 @@
                 <div class="seccion-body">
                   <div class="row g-3">
                     <div class="col-12">
+                      <label class="form-label small fw-semibold">Sede / Ubicación</label>
+                      <select id="nuevoIdUbicacion" style="display:none">
+                        <option value="">Todas las sedes</option>
+                      </select>
+                    </div>
+                    <div class="col-12">
                       <label class="form-label small fw-semibold">Ambiente</label>
                       <select id="nuevoIdAmbiente" name="nuevoIdAmbiente" style="display:none">
                         <option value="">Sin ambiente</option>

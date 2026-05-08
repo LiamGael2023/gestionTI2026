@@ -58,6 +58,12 @@ class AjaxTipoActivos
             return;
         }
 
+        // nombreUsuario viene del JOIN en el modelo (nombres + apellidos)
+        $nombreUsuario = trim($activo["nombreUsuario"] ?? "");
+        if ($nombreUsuario === "") {
+            $nombreUsuario = "ID " . ($activo["idUsuarioRegistro"] ?? "—");
+        }
+
         $respuesta = [
             "resultado"         => "ok",
             "idTipoActivo"      => intval($activo["idTipoActivo"]),
@@ -67,6 +73,7 @@ class AjaxTipoActivos
             "esComponente"      => intval($activo["esComponente"] ?? 0),
             "esPeriferico"      => intval($activo["esPeriferico"] ?? 0),
             "idUsuarioRegistro" => $activo["idUsuarioRegistro"] ?? "",
+            "nombreUsuario"     => $nombreUsuario,
             "fechaCreacion"     => isset($activo["fechaCreacion"])
                 ? ($activo["fechaCreacion"] instanceof DateTime
                     ? $activo["fechaCreacion"]->format("d/m/Y")
