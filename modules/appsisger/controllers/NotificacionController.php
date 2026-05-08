@@ -7,23 +7,33 @@ require_once __DIR__ . "/../services/FCMService.php";
 
 class NotificacionController {
 
-    public function procesar() {
+    public static function enviarPendientes(){
 
-        header('Content-Type: application/json');
+        $pendientes = NotificacionModel::obtenerPendientes();
 
-        $loteId = $_POST['loteId'] ?? null;
+        foreach($pendientes as $n){
 
-        if (!$loteId) {
-            echo json_encode([
-                "status" => "error",
-                "message" => "loteId requerido"
-            ]);
-            return;
+            $titulo = "Orden de Riego";
+            $mensaje = "Se actualizó su orden de riego";
+
+            FCMService::enviar($n["Token"], $titulo, $mensaje);
+
+            self::marcarEnviado($n["AmbOpe_CodigoCatastral"], $n["Rec_Numero"],$n["Periodo"],$n["Id_Anio"],$n["Band"] );
         }
 
-        $service = new NotificacionService();
-        $service->procesarLote($loteId);
+        echo json_encode(["success"=>true]);
+    }
 
-        echo json_encode(["status" => "ok"]);
+    private static function marcarEnviado($codigo, $rec){
+
+        $conn = Conexion::conectar();
+
+        $sql = "
+        UPDATE Aplicativo.NotificacionesPendientes
+        SET Estado = 1
+        WHERE AmbOpe_CodigoCatastral = ? AND Rec_Numero = ? AND Periodo = ? AND Id_Anio = ? AND Band = ? 
+        ";
+
+        sqlsrv_query($conn, $sql, [$codigo, $rec]);
     }
 }

@@ -33,6 +33,7 @@ function generarPDFOrden($d){
 
 
   
+    
     $pdf->Rect(8, 8, 132, 182);
 
    

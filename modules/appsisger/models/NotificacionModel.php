@@ -2,19 +2,13 @@
 
 class NotificacionModel{
 
-static public function obtenerPendientesConTokens(){
+public static function obtenerPendientes(){ 
 
     $conn = Conexion::conectar();
 
     $sql = "SELECT 
-                n.Id,
-                n.Id_AmbitoOrganizacionUsuarios,
-                n.Id_Anio,
-                n.AmbOpe_CodigoCatastral,
-                n.Rec_Numero,
-                n.Band,
-                n.Periodo,
-                d.Token
+               n.*,
+                d.token
             FROM BDSISGERWEB.Aplicativo.NotificacionesPendientes n
             INNER JOIN BDSISGERWEB.Aplicativo.vw_ConductoresPorAmbito d
                 ON d.AmbOpe_CodigoCatastral = n.AmbOpe_CodigoCatastral
@@ -22,9 +16,6 @@ static public function obtenerPendientesConTokens(){
 
     $stmt = sqlsrv_query($conn, $sql);
 
-    if ($stmt === false) {
-        die(print_r(sqlsrv_errors(), true));
-    }
 
     $data = [];
 
@@ -32,9 +23,16 @@ static public function obtenerPendientesConTokens(){
         $data[] = $row;
     }
 
-    sqlsrv_free_stmt($stmt);
-    sqlsrv_close($conn);
-
     return $data;
 }
+
+    public static function marcarEnviado($id){
+
+        $conn = Conexion::conectar();
+
+        $sql = "UPDATE Aplicativo.NotificacionesPendientes SET Estado = 1 WHERE Id = ?";
+
+        sqlsrv_query($conn, $sql, [$id]);
+    }
 }
+

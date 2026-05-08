@@ -26,3 +26,5 @@ public static function guardarToken($codigoUnico, $token){
     return sqlsrv_query($conn, $sql, $params);
 }
 }
+
+
