@@ -464,7 +464,7 @@ document.addEventListener("DOMContentLoaded", function () {
             colMenu.appendChild(wrap);
             wrap.querySelector("input").addEventListener("change", function () {
                 dt.column(idx).visible(this.checked);
-            });
+            }); //Modificación
         });
     }
 
