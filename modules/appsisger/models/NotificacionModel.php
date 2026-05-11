@@ -93,5 +93,37 @@ public static function obtenerPendientesConTokens($codigoUnico){
 
     return $data;
 }
+public static function obtenerHistorial($codigoUnico) {
+    $conn = Conexion::conectar();
+
+    $sql = "SELECT DISTINCT
+                n.Id,
+                RTRIM(LTRIM(n.AmbOpe_CodigoCatastral)) as AmbOpe_CodigoCatastral,
+                n.Estado,
+                CAST(n.FechaRegistro AS DATE) as FechaRegistro
+            FROM BDSISGERWEB.Aplicativo.NotificacionesPendientes n
+            INNER JOIN BDSISGERWEB.Aplicativo.vw_ConductoresPorAmbito d
+                ON RTRIM(LTRIM(d.AmbOpe_CodigoCatastral)) = RTRIM(LTRIM(n.AmbOpe_CodigoCatastral))
+            WHERE d.CodigoUnico = ?
+            AND n.Estado = 1
+            ORDER BY CAST(n.FechaRegistro AS DATE) DESC";
+
+    $stmt = sqlsrv_query($conn, $sql, [$codigoUnico]);
+
+    if ($stmt === false) {
+        error_log("Error obtenerHistorial: " . print_r(sqlsrv_errors(), true));
+        return [];
+    }
+
+    $data = [];
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        if ($row['FechaRegistro'] instanceof DateTime) {
+            $row['FechaRegistro'] = $row['FechaRegistro']->format('Y-m-d');
+        }
+        $data[] = $row;
+    }
+
+    return $data;
+}
 }
 
