@@ -62,5 +62,36 @@ public static function obtenerPendientesConTokens($codigoUnico){
 
         sqlsrv_query($conn, $sql, [$id]);
     }
+
+    public static function obtenerTodos($codigoUnico){ 
+
+    $conn = Conexion::conectar();
+
+    $sql = "SELECT 
+               n.Id,
+               n.AmbOpe_CodigoCatastral,
+               n.Estado,
+               n.FechaRegistro,
+               d.token
+            FROM BDSISGERWEB.Aplicativo.NotificacionesPendientes n
+            INNER JOIN BDSISGERWEB.Aplicativo.vw_ConductoresPorAmbito d
+                ON d.AmbOpe_CodigoCatastral = n.AmbOpe_CodigoCatastral
+            WHERE d.CodigoUnico = ?
+            ORDER BY n.FechaRegistro DESC";
+
+    $stmt = sqlsrv_query($conn, $sql, [$codigoUnico]);
+
+    if ($stmt === false) {
+        error_log("Error query: " . print_r(sqlsrv_errors(), true));
+        return [];
+    }
+
+    $data = [];
+    while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+        $data[] = $row;
+    }
+
+    return $data;
+}
 }
 
