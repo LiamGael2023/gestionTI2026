@@ -132,7 +132,7 @@ class FCMService {
         curl_close($ch);
 
         if(!isset($response["access_token"])){
-            echo "❌ ERROR TOKEN GOOGLE:\n";
+            error_log("ERROR TOKEN GOOGLE: " . json_encode($response));
             print_r($response);
             return null;
         }
