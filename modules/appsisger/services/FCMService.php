@@ -1,5 +1,4 @@
 <?php
-
 class FCMService {
 
     private static $projectId = "sisgeralertas";
@@ -15,7 +14,7 @@ class FCMService {
 
         // 🔍 VALIDACIÓN CLAVE
         if(!$accessToken){
-            echo "❌ NO HAY ACCESS TOKEN\n";
+           error_log("❌ NO HAY ACCESS TOKEN");
             return false;
         }
 
@@ -44,7 +43,7 @@ class FCMService {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
-        // ✅ SSL FIX SIN php.ini
+        
         curl_setopt($ch, CURLOPT_CAINFO, __DIR__ . '/../certs/cacert.pem');
 
         $response = curl_exec($ch);

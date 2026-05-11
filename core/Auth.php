@@ -4,6 +4,15 @@ session_start();
 class Auth {
     // Verificar sesión y permisos del módulo actual
     static public function check() {
+
+        $url = $_SERVER['REQUEST_URI'];
+   
+        if (strpos($url, '/gestionTI2026/modules/appsisger/api/') !== false) {
+            return true;
+        }
+        if (strpos($url, '/gestionTI/modules/appsisger/services/') !== false) {
+                return true;
+        }
         // 1. Validar si está logueado
         if (!isset($_SESSION['usuario_id'])) {
             header("Location: " . BASE_URL . "/login");
