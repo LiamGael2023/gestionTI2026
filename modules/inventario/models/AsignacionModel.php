@@ -7,75 +7,123 @@ class AsignacionModel
     static public function mdlCrearAsignacion($datos)
     {
         $conn = Conexion::conectar();
-        $stmt = sqlsrv_query($conn,
+        $stmt = sqlsrv_query(
+            $conn,
             "{call inventario.sp_CrearAsignacion(?, ?, ?, ?, ?, ?, ?, ?, ?)}",
             [
-                [$datos['idEstacion'],               SQLSRV_PARAM_IN],
-                [$datos['idAmbiente'],               SQLSRV_PARAM_IN],
-                [$datos['dniTrabajadorResponsable'],  SQLSRV_PARAM_IN],
-                [$datos['trabajadorResponsable'],     SQLSRV_PARAM_IN],
-                [$datos['trabajadorAsignado'],        SQLSRV_PARAM_IN],
-                [$datos['fechaAsignacion'],           SQLSRV_PARAM_IN],
-                [$datos['motivoCambio'],              SQLSRV_PARAM_IN],
-                [$datos['observaciones'],             SQLSRV_PARAM_IN],
-                [$datos['idUsuario'],                 SQLSRV_PARAM_IN],
+                [$datos['idEstacion'], SQLSRV_PARAM_IN],
+                [$datos['idAmbiente'], SQLSRV_PARAM_IN],
+                [$datos['dniTrabajadorResponsable'], SQLSRV_PARAM_IN],
+                [$datos['trabajadorResponsable'], SQLSRV_PARAM_IN],
+                [$datos['trabajadorAsignado'], SQLSRV_PARAM_IN],
+                [$datos['fechaAsignacion'], SQLSRV_PARAM_IN],
+                [$datos['motivoCambio'], SQLSRV_PARAM_IN],
+                [$datos['observaciones'], SQLSRV_PARAM_IN],
+                [$datos['idUsuario'], SQLSRV_PARAM_IN],
             ]
         );
-        if ($stmt === false) { sqlsrv_close($conn); return ["resultado"=>"error","mensaje"=>"Error SP."]; }
+        if ($stmt === false) {
+            sqlsrv_close($conn);
+            return ["resultado" => "error", "mensaje" => "Error SP."];
+        }
         $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        sqlsrv_free_stmt($stmt); sqlsrv_close($conn);
-        return $row ?? ["resultado"=>"error","mensaje"=>"Sin respuesta."];
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta."];
     }
 
     /* ── Liberar ── */
     static public function mdlLiberarAsignacion($datos)
     {
         $conn = Conexion::conectar();
-        $stmt = sqlsrv_query($conn,
+        $stmt = sqlsrv_query(
+            $conn,
             "{call inventario.sp_LiberarAsignacion(?, ?, ?, ?)}",
             [
-                [$datos['idAsignacion'],   SQLSRV_PARAM_IN],
-                [$datos['fechaLiberacion'],SQLSRV_PARAM_IN],
-                [$datos['motivoCambio'],   SQLSRV_PARAM_IN],
-                [$datos['idUsuario'],      SQLSRV_PARAM_IN],
+                [$datos['idAsignacion'], SQLSRV_PARAM_IN],
+                [$datos['fechaLiberacion'], SQLSRV_PARAM_IN],
+                [$datos['motivoCambio'], SQLSRV_PARAM_IN],
+                [$datos['idUsuario'], SQLSRV_PARAM_IN],
             ]
         );
-        if ($stmt === false) { sqlsrv_close($conn); return ["resultado"=>"error","mensaje"=>"Error SP."]; }
+        if ($stmt === false) {
+            sqlsrv_close($conn);
+            return ["resultado" => "error", "mensaje" => "Error SP."];
+        }
         $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-        sqlsrv_free_stmt($stmt); sqlsrv_close($conn);
-        return $row ?? ["resultado"=>"error","mensaje"=>"Sin respuesta."];
+        sqlsrv_free_stmt($stmt);
+        sqlsrv_close($conn);
+        return $row ?? ["resultado" => "error", "mensaje" => "Sin respuesta."];
     }
 
     /* ── Listar asignaciones activas (tabla principal) ── */
     static public function mdlListarActivas()
     {
         $conn = Conexion::conectar();
-        $sql  = "
-            SELECT
-                a.idAsignacion,
-                a.idEstacion,
-                est.nombreEstacion,
-                ip.ipAddress,
-                a.idAmbiente,
-                amb.descripcion         AS nombreAmbiente,
-                a.dniTrabajadorResponsable,
-                a.trabajadorResponsable,
-                a.trabajadorAsignado,
-                a.fechaAsignacion,
-                a.observaciones,
-                a.idUsuarioRegistro,
-                a.fechaCreacion
-            FROM inventario.asignacion a
-            INNER JOIN inventario.estacion est ON a.idEstacion = est.idEstacion
-            LEFT  JOIN inventario.ip       ip  ON est.idEstacion = ip.idEstacion
-            LEFT  JOIN inventario.ambiente amb ON a.idAmbiente = amb.idAmbiente
-            WHERE a.fechaLiberacion IS NULL
-            ORDER BY est.nombreEstacion ASC
+        $sql = "
+                        WITH jerarquia AS (
+    -- Ancla: Sedes principales (Raíz)
+    SELECT
+        idUbicacion,
+        idUbicacionPadre,
+        descripcion,
+        idUbicacion AS idSede,
+        descripcion AS nombreSede
+    FROM inventario.ubicacion
+    WHERE idUbicacionPadre IS NULL
+
+    UNION ALL
+
+    -- Recursión: Sub-ubicaciones (niveles inferiores)
+    SELECT
+        u.idUbicacion,
+        u.idUbicacionPadre,
+        u.descripcion,
+        j.idSede,
+        j.nombreSede
+    FROM inventario.ubicacion u
+    INNER JOIN jerarquia j ON u.idUbicacionPadre = j.idUbicacion
+)
+SELECT
+    -- Datos de la Asignación
+    a.idAsignacion,
+    a.idEstacion,
+    est.nombreEstacion,
+    ip.ipAddress,
+    
+    -- Datos del Ambiente y Ubicación
+    a.idAmbiente,
+    amb.descripcion AS nombreAmbiente,
+    j.descripcion AS nombreUbicacion,
+    
+    -- Datos de la Sede (Raíz)
+    j.idSede,
+    j.nombreSede,
+    
+    -- Datos del Personal y Auditoría
+    a.dniTrabajadorResponsable,
+    a.trabajadorResponsable,
+    a.trabajadorAsignado,
+    a.fechaAsignacion,
+    a.observaciones,
+    a.idUsuarioRegistro,
+    a.fechaCreacion,
+    LTRIM(RTRIM(ISNULL(u.nombres, '') + ' ' + ISNULL(u.apellidos, ''))) as nombreUsuario
+FROM inventario.asignacion a
+INNER JOIN inventario.estacion est ON a.idEstacion = est.idEstacion
+LEFT JOIN inventario.ip ip ON est.idEstacion = ip.idEstacion
+LEFT JOIN inventario.ambiente amb ON a.idAmbiente = amb.idAmbiente
+LEFT JOIN comun.Usuarios u ON u.id_usuario = a.idUsuarioRegistro
+-- Unimos con la jerarquía a través del idUbicacion del ambiente
+LEFT JOIN jerarquia j ON amb.idUbicacion = j.idUbicacion
+WHERE a.fechaLiberacion IS NULL
+ORDER BY j.nombreSede ASC, j.descripcion ASC, amb.descripcion ASC, est.nombreEstacion ASC
         ";
         $stmt = sqlsrv_query($conn, $sql);
         $rows = [];
         if ($stmt !== false) {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $rows[] = $row;
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
+                $rows[] = $row;
             sqlsrv_free_stmt($stmt);
         }
         sqlsrv_close($conn);
@@ -86,7 +134,7 @@ class AsignacionModel
     static public function mdlHistorialEstacion(int $idEstacion)
     {
         $conn = Conexion::conectar();
-        $sql  = "
+        $sql = "
             SELECT
                 a.idAsignacion,
                 a.dniTrabajadorResponsable,
@@ -107,7 +155,8 @@ class AsignacionModel
         $stmt = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
         $rows = [];
         if ($stmt !== false) {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $rows[] = $row;
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
+                $rows[] = $row;
             sqlsrv_free_stmt($stmt);
         }
         sqlsrv_close($conn);
@@ -118,7 +167,7 @@ class AsignacionModel
     static public function mdlAsignacionActiva(int $idEstacion)
     {
         $conn = Conexion::conectar();
-        $sql  = "
+        $sql = "
             SELECT TOP 1
                 a.idAsignacion, a.idEstacion, a.idAmbiente,
                 a.dniTrabajadorResponsable, a.trabajadorResponsable,
@@ -127,7 +176,7 @@ class AsignacionModel
             WHERE a.idEstacion = ? AND a.fechaLiberacion IS NULL
         ";
         $stmt = sqlsrv_query($conn, $sql, [[$idEstacion, SQLSRV_PARAM_IN]]);
-        $row  = null;
+        $row = null;
         if ($stmt !== false) {
             $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
             sqlsrv_free_stmt($stmt);
@@ -186,12 +235,12 @@ class AsignacionModel
         if ($stmt !== false) {
             while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
                 $rows[] = [
-                    "idAmbiente"      => intval($row["idAmbiente"]),
-                    "idUbicacion"     => $row["idUbicacion"] !== null ? intval($row["idUbicacion"]) : null,
-                    "descripcion"     => $row["descripcion"],
+                    "idAmbiente" => intval($row["idAmbiente"]),
+                    "idUbicacion" => $row["idUbicacion"] !== null ? intval($row["idUbicacion"]) : null,
+                    "descripcion" => $row["descripcion"],
                     "nombreUbicacion" => $row["nombreUbicacion"] ?? "",
-                    "idSede"          => $row["idSede"]          !== null ? intval($row["idSede"]) : null,
-                    "nombreSede"      => $row["nombreSede"]       ?? "",
+                    "idSede" => $row["idSede"] !== null ? intval($row["idSede"]) : null,
+                    "nombreSede" => $row["nombreSede"] ?? "",
                 ];
             sqlsrv_free_stmt($stmt);
         }
@@ -203,7 +252,7 @@ class AsignacionModel
     static public function mdlEstacionesSinAsignacion()
     {
         $conn = Conexion::conectar();
-        $sql  = "
+        $sql = "
             SELECT est.idEstacion, est.nombreEstacion, ip.ipAddress
             FROM inventario.estacion est
             LEFT JOIN inventario.ip ip ON est.idEstacion = ip.idEstacion
@@ -216,7 +265,8 @@ class AsignacionModel
         $stmt = sqlsrv_query($conn, $sql);
         $rows = [];
         if ($stmt !== false) {
-            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) $rows[] = $row;
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))
+                $rows[] = $row;
             sqlsrv_free_stmt($stmt);
         }
         sqlsrv_close($conn);
@@ -227,7 +277,7 @@ class AsignacionModel
     static public function mdlEquiposEstacion(int $idEstacion)
     {
         $conn = Conexion::conectar();
-        $sql  = "
+        $sql = "
             SELECT
                 e.idActivo,
                 e.codigoPatrimonial,

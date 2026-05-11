@@ -17,17 +17,57 @@ $idAsignacion = intval($_GET['idAsignacion'] ?? 0);
 if (!$idAsignacion) { http_response_code(400); die('ID requerido.'); }
 
 $conn = Conexion::conectar();
-$sql  = "
-    SELECT a.idAsignacion, a.idEstacion, est.nombreEstacion,
-           a.idAmbiente, amb.descripcion AS nombreAmbiente,
-           ub.descripcion AS nombreUbicacion,
-           a.dniTrabajadorResponsable, a.trabajadorResponsable,
-           a.trabajadorAsignado, a.fechaAsignacion, a.observaciones
-    FROM inventario.asignacion a
-    INNER JOIN inventario.estacion  est ON a.idEstacion   = est.idEstacion
-    LEFT  JOIN inventario.ambiente  amb ON a.idAmbiente   = amb.idAmbiente
-    LEFT  JOIN inventario.ubicacion ub  ON amb.idUbicacion = ub.idUbicacion
-    WHERE a.idAsignacion = ?
+$sql = "
+    ;WITH jerarquia AS (
+    -- Ancla: Todas las ubicaciones raíz (Sedes)
+    SELECT
+        idUbicacion,
+        idUbicacionPadre,
+        descripcion,
+        idUbicacion AS idSede,
+        descripcion AS nombreSede
+    FROM inventario.ubicacion
+    WHERE idUbicacionPadre IS NULL
+
+    UNION ALL
+
+    -- Recursión: Sub-ubicaciones
+    SELECT
+        u.idUbicacion,
+        u.idUbicacionPadre,
+        u.descripcion,
+        j.idSede,
+        j.nombreSede
+    FROM inventario.ubicacion u
+    INNER JOIN jerarquia j ON u.idUbicacionPadre = j.idUbicacion
+)
+SELECT
+    -- Datos de la Asignación y Estación
+    a.idAsignacion,
+    a.idEstacion,
+    est.nombreEstacion,
+    
+    -- Datos de Jerarquía (Sede y Ubicación)
+    j.idSede,
+    j.nombreSede,
+    j.descripcion AS nombreUbicacion,
+    
+    -- Datos del Ambiente
+    a.idAmbiente,
+    amb.descripcion AS nombreAmbiente,
+    
+    -- Datos del Personal y Asignación
+    a.dniTrabajadorResponsable,
+    a.trabajadorResponsable,
+    a.trabajadorAsignado,
+    a.fechaAsignacion,
+    a.observaciones
+FROM inventario.asignacion a
+INNER JOIN inventario.estacion est ON a.idEstacion = est.idEstacion
+LEFT JOIN inventario.ambiente amb ON a.idAmbiente = amb.idAmbiente
+-- Unimos el ambiente con su ubicación jerárquica para obtener la Sede
+LEFT JOIN jerarquia j ON amb.idUbicacion = j.idUbicacion
+WHERE a.idAsignacion = ?
 ";
 $stmt = sqlsrv_query($conn, $sql, [[$idAsignacion, SQLSRV_PARAM_IN]]);
 $asig = $stmt ? sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) : null;
@@ -47,6 +87,7 @@ $dniResp     = $asig['dniTrabajadorResponsable'] ?? '—';
 $asignado    = $asig['trabajadorAsignado']        ?? '—';
 $estacion    = $asig['nombreEstacion']            ?? '—';
 $ambiente    = $asig['nombreAmbiente']            ?? '—';
+$sede = $asig['nombreSede'] ?? '—';
 $ubicacion   = $asig['nombreUbicacion']           ?? '';
 $dest        = $ambiente . ($ubicacion ? '  —  ' . $ubicacion : '');
 $observ      = $asig['observaciones']             ?? '';
@@ -152,7 +193,7 @@ $filas = [
     ['RESPONSABLE',         $responsable.'   |   DNI: '.$dniResp],
     ['TRABAJADOR ASIGNADO', $asignado],
     ['ESTACIÓN',            $estacion],
-    ['AMBIENTE / DESTINO',  $dest],
+    ['UBICACIÓN', ($sede ? $sede . '  —  ' : '') . ($ubicacion ? $ubicacion . '  —  ' : '') . $ambiente],
     ['FECHA DE ASIGNACIÓN', $fechaStr],
 ];
 if (trim($observ)) $filas[] = ['OBSERVACIONES', $observ];

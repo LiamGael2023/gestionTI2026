@@ -2,15 +2,16 @@
      ASIGNACIONES.PHP — Mismo patrón que equipos.php
 ============================================================ -->
 <style>
-/* =============================================================
+  /* =============================================================
    CUSTOM SELECT  (.cs-*)
 ============================================================= */
-.cs-wrap {
+  .cs-wrap {
     position: relative;
     width: 100%;
     font-size: 0.875rem;
-}
-.cs-display {
+  }
+
+  .cs-display {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -23,28 +24,41 @@
     cursor: pointer;
     outline: none;
     transition: border-color .15s, box-shadow .15s;
-}
-.cs-display:hover { border-color: var(--tblr-primary, #0054a6); }
-.cs-wrap.cs-open .cs-display,
-.cs-display:focus {
+  }
+
+  .cs-display:hover {
     border-color: var(--tblr-primary, #0054a6);
-    box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb,0,84,166),.15);
-}
-.cs-text {
+  }
+
+  .cs-wrap.cs-open .cs-display,
+  .cs-display:focus {
+    border-color: var(--tblr-primary, #0054a6);
+    box-shadow: 0 0 0 .2rem rgba(var(--tblr-primary-rgb, 0, 84, 166), .15);
+  }
+
+  .cs-text {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     line-height: 1.4;
-}
-.cs-text.placeholder-text { color: #9ca3af; }
-.cs-arrow {
+  }
+
+  .cs-text.placeholder-text {
+    color: #9ca3af;
+  }
+
+  .cs-arrow {
     flex-shrink: 0;
     color: #6c757d;
     transition: transform .2s;
-}
-.cs-wrap.cs-open .cs-arrow { transform: rotate(180deg); }
-.cs-panel {
+  }
+
+  .cs-wrap.cs-open .cs-arrow {
+    transform: rotate(180deg);
+  }
+
+  .cs-panel {
     display: none;
     position: absolute;
     left: 0;
@@ -53,19 +67,24 @@
     background: #fff;
     border: 1px solid var(--tblr-border-color, #d0d5dd);
     border-radius: var(--tblr-border-radius, .375rem);
-    box-shadow: 0 4px 20px rgba(0,0,0,.12);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .12);
     overflow: hidden;
-}
-.cs-wrap.cs-open .cs-panel { display: block; }
-.cs-search-row {
+  }
+
+  .cs-wrap.cs-open .cs-panel {
+    display: block;
+  }
+
+  .cs-search-row {
     display: flex;
     align-items: center;
     gap: .4rem;
     padding: .4rem .65rem;
     border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
     background: var(--tblr-bg-surface-secondary, #f8fafc);
-}
-.cs-search {
+  }
+
+  .cs-search {
     border: none;
     outline: none;
     background: transparent;
@@ -73,222 +92,266 @@
     width: 100%;
     padding: 0;
     color: #374151;
-}
-.cs-list {
+  }
+
+  .cs-list {
     list-style: none;
     margin: 0;
     padding: .2rem 0;
     max-height: 190px;
     overflow-y: auto;
-}
-.cs-list li {
+  }
+
+  .cs-list li {
     padding: .38rem .75rem;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     transition: background .1s;
-}
-.cs-list li:hover,
-.cs-list li.cs-selected {
+  }
+
+  .cs-list li:hover,
+  .cs-list li.cs-selected {
     background: var(--tblr-primary-lt, #e7f0ff);
     color: var(--tblr-primary, #0054a6);
-}
-.cs-list li.cs-selected { font-weight: 600; }
-.cs-list li.cs-placeholder-item { color: #9ca3af; font-style: italic; }
-.cs-list li.cs-empty { color: #9ca3af; font-style: italic; cursor: default; }
-.cs-list li.cs-empty:hover { background: none; }
+  }
 
-/* =============================================================
+  .cs-list li.cs-selected {
+    font-weight: 600;
+  }
+
+  .cs-list li.cs-placeholder-item {
+    color: #9ca3af;
+    font-style: italic;
+  }
+
+  .cs-list li.cs-empty {
+    color: #9ca3af;
+    font-style: italic;
+    cursor: default;
+  }
+
+  .cs-list li.cs-empty:hover {
+    background: none;
+  }
+
+  /* =============================================================
    LAYOUT MODAL — igual que equipos.php
 ============================================================= */
-.modal-body-scroll {
+  .modal-body-scroll {
     overflow-y: auto;
     max-height: calc(100vh - 240px);
-}
-.seccion-card {
+  }
+
+  .seccion-card {
     border: 1px solid var(--tblr-border-color, #e6ebf1);
     border-left: 4px solid var(--tblr-primary, #0054a6);
     border-radius: .5rem;
     background: #fff;
-}
-.seccion-header {
+  }
+
+  .seccion-header {
     display: flex;
     align-items: center;
     gap: .5rem;
     padding: .65rem 1.1rem .45rem;
     border-bottom: 1px solid var(--tblr-border-color-light, #f0f3f8);
-}
-.seccion-titulo {
+  }
+
+  .seccion-titulo {
     font-size: .68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .06em;
-}
-.seccion-body { padding: .9rem 1.1rem 1rem; }
+  }
 
-.auditoria-box {
+  .seccion-body {
+    padding: .9rem 1.1rem 1rem;
+  }
+
+  .auditoria-box {
     background: var(--tblr-bg-surface-secondary, #f8fafc);
     border: 1px dashed var(--tblr-border-color, #d0d5dd);
     border-radius: .5rem;
     padding: .8rem 1rem;
-}
+  }
 
-/* Worker card — dentro del auditoria-box */
-.worker-info-box {
+  /* Worker card — dentro del auditoria-box */
+  .worker-info-box {
     background: var(--tblr-bg-surface-secondary, #f8fafc);
     border: 1px solid var(--tblr-border-color, #d0d5dd);
     border-radius: .5rem;
     padding: .75rem 1rem;
-}
+  }
 
-/* Equipos preview tabla */
-.equipos-preview-wrap {
+  /* Equipos preview tabla */
+  .equipos-preview-wrap {
     border: 1px solid var(--tblr-border-color, #d0d5dd);
     border-radius: .5rem;
     overflow: hidden;
     max-height: 220px;
     overflow-y: auto;
-}
+  }
 
-/* Historial */
-.hist-item {
+  /* Historial */
+  .hist-item {
     display: flex;
     gap: .65rem;
     padding: .6rem 0;
     border-bottom: 1px solid var(--tblr-border-color-light, #f0f3f8);
-}
-.hist-item:last-child { border-bottom: none; }
-.hist-dot {
-    width: 10px; height: 10px;
+  }
+
+  .hist-item:last-child {
+    border-bottom: none;
+  }
+
+  .hist-dot {
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
     flex-shrink: 0;
     margin-top: .4rem;
-}
+  }
 
-@media (max-width: 991px) {
-    .modal-body-scroll { max-height: calc(100vh - 180px); }
-}
+  @media (max-width: 991px) {
+    .modal-body-scroll {
+      max-height: calc(100vh - 180px);
+    }
+  }
 </style>
 
 <body>
-<div class="page">
-<?php include __DIR__ . '/_submenu.php'; ?>
+  <div class="page">
+    <?php include __DIR__ . '/_submenu.php'; ?>
 
-  <div class="page-wrapper">
-    <div class="container-xl">
+    <div class="page-wrapper">
+      <div class="container-xl">
 
-      <div class="page-header d-print-none">
-        <div class="row align-items-center">
-          <div class="col">
-            <h2 class="page-title">Asignaciones</h2>
-            <p class="text-muted mb-0">Control de asignación de estaciones a trabajadores.</p>
-          </div>
-          <div class="col-auto ms-auto">
-            <button class="btn btn-primary" id="btnNuevaAsignacion">
-              <i class="ti ti-plus me-1"></i>Nueva Asignación
-            </button>
+        <div class="page-header d-print-none">
+          <div class="row align-items-center">
+            <div class="col">
+              <h2 class="page-title">Asignaciones</h2>
+              <p class="text-muted mb-0">Control de asignación de estaciones a trabajadores.</p>
+            </div>
+            <div class="col-auto ms-auto">
+              <button class="btn btn-primary" id="btnNuevaAsignacion">
+                <i class="ti ti-plus me-1"></i>Nueva Asignación
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="card shadow-sm mb-4">
-        <div class="card-header">
-          <h3 class="card-title">
-            <i class="ti ti-user-check me-2 text-primary"></i>Asignaciones Activas
-          </h3>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table id="tablaAsignaciones" class="table table-vcenter table-mobile-md card-table table-sm">
-              <thead>
-                <tr>
-                  <th>Estación</th>
-                  <th>IP</th>
-                  <th>Ambiente</th>
-                  <th>Responsable</th>
-                  <th>Trabajador Asignado</th>
-                  <th>Fecha Asignación</th>
-                  <th class="d-none d-sm-table-cell">Registrado Por</th>
-                  <th class="text-end">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php
-                $asignaciones = AsignacionController::ctrListarActivas();
-                if ($asignaciones) {
+        <div class="card shadow-sm mb-4">
+          <div class="card-header">
+            <h3 class="card-title">
+              <i class="ti ti-user-check me-2 text-primary"></i>Asignaciones Activas
+            </h3>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table id="tablaAsignaciones" class="table table-vcenter table-mobile-md card-table table-sm">
+                <thead>
+                  <tr>
+                    <th>Estación</th>
+                    <th>IP</th>
+                    <th>Sede</th>
+                    <th>Ubicación</th>
+                    <th>Ambiente</th>
+                    <th>Responsable</th>
+                    <th>Trabajador Asignado</th>
+                    <th>Fecha Asignación</th>
+                    <th class="d-none d-sm-table-cell">Registrado Por</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php
+                  $asignaciones = AsignacionController::ctrListarActivas();
+                  if ($asignaciones) {
                     foreach ($asignaciones as $a) {
-                        $fa = isset($a['fechaAsignacion'])
-                            ? ($a['fechaAsignacion'] instanceof DateTime
-                                ? $a['fechaAsignacion']->format('d/m/Y')
-                                : date('d/m/Y', strtotime($a['fechaAsignacion'])))
-                            : '—';
-                        echo '
-                        <tr>
-                          <td>
-                            <div class="d-flex align-items-center gap-2">
-                              <i class="ti ti-desktop text-primary fs-3"></i>
-                              <span class="fw-medium">' . htmlspecialchars($a['nombreEstacion'] ?? '') . '</span>
-                            </div>
-                          </td>
-                          <td>
-                            ' . (!empty($a['ipAddress'])
-                                ? '<span class="badge bg-primary-lt text-primary font-monospace">' . htmlspecialchars($a['ipAddress']) . '</span>'
-                                : '<span class="text-muted small">—</span>') . '
-                          </td>
-                          <td class="small text-muted">' . htmlspecialchars($a['nombreAmbiente'] ?? '—') . '</td>
-                          <td>
-                            <div class="fw-medium small">' . htmlspecialchars($a['trabajadorResponsable'] ?? '') . '</div>
-                            <div class="text-primary small">' . htmlspecialchars($a['dniTrabajadorResponsable'] ?? '') . '</div>
-                          </td>
-                          <td class="small text-muted">' . htmlspecialchars($a['trabajadorAsignado'] ?? '—') . '</td>
-                          <td class="small text-muted">' . $fa . '</td>
-                          <td class="d-none d-sm-table-cell">
-                            <span class="badge badge-outline text-muted">ID: ' . $a['idUsuarioRegistro'] . '</span>
-                          </td>
-                          <td class="text-end">
-                            <div class="d-flex justify-content-end gap-1">
-                                                            <a href="modules/inventario/ajax/generar_acta.php?idAsignacion=' . $a['idAsignacion'] . '"
-                                 class="btn btn-sm btn-icon btn-outline-success"
-                                 title="Descargar Acta de Entrega" target="_blank">
-                                <i class="ti ti-file-description"></i>
-                              </a>
-<button type="button"
-                                class="btn btn-sm btn-icon btn-outline-info btnVerHistorial"
-                                data-id="' . $a['idEstacion'] . '"
-                                data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                                title="Ver historial">
-                                <i class="ti ti-history"></i>
-                              </button>
-                              <button type="button"
-                                class="btn btn-sm btn-icon btn-outline-warning btnReasignar"
-                                data-id="' . $a['idEstacion'] . '"
-                                data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                                title="Reasignar">
-                                <i class="ti ti-refresh"></i>
-                              </button>
-                              <button type="button"
-                                class="btn btn-sm btn-icon btn-outline-danger btnLiberar"
-                                data-idAsignacion="' . $a['idAsignacion'] . '"
-                                data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                                title="Liberar asignación">
-                                <i class="ti ti-x"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>';
+                      $nombreU = trim($a['nombreUsuario'] ?? '');
+                      $mostrarUsuario = $nombreU !== '' ? htmlspecialchars($nombreU, ENT_QUOTES, 'UTF-8') : 'ID: ' . $a['idUsuarioRegistro'];
+
+                      $fa = isset($a['fechaAsignacion'])
+                        ? ($a['fechaAsignacion'] instanceof DateTime
+                          ? $a['fechaAsignacion']->format('d/m/Y')
+                          : date('d/m/Y', strtotime($a['fechaAsignacion'])))
+                        : '—';
+                      echo '
+    <tr>
+        <td>
+            <div class="d-flex align-items-center gap-2">
+                <i class="ti ti-desktop text-primary fs-3"></i>
+                <span class="fw-medium">' . htmlspecialchars($a['nombreEstacion'] ?? '') . '</span>
+            </div>
+        </td>
+        <td>
+            ' . (!empty($a['ipAddress'])
+                        ? '<span class="badge bg-primary-lt text-primary font-monospace">' . htmlspecialchars($a['ipAddress']) . '</span>'
+                        : '<span class="text-muted small">—</span>') . '
+        </td>
+
+        <td class="small text-muted">' . htmlspecialchars($a['nombreSede'] ?? '—') . '</td>
+        <td class="small text-muted">' . htmlspecialchars($a['nombreUbicacion'] ?? '—') . '</td>
+        
+        <td class="small text-muted">' . htmlspecialchars($a['nombreAmbiente'] ?? '—') . '</td>
+        
+        <td>
+            <div class="fw-medium small">' . htmlspecialchars($a['trabajadorResponsable'] ?? '') . '</div>
+            <div class="text-primary small">' . htmlspecialchars($a['dniTrabajadorResponsable'] ?? '') . '</div>
+        </td>
+        <td class="small text-muted">' . htmlspecialchars($a['trabajadorAsignado'] ?? '—') . '</td>
+        <td class="small text-muted">' . $fa . '</td>
+        <td class="d-none d-sm-table-cell">
+            <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
+                <i class="ti ti-user-circle me-1"></i>
+                ' . $mostrarUsuario . '
+            </span>
+        </td>
+        <td class="text-end">
+            <div class="d-flex justify-content-end gap-1">
+                <a href="modules/inventario/ajax/generar_acta.php?idAsignacion=' . $a['idAsignacion'] . '"
+                   class="btn btn-sm btn-icon btn-outline-success"
+                   title="Descargar Acta de Entrega" target="_blank">
+                    <i class="ti ti-file-description"></i>
+                </a>
+                <button type="button"
+                        class="btn btn-sm btn-icon btn-outline-info btnVerHistorial"
+                        data-id="' . $a['idEstacion'] . '"
+                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                        title="Ver historial">
+                    <i class="ti ti-history"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-icon btn-outline-warning btnReasignar"
+                        data-id="' . $a['idEstacion'] . '"
+                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                        title="Reasignar">
+                    <i class="ti ti-refresh"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-icon btn-outline-danger btnLiberar"
+                        data-idAsignacion="' . $a['idAsignacion'] . '"
+                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                        title="Liberar asignación">
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+        </td>
+    </tr>';
                     }
-                }
-                ?>
-              </tbody>
-            </table>
+                  }
+                  ?>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
   </div>
-</div>
 </body>
 
 
@@ -300,10 +363,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-user-check fs-2"></i>
           </div>
           <div>
@@ -332,7 +395,8 @@
                 <div class="seccion-body">
                   <!-- Combo (nueva) -->
                   <div id="wrapComboEstacion">
-                    <label class="form-label small fw-semibold">Seleccionar estación <span class="text-danger">*</span></label>
+                    <label class="form-label small fw-semibold">Seleccionar estación <span
+                        class="text-danger">*</span></label>
                     <select id="nuevoIdEstacionSelect" style="display:none">
                       <option value="">Seleccionar...</option>
                     </select>
@@ -385,14 +449,15 @@
                       </select>
                     </div>
                     <div class="col-12">
-                      <label class="form-label small fw-semibold">Fecha de Asignación <span class="text-danger">*</span></label>
+                      <label class="form-label small fw-semibold">Fecha de Asignación <span
+                          class="text-danger">*</span></label>
                       <input type="date" class="form-control" name="nuevoFechaAsignacion" id="nuevoFechaAsignacion"
-                             value="<?= date('Y-m-d') ?>">
+                        value="<?= date('Y-m-d') ?>">
                     </div>
                     <div class="col-12">
                       <label class="form-label small fw-semibold">Observaciones</label>
-                      <textarea class="form-control" name="nuevoObservaciones" rows="2"
-                                placeholder="Opcional..." style="resize:none"></textarea>
+                      <textarea class="form-control" name="nuevoObservaciones" rows="2" placeholder="Opcional..."
+                        style="resize:none"></textarea>
                     </div>
                   </div>
                 </div>
@@ -414,7 +479,7 @@
                     <label class="form-label small fw-semibold">DNI <span class="text-danger">*</span></label>
                     <div class="input-group">
                       <input type="text" class="form-control font-monospace" id="inputDniResponsable"
-                             placeholder="Ej: 18004039" maxlength="20">
+                        placeholder="Ej: 18004039" maxlength="20">
                       <button type="button" id="btnBuscarResponsable" class="btn btn-primary">
                         <i class="ti ti-search me-1"></i>Buscar
                       </button>
@@ -430,8 +495,8 @@
                       </div>
                       <div class="d-flex align-items-center gap-3">
                         <div class="avatar rounded-circle bg-primary text-white fw-bold"
-                             style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
-                             id="workerInitials">?</div>
+                          style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0"
+                          id="workerInitials">?</div>
                         <div>
                           <div class="fw-semibold" id="workerNombre"></div>
                           <div class="text-primary small" id="workerDni"></div>
@@ -441,7 +506,7 @@
                     </div>
                   </div>
 
-                  <input type="hidden" name="nuevoDniResponsable"        id="nuevoDniResponsable">
+                  <input type="hidden" name="nuevoDniResponsable" id="nuevoDniResponsable">
                   <input type="hidden" name="nuevoTrabajadorResponsable" id="nuevoTrabajadorResponsable">
                 </div>
               </div>
@@ -455,7 +520,7 @@
                 <div class="seccion-body">
                   <label class="form-label small fw-semibold">Nombre completo</label>
                   <input type="text" class="form-control" name="nuevoTrabajadorAsignado" id="nuevoTrabajadorAsignado"
-                         placeholder="Se rellena automáticamente, puedes editarlo...">
+                    placeholder="Se rellena automáticamente, puedes editarlo...">
                   <div class="text-muted small mt-1">
                     <i class="ti ti-info-circle me-1"></i>Quien usa la estación (puede ser diferente al responsable)
                   </div>
@@ -489,10 +554,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:var(--tblr-primary-lt);border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
+            style="width:46px;height:46px;background:var(--tblr-primary);flex-shrink:0">
             <i class="ti ti-history fs-2"></i>
           </div>
           <div>
@@ -530,10 +595,10 @@
     <div class="modal-content border-0 shadow-lg rounded-4">
 
       <div class="modal-header px-4 pt-4 pb-3"
-           style="background:#fff5f5;border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
+        style="background:#fff5f5;border-bottom:1px solid var(--tblr-border-color);flex-shrink:0">
         <div class="d-flex align-items-center gap-3">
           <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
-               style="width:46px;height:46px;background:#d63939;flex-shrink:0">
+            style="width:46px;height:46px;background:#d63939;flex-shrink:0">
             <i class="ti ti-alert-triangle fs-2"></i>
           </div>
           <div>
@@ -552,12 +617,12 @@
             <div class="col-12">
               <label class="form-label small fw-semibold">Fecha de Liberación <span class="text-danger">*</span></label>
               <input type="date" class="form-control" name="fechaLiberacion" id="liberarFecha"
-                     value="<?= date('Y-m-d') ?>">
+                value="<?= date('Y-m-d') ?>">
             </div>
             <div class="col-12">
               <label class="form-label small fw-semibold">Motivo</label>
               <input type="text" class="form-control" name="motivoCambio"
-                     placeholder="Ej: Traslado, Baja, Cambio de área...">
+                placeholder="Ej: Traslado, Baja, Cambio de área...">
             </div>
           </div>
         </div>

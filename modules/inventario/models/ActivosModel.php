@@ -73,19 +73,24 @@ class ActivosModel
                    e.idUsuarioModifica, e.fechaModificacion,
                    a.descripcion AS nombreActivo, a.icono AS iconoActivo,
                    a.esCompuesto, a.esPeriferico, a.esComponente,
-                   STRING_AGG(tc.descripcion + ': ' + c.valor, ', ') AS caracteristicas
+                   STRING_AGG(tc.descripcion + ': ' + c.valor, ', ') AS caracteristicas,
+                   LTRIM(RTRIM(ISNULL(ur.nombres,'') + ' ' + ISNULL(ur.apellidos,''))) AS nombreUsuarioRegistro,
+                   LTRIM(RTRIM(ISNULL(um.nombres,'') + ' ' + ISNULL(um.apellidos,''))) AS nombreUsuarioModifica
             FROM $tabla e
             INNER JOIN inventario.tipoActivo           a  ON e.idTipoActivo        = a.idTipoActivo
             LEFT  JOIN inventario.activoCaracteristica ec ON e.idActivo            = ec.idActivo
             LEFT  JOIN inventario.caracteristicas      c  ON ec.idCaracteristica   = c.idCaracteristica
             LEFT  JOIN inventario.tipoCaracteristica   tc ON c.idTipoCaracteristica= tc.idTipoCaracteristica
+            LEFT  JOIN comun.Usuarios                  ur ON e.idUsuarioRegistro   = ur.id_usuario
+            LEFT  JOIN comun.Usuarios                  um ON e.idUsuarioModifica   = um.id_usuario
             WHERE e.activo = 1";
         $groupBy = " GROUP BY e.idActivo, e.idTipoActivo, e.idActivoPadre, e.numeroSerie,
                    e.codigoPatrimonial, e.codigoLicencia, e.estado,
                    e.fechaAdquisicion, e.fechaInicioGarantia,
                    e.fechaFinGarantia, e.fechaCreacion, e.idUsuarioRegistro,
                    e.idUsuarioModifica, e.fechaModificacion,
-                   a.descripcion, a.icono, a.esCompuesto, a.esPeriferico, a.esComponente";
+                   a.descripcion, a.icono, a.esCompuesto, a.esPeriferico, a.esComponente,
+                   ur.nombres, ur.apellidos, um.nombres, um.apellidos";
         if ($item != null) {
             $stmt = sqlsrv_query($conn, $selectBase . " AND e.$item = ? " . $groupBy, [[$valor, SQLSRV_PARAM_IN]]);
             if ($stmt === false) { sqlsrv_close($conn); return null; }

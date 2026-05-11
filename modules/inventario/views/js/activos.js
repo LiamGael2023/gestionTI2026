@@ -424,14 +424,23 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ════════════════════════════════════════════════
        TABS FILTRO TIPO ACTIVO
     ════════════════════════════════════════════════ */
-    document.getElementById('tipoTabNav')?.addEventListener('click', function (e) {
-        const btn = e.target.closest('.tipo-tab-btn');
-        if (!btn) return;
-        document.querySelectorAll('.tipo-tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const tipo = btn.dataset.tipo;
-        document.querySelectorAll('#tablaActivos tbody tr').forEach(tr => {
-            tr.style.display = (tipo === 'todos' || tr.dataset.tipo === tipo) ? '' : 'none';
+    // Tabs filter — aplica a tabla desktop Y cards móvil
+    let tipoFiltroActivo = 'todos';
+    document.querySelectorAll('.tipo-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tipo-tab-btn').forEach(b => {
+                b.classList.remove('active','btn-primary');
+                b.classList.add('btn-outline-secondary');
+            });
+            this.classList.add('active','btn-primary');
+            this.classList.remove('btn-outline-secondary');
+            tipoFiltroActivo = this.dataset.tipo;
+            // Desktop
+            document.querySelectorAll('#tablaActivos tbody tr').forEach(tr => {
+                tr.style.display = (tipoFiltroActivo === 'todos' || tr.dataset.tipo === tipoFiltroActivo) ? '' : 'none';
+            });
+            // Móvil
+            if (typeof aplicarFiltroMovilActivos === 'function') aplicarFiltroMovilActivos();
         });
     });
 
@@ -559,10 +568,10 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('editarFechaInicioGarantia').value = json.fechaInicioGarantia ?? '';
             document.getElementById('editarFechaFinGarantia').value = json.fechaFinGarantia ?? '';
             document.getElementById('editarEstado').value = json.estado ?? 'disponible';
-            document.getElementById('editarUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
-            document.getElementById('editarFechaCreacion').textContent = json.fechaCreacion ?? '--';
-            document.getElementById('editarUsuarioModificacion').textContent = json.idUsuarioModifica ?? '--';
-            document.getElementById('editarFechaModificacion').textContent = json.fechaModificacion ?? '--';
+            document.getElementById('editarUsuarioCreacion').textContent    = json.nombreUsuarioRegistro ?? json.idUsuarioRegistro ?? '--';
+            document.getElementById('editarFechaCreacion').textContent         = json.fechaCreacion ?? '--';
+            document.getElementById('editarUsuarioModificacion').textContent   = json.nombreUsuarioModifica  ?? json.idUsuarioModifica  ?? '--';
+            document.getElementById('editarFechaModificacion').textContent     = json.fechaModificacion ?? '--';
 
             // Reconstruir lista de características con IDs reales de la BD
             caracteristicasEditar.length = 0;
@@ -844,23 +853,84 @@ document.addEventListener("DOMContentLoaded", function () {
        DATATABLES
     ════════════════════════════════════════════════ */
     if ($.fn.DataTable.isDataTable('#tablaActivos')) $('#tablaActivos').DataTable().destroy();
-    $('#tablaActivos').DataTable({
-        responsive: true, pageLength: 10, autoWidth: false,
-        dom: `<'card-body border-bottom py-3'<'row g-3 align-items-center'
-              <'col-12 col-md-auto'l>
-              <'col-12 col-md-auto ms-auto'<'d-flex gap-2'Bf>>
-              >>tr<'card-footer d-flex align-items-center py-2'
-              <'m-0 text-muted small'i><'pagination m-0 ms-auto'p>>`,
+    const dtActivos = $('#tablaActivos').DataTable({
+        responsive: false, pageLength: 10, autoWidth: false,
+        dom: `<'d-none'lBf><'table-responsive'tr><'card-footer d-flex align-items-center py-2'<'text-muted small'i><'pagination m-0 ms-auto'p>>`,
         buttons: [
-            { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-outline-success btn-sm m-0' },
-            { extend: 'pdfHtml5', text: '<i class="ti ti-file-description"></i>', className: 'btn btn-outline-danger btn-sm m-0' }
+            { extend: 'excelHtml5', text: 'Excel' },
+            { extend: 'pdfHtml5',   text: 'PDF'   }
         ],
-        initComplete: function () {
-            $('.dataTables_filter input').addClass('form-control form-control-sm m-0').attr('placeholder', 'Buscar activo...');
-            $('.dataTables_length select').addClass('form-select form-select-sm');
-            $('.dt-buttons').addClass('d-flex gap-2 m-0');
-        }
+        columnDefs: [{ targets: -1, orderable: false }]
     });
+
+    document.getElementById('dtSearch')
+        ?.addEventListener('input', function () { dtActivos.search(this.value).draw(); });
+    document.getElementById('dtPageLength')
+        ?.addEventListener('change', function () { dtActivos.page.len(parseInt(this.value)).draw(); });
+    document.getElementById('dtBtnExcel')
+        ?.addEventListener('click', () => dtActivos.button('.buttons-excel').trigger());
+    document.getElementById('dtBtnPdf')
+        ?.addEventListener('click', () => dtActivos.button('.buttons-pdf').trigger());
+
+    /* ════════════════════════════════════════════════
+       BUSCADOR + PAGINACIÓN MÓVIL ACTIVOS
+    ════════════════════════════════════════════════ */
+    (function () {
+        const PER_PAGE = 5;
+        let currentPage = 1;
+        let filtered    = [];
+
+        const allItems   = () => Array.from(document.querySelectorAll('#mobileListActivos .mobile-item'));
+        const noRes      = document.getElementById('mobileNoResultsActivos');
+        const pageInfo   = document.getElementById('mobilePageInfoActivos');
+        const prevBtn    = document.getElementById('mobilePrevBtnActivos');
+        const nextBtn    = document.getElementById('mobileNextBtnActivos');
+        const pagination = document.getElementById('mobilePaginationActivos');
+
+        function render() {
+            const total      = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+            if (currentPage > totalPages) currentPage = totalPages;
+            const start = (currentPage - 1) * PER_PAGE;
+            const end   = start + PER_PAGE;
+            allItems().forEach(item => { item.style.display = 'none'; });
+            filtered.forEach((item, i) => { item.style.display = (i >= start && i < end) ? '' : 'none'; });
+            if (total === 0) {
+                if (pageInfo)   pageInfo.textContent = '';
+                if (noRes)      noRes.classList.remove('d-none');
+                if (pagination) pagination.style.display = 'none';
+            } else {
+                if (pageInfo)   pageInfo.textContent = 'Mostrando ' + (start+1) + '-' + Math.min(end,total) + ' de ' + total;
+                if (noRes)      noRes.classList.add('d-none');
+                if (pagination) pagination.style.display = '';
+            }
+            if (prevBtn) prevBtn.disabled = currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+        }
+
+        window.aplicarFiltroMovilActivos = function() {
+            const q = (document.getElementById('mobileSearch')?.value || '').toLowerCase().trim();
+            currentPage = 1;
+            filtered = allItems().filter(item => {
+                const nombre = item.getAttribute('data-nombre') || '';
+                const tipo   = item.getAttribute('data-tipo')   || '';
+                const matchQ    = !q || nombre.includes(q);
+                const matchTipo = tipoFiltroActivo === 'todos' || tipo === tipoFiltroActivo;
+                return matchQ && matchTipo;
+            });
+            render();
+        };
+
+        document.getElementById('mobileSearch')
+            ?.addEventListener('input', () => window.aplicarFiltroMovilActivos());
+        prevBtn?.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
+        nextBtn?.addEventListener('click', () => {
+            if (currentPage < Math.ceil(filtered.length / PER_PAGE)) { currentPage++; render(); }
+        });
+
+        // Inicializar
+        window.aplicarFiltroMovilActivos();
+    }());
 
     /* ── ELIMINAR ACTIVO ── */
     document.addEventListener('click', function (e) {

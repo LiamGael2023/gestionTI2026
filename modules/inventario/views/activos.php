@@ -232,46 +232,81 @@
       <div class="page-header d-print-none">
         <div class="row align-items-center">
           <div class="col">
+            <div class="page-pretitle">Inventario</div>
             <h2 class="page-title">Gestión de Activos</h2>
-            <p class="text-muted mb-0">Administración y control de los activos registrados.</p>
           </div>
           <div class="col-auto ms-auto">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarActivo">
-              <i class="ti ti-plus me-1"></i>Nuevo Activo
+            <button class="btn btn-primary d-flex align-items-center gap-2"
+                    data-bs-toggle="modal" data-bs-target="#modalAgregarActivo">
+              <i class="ti ti-plus"></i>
+              <span>Nuevo Activo</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div class="card shadow-sm mb-4">
-        <!-- Tabs filtro por tipo -->
-        <div class="tipo-tab-nav" id="tipoTabNav">
-          <button class="tipo-tab-btn active" data-tipo="todos">Todos</button>
-          <button class="tipo-tab-btn" data-tipo="compuesto">
-            <i class="ti ti-cpu me-1"></i>Compuestos
-          </button>
-          <button class="tipo-tab-btn" data-tipo="periferico">
-            <i class="ti ti-keyboard me-1"></i>Periféricos
-          </button>
-          <button class="tipo-tab-btn" data-tipo="componente">
-            <i class="ti ti-puzzle me-1"></i>Componentes
-          </button>
-          <button class="tipo-tab-btn" data-tipo="software">
-            <i class="ti ti-code me-1"></i>Software
-          </button>
-          <button class="tipo-tab-btn" data-tipo="otros">
-            <i class="ti ti-package me-1"></i>Otros
-          </button>
+      <!-- ── TABS navegación (card independiente) ── -->
+      <style>
+        .tabs-scroll-wrap { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; -ms-overflow-style:none; }
+        .tabs-scroll-wrap::-webkit-scrollbar { display:none; }
+        .tabs-scroll-wrap .nav-tabs { flex-wrap:nowrap; min-width:max-content; border-bottom:none; }
+        .tabs-scroll-wrap .nav-link { display:flex; align-items:center; gap:.35rem; white-space:nowrap; padding:.6rem 1rem; }
+        @media (max-width:575.98px) {
+          .tabs-scroll-wrap .nav-link { padding:.55rem .75rem; }
+          .tabs-scroll-wrap .tab-txt  { display:none; }
+        }
+      </style>
+
+      
+
+      <!-- ── CARD CONTENIDO (separado del de tabs) ── -->
+      <div class="card mb-4" style="border-top-left-radius:0;border-top-right-radius:0;">
+
+        <!-- Filtro tipo (desktop) -->
+        <div class="d-none d-md-flex align-items-center gap-2 flex-wrap px-3 py-2 border-bottom" id="tipoTabNav">
+          <span class="text-muted small fw-semibold me-1">Filtrar:</span>
+          <button class="btn btn-sm btn-primary tipo-tab-btn" data-tipo="todos">Todos</button>
+          <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="compuesto"><i class="ti ti-cpu me-1"></i>Compuestos</button>
+          <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="periferico"><i class="ti ti-keyboard me-1"></i>Periféricos</button>
+          <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="componente"><i class="ti ti-puzzle me-1"></i>Componentes</button>
+          <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="software"><i class="ti ti-code me-1"></i>Software</button>
+          <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="otros"><i class="ti ti-package me-1"></i>Otros</button>
+          <div class="ms-auto d-flex align-items-center gap-2">
+            <span class="text-muted small">Mostrar</span>
+            <select id="dtPageLength" class="form-select form-select-sm" style="width:auto">
+              <option value="5">5</option><option value="10" selected>10</option>
+              <option value="25">25</option><option value="50">50</option>
+            </select>
+            <span class="text-muted small">registros</span>
+            <button class="btn btn-sm btn-outline-success" id="dtBtnExcel"><i class="ti ti-file-spreadsheet me-1"></i>Excel</button>
+            <button class="btn btn-sm btn-outline-danger"  id="dtBtnPdf"><i class="ti ti-file-description me-1"></i>PDF</button>
+            <div class="input-group input-group-sm" style="width:210px">
+              <span class="input-group-text"><i class="ti ti-search"></i></span>
+              <input type="text" id="dtSearch" class="form-control" placeholder="Buscar activo...">
+            </div>
+          </div>
         </div>
 
-        <div class="card-header pt-2">
-          <h3 class="card-title">
-            <i class="ti ti-devices me-2 text-primary"></i>Listado de Activos
-          </h3>
+        <!-- Buscador móvil -->
+        <div class="d-md-none px-3 pt-3 pb-2">
+          <div class="d-flex gap-2 mb-2 flex-wrap" id="tipoTabNavMobile">
+            <button class="btn btn-sm btn-primary tipo-tab-btn" data-tipo="todos">Todos</button>
+            <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="compuesto"><i class="ti ti-cpu"></i></button>
+            <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="periferico"><i class="ti ti-keyboard"></i></button>
+            <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="componente"><i class="ti ti-puzzle"></i></button>
+            <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="software"><i class="ti ti-code"></i></button>
+            <button class="btn btn-sm btn-outline-secondary tipo-tab-btn" data-tipo="otros"><i class="ti ti-package"></i></button>
+          </div>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="ti ti-search text-muted"></i></span>
+            <input type="text" id="mobileSearch" class="form-control border-start-0 ps-0" placeholder="Buscar activo...">
+          </div>
         </div>
-        <div class="card-body p-0">
+
+        <!-- Tabla desktop -->
+        <div class="d-none d-md-block">
           <div class="table-responsive">
-            <table id="tablaActivos" class="table table-vcenter table-mobile-md card-table table-sm">
+            <table id="tablaActivos" class="table table-vcenter table-hover card-table mb-0">
               <thead>
                 <tr>
                   <th>Equipo</th>
@@ -280,7 +315,7 @@
                   <th>Cód. Patrimonial</th>
                   <th>Características</th>
                   <th>Estado</th>
-                  <th class="d-none d-sm-table-cell">Registrado Por</th>
+                  <th class="d-none d-md-table-cell">Registrado Por</th>
                   <th class="text-end">Acciones</th>
                 </tr>
               </thead>
@@ -371,8 +406,8 @@
                       <td>' . htmlspecialchars($value["codigoPatrimonial"] ?? '') . '</td>
                       <td class="small text-muted">' . htmlspecialchars($value["caracteristicas"] ?? '') . '</td>
                       <td><span class="badge ' . $estadoClass . '">' . $estadoLabel . '</span></td>
-                      <td class="d-none d-sm-table-cell">
-                        <span class="badge badge-outline text-muted">ID: ' . $value["idUsuarioRegistro"] . '</span>
+                      <td class="d-none d-md-table-cell">
+                        <span class="badge badge-outline text-secondary fw-normal">' . '<i class="ti ti-user me-1"></i>' . htmlspecialchars(trim($value["nombreUsuarioRegistro"] ?? '') ?: ('ID '.($value["idUsuarioRegistro"] ?? '—')), ENT_QUOTES, 'UTF-8') . '</span>
                       </td>
                       <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
@@ -398,8 +433,131 @@
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
+        </div><!-- /tabla desktop -->
+
+        <!-- ── CARDS MÓVIL (< md) ── -->
+        <div class="d-md-none" id="mobileListActivos">
+          <?php if (!empty($activos)): ?>
+            <?php foreach ($activos as $value):
+              $icono        = !empty($value['iconoActivo']) ? $value['iconoActivo'] : 'ti-package';
+              $esCompuesto  = intval($value['esCompuesto']  ?? 0);
+              $esPeriferico = intval($value['esPeriferico'] ?? 0);
+              $esComponente = intval($value['esComponente'] ?? 0);
+              $estado       = strtolower(trim($value['estado'] ?? 'disponible'));
+              $desc         = htmlspecialchars($value['nombreActivo'] ?? '', ENT_QUOTES, 'UTF-8');
+              $nomReg       = trim($value['nombreUsuarioRegistro'] ?? '');
+              if (!$nomReg) $nomReg = 'ID ' . ($value['idUsuarioRegistro'] ?? '—');
+
+              $estadoBadge = [
+                'disponible'  => ['bg-success-lt text-success', 'Disponible'],
+                'asignado'    => ['bg-primary-lt text-primary',  'Asignado'],
+                'inoperativo' => ['bg-danger-lt text-danger',    'Inoperativo'],
+                'reparacion'  => ['bg-warning-lt text-warning',  'Reparación'],
+                'baja'        => ['bg-dark-lt text-secondary',   'Baja'],
+                'expirado'    => ['bg-purple-lt text-purple',    'Expirado'],
+              ];
+              [$estClass, $estLabel] = $estadoBadge[$estado] ?? ['bg-secondary-lt text-secondary', ucfirst($estado)];
+
+              if ($esCompuesto)       { $tipoKey='compuesto';  $tipoBadge='<span class="badge bg-azure-lt text-azure"><i class="ti ti-cpu me-1"></i>Compuesto</span>'; }
+              elseif ($esPeriferico)  { $tipoKey='periferico'; $tipoBadge='<span class="badge bg-teal-lt text-teal"><i class="ti ti-keyboard me-1"></i>Periférico</span>'; }
+              elseif ($esComponente)  { $tipoKey='componente'; $tipoBadge='<span class="badge bg-orange-lt text-orange"><i class="ti ti-puzzle me-1"></i>Componente</span>'; }
+              else                    { $tipoKey='otros';       $tipoBadge='<span class="badge bg-secondary-lt text-secondary"><i class="ti ti-package me-1"></i>Otros</span>'; }
+            ?>
+            <div class="mobile-item border-bottom" data-tipo="<?= $tipoKey ?>"
+                 data-nombre="<?= strtolower($desc) ?>">
+              <div class="d-flex gap-3 px-3 py-3">
+                <div class="flex-shrink-0">
+                  <span class="avatar avatar-md bg-primary-lt text-primary">
+                    <i class="ti <?= $icono ?> fs-4"></i>
+                  </span>
+                </div>
+                <div style="min-width:0;flex:1">
+                  <!-- Nombre + estado -->
+                  <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+                    <div class="fw-semibold lh-sm" style="word-break:break-word"><?= $desc ?></div>
+                    <span class="flex-shrink-0 badge <?= $estClass ?>"><?= $estLabel ?></span>
+                  </div>
+                  <!-- Tipo + serie -->
+                  <div class="d-flex flex-wrap gap-1 mb-1">
+                    <?= $tipoBadge ?>
+                    <?php if (!empty($value['numeroSerie'])): ?>
+                      <span class="badge badge-outline text-muted small">
+                        <?= htmlspecialchars($value['numeroSerie'], ENT_QUOTES, 'UTF-8') ?>
+                      </span>
+                    <?php endif; ?>
+                    <?php if (!empty($value['codigoPatrimonial'])): ?>
+                      <span class="badge badge-outline text-muted small">
+                        <?= htmlspecialchars($value['codigoPatrimonial'], ENT_QUOTES, 'UTF-8') ?>
+                      </span>
+                    <?php endif; ?>
+                  </div>
+                  <!-- Características -->
+                  <?php if (!empty($value['caracteristicas'])): ?>
+                  <div class="text-muted mb-1" style="font-size:.78rem">
+                    <?= htmlspecialchars($value['caracteristicas'], ENT_QUOTES, 'UTF-8') ?>
+                  </div>
+                  <?php endif; ?>
+                  <!-- Usuario + botones -->
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="text-muted" style="font-size:.78rem">
+                      <i class="ti ti-user me-1"></i><?= htmlspecialchars($nomReg, ENT_QUOTES, 'UTF-8') ?>
+                    </div>
+                    <div class="d-flex gap-1 flex-shrink-0">
+                      <?php if ($esCompuesto): ?>
+                      <button type="button" class="btn btn-sm btn-ghost-success btnArmarActivo"
+                              data-id="<?= $value['idActivo'] ?>"
+                              data-nombre="<?= $desc ?>" data-icono="<?= $icono ?>"
+                              title="Armar equipo">
+                        <i class="ti ti-tools"></i>
+                      </button>
+                      <?php endif; ?>
+                      <button type="button" class="btn btn-sm btn-ghost-primary btnEditarActivo"
+                              data-id="<?= $value['idActivo'] ?>">
+                        <i class="ti ti-edit"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-ghost-danger btnEliminarActivo"
+                              data-id="<?= $value['idActivo'] ?>"
+                              data-nombre="<?= $desc ?>"
+                              data-es-padre="<?= $esCompuesto ? '1' : '0' ?>">
+                        <i class="ti ti-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <?php endforeach; ?>
+
+            <div id="mobileNoResultsActivos" class="text-center py-5 text-muted d-none">
+              <i class="ti ti-search-off fs-1 d-block mb-2 opacity-50"></i>
+              <p class="mb-0">No se encontraron resultados.</p>
+            </div>
+
+            <!-- Paginación móvil -->
+            <div id="mobilePaginationActivos"
+                 class="d-flex align-items-center justify-content-between px-3 py-2 border-top">
+              <span id="mobilePageInfoActivos" class="text-muted small"></span>
+              <div class="d-flex gap-1">
+                <button id="mobilePrevBtnActivos"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" disabled>
+                  <i class="ti ti-chevron-left"></i> Anterior
+                </button>
+                <button id="mobileNextBtnActivos"
+                        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" disabled>
+                  Siguiente <i class="ti ti-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+
+          <?php else: ?>
+            <div class="text-center py-5 text-muted">
+              <i class="ti ti-inbox fs-1 d-block mb-2 opacity-50"></i>
+              <p class="mb-0">No hay activos registrados.</p>
+            </div>
+          <?php endif; ?>
+        </div><!-- /mobileListActivos -->
+
+      </div><!-- /card contenido -->
 
     </div>
   </div>

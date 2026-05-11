@@ -64,6 +64,8 @@ if (isset($_POST["idActivo"])) {
         "esPeriferico"           => intval($activo["esPeriferico"] ?? 0),
         "esComponente"           => intval($activo["esComponente"] ?? 0),
         "idUsuarioRegistro"      => $activo["idUsuarioRegistro"]   ?? "",
+        "nombreUsuarioRegistro"  => trim($activo["nombreUsuarioRegistro"] ?? "") ?: ("ID " . ($activo["idUsuarioRegistro"] ?? "—")),
+        "nombreUsuarioModifica"  => trim($activo["nombreUsuarioModifica"]  ?? "") ?: ("ID " . ($activo["idUsuarioModifica"]  ?? "—")),
         "fechaCreacion"          => fmtFecha($activo["fechaCreacion"]       ?? null, "d/m/Y H:i:s"),
         "idUsuarioModifica"      => $activo["idUsuarioModifica"]   ?? "",
         "fechaModificacion"      => fmtFecha($activo["fechaModificacion"]   ?? null, "d/m/Y H:i:s"),
