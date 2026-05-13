@@ -101,6 +101,7 @@ public static function obtenerHistorial($codigoUnico) {
 
     $sql = "SELECT DISTINCT
                 n.Id,
+                n.Id_AmbitoOrganizacionUsuarios,
                 RTRIM(LTRIM(n.AmbOpe_CodigoCatastral)) as AmbOpe_CodigoCatastral,
                 n.Estado,
                 n.Rec_Numero,
