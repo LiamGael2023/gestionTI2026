@@ -3,11 +3,13 @@ class VerificacionTecnicaModel
 {
 	private $db;
 
+	// Inicializa el modelo con la conexion a la base de datos.
 	public function __construct($db)
 	{
 		$this->db = $db;
 	}
 
+	// Obtiene la verificacion tecnica de una tecnologia para el anio indicado.
 	public function obtenerPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -31,6 +33,7 @@ class VerificacionTecnicaModel
 		return $row ?: null;
 	}
 
+	// Registra una nueva verificacion tecnica si no existe para la tecnologia y anio.
 	public function guardar($datos)
 	{
 		$sqlCheck = "SELECT Id FROM adquisiciones.VerificacionTecnica WHERE IdCatalogoTecnologico = ? AND Anio = ?";
@@ -63,6 +66,7 @@ class VerificacionTecnicaModel
 		return $row ? (int) $row['Id'] : false;
 	}
 
+	// Actualiza la observacion y opcionalmente el documento de una verificacion tecnica.
 	public function actualizar($id, $datos)
 	{
 		$setClauses = ['Observacion = ?'];
@@ -89,6 +93,7 @@ class VerificacionTecnicaModel
 		return $stmt !== false;
 	}
 
+	// Elimina una verificacion tecnica por su identificador.
 	public function eliminar($id)
 	{
 		$sql = "DELETE FROM adquisiciones.VerificacionTecnica WHERE Id = ?";

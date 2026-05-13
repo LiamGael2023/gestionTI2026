@@ -5,11 +5,13 @@ class EspecificacionTecnicaModel
 
 	private $db;
 
+	// Inicializa el modelo con la conexión de base de datos
 	public function __construct($db)
 	{
 		$this->db = $db;
 	}
 
+	// Obtiene la especificación técnica de una tecnología para un año dado
 	public function obtenerPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -33,6 +35,7 @@ class EspecificacionTecnicaModel
 		return $row ?: null;
 	}
 
+	// Inserta la especificación técnica y devuelve el ID generado si no existe aún para la tecnología y año
 	public function guardar($datos)
 	{
 		$sqlCheck = "SELECT Id FROM adquisiciones.EspecificacionTecnica WHERE IdCatalogoTecnologico = ? AND Anio = ?";
@@ -65,6 +68,7 @@ class EspecificacionTecnicaModel
 		return $row ? (int) $row['Id'] : false;
 	}
 
+	// Actualiza el código y documento PDF de una especificación existente
 	public function actualizar($id, $datos)
 	{
 		$sql = "
@@ -82,6 +86,7 @@ class EspecificacionTecnicaModel
 		return $stmt !== false;
 	}
 
+	// Elimina la especificación técnica por su ID
 	public function eliminar($id)
 	{
 		$sql = "DELETE FROM adquisiciones.EspecificacionTecnica WHERE Id = ?";

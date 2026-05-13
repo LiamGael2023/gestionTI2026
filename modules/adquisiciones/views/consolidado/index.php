@@ -11,11 +11,18 @@ $cabeceraCentros = $consolidado['cabeceraCentros'] ?? [];
 $cabeceraCentrosExportacion = $consolidadoCabeceraExportacion['cabeceraCentros'] ?? [];
 $matriz = $consolidado['matriz'];
 $tiposSolicitudPorEquipo = $consolidado['tiposSolicitudPorEquipo'] ?? [];
+$diagnosticoConsolidado = $consolidado['diagnostico'] ?? [];
+$mensajeSinDatos = trim((string) ($diagnosticoConsolidado['mensaje'] ?? ''));
+if ($mensajeSinDatos === '') {
+	$mensajeSinDatos = 'No hay requerimientos registrados para el año seleccionado.';
+}
 
+// Usar la cabecera web como respaldo cuando no hay cabecera de exportacion.
 if (empty($cabeceraCentrosExportacion)) {
 	$cabeceraCentrosExportacion = $cabeceraCentros;
 }
 
+// Preparar columnas agrupadas por centro para mostrar en la tabla web.
 $columnasPadreWeb = [];
 foreach ($cabeceraCentros as $grupoCentro) {
 	$columnasGrupo = $grupoCentro['columnas'] ?? [];
@@ -36,6 +43,7 @@ foreach ($cabeceraCentros as $grupoCentro) {
 	];
 }
 
+// Aplanar las columnas visibles para enviarlas al exportador.
 $columnasPlano = [];
 foreach ($cabeceraCentros as $grupoCentro) {
 	$columnasGrupo = $grupoCentro['columnas'] ?? [];
@@ -51,6 +59,7 @@ foreach ($cabeceraCentros as $grupoCentro) {
 	];
 }
 
+// Aplanar las columnas de exportacion para generar el archivo consolidado.
 $columnasPlanoExportacion = [];
 foreach ($cabeceraCentrosExportacion as $grupoCentro) {
 	$columnasGrupo = $grupoCentro['columnas'] ?? [];
@@ -108,9 +117,9 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 		<button class="btn btn-success" onclick="exportarConsolidado()">
 			Consolidado
 		</button>
-		<button class="btn btn-success" onclick="exportarConsolidadoOficial()">
+		<!-- button class="btn btn-success" onclick="exportarConsolidadoOficial()">
 			Consolidado Oficial
-		</button>
+		</button -->
 	</div>
 </div>
 
@@ -118,7 +127,7 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 	<div class="alert alert-info mb-0">
 		<div>
 			<h4 class="alert-title">Sin datos</h4>
-			<div class="text-secondary">No hay requerimientos registrados para el año seleccionado.</div>
+			<div class="text-secondary"><?php echo htmlspecialchars($mensajeSinDatos); ?></div>
 		</div>
 	</div>
 <?php else: ?>
@@ -174,6 +183,7 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 <?php endif; ?>
 
 <script>
+// Publicar los datos del consolidado para las funciones de exportacion en JavaScript.
 window.adqConsolidadoCabeceraCentros = <?php echo json_encode($cabeceraCentros, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoColumnasPlano = <?php echo json_encode($columnasPlano, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoCabeceraCentrosExportacion = <?php echo json_encode($cabeceraCentrosExportacion, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
@@ -183,6 +193,7 @@ window.adqConsolidadoEquipos = <?php echo json_encode($equipos, JSON_UNESCAPED_U
 window.adqConsolidadoMatriz = <?php echo json_encode($matriz, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 window.adqConsolidadoTiposSolicitudPorEquipo = <?php echo json_encode($tiposSolicitudPorEquipo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 
+// Recarga el consolidado filtrando por el anio seleccionado.
 function filtrarConsolidadoPorAnio() {
 	const anio = document.getElementById('filtroAnioConsolidado').value;
 	let url = 'index.php?module=adquisiciones&action=consolidado';

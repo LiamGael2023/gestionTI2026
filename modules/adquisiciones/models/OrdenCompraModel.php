@@ -5,11 +5,13 @@ class OrdenCompraModel
 
 	private $db;
 
+	// Inicializa el modelo con la conexion a la base de datos.
 	public function __construct($db)
 	{
 		$this->db = $db;
 	}
 
+	// Obtiene la orden de compra de una tecnologia para el anio indicado.
 	public function obtenerPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -36,6 +38,7 @@ class OrdenCompraModel
 		return $row ?: null;
 	}
 
+	// Obtiene una orden de compra por su identificador.
 	public function obtenerPorId($id)
 	{
 		$sql = "
@@ -60,6 +63,7 @@ class OrdenCompraModel
 		return $row ?: null;
 	}
 
+	// Registra una nueva orden de compra si no existe para la tecnologia y anio.
 	public function guardar($datos)
 	{
 		$sqlCheck = "SELECT Id FROM adquisiciones.OrdenCompra WHERE IdCatalogoTecnologico = ? AND Anio = ?";
@@ -93,6 +97,7 @@ class OrdenCompraModel
 		return $row ? (int) $row['Id'] : false;
 	}
 
+	// Actualiza los datos principales de una orden de compra existente.
 	public function actualizar($id, $datos)
 	{
 		$sql = "
@@ -119,6 +124,7 @@ class OrdenCompraModel
 		return $stmt !== false;
 	}
 
+	// Elimina una orden de compra por su identificador.
 	public function eliminar($id)
 	{
 		$sql = "DELETE FROM adquisiciones.OrdenCompra WHERE Id = ?";
@@ -126,6 +132,7 @@ class OrdenCompraModel
 		return $stmt !== false;
 	}
 
+	// Actualiza la fecha de entrega de una orden de compra.
 	public function actualizarFechaEntrega($id, $fechaEntrega, $idUsuarioModifica = null)
 	{
 		$sql = "

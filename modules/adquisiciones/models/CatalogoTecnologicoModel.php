@@ -8,6 +8,7 @@ class CatalogoTecnologicoModel
 		$this->db = $db;
 	}
 
+	// Lista tecnologías activas con estado de ficha técnica y presupuesto para un año
 	public function listarConEstadoFicha($anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -77,6 +78,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Obtiene todos los años disponibles que tienen requerimientos
 	public function obtenerAniosDisponibles()
 	{
 		$sql = "
@@ -99,6 +101,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Obtiene todos los años disponibles para una tecnología específica
 	public function obtenerAniosDisponiblesPorTecnologia($idCatalogoTecnologico)
 	{
 		$sql = "
@@ -122,6 +125,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Verifica si existen pedidos/requerimientos para una tecnología en un año
 	public function tienePedidosPorTecnologiaEnAnio($idCatalogoTecnologico, $anio)
 	{
 		$sql = "
@@ -140,6 +144,7 @@ class CatalogoTecnologicoModel
 		return !empty($row);
 	}
 
+	// Obtiene una tecnología por ID
 	public function obtenerPorId($id)
 	{
 		$sql = "
@@ -156,6 +161,7 @@ class CatalogoTecnologicoModel
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
 	}
 
+	// Verifica si existe una tecnología duplicada por código y nombre
 	public function existeDuplicado($codigo, $nombreGenerico, $idExcluir = null)
 	{
 		$sql = "
@@ -180,6 +186,7 @@ class CatalogoTecnologicoModel
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
 	}
 
+	// Lista todas las tecnologías activas del catálogo ordenadas alfabéticamente
 	public function listarTecnologiasActivas()
 	{
 		$sql = "
@@ -215,6 +222,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Actualiza código y nombre de una tecnología validando duplicados
 	public function actualizarTecnologia($id, $codigo, $nombreGenerico)
 	{
 		$id = (int) $id;
@@ -258,6 +266,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Inactiva una tecnología del catálogo
 	public function eliminarTecnologia($id)
 	{
 		$id = (int) $id;
@@ -285,6 +294,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Activa una tecnología inactiva validando duplicados
 	public function activarTecnologia($id)
 	{
 		$id = (int) $id;
@@ -341,6 +351,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Agrega una nueva tecnología al catálogo validando duplicados
 	public function agregarTecnologia($codigo, $nombreGenerico)
 	{
 		$codigoLimpio = trim((string) $codigo);
@@ -389,6 +400,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Lista todos los tipos de solicitud para gestión
 	public function listarTiposSolicitudGestion()
 	{
 		$sql = "
@@ -410,6 +422,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Verifica si existe un tipo de solicitud duplicado por nombre (privado)
 	private function existeTipoSolicitudDuplicado($nombre, $idExcluir = null)
 	{
 		$sql = "
@@ -432,6 +445,7 @@ class CatalogoTecnologicoModel
 		return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: null;
 	}
 
+	// Agrega un nuevo tipo de solicitud validando duplicados
 	public function agregarTipoSolicitud($nombre, $idUsuarioRegistro = null)
 	{
 		$nombreLimpio = trim((string) $nombre);
@@ -471,6 +485,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Actualiza el nombre de un tipo de solicitud validando duplicados
 	public function actualizarTipoSolicitud($id, $nombre, $idUsuarioModifica = null)
 	{
 		$id = (int) $id;
@@ -513,6 +528,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Inactiva un tipo de solicitud
 	public function eliminarTipoSolicitud($id, $idUsuarioModifica = null)
 	{
 		$id = (int) $id;
@@ -545,6 +561,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Activa un tipo de solicitud inactivo validando duplicados
 	public function activarTipoSolicitud($id, $idUsuarioModifica = null)
 	{
 		$id = (int) $id;
@@ -605,6 +622,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Lista todos los tipos de solicitud activos
 	public function listarTiposSolicitudActivos()
 	{
 		$sql = "
@@ -627,6 +645,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Lista asociaciones entre tecnologías y tipos de solicitud para un año
 	public function listarAsociacionesTecnologiaTipoSolicitud($anio)
 	{
 		$anioConsulta = (int) $anio;
@@ -678,6 +697,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
+	// Guarda o actualiza asociación entre tecnología y tipo de solicitud validando existencia
 	public function guardarAsociacionTecnologiaTipoSolicitud($idCatalogoTecnologico, $idTipoSolicitud, $anio, $idUsuario = null)
 	{
 		$idCatalogo = (int) $idCatalogoTecnologico;
@@ -772,6 +792,7 @@ class CatalogoTecnologicoModel
 		];
 	}
 
+	// Obtiene todos los pedidos/requerimientos de una tecnología en un año
 	public function obtenerPedidosPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -811,9 +832,7 @@ class CatalogoTecnologicoModel
 		return $data;
 	}
 
-	// Sincronizar HomologacionSiga con lo homologado
-	// Inserta nuevos y actualiza los que cambiaron de tipo
-
+	// Sincroniza homologaciones SIGA insertando nuevas y actualizando las existentes
 	public function sincronizarHomologacion(): array
 	{
 		// 1. Insertar códigos nuevos que no están en HomologacionSiga

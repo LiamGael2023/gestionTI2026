@@ -25,6 +25,7 @@ $presupuestoModel = new PresupuestoTecnologicoModel($conn);
 $action = $_GET['action'] ?? 'tecnologia';
 $vistaActual = 'tecnologia';
 
+// Responde con JSON estableciendo header y finalizando ejecución
 function responderJson($payload)
 {
 	adqEnviarHeaderSeguro('Content-Type: application/json; charset=UTF-8');
@@ -32,12 +33,14 @@ function responderJson($payload)
 	exit;
 }
 
+// Obtiene datos JSON del cuerpo de la solicitud
 function obtenerInputJson()
 {
 	$input = json_decode(file_get_contents('php://input'), true);
 	return is_array($input) ? $input : null;
 }
 
+// Valida método POST y obtiene datos JSON de entrada
 function obtenerInputJsonPost()
 {
 	validarMetodoPost();
@@ -49,6 +52,7 @@ function obtenerInputJsonPost()
 	return $input;
 }
 
+// Valida que el método de solicitud sea POST
 function validarMetodoPost()
 {
 	if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -56,12 +60,14 @@ function validarMetodoPost()
 	}
 }
 
+// Valida si una cadena base64 es un PDF válido
 function validarPdfBase64($pdfBase64)
 {
 	$decoded = base64_decode($pdfBase64, true);
 	return $decoded !== false && substr($decoded, 0, 5) === '%PDF-';
 }
 
+// Calcula la longitud de un texto en caracteres UTF-8
 function longitudTexto($texto)
 {
 	if (function_exists('mb_strlen')) {
@@ -71,6 +77,7 @@ function longitudTexto($texto)
 	return strlen($texto);
 }
 
+// Normaliza texto a mayúsculas ASCII removiendo caracteres especiales
 function normalizarTextoAsciiMayuscula($texto)
 {
 	$texto = strtoupper(trim((string) $texto));
@@ -88,6 +95,7 @@ function normalizarTextoAsciiMayuscula($texto)
 	return $texto;
 }
 
+// Extrae el token de código de tecnología (T###) de la orden de compra
 function obtenerTokenCodigoTecnologiaOrden($codigo, $idCatalogoTecnologico)
 {
 	$codigoNormalizado = normalizarTextoAsciiMayuscula($codigo);
@@ -104,6 +112,7 @@ function obtenerTokenCodigoTecnologiaOrden($codigo, $idCatalogoTecnologico)
 	return strpos($primerToken, 'T') === 0 ? $primerToken : ('T' . $primerToken);
 }
 
+// Obtiene la primera palabra de la descripción para generar número de orden
 function obtenerPrimeraPalabraDescripcionOrden($descripcion)
 {
 	$descripcionNormalizada = normalizarTextoAsciiMayuscula($descripcion);
@@ -113,6 +122,7 @@ function obtenerPrimeraPalabraDescripcionOrden($descripcion)
 	return $primeraPalabra !== '' ? $primeraPalabra : 'TECNOLOGIA';
 }
 
+// Genera número de orden de compra con formato OC_TOKEN_PALABRA_ANIO
 function generarNumeroOrdenCompra($tecnologia, $anio)
 {
 	$idCatalogo = isset($tecnologia['Id']) ? (int) $tecnologia['Id'] : 0;
@@ -131,11 +141,13 @@ function generarNumeroOrdenCompra($tecnologia, $anio)
 	return $prefijo . $primeraPalabra . $sufijo;
 }
 
+// Obtiene un valor entero de un array de entrada
 function obtenerEnteroInput($input, $clave)
 {
 	return isset($input[$clave]) ? (int) $input[$clave] : 0;
 }
 
+// Obtiene un valor de texto trimizado de un array de entrada
 function obtenerTextoInput($input, $clavePrincipal, $claveCompatibilidad = null)
 {
 	if (isset($input[$clavePrincipal])) {
@@ -149,6 +161,7 @@ function obtenerTextoInput($input, $clavePrincipal, $claveCompatibilidad = null)
 	return '';
 }
 
+// Obtiene documento PDF base64 de entrada con compatibilidad de claves
 function obtenerDocumentoInput($input)
 {
 	if (isset($input['Documento'])) {
@@ -162,12 +175,14 @@ function obtenerDocumentoInput($input)
 	return '';
 }
 
+// Normaliza texto removiendo espacios en blanco o devolviendo nulo
 function normalizarTextoNullable($texto)
 {
 	$texto = trim((string) $texto);
 	return $texto !== '' ? $texto : null;
 }
 
+// Normaliza fecha a formato Y-m-d o devuelve null si es vacía
 function normalizarFechaNullable($fecha)
 {
 	$fecha = trim((string) $fecha);
@@ -183,11 +198,13 @@ function normalizarFechaNullable($fecha)
 	return date('Y-m-d', $timestamp);
 }
 
+// Obtiene el ID del usuario de la sesión actual
 function obtenerIdUsuarioSesion()
 {
 	return isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : null;
 }
 
+// Responde con error JSON incluyendo mensaje de error SQL si es disponible
 function responderErrorSql($mensajeBase, $mensajeTruncamiento = null)
 {
 	$mensaje = $mensajeBase;
@@ -204,6 +221,7 @@ function responderErrorSql($mensajeBase, $mensajeTruncamiento = null)
 	responderJson(['ok' => false, 'error' => $mensaje]);
 }
 
+// Obtiene documento PDF de base de datos y lo envía como descarga
 function enviarDocumentoPdf($conn, $tabla, $id, $camposNombre)
 {
 	if ($id <= 0) {
@@ -234,13 +252,29 @@ function enviarDocumentoPdf($conn, $tabla, $id, $camposNombre)
 		$nombre = 'documento';
 	}
 
-	adqEnviarHeaderSeguro('Content-Type: application/pdf');
-	adqEnviarHeaderSeguro('Content-Disposition: inline; filename="' . $nombre . '.pdf"');
-	adqEnviarHeaderSeguro('Content-Length: ' . strlen($decoded));
+	// Limpia cualquier buffer de salida acumulado para evitar bytes basura antes del PDF
+	while (ob_get_level() > 0) {
+		ob_end_clean();
+	}
+
+	// Si ya se enviaron headers, no podemos servir el PDF (algo imprimió antes)
+	if (headers_sent($archivoOrigen, $lineaOrigen)) {
+		error_log(sprintf('PDF: headers ya enviados en %s:%d', $archivoOrigen, $lineaOrigen));
+		http_response_code(500);
+		exit;
+	}
+
+	header('Content-Type: application/pdf');
+	header('Content-Disposition: inline; filename="' . $nombre . '.pdf"');
+	header('Content-Length: ' . strlen($decoded));
+	header('X-Content-Type-Options: nosniff');
+	header('Cache-Control: private, max-age=0, must-revalidate');
+	header('Pragma: public');
 	echo $decoded;
 	exit;
 }
 
+// Valida si se cumplen requisitos de secuencia documental para cada etapa
 function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTecnicaModel, $especificacionModel, $ordenCompraModel, $verificacionTecnicaModel, $etapa)
 {
 	$minimoFichas = 2;
@@ -278,6 +312,7 @@ function obtenerErrorSecuenciaDocumental($idCatalogoTecnologico, $anio, $fichaTe
 	}
 }
 
+// Resuelve el año de filtro priorizando el solicitado o el actual
 function resolverAnioFiltroLocal($anioSolicitado, array $aniosDisponibles)
 {
 	if ($anioSolicitado !== null && $anioSolicitado > 0) {
@@ -296,6 +331,7 @@ function resolverAnioFiltroLocal($anioSolicitado, array $aniosDisponibles)
 	return $anioActual;
 }
 
+// Valida que existan pedidos para la tecnología en el año especificado
 function validarPedidosTecnologiaPorAnio($catalogoModel, $idCatalogoTecnologico, $anio)
 {
 	if (!$catalogoModel->tienePedidosPorTecnologiaEnAnio($idCatalogoTecnologico, $anio)) {
@@ -308,7 +344,23 @@ function validarPedidosTecnologiaPorAnio($catalogoModel, $idCatalogoTecnologico,
 
 $idUsuarioSesion = obtenerIdUsuarioSesion();
 
+// Acciones que devuelven PDF binario: se manejan ANTES del switch para evitar
+// cualquier output previo (espacios, BOM, HTML de layout) que rompa el Content-Type.
+$accionesPdf = [
+	'verEspecificacionTecnicaAjax' => ['adquisiciones.EspecificacionTecnica', ['Codigo']],
+	'verFichaTecnicaAjax'          => ['adquisiciones.FichaTecnica',          ['Marca', 'Modelo']],
+	'verVerificacionTecnicaAjax'   => ['adquisiciones.VerificacionTecnica',   ['Observacion']],
+	'verOrdenCompraAjax'           => ['adquisiciones.OrdenCompra',           ['NumeroOrden']],
+];
+if (isset($accionesPdf[$action])) {
+	[$tablaPdf, $camposNombrePdf] = $accionesPdf[$action];
+	$idPdf = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+	enviarDocumentoPdf($conn, $tablaPdf, $idPdf, $camposNombrePdf);
+	exit; // por seguridad: enviarDocumentoPdf ya hace exit internamente
+}
+
 switch ($action) {
+	// Carga la vista de detalle de una tecnología con todos sus documentos relacionados
 	case 'tecnologia':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$anioSolicitado = isset($_GET['anio']) && $_GET['anio'] !== '' ? (int) $_GET['anio'] : null;
@@ -328,18 +380,7 @@ switch ($action) {
 		$cierreAdquisicion = $cierreModel->obtenerPorTecnologiaYAnio($id, $anioFiltro);
 		break;
 
-	case 'verEspecificacionTecnicaAjax':
-		enviarDocumentoPdf($conn, 'adquisiciones.EspecificacionTecnica', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Codigo']);
-
-	case 'verFichaTecnicaAjax':
-		enviarDocumentoPdf($conn, 'adquisiciones.FichaTecnica', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Marca', 'Modelo']);
-
-	case 'verVerificacionTecnicaAjax':
-		enviarDocumentoPdf($conn, 'adquisiciones.VerificacionTecnica', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['Observacion']);
-
-	case 'verOrdenCompraAjax':
-		enviarDocumentoPdf($conn, 'adquisiciones.OrdenCompra', isset($_GET['id']) ? (int) $_GET['id'] : 0, ['NumeroOrden']);
-
+	// Guarda una nueva especificación técnica con validaciones
 	case 'guardarEspecificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -386,6 +427,7 @@ switch ($action) {
 			'El código de especificación técnica no puede exceder ' . EspecificacionTecnicaModel::CODIGO_MAX_LENGTH . ' caracteres.'
 		);
 
+	// Actualiza una especificación técnica existente
 	case 'actualizarEspecificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idEspecificacion = obtenerEnteroInput($input, 'Id');
@@ -416,6 +458,7 @@ switch ($action) {
 			'El código de especificación técnica no puede exceder ' . EspecificacionTecnicaModel::CODIGO_MAX_LENGTH . ' caracteres.'
 		);
 
+	// Elimina una especificación técnica
 	case 'eliminarEspecificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idEspecificacion = obtenerEnteroInput($input, 'Id');
@@ -425,6 +468,7 @@ switch ($action) {
 		$ok = $especificacionModel->eliminar($idEspecificacion);
 		responderJson(['ok' => $ok]);
 
+	// Guarda una nueva orden de compra con número generado automáticamente
 	case 'guardarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -481,6 +525,7 @@ switch ($action) {
 			'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
 		);
 
+	// Actualiza una orden de compra existente
 	case 'actualizarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
@@ -526,6 +571,7 @@ switch ($action) {
 			'El número de orden no puede exceder ' . OrdenCompraModel::NUMERO_ORDEN_MAX_LENGTH . ' caracteres.'
 		);
 
+	// Actualiza solo la fecha de entrega de una orden de compra
 	case 'actualizarFechaOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
@@ -544,6 +590,7 @@ switch ($action) {
 
 		responderJson(['ok' => false, 'error' => 'No se pudo actualizar la fecha de entrega.']);
 
+	// Elimina una orden de compra
 	case 'eliminarOrdenCompraAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
@@ -553,6 +600,7 @@ switch ($action) {
 		$ok = $ordenCompraModel->eliminar($idDocumento);
 		responderJson(['ok' => $ok]);
 
+	// Guarda una nueva verificación técnica
 	case 'guardarVerificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -591,6 +639,7 @@ switch ($action) {
 
 		responderErrorSql('Ya existe una verificación técnica para este año o error al guardar');
 
+	// Actualiza una verificación técnica existente
 	case 'actualizarVerificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
@@ -612,6 +661,7 @@ switch ($action) {
 		$ok = $verificacionTecnicaModel->actualizar($idDocumento, $datosActualizar);
 		responderJson(['ok' => $ok]);
 
+	// Elimina una verificación técnica
 	case 'eliminarVerificacionTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idDocumento = obtenerEnteroInput($input, 'Id');
@@ -621,6 +671,7 @@ switch ($action) {
 		$ok = $verificacionTecnicaModel->eliminar($idDocumento);
 		responderJson(['ok' => $ok]);
 
+	// Guarda una nueva ficha técnica
 	case 'guardarFichaTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -648,6 +699,7 @@ switch ($action) {
 		}
 		responderJson(['ok' => false, 'error' => 'Error al guardar la ficha técnica']);
 
+	// Elimina una ficha técnica
 	case 'eliminarFichaTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idFicha = obtenerEnteroInput($input, 'Id');
@@ -657,6 +709,7 @@ switch ($action) {
 		$ok = $fichaTecnicaModel->eliminar($idFicha);
 		responderJson(['ok' => $ok]);
 
+	// Cambia el estado de una ficha técnica (0=Cargado, 1=Enviado)
 	case 'cambiarEstadoFichaTecnicaAjax':
 		$input = obtenerInputJsonPost();
 		$idFicha = obtenerEnteroInput($input, 'Id');
@@ -667,6 +720,7 @@ switch ($action) {
 		$ok = $fichaTecnicaModel->cambiarEstado($idFicha, $estado, $idUsuarioSesion);
 		responderJson(['ok' => $ok]);
 
+	// Cambia la posición/prioridad de una ficha técnica en la lista
 	case 'moverFichaTecnicaRangoAjax':
 		$input = obtenerInputJsonPost();
 		$idFicha = obtenerEnteroInput($input, 'Id');
@@ -681,6 +735,7 @@ switch ($action) {
 		}
 		responderJson(['ok' => true]);
 
+	// Obtiene el estado de cierre de una tecnología en un año específico
 	case 'obtenerCierreTecnologiaAjax':
 		$idCat = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$anio  = isset($_GET['anio']) ? (int) $_GET['anio'] : 0;
@@ -694,6 +749,7 @@ switch ($action) {
 			'fecha'         => !empty($cierre) ? $cierre['FechaFinalizacion'] : null,
 		]);
 
+	// Cambia el estado de cierre (finalizar o aperturar) de una tecnología
 	case 'cambiarCierreTecnologiaAjax':
 		$input  = obtenerInputJsonPost();
 		$idCat  = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -720,6 +776,7 @@ switch ($action) {
 			'fecha'      => !empty($cierre) ? $cierre['FechaFinalizacion'] : null,
 		]);
 
+	// Obtiene datos de presupuesto de una tecnología para un año
 	case 'obtenerPresupuestoTecnologiaAjax':
 		$idCat = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$anio  = isset($_GET['anio']) ? (int) $_GET['anio'] : 0;
@@ -732,6 +789,7 @@ switch ($action) {
 			'datos' => $presupuesto,
 		]);
 
+	// Guarda o actualiza el presupuesto de una tecnología
 	case 'guardarPresupuestoTecnologiaAjax':
 		$input = obtenerInputJsonPost();
 		$idCat = obtenerEnteroInput($input, 'IdCatalogoTecnologico');
@@ -773,6 +831,7 @@ switch ($action) {
 			responderErrorSql('No se pudo registrar el presupuesto.');
 		}
 
+	// Redirige a vista de tecnologías por defecto
 	default:
 		adqRedirigirSeguro('index.php?module=adquisiciones&action=tecnologias');
 }

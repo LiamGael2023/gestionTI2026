@@ -3,11 +3,13 @@ class PresupuestoTecnologicoModel
 {
 	private $db;
 
+	// Inicializa el modelo con la conexion a la base de datos.
 	public function __construct($db)
 	{
 		$this->db = $db;
 	}
 
+	// Obtiene el presupuesto de una tecnologia para un anio especifico.
 	public function obtenerPorTecnologiaYAnio($idCatalogoTecnologico, $anio)
 	{
 		$sql = "
@@ -24,6 +26,7 @@ class PresupuestoTecnologicoModel
 		return $row ?: null;
 	}
 
+	// Registra un nuevo presupuesto tecnologico.
 	public function guardar($datos)
 	{
 		$sql = "
@@ -50,6 +53,7 @@ class PresupuestoTecnologicoModel
 		return $rowId ? (int) $rowId['Id'] : true;
 	}
 
+	// Actualiza el monto de un presupuesto tecnologico existente.
 	public function actualizar($id, $datos)
 	{
 		$sql = "

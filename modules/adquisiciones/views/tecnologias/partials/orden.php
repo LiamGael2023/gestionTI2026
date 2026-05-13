@@ -1,3 +1,4 @@
+<!-- Tarjeta principal que contiene orden de compra o mensaje de ausencia -->
 <div class="card card-body mb-3">
 	<h4 class="fw-bold mb-3">Orden de Compra</h4>
 
@@ -18,14 +19,13 @@
 							<td><?php echo htmlspecialchars($formatearFecha($ordenCompra['FechaRegistro'])); ?></td>
 							<td><?php echo htmlspecialchars(str_replace('_', ' ', $ordenCompra['NumeroOrden'] ?? '')); ?></td>
 							<td><?php echo htmlspecialchars($formatearFecha($ordenCompra['FechaEntrega'] ?? '')); ?></td>
-							<td class="text-end align-middle">
-								<div class="btn-group" role="group">
+							<td class="text-end align-middle">							<!-- Contenedor de botones para ver PDF y eliminar -->								<div class="btn-group" role="group">
 									<?php if (!empty($ordenCompra['Documento'])): ?>
 										<!-- Ver PDF -->
 										<button type="button"
 											class="btn btn-icon btn-lg"
 											title="Ver PDF"
-											onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verOrdenCompraAjax&id=<?= (int)$ordenCompra['Id'] ?>')">
+											onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=orden&id=<?= (int)$ordenCompra['Id'] ?>')">
 											<i class="ti ti-file-text fs-2"></i>
 										</button>
 									<?php endif; ?>
@@ -79,6 +79,7 @@
 	<?php endif; ?>
 </div>
 
+<!-- Modal para crear o actualizar orden de compra con formulario -->
 <div class="modal modal-blur fade" id="modalOrdenCompra" tabindex="-1" aria-labelledby="modalOrdenCompraLabel" aria-hidden="true">
 	<div class="modal-dialog modal-lg modal-dialog-centered">
 		<div class="modal-content">
@@ -117,6 +118,7 @@
 </div>
 
 <script>
+	// Abre el modal de orden de compra en modo crear o editar con los datos correspondientes
 	function abrirModalOrdenCompra(modo, idOrdenCompra, fechaEntrega) {
 		const modalElement = document.getElementById('modalOrdenCompra');
 		if (!modalElement) {
@@ -169,12 +171,14 @@
 		return false;
 	}
 
+	// Cierra el modal de orden de compra
 	function cerrarModalOrdenCompra() {
 		const modalElement = document.getElementById('modalOrdenCompra');
 		ocultarModal(modalElement);
 		return false;
 	}
 
+	// Limpia el formulario modal restableciendo valores por defecto
 	function limpiarFormularioOrdenCompra() {
 		const form = document.getElementById('form-orden-compra-modal');
 		if (form) {
@@ -216,6 +220,7 @@
 		}
 	}
 
+	// Configura los eventos del modal para limpiar formulario al cerrarse
 	function inicializarModalOrdenCompra() {
 		inicializarModalConLimpieza({
 			modalId: 'modalOrdenCompra',
@@ -224,11 +229,13 @@
 		});
 	}
 
+	// Normaliza el valor de fecha de entrega eliminando espacios en blanco
 	function normalizarFechaEntrega(valor) {
 		const fecha = (valor || '').trim();
 		return fecha !== '' ? fecha : null;
 	}
 
+	// Valida y envía el formulario de orden de compra al servidor para guardar o actualizar
 	async function submitOrdenCompraModal(e) {
 		e.preventDefault();
 
@@ -299,6 +306,7 @@
 		return false;
 	}
 
+	// Solicita confirmación y elimina la orden de compra del servidor
 	async function eliminarOrdenCompra(id) {
 		const confirmado = await window.adqConfirmSafe({
 			titulo: 'Confirmar eliminacion',

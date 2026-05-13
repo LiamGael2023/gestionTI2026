@@ -3,11 +3,13 @@ class FichaTecnicaModel
 {
 	private $db;
 
+	// Inicializa el modelo con la conexion a la base de datos.
 	public function __construct($db)
 	{
 		$this->db = $db;
 	}
 
+	// Lista las fichas tecnicas de una tecnologia para el anio indicado.
 	public function listarPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -36,6 +38,7 @@ class FichaTecnicaModel
 		return $data;
 	}
 
+	// Cuenta las fichas tecnicas de una tecnologia para el anio indicado.
 	public function contarPorTecnologia($idCatalogoTecnologico, $anio = null)
 	{
 		$anioConsulta = $anio ?? (int) date('Y');
@@ -56,6 +59,7 @@ class FichaTecnicaModel
 		return $row ? (int) $row['Total'] : 0;
 	}
 
+	// Registra una nueva ficha tecnica y devuelve su identificador.
 	public function guardar($datos)
 	{
 		$idCatalogoTecnologico = (int) $datos['IdCatalogoTecnologico'];
@@ -90,6 +94,7 @@ class FichaTecnicaModel
 		return $row ? (int) $row['Id'] : false;
 	}
 
+	// Actualiza el estado de una ficha tecnica y registra la modificacion.
 	public function cambiarEstado($id, $estado, $idUsuarioModifica = null)
 	{
 		$sql = "UPDATE adquisiciones.FichaTecnica SET Estado = ?, idUsuarioModifica = ?, FechaModifica = GETDATE() WHERE Id = ?";
@@ -97,6 +102,7 @@ class FichaTecnicaModel
 		return $stmt !== false;
 	}
 
+	// Elimina una ficha tecnica y normaliza los rangos restantes.
 	public function eliminar($id)
 	{
 		$contexto = $this->obtenerContextoPorId($id);
@@ -114,6 +120,7 @@ class FichaTecnicaModel
 		return true;
 	}
 
+	// Mueve una ficha tecnica hacia arriba o abajo intercambiando su rango.
 	public function moverRango($id, $direccion, $idUsuarioModifica = null)
 	{
 		$contexto = $this->obtenerContextoPorId($id);
@@ -160,6 +167,7 @@ class FichaTecnicaModel
 		return false;
 	}
 
+	// Obtiene el siguiente rango disponible para una tecnologia y anio.
 	private function obtenerSiguienteRango($idCatalogoTecnologico, $anio)
 	{
 		$sql = "
@@ -177,6 +185,7 @@ class FichaTecnicaModel
 		return $row ? (int) $row['SiguienteRango'] : 1;
 	}
 
+	// Reordena los rangos de las fichas para que queden consecutivos.
 	private function normalizarRangos($idCatalogoTecnologico, $anio)
 	{
 		$sql = "
@@ -202,6 +211,7 @@ class FichaTecnicaModel
 		sqlsrv_query($this->db, $sql, [$idCatalogoTecnologico, $anio, $idCatalogoTecnologico, $anio]);
 	}
 
+	// Obtiene la tecnologia y el anio asociados a una ficha tecnica.
 	private function obtenerContextoPorId($id)
 	{
 		$sql = "SELECT IdCatalogoTecnologico, Anio FROM adquisiciones.FichaTecnica WHERE Id = ?";
@@ -214,6 +224,7 @@ class FichaTecnicaModel
 		return $row ?: null;
 	}
 
+	// Busca una ficha tecnica por su identificador.
 	private function obtenerPorId($id)
 	{
 		$sql = "SELECT Id, IdCatalogoTecnologico, Anio, Rango FROM adquisiciones.FichaTecnica WHERE Id = ?";
@@ -226,6 +237,7 @@ class FichaTecnicaModel
 		return $row ?: null;
 	}
 
+	// Busca una ficha tecnica por tecnologia, anio y rango.
 	private function obtenerPorRango($idCatalogoTecnologico, $anio, $rango)
 	{
 		$sql = "
@@ -242,6 +254,7 @@ class FichaTecnicaModel
 		return $row ?: null;
 	}
 
+	// Actualiza el rango de una ficha tecnica y registra la modificacion.
 	private function actualizarRango($id, $rango, $idUsuarioModifica = null)
 	{
 		$sql = "UPDATE adquisiciones.FichaTecnica SET Rango = ?, idUsuarioModifica = ?, FechaModifica = GETDATE() WHERE Id = ?";

@@ -1,3 +1,4 @@
+<!-- Tarjeta principal que contiene lista de fichas técnicas y formulario para agregarlas -->
 <div class="card card-body mb-3">
     <h4 class="fw-bold mb-3">Fichas Técnicas</h4>
 
@@ -7,6 +8,7 @@
         </div>
     <?php endif; ?>
 
+    <!-- Tabla responsiva que lista todas las fichas técnicas con marca, modelo, documento, fecha, estado, ranking y acciones -->
     <div class="table-responsive">
         <table class="table table-vcenter card-table table-striped">
             <thead>
@@ -35,7 +37,7 @@
                                     <button type="button"
                                         class="btn btn-icon btn-lg"
                                         title="Ver PDF"
-                                        onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verFichaTecnicaAjax&id=<?= (int)$ficha['Id'] ?>')">
+                                        onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=ficha&id=<?= (int)$ficha['Id'] ?>')">
                                         <i class="ti ti-file-text fs-2"></i>
                                     </button>
                                 <?php else: ?>
@@ -120,6 +122,7 @@
     </div>
 </div>
 
+<!-- Modal para crear y agregar nueva ficha técnica con formulario -->
 <div class="modal modal-blur fade" id="modalAgregarFichaTecnica" tabindex="-1" aria-labelledby="modalAgregarFichaTecnicaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -154,18 +157,21 @@
 </div>
 
 <script>
+    // Abre el modal para agregar una nueva ficha técnica
     function abrirModalAgregarFichaTecnica() {
         const modalElement = document.getElementById('modalAgregarFichaTecnica');
         mostrarModal(modalElement);
         return false;
     }
 
+    // Cierra el modal de agregar ficha técnica
     function cerrarModalAgregarFichaTecnica() {
         const modalElement = document.getElementById('modalAgregarFichaTecnica');
         ocultarModal(modalElement);
         return false;
     }
 
+    // Limpia el formulario de ficha técnica restableciendo sus valores
     function limpiarFormularioFichaTecnica() {
         const form = document.getElementById('form-ficha-tecnica');
         if (form) {
@@ -173,6 +179,7 @@
         }
     }
 
+    // Configura los eventos del modal para limpiar formulario al cerrarse
     function inicializarModalAgregarFichaTecnica() {
         inicializarModalConLimpieza({
             modalId: 'modalAgregarFichaTecnica',
@@ -181,6 +188,7 @@
         });
     }
 
+    // Valida y guarda una nueva ficha técnica al servidor con marca, modelo y documento PDF
     async function guardarFichaTecnica(e) {
         e.preventDefault();
 
@@ -216,6 +224,7 @@
         return false;
     }
 
+    // Solicita confirmación y elimina una ficha técnica del servidor
     async function eliminarFichaTecnica(id) {
         const confirmado = await window.adqConfirmSafe({
             titulo: 'Confirmar eliminacion',
@@ -242,6 +251,7 @@
         }
     }
 
+    // Cambia el estado de una ficha técnica entre enviado y pendiente
     async function cambiarEstadoFichaTecnica(id, estado) {
         try {
             const data = await enviarJson('index.php?module=adquisiciones&action=cambiarEstadoFichaTecnicaAjax', {
@@ -259,6 +269,7 @@
         }
     }
 
+    // Cambia el ranking (prioridad) de una ficha técnica moviéndola hacia arriba o abajo
     async function moverFichaTecnicaRango(id, direccion) {
         if (!['up', 'down'].includes(direccion)) {
             window.adqNotifySafe('danger', 'Error', 'Dirección inválida para mover la ficha técnica.');

@@ -1,3 +1,4 @@
+<!-- Tarjeta principal que contiene la especificación técnica o mensaje de ausencia -->
 <div class="card card-body mb-3">
 	<h4 class="fw-bold mb-3">Especificación Técnica</h4>
 
@@ -23,7 +24,7 @@
 										<button type="button"
 											class="btn btn-icon btn-lg"
 											title="Ver PDF"
-											onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verEspecificacionTecnicaAjax&id=<?= (int)$especificacionTecnica['Id'] ?>')">
+											onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=especificacion&id=<?= (int)$especificacionTecnica['Id'] ?>')">
 											<i class="ti ti-file-text fs-2"></i>
 										</button>
 									<?php endif; ?>
@@ -51,6 +52,7 @@
 		<?php endif; ?>
 	<?php endif; ?>
 
+	<!-- Contenedor de botones para agregar o actualizar la especificación técnica -->
 	<?php if ($tieneEspecificacion || $puedeRegistrarEspecificacion): ?>
 		<div class="d-flex justify-content-end mt-3">
 			<?php if ($tieneEspecificacion): ?>
@@ -78,6 +80,7 @@
 	<?php endif; ?>
 </div>
 
+<!-- Modal para crear o actualizar la especificación técnica con formulario -->
 <div class="modal modal-blur fade" id="modalEspecificacionTecnica" tabindex="-1" aria-labelledby="modalEspecificacionTecnicaLabel" aria-hidden="true">
 	<div class="modal-dialog modal-lg modal-dialog-centered">
 		<div class="modal-content">
@@ -112,6 +115,7 @@
 </div>
 
 <script>
+	// Abre el modal de especificación técnica en modo crear o editar con los datos correspondientes
 	function abrirModalEspecificacionTecnica(modo, idEspecificacion) {
 		const modalElement = document.getElementById('modalEspecificacionTecnica');
 		if (!modalElement) {
@@ -155,12 +159,14 @@
 		return false;
 	}
 
+	// Cierra el modal de especificación técnica
 	function cerrarModalEspecificacionTecnica() {
 		const modalElement = document.getElementById('modalEspecificacionTecnica');
 		ocultarModal(modalElement);
 		return false;
 	}
 
+	// Reinicia el formulario modal y restablece los valores por defecto
 	function limpiarFormularioEspecificacionTecnica() {
 		const form = document.getElementById('form-especificacion-modal');
 		if (form) {
@@ -199,6 +205,7 @@
 		}
 	}
 
+	// Configura los eventos del modal para limpiar formulario al cerrarse
 	function inicializarModalEspecificacionTecnica() {
 		inicializarModalConLimpieza({
 			modalId: 'modalEspecificacionTecnica',
@@ -207,6 +214,7 @@
 		});
 	}
 
+	// Valida y envía el formulario de especificación técnica al servidor para guardar o actualizar
 	async function submitEspecificacionTecnica(e) {
 		e.preventDefault();
 
@@ -268,6 +276,7 @@
 		return false;
 	}
 
+	// Solicita confirmación y elimina la especificación técnica del servidor
 	async function eliminarEspecificacionTecnica(id) {
 		const confirmado = await window.adqConfirmSafe({
 			titulo: 'Confirmar eliminacion',

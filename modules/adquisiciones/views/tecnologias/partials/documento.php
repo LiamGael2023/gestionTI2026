@@ -1,3 +1,4 @@
+<!-- Modal para visualizar archivos PDF -->
 <div class="modal modal-blur fade" id="modalVisorPdf" tabindex="-1" aria-labelledby="modalVisorPdfLabel" aria-hidden="true">
 	<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
 		<div class="modal-content">
@@ -13,6 +14,7 @@
 </div>
 
 <script>
+	// Abre un archivo PDF en el modal asignando la URL al iframe y mostrando el modal
 	function abrirPdfEnModal(url) {
 		const iframe = document.getElementById('iframeVisorPdf');
 		const modalElement = document.getElementById('modalVisorPdf');
@@ -37,6 +39,7 @@
 		return false;
 	}
 
+	// Inicializa los eventos del modal (cierre, limpieza de iframe y manejo de teclas)
 	function inicializarModalVisorPdf() {
 		const modalElement = document.getElementById('modalVisorPdf');
 		if (!modalElement) {

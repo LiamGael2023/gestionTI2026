@@ -1,3 +1,4 @@
+<!-- Tarjeta principal que contiene verificación técnica o mensaje de ausencia y formulario -->
 <div class="card card-body mb-3">
 	<h4 class="fw-bold mb-3">Verificación Técnica / Coformidad</h4>
 
@@ -15,7 +16,7 @@
 								<button type="button"
 									class="btn btn-icon btn-lg"
 									title="Ver PDF"
-									onclick="abrirPdfEnModal('index.php?module=adquisiciones&action=verVerificacionTecnicaAjax&id=<?= (int)$verificacionTecnica['Id'] ?>')">
+									onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=verificacion&id=<?= (int)$verificacionTecnica['Id'] ?>')">
 									<i class="ti ti-file-text fs-2"></i>
 								</button>
 							<?php endif; ?>
@@ -36,6 +37,7 @@
 			</div>
 		</div>
 
+		<!-- Botón para actualizar la verificación técnica existente -->
 		<div class="d-flex justify-content-end mt-3">
 			<button type="button"
 				class="btn btn-primary"
@@ -51,6 +53,7 @@
 		<p class="text-secondary mb-0">No hay verificación técnica registrada para este año.</p>
 
 		<?php if ($puedeRegistrarVerificacion): ?>
+			<!-- Botón para agregar nueva verificación técnica -->
 			<div class="d-flex justify-content-end mt-3">
 				<button type="button"
 					class="btn btn-primary"
@@ -63,12 +66,14 @@
 				</button>
 			</div>
 		<?php else: ?>
+			<!-- Alerta informativa cuando no se cumplen requisitos para registrar verificación -->
 			<div class="alert alert-warning mt-3 mb-0" role="alert">
 				Debe registrar primero la orden de compra antes de cargar la verificación técnica.
 			</div>
 		<?php endif; ?>
 	<?php endif; ?>
 
+	<!-- Modal para crear o actualizar verificación técnica con formulario -->
 	<?php if ($puedeRegistrarVerificacion || $tieneVerificacion): ?>
 		<div class="modal modal-blur fade" id="modalVerificacionTecnica" tabindex="-1" aria-labelledby="modalVerificacionTecnicaLabel" aria-hidden="true">
 			<div class="modal-dialog modal-lg modal-dialog-centered">
@@ -105,6 +110,7 @@
 </div>
 
 <script>
+	// Ajusta automáticamente la altura del textarea según su contenido
 	function autoAjustarAlturaTextarea(textarea) {
 		if (!textarea) {
 			return;
@@ -119,6 +125,7 @@
 		autoAjustarAlturaTextarea(inputObservacion);
 	}
 
+	// Abre el modal de verificación técnica en modo crear o editar con los datos correspondientes
 	function abrirModalVerificacionTecnica(modo, idVerificacion, observacion) {
 		const modalElement = document.getElementById('modalVerificacionTecnica');
 		if (!modalElement) {
@@ -169,12 +176,14 @@
 		return false;
 	}
 
+	// Cierra el modal de verificación técnica
 	function cerrarModalVerificacionTecnica() {
 		const modalElement = document.getElementById('modalVerificacionTecnica');
 		ocultarModal(modalElement);
 		return false;
 	}
 
+	// Limpia el formulario modal restableciendo valores por defecto
 	function limpiarFormularioVerificacionTecnica() {
 		const form = document.getElementById('form-verificacion-modal');
 		if (form) {
@@ -216,6 +225,7 @@
 		}
 	}
 
+	// Configura los eventos del modal para limpiar formulario y ajustar textarea al cerrarse
 	function inicializarModalVerificacionTecnica() {
 		inicializarModalConLimpieza({
 			modalId: 'modalVerificacionTecnica',
@@ -238,6 +248,7 @@
 		});
 	}
 
+	// Valida y envía el formulario de verificación técnica al servidor para guardar o actualizar
 	async function submitVerificacionTecnicaModal(e) {
 		e.preventDefault();
 
@@ -293,6 +304,7 @@
 		return false;
 	}
 
+	// Solicita confirmación y elimina la verificación técnica del servidor
 	function eliminarVerificacionTecnica(id) {
 		return eliminarDocumentoSimple(id, {
 			url: 'index.php?module=adquisiciones&action=eliminarVerificacionTecnicaAjax',

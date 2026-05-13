@@ -1,4 +1,5 @@
 <?php
+// Normalizar los datos recibidos para mostrar el dashboard sin errores por variables vacias.
 $anioFiltro = isset($anioFiltro) && $anioFiltro !== null ? (int) $anioFiltro : null;
 $aniosDisponibles = isset($aniosDisponibles) && is_array($aniosDisponibles) ? $aniosDisponibles : [];
 
@@ -93,6 +94,7 @@ foreach ($resumenCentroCosto as $filaCentroCosto) {
 }
 $totalCentrosCosto = count($resumenCentroCosto);
 
+// Formatea la fecha de entrega para mostrarla en las tarjetas del dashboard.
 function formatearFechaEntregaDashboard($fecha)
 {
 	if ($fecha instanceof DateTime) {
@@ -812,6 +814,7 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		});
 
+		// Muestra una notificacion usando el sistema global disponible.
 		function notificar(tipo, titulo, mensaje) {
 			if (window.adqNotifySafe) {
 				window.adqNotifySafe(tipo, titulo, mensaje);
@@ -820,6 +823,7 @@ function formatearFechaEntregaDashboard($fecha)
 			alert(mensaje || titulo);
 		}
 
+		// Escapa texto dinamico antes de insertarlo como HTML.
 		function escaparHtml(valor) {
 			return String(valor || '')
 				.replace(/&/g, '&amp;')
@@ -829,6 +833,7 @@ function formatearFechaEntregaDashboard($fecha)
 				.replace(/'/g, '&#039;');
 		}
 
+		// Limpia el formulario de gestion de centros de costo.
 		function limpiarFormularioCentro() {
 			document.getElementById('ccIdEditar').value = '';
 			document.getElementById('ccSiglas').value = '';
@@ -836,6 +841,7 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('btnGuardarCentroCosto').textContent = 'Agregar';
 		}
 
+		// Limpia el formulario de gestion de tecnologias.
 		function limpiarFormularioTecnologia() {
 			document.getElementById('tecIdEditar').value = '';
 			document.getElementById('tecCodigo').value = '';
@@ -843,12 +849,14 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('btnGuardarTecnologiaCatalogo').textContent = 'Agregar';
 		}
 
+		// Limpia el formulario de gestion de tipos de solicitud.
 		function limpiarFormularioTipoSolicitud() {
 			document.getElementById('tsIdEditar').value = '';
 			document.getElementById('tsNombre').value = '';
 			document.getElementById('btnGuardarTipoSolicitud').textContent = 'Agregar';
 		}
 
+		// Limpia el formulario de gestion de metas SIAF.
 		function limpiarFormularioMetaSiaf() {
 			document.getElementById('msIdEditar').value = '';
 			document.getElementById('msCodigoMeta').value = '';
@@ -856,6 +864,7 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('btnGuardarMetaSiaf').textContent = 'Agregar';
 		}
 
+		// Carga y renderiza los centros de costo en su tabla de gestion.
 		function cargarCentrosCosto() {
 			$.ajax({
 				url: 'index.php?module=adquisiciones&action=listarCentrosCostoAjax',
@@ -922,6 +931,7 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		}
 
+		// Carga y renderiza las tecnologias del catalogo en su tabla de gestion.
 		function cargarTecnologias() {
 			$.ajax({
 				url: 'index.php?module=adquisiciones&action=listarTecnologiasCatalogoAjax',
@@ -989,6 +999,7 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		}
 
+		// Carga y renderiza los tipos de solicitud en su tabla de gestion.
 		function cargarTiposSolicitud() {
 			$.ajax({
 				url: 'index.php?module=adquisiciones&action=listarTiposSolicitudAjax',
@@ -1049,6 +1060,7 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		}
 
+		// Llena un selector de asociaciones con los datos recibidos.
 		function poblarSelectAsociaciones(selectId, items, valueKey, labelBuilder) {
 			var select = document.getElementById(selectId);
 			if (!select) {
@@ -1069,6 +1081,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 		}
 
+		// Carga y renderiza las asociaciones entre tecnologias y tipos de solicitud.
 		function cargarAsociacionesTecnologiaSolicitud() {
 			var anio = Number($('#asocAnio').val()) || new Date().getFullYear();
 			$.ajax({
@@ -1124,6 +1137,7 @@ function formatearFechaEntregaDashboard($fecha)
 			});
 		}
 
+		// Carga y renderiza las metas SIAF en su tabla de gestion.
 		function cargarMetasSiaf() {
 			$.ajax({
 				url: 'index.php?module=adquisiciones&action=listarMetasSiafAjax',
@@ -1663,6 +1677,7 @@ function formatearFechaEntregaDashboard($fecha)
 
 		// ─── Sub-Centros de Costo ─────────────────────────────────────────────
 
+		// Limpia el formulario de gestion de sub-centros de costo.
 		function limpiarFormularioSubCentro() {
 			document.getElementById('sccIdEditar').value = '';
 			document.getElementById('sccCentroCosto').value = '';
@@ -1671,6 +1686,7 @@ function formatearFechaEntregaDashboard($fecha)
 			document.getElementById('btnGuardarSubCentroCosto').textContent = 'Agregar';
 		}
 
+		// Llena el selector de centros de costo para sub-centros.
 		function poblarSelectCentros(centros) {
 			var sel = document.getElementById('sccCentroCosto');
 			var valorActual = sel.value;
@@ -1686,6 +1702,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 		}
 
+		// Carga y renderiza los sub-centros de costo en su tabla de gestion.
 		function cargarSubCentrosCosto() {
 			$.ajax({
 				url: 'index.php?module=adquisiciones&action=listarSubCentrosCostoAjax',

@@ -73,7 +73,7 @@ class CierreAdquisicionModel
 		return $stmt !== false;
 	}
 
-	//Apertura la adquisición: marca Estado=0 en el registro existente.
+	// Reapertura la adquisición marcando Estado=0 en el registro existente
 	public function aperturar($idCatalogoTecnologico, $anio, $idUsuario)
 	{
 		$idCat  = (int) $idCatalogoTecnologico;

@@ -98,6 +98,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		</h3>
 	</div>
 
+	<!-- Tarjeta con tabla de pedidos de compra y filtro de año, con alerta de diferencias de código SIGA -->
 	<div class="card card-body mb-3">
 		<h4 class="fw-bold mb-3">Pedidos de Compra donde aparece</h4>
 
@@ -154,12 +155,13 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		</div>
 	</div>
 
+	<!-- Contenedor para incluir partials de ficha técnica, especificación, orden y verificación -->
 	<?php require __DIR__ . '/partials/ficha.php'; ?>
 	<?php require __DIR__ . '/partials/especificacion.php'; ?>
 	<?php require __DIR__ . '/partials/orden.php'; ?>
 	<?php require __DIR__ . '/partials/verificacion.php'; ?>
 
-	<!-- ===================== CIERRE DE ADQUISICIÓN ===================== -->
+	<!-- Tarjeta con estado de adquisición y botón para finalizar o aperturar -->
 	<?php if ($tieneVerificacion): ?>
 	<div class="card card-body mb-3">
 		<div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -185,7 +187,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	</div>
 	<?php endif; ?>
 
-	<!-- Navegación -->
+	<!-- Sección de navegación con botón para volver a la lista de tecnologías -->
 	<div class="d-flex justify-content-end mb-3">
 		<a href="index.php?module=adquisiciones&action=tecnologias&anio=<?php echo $anioActual; ?>"
 			class="btn btn-secondary js-adq-link">Volver</a>
@@ -193,6 +195,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 
 </div>
 
+<!-- Incluye el modal para visualizar PDF -->
 <?php require __DIR__ . '/partials/documento.php'; ?>
 
 <script>
@@ -202,6 +205,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	const nombreTecnologia = <?php echo json_encode($nombreTecRaw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 	let adqPdfBackdropFallback = null;
 
+	// Normaliza texto eliminando acentos y convirtiendo a mayúsculas
 	function normalizarTextoAscii(valor) {
 		return String(valor || '')
 			.normalize('NFD')
@@ -210,6 +214,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			.trim();
 	}
 
+	// Extrae el token de código de tecnología (ej: T123) de la cadena normalizada
 	function obtenerTokenCodigoTecnologia() {
 		const codigoLimpio = normalizarTextoAscii(codigoTecnologia);
 		const match = codigoLimpio.match(/T\d+/);
@@ -225,18 +230,21 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return primerToken.startsWith('T') ? primerToken : ('T' + primerToken);
 	}
 
+	// Extrae la primera palabra de la descripción normalizada de la tecnología
 	function obtenerPrimeraPalabraDescripcion() {
 		const descripcionLimpia = normalizarTextoAscii(nombreTecnologia);
 		const token = descripcionLimpia.split(/[^A-Z0-9]+/).filter(Boolean)[0];
 		return token || 'TECNOLOGIA';
 	}
 
+	// Genera el código de especificación técnica usando token, palabra y año
 	function generarCodigoEspecificacion() {
 		const tokenTecnologia = obtenerTokenCodigoTecnologia();
 		const primeraPalabra = obtenerPrimeraPalabraDescripcion();
 		return 'ET_' + tokenTecnologia + '_' + primeraPalabra + '_' + anioActual;
 	}
 
+	// Genera el número de orden de compra respetando longitud máxima
 	function generarNumeroOrdenCompra(anio) {
 		const tokenTecnologia = obtenerTokenCodigoTecnologia();
 		const primeraPalabra = obtenerPrimeraPalabraDescripcion();
@@ -250,10 +258,12 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return prefijo + palabraAjustada + sufijo;
 	}
 
+	// Convierte código de especificación con guiónes a espacios para mostrar visualmente
 	function formatearCodigoEspecificacionVisual(codigo) {
 		return String(codigo || '').replace(/_/g, ' ').trim();
 	}
 
+	// Obtiene la instancia de Bootstrap Modal si está disponible en el navegador
 	function obtenerBootstrapModal() {
 		if (typeof window !== 'undefined' && window.bootstrap && window.bootstrap.Modal) {
 			return window.bootstrap.Modal;
@@ -266,6 +276,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return null;
 	}
 
+	// Abre un modal manualmente sin Bootstrap (fallback)
 	function abrirModalFallback(modalElement) {
 		if (!modalElement) {
 			return;
@@ -284,6 +295,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
+	// Cierra un modal manualmente sin Bootstrap (fallback) y elimina el backdrop
 	function cerrarModalFallback(modalElement) {
 		if (!modalElement) {
 			return;
@@ -302,6 +314,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		modalElement.dispatchEvent(new Event('hidden.bs.modal'));
 	}
 
+	// Recarga la vista actual de tecnología o la página completa
 	function recargarVistaTecnologia() {
 		if (typeof window.recargarVistaActualAdquisiciones === 'function') {
 			return window.recargarVistaActualAdquisiciones();
@@ -310,6 +323,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return Promise.resolve();
 	}
 
+	// Cambia el año en el filtro y recarga la página con ese año
 	function cambiarAnioDetalle() {
 		const anio = document.getElementById('filtroAnioPedidos').value;
 		const url = 'index.php?module=adquisiciones&action=tecnologia&id=' + idTecnologia + '&anio=' + anio;
@@ -320,6 +334,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		window.location.href = url;
 	}
 
+	// Convierte un archivo a cadena base64 para envíos al servidor
 	function fileToBase64(file) {
 		return new Promise((resolve, reject) => {
 			const reader = new FileReader();
@@ -333,6 +348,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		});
 	}
 
+	// Envía datos JSON al servidor mediante petición POST
 	async function enviarJson(url, payload) {
 		const respuesta = await fetch(url, {
 			method: 'POST',
@@ -350,6 +366,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return respuesta.json();
 	}
 
+	// Valida que el archivo sea un PDF válido
 	function validarPdf(file) {
 		if (!file) {
 			throw new Error('Debe seleccionar un archivo PDF.');
@@ -360,6 +377,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		}
 	}
 
+	// Abre un modal con soporte para Bootstrap, jQuery o fallback manual
 	function mostrarModal(modalElement) {
 		if (!modalElement) {
 			return false;
@@ -380,6 +398,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return true;
 	}
 
+	// Cierra un modal con soporte para Bootstrap, jQuery o fallback manual
 	function ocultarModal(modalElement) {
 		if (!modalElement) {
 			return false;
@@ -400,6 +419,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return true;
 	}
 
+	// Configura un modal para limpiar formulario al cerrarse con soporte para múltiples eventos
 	function inicializarModalConLimpieza(config) {
 		const modalElement = document.getElementById(config.modalId);
 		if (!modalElement) {
@@ -488,6 +508,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 	}
 	inicializarModalVerificacionTecnica();
 
+	// Guarda un documento con observación (especificación, orden, verificación) al servidor
 	async function guardarDocumentoConObservacion(e, options) {
 		e.preventDefault();
 
@@ -516,6 +537,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return false;
 	}
 
+	// Actualiza un documento existente con nueva observación y/o documento PDF
 	async function actualizarDocumentoConObservacion(e, options) {
 		e.preventDefault();
 
@@ -548,6 +570,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		return false;
 	}
 
+	// Solicita confirmación y elimina un documento (especificación, orden, verificación)
 	async function eliminarDocumentoSimple(id, options) {
 		const confirmado = await window.adqConfirmSafe({
 			titulo: 'Confirmar eliminacion',
