@@ -24,16 +24,30 @@ class NotificacionController {
         echo json_encode(["success"=>true]);
     }
 
-    private static function marcarEnviado($codigo, $rec){
+    private static function marcarEnviado($codigo, $rec, $periodo, $anio, $band){
 
-        $conn = Conexion::conectar();
+    $conn = Conexion::conectar();
 
-        $sql = "
-        UPDATE Aplicativo.NotificacionesPendientes
-        SET Estado = 1
-        WHERE AmbOpe_CodigoCatastral = ? AND Rec_Numero = ? AND Periodo = ? AND Id_Anio = ? AND Band = ? 
-        ";
+    $sql = "
+    UPDATE Aplicativo.NotificacionesPendientes
+    SET Estado = 1
+    WHERE AmbOpe_CodigoCatastral = ?
+      AND Rec_Numero = ?
+      AND Periodo = ?
+      AND Id_Anio = ?
+      AND Band = ?
+    ";
 
-        sqlsrv_query($conn, $sql, [$codigo, $rec]);
+    $stmt = sqlsrv_query($conn, $sql, [
+        $codigo,
+        $rec,
+        $periodo,
+        $anio,
+        $band
+    ]);
+
+    if($stmt === false){
+        die(print_r(sqlsrv_errors(), true));
     }
+}
 }

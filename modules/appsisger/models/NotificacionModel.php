@@ -58,7 +58,7 @@ public static function obtenerPendientesConTokens($codigoUnico){
 
         $conn = Conexion::conectar();
 
-        $sql = "UPDATE Aplicativo.NotificacionesPendientes SET Estado = 1 WHERE Id = ?";
+        $sql = "UPDATE BDSISGERWEB.Aplicativo.NotificacionesPendientes SET Estado = 1 WHERE Id = ?";
 
         sqlsrv_query($conn, $sql, [$id]);
     }
@@ -93,6 +93,9 @@ public static function obtenerPendientesConTokens($codigoUnico){
 
     return $data;
 }
+
+
+
 public static function obtenerHistorial($codigoUnico) {
     $conn = Conexion::conectar();
 
@@ -100,29 +103,26 @@ public static function obtenerHistorial($codigoUnico) {
                 n.Id,
                 RTRIM(LTRIM(n.AmbOpe_CodigoCatastral)) as AmbOpe_CodigoCatastral,
                 n.Estado,
-                CAST(n.FechaRegistro AS DATE) as FechaRegistro
+                n.Rec_Numero,
+                CONVERT(VARCHAR, n.sordRie_FechaInicioFecha_Texto, 23) as FechaRiego,
+                CONVERT(VARCHAR, n.FechaRegistro, 23) as FechaRegistro
             FROM BDSISGERWEB.Aplicativo.NotificacionesPendientes n
             INNER JOIN BDSISGERWEB.Aplicativo.vw_ConductoresPorAmbito d
                 ON RTRIM(LTRIM(d.AmbOpe_CodigoCatastral)) = RTRIM(LTRIM(n.AmbOpe_CodigoCatastral))
             WHERE d.CodigoUnico = ?
-            AND n.Estado = 1
-            ORDER BY CAST(n.FechaRegistro AS DATE) DESC";
+            AND n.Estado IN (1, 2)
+            ORDER BY FechaRegistro DESC;";
 
     $stmt = sqlsrv_query($conn, $sql, [$codigoUnico]);
 
     if ($stmt === false) {
-        error_log("Error obtenerHistorial: " . print_r(sqlsrv_errors(), true));
         return [];
     }
 
     $data = [];
     while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-        if ($row['FechaRegistro'] instanceof DateTime) {
-            $row['FechaRegistro'] = $row['FechaRegistro']->format('Y-m-d');
-        }
         $data[] = $row;
     }
-
     return $data;
 }
 }

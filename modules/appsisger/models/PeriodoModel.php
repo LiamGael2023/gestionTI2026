@@ -6,7 +6,8 @@ class PeriodoModel{
 
         $conn = Conexion::conectar();
 
-         $anioActual = date("Y");
+        //  $anioActual = date("Y");
+        $anioActual = 2025;
         $sql = "{CALL BDSISGERWEB.appsisger.pa_ObtenerPeriodoxUC(?,?,?)}";
 
         $params = [

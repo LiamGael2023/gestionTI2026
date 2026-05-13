@@ -1,7 +1,11 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+$lockFile = sys_get_temp_dir() . '/fcm_worker.lock';
+$lock = fopen($lockFile, 'c');
 
+if (!flock($lock, LOCK_EX | LOCK_NB)) {
+    echo "⚠️ Worker ya está corriendo. Saliendo.\n";
+    exit(0);
+}
 require_once __DIR__ . "/../../../config/db.php";
 require_once __DIR__ . "/../models/NotificacionModel.php";
 require_once __DIR__ . "/../services/FCMService.php";
@@ -16,8 +20,8 @@ var_dump($notificaciones);
 if(!empty($notificaciones)){
     foreach($notificaciones as $n){
 
-        $titulo = "Orden de riego actualizada";
-        $mensaje = "Se actualizó su orden N° " . $n["Rec_Numero"];
+        $titulo = "Actualización de Orden de Riego";
+        $mensaje = "Se actualizó su orden de riego con numero de recibo N° " . $n["Rec_Numero"]. ". Ingrese para verificar.";
 
         $token = $n["token"];
 
