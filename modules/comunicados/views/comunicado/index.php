@@ -18,8 +18,6 @@ $comunicados = isset($comunicados) && is_array($comunicados) ? $comunicados : []
 		<thead>
 			<tr>
 				<th>Titulo</th>
-				<th>Asunto</th>
-				<th>Plantilla</th>
 				<th>Estado</th>
 				<th>Activo</th>
 				<th class="text-end">Acciones</th>
@@ -35,8 +33,6 @@ $comunicados = isset($comunicados) && is_array($comunicados) ? $comunicados : []
 					<?php $activo = (int) ($item['Activo'] ?? 0) === 1; ?>
 					<tr>
 						<td class="fw-semibold"><?php echo htmlspecialchars((string) $item['TituloComunicado'], ENT_QUOTES, 'UTF-8'); ?></td>
-						<td><?php echo htmlspecialchars((string) ($item['AsuntoCorreo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-						<td><?php echo htmlspecialchars((string) ($item['NombrePlantilla'] ?? 'Sin plantilla'), ENT_QUOTES, 'UTF-8'); ?></td>
 						<td>
 							<span class="badge <?php echo $item['EstadoComunicado'] === 'LISTO' ? 'bg-success-lt' : 'bg-warning-lt text-dark'; ?>">
 								<?php echo htmlspecialchars((string) $item['EstadoComunicado'], ENT_QUOTES, 'UTF-8'); ?>

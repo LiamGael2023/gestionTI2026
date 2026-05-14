@@ -11,7 +11,7 @@ class ComunicadoModel
 	public function listar($soloActivos = true)
 	{
 		$sql = "
-			SELECT c.IdComunicado, c.IdPlantilla, c.TituloComunicado, c.AsuntoCorreo,
+			SELECT c.IdComunicado, c.IdPlantilla, c.TituloComunicado,
 				c.EstadoComunicado, c.Activo, c.FechaRegistro, c.FechaModificacion,
 				p.NombrePlantilla
 			FROM comunicados.Comunicado c
@@ -26,7 +26,7 @@ class ComunicadoModel
 	public function obtener($idComunicado)
 	{
 		$sql = "
-			SELECT IdComunicado, IdPlantilla, TituloComunicado, AsuntoCorreo, ContenidoJson,
+			SELECT IdComunicado, IdPlantilla, TituloComunicado, ContenidoJson,
 				HtmlFinal, EstadoComunicado, Activo, FechaRegistro, FechaModificacion
 			FROM comunicados.Comunicado
 			WHERE IdComunicado = ?
@@ -44,14 +44,13 @@ class ComunicadoModel
 	{
 		$sql = "
 			INSERT INTO comunicados.Comunicado
-				(IdPlantilla, TituloComunicado, AsuntoCorreo, ContenidoJson, HtmlFinal, EstadoComunicado, IdUsuarioRegistro)
+				(IdPlantilla, TituloComunicado, ContenidoJson, HtmlFinal, EstadoComunicado, IdUsuarioRegistro)
 			OUTPUT INSERTED.IdComunicado
-			VALUES (?, ?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?)
 		";
 		$params = [
 			$this->intONull($datos['IdPlantilla'] ?? null),
 			trim((string) ($datos['TituloComunicado'] ?? '')),
-			$this->nullSiVacio($datos['AsuntoCorreo'] ?? null),
 			(string) ($datos['ContenidoJson'] ?? '[]'),
 			$this->nullSiVacio($datos['HtmlFinal'] ?? null),
 			$this->estado($datos['EstadoComunicado'] ?? 'BORRADOR'),
@@ -72,7 +71,6 @@ class ComunicadoModel
 			UPDATE comunicados.Comunicado
 			SET IdPlantilla = ?,
 				TituloComunicado = ?,
-				AsuntoCorreo = ?,
 				ContenidoJson = ?,
 				HtmlFinal = ?,
 				EstadoComunicado = ?,
@@ -83,7 +81,6 @@ class ComunicadoModel
 		$params = [
 			$this->intONull($datos['IdPlantilla'] ?? null),
 			trim((string) ($datos['TituloComunicado'] ?? '')),
-			$this->nullSiVacio($datos['AsuntoCorreo'] ?? null),
 			(string) ($datos['ContenidoJson'] ?? '[]'),
 			$this->nullSiVacio($datos['HtmlFinal'] ?? null),
 			$this->estado($datos['EstadoComunicado'] ?? 'BORRADOR'),

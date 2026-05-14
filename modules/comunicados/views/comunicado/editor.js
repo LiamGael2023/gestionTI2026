@@ -16,83 +16,6 @@
 	let selectedId = null;
 	let dragBlockId = null;
 
-	const presets = {
-		'': [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'AVISO IMPORTANTE', tone: 'red', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'ðŸ“£', text: 'COMUNICADO NRO. 000-2026-PECH-INF', subtitle: 'Comunicado institucional' },
-			{ type: 'meta', text: 'ðŸ“£ Comunicado informativo | ðŸ“… 14/05/2026 | ðŸ•˜ 11:30' },
-			{ type: 'aviso', tone: 'green', title: 'Mensaje principal', text: 'Redacte aqui el resumen del comunicado institucional.' },
-			{ type: 'parrafo', text: 'Se comunica a todo el personal usuario que la informacion detallada en el presente comunicado debe ser revisada y difundida oportunamente.' },
-			{ type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional. âœ…' }
-		],
-		pred_siga_salida: [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'âš  AVISO IMPORTANTE', tone: 'red', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'ðŸ”§', text: 'Salida Temporal del Sistema SIGA por Actualizacion Programada', subtitle: '' },
-			{ type: 'meta', text: 'ðŸ“£ Comunicado informativo | ðŸ“… 21/04/2026 | ðŸ•˜ 11:22' },
-			{ type: 'aviso', tone: 'red', title: 'ðŸš« Suspension temporal del acceso al SIGA', text: 'ðŸ“ Se realizara una actualizacion programada del sistema SIGA.\nðŸ”’ Durante este proceso, el acceso al sistema sera restringido temporalmente.' },
-			{ type: 'parrafo', text: 'Se comunica a todo el personal usuario que el dia 21 de abril de 2026 se llevara a cabo una actualizacion programada del sistema SIGA, por lo que se solicita salir del sistema y no realizar operaciones mientras dure el proceso de actualizacion.' },
-			{ type: 'tarjetas', items: 'ðŸ—“|Fecha de actualizacion|21/04/2026\nðŸ’»|Sistema afectado|Sistema Integrado de Gestion Administrativa - SIGA\nâš™|Motivo|Actualizacion programada del sistema' },
-			{ type: 'lista', tone: 'blue', title: 'ðŸ§© Indicaciones para los usuarios', items: 'âœ… Guardar previamente la informacion en proceso.\nðŸšª Cerrar sesion y salir completamente del sistema SIGA.\nâ›” No intentar ingresar nuevamente hasta que se comunique el restablecimiento del servicio.' },
-			{ type: 'panel', tone: 'green', title: 'âœ… Recomendacion', text: 'Se recomienda a los usuarios tomar las previsiones necesarias para evitar inconvenientes durante el periodo de actualizacion.' },
-			{ type: 'parrafo', text: 'ðŸ”” Una vez culminado el proceso de actualizacion, se comunicara oportunamente la habilitacion del sistema.\n\nðŸ™ Agradecemos su comprension y colaboracion.' },
-			{ type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional. âœ…' }
-		],
-		pred_siga_ok: [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'âœ… AVISO IMPORTANTE', tone: 'green', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'âœ…', text: 'Restablecimiento del Sistema SIGA', subtitle: '' },
-			{ type: 'meta', text: 'ðŸ“£ Comunicado informativo | ðŸ“… 21/04/2026 | ðŸ•˜ 11:04' },
-			{ type: 'aviso', tone: 'green', title: 'ðŸŸ¢ Sistema habilitado nuevamente', text: 'ðŸ“ La actualizacion programada del sistema SIGA ha culminado satisfactoriamente.\nðŸ’» El acceso al sistema se encuentra disponible para todos los usuarios.' },
-			{ type: 'parrafo', text: 'Se comunica a todo el personal usuario que la actualizacion programada del sistema SIGA realizada el dia 21 de abril de 2026 se ha ejecutado con exito, por lo que ya pueden ingresar y realizar sus operaciones con normalidad.' },
-			{ type: 'tarjetas', items: 'ðŸ—“|Fecha de actualizacion|21/04/2026\nðŸ’»|Sistema|Sistema Integrado de Gestion Administrativa - SIGA\nâš™|Estado|Actualizacion culminada con exito' },
-			{ type: 'lista', tone: 'blue', title: 'ðŸ§© Informacion adicional', items: 'âœ… La actualizacion del sistema fue completada correctamente.\nðŸ”’ El acceso al SIGA ha sido restablecido.\nðŸ“Œ Los usuarios pueden retomar sus actividades habituales en la plataforma.' },
-			{ type: 'panel', tone: 'green', title: 'âœ… Recomendacion', text: 'En caso de presentarse alguna incidencia durante el ingreso o uso del sistema, agradeceremos reportarla oportunamente al Area de Informatica.' },
-			{ type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional. âœ…' }
-		],
-		pred_evento: [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'ðŸ“£ EVENTO INFORMATIVO', tone: 'green', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'ðŸ“Œ', text: 'INSCRIBETE AL Webinar - Buenas Practicas en Calidad de Servicios 2026', subtitle: '' },
-			{ type: 'meta', text: 'ðŸ“£ Comunicado informativo | ðŸ“… 14/05/2026 | ðŸ•˜ 11:18' },
-			{ type: 'aviso', tone: 'green', title: 'ðŸŽ¯ Participacion institucional y fortalecimiento de capacidades', text: 'Se difunde el presente recordatorio a fin de poner en conocimiento del personal la realizacion del webinar.' },
-			{ type: 'imagen', src: '', alt: 'Imagen del evento' },
-			{ type: 'parrafo', text: 'Se pone en conocimiento de todo el personal del Proyecto Especial Chavimochic la realizacion del primer webinar, espacio virtual en el cual se brindara informacion relevante sobre el proceso de postulacion, criterios y alcances del referido concurso.' },
-			{ type: 'tarjetas', items: 'ðŸ—“|Fecha|miercoles, 22 de abril de 2026\nðŸ•˜|Hora|11:30 a.m.\nðŸ‘¤|Emisor|Secretaria de Gestion Publica - PCM' },
-			{ type: 'lista', tone: 'blue', title: 'ðŸ”— Accesos disponibles', items: 'âš  Registrese previamente antes de ingresar a la reunion.\nâ€¢ Registro: https://facilita.gob.pe/t/52283\nâ€¢ Microsoft Teams: Ingresar al enlace de conexion' },
-			{ type: 'lista', tone: 'gray', title: 'ðŸ“Œ Consideraciones', items: 'â€¢ Es muy importante realizar el registro previo antes de ingresar a la reunion.\nâ€¢ El webinar permitira conocer los detalles de postulacion.\nâ€¢ Constituye una oportunidad para fortalecer la calidad de atencion al ciudadano.' },
-			{ type: 'firma', name: 'Atentamente,', role: 'Area de Informatica' },
-			{ type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nComunicado institucional informativo. ðŸ“£' }
-		],
-		pred_modulo: [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'ðŸš˜ ðŸ§¾ NUEVO MODULO 2026', tone: 'blue', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'ðŸ“£', text: 'COMUNICADO NRO. 013-2026-PECH-INF', subtitle: 'ðŸš˜ Implementacion del modulo de Papeletas de Conductores' },
-			{ type: 'panel', tone: 'gray', title: 'ðŸ“Œ Dirigido a:', text: 'Jefe de Transportes: Ing. Juan Porras\nJefe de Maquinaria Pesada: Ing. Moises Sandoval' },
-			{ type: 'panel', tone: 'gray', title: 'ðŸ‘‹ Buenas tardes:', text: 'Se comunica que ya se ha desarrollado el modulo de Papeletas de Conductores. En ese sentido, resulta necesaria la informacion contenida en el archivo Excel adjunto, a fin de realizar el ingreso de datos correspondiente y dar inicio a la etapa de pruebas del modulo.' },
-			{ type: 'panel', tone: 'blue', title: 'ðŸ“Œ Informacion requerida', text: 'Por tal motivo, se solicita el envio de la informacion requerida lo mas pronto posible, con la finalidad de continuar con la implementacion y validacion funcional del sistema.' },
-			{ type: 'adjunto', tone: 'green', title: 'Archivo adjunto para descarga', text: 'Puede descargar el archivo Excel desde el siguiente enlace:', button: 'DESCARGAR ARCHIVO EXCEL', fileName: 'Proyecto_Transportes_Requerimientos.xlsx', href: '#' },
-			{ type: 'panel', tone: 'orange', title: 'â³ Atencion prioritaria', text: 'La remision oportuna de esta informacion permitira iniciar las pruebas del modulo y efectuar las validaciones necesarias antes de su puesta en funcionamiento.' },
-			{ type: 'firma', name: 'Saludos cordiales', role: 'Area de Informatica - Proyecto Especial Chavimochic' },
-			{ type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nðŸ“© Este es un mensaje informativo. Por favor no responder a este correo.' }
-		],
-		pred_bim: [
-			{ type: 'cabecera', area: 'AREA DE INFORMATICA', badge: 'ðŸ‘· CAPACITACION BIM', tone: 'green', banner: '', logo: logoPeCh, height: '150', position: 'center' },
-			{ type: 'titulo', icon: 'ðŸ“Š', text: 'Presentacion Autodesk AEC Collection', subtitle: '' },
-			{ type: 'parrafo', text: 'Se realizara la presentacion de la Autodesk AEC Collection, que integra herramientas BIM y CAD orientadas al diseno, modelamiento y gestion de proyectos.' },
-			{ type: 'lista', tone: 'gray', title: '', items: 'ðŸ§© Herramientas: Revit, Civil 3D y AutoCAD\nðŸŽ¯ Objetivo: Implementacion de la metodologia BIM en proyectos del PECH' },
-			{ type: 'panel', tone: 'green', title: 'ðŸ’» Reunion de Microsoft Teams', text: 'ðŸ—“ Fecha: Miercoles 15/04/2025\nâ° Hora: 10:00 a.m.\n\nðŸ”— Unirse:\nhttps://teams.microsoft.com/\n\nðŸ†” Id. de reunion: 229 102 450 462 333\nðŸ” Codigo de acceso: zW6CS7gr' },
-			{ type: 'pie', text: 'Impulsando la transformacion digital en el PECH ðŸš€' }
-		],
-		pred_salud: [
-			{ type: 'cabecera', area: 'UNIDAD FUNCIONAL DE PERSONAL', badge: 'ðŸ©º CAMPANA PREVENTIVA', tone: 'red', banner: '', logo: logoPeCh, height: '170', position: 'center' },
-			{ type: 'titulo', icon: '', text: 'COMUNICADO NÂ° 011-2026-APER', subtitle: 'Jornada de tamizaje dirigida a los servidores civiles del Campamento San Jose.' },
-			{ type: 'aviso', tone: 'red', title: 'âš  IMPORTANTE: asistir en ayunas, 8 horas antes de la toma de muestras.', text: '' },
-			{ type: 'parrafo', text: 'SE PONE EN CONOCIMIENTO DE LOS SERVIDORES CIVILES DEL CAMPAMENTO SAN JOSE, EN EL MARCO DEL CONVENIO SUSCRITO CON ESSALUD - PROGRAMA PREVENIR, QUE EL DIA MIERCOLES 13 DE MAYO DE 2026 SE LLEVARA A CABO UNA JORNADA DE TAMIZAJE, A PARTIR DE LAS 8:00 A.M.' },
-			{ type: 'tarjetas', items: 'ðŸ—“|Fecha|Miercoles 13 de mayo de 2026\nâ°|Hora|08:00 a.m.\nðŸ“|Lugar|Campamento San Jose\nðŸ‘¥|Organiza|Unidad Funcional de Personal' },
-			{ type: 'lista', tone: 'blue', title: 'ðŸ§ª Servicios de tamizaje', items: 'ðŸ©¸ Glucosa en ayunas\nðŸ§¬ HDL - Colesterol\nðŸŒ€ Trigliceridos\nðŸ“ Antropometria\nðŸ’— Presion arterial' },
-			{ type: 'lista', tone: 'gray', title: 'ðŸ“Œ Indicaciones', items: 'âœ… Asistir puntualmente para una atencion ordenada.\nðŸ½ Mantener ayuno de 8 horas antes de la toma de muestras.\nðŸªª Acudir con documento de identificacion personal.' },
-			{ type: 'firma', name: 'TRUJILLO, 12 DE MAYO DE 2026', role: 'UNIDAD FUNCIONAL DE PERSONAL\nPROYECTO ESPECIAL CHAVIMOCHIC' },
-			{ type: 'pie', text: 'ðŸ©º Comunicado institucional - PROYECTO ESPECIAL CHAVIMOCHIC' }
-		]
-	};
-
 	function uid() {
 		return 'b_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 	}
@@ -116,17 +39,22 @@
 
 	function toneColor(tone) {
 		const map = {
-			red: { bg: '#fff1f2', border: '#ffb4ba', title: '#d71920', soft: '#fee2e2', solid: '#ef2b22' },
-			green: { bg: '#ecfdf3', border: '#7be6a1', title: '#08783b', soft: '#d8f8e5', solid: '#16a34a' },
-			blue: { bg: '#eff6ff', border: '#93c5fd', title: '#004d99', soft: '#dbeafe', solid: '#2563eb' },
-			orange: { bg: '#fff7ed', border: '#fdba74', title: '#9a3412', soft: '#ffedd5', solid: '#f97316' },
-			gray: { bg: '#f8fafc', border: '#d9dee3', title: '#111827', soft: '#eef2f7', solid: '#64748b' }
+			white: { bg: '#f8fafc', border: '#cbd5e1', title: '#020617', text: '#020617', soft: '#f8fafc', solid: '#475569' },
+			gray: { bg: '#f1f5f9', border: '#cbd5e1', title: '#020617', text: '#020617', soft: '#f1f5f9', solid: '#64748b' },
+			blue: { bg: '#eff6ff', border: '#60a5fa', title: '#1e3a8a', text: '#0b3995', soft: '#eff6ff', solid: '#2563eb' },
+			green: { bg: '#f0fdf4', border: '#4ade80', title: '#006b4a', text: '#006b4a', soft: '#f0fdf4', solid: '#16a34a' },
+			orange: { bg: '#fff7ed', border: '#fb923c', title: '#9a3412', text: '#9a3412', soft: '#fff7ed', solid: '#f97316' },
+			red: { bg: '#fef2f2', border: '#f87171', title: '#991b1b', text: '#991b1b', soft: '#fef2f2', solid: '#ef4444' }
 		};
 		return map[tone] || map.blue;
 	}
 
 	function normalizeBlock(block) {
-		const normalized = Object.assign(defaultBlock(block.type || 'parrafo'), block || {});
+		const source = Object.assign({}, block || {});
+		if (source.type === 'av' + 'iso') {
+			source.type = 'panel';
+		}
+		const normalized = Object.assign(defaultBlock(source.type || 'parrafo'), source);
 		normalized.id = normalized.id || uid();
 		if (normalized.type === 'cabecera') {
 			normalized.logo = normalized.logo || logoPeCh;
@@ -144,21 +72,19 @@
 			case 'cabecera':
 				return { id: uid(), type: 'cabecera', logo: logoPeCh, banner: imagenCabeceraPeCh, entidad: entidadPeCh, area: 'AREA DE INFORMATICA', badge: 'AVISO IMPORTANTE', tone: 'blue', height: '150', position: 'center' };
 			case 'meta':
-				return { id: uid(), type: 'meta', text: 'ðŸ“£ Comunicado informativo | ðŸ“… ' + new Date().toLocaleDateString('es-PE') + ' | ðŸ•˜ ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) };
-			case 'aviso':
-				return { id: uid(), type: 'aviso', tone: 'red', title: 'Aviso importante', text: 'Detalle el aviso destacado.' };
+				return { id: uid(), type: 'meta', text: 'Comunicado informativo | ' + new Date().toLocaleDateString('es-PE') + ' | ' + new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) };
 			case 'tarjetas':
-				return { id: uid(), type: 'tarjetas', items: 'ðŸ—“|Fecha|Ingrese la fecha\nðŸ’»|Sistema|Ingrese el sistema\nâš™|Estado|Ingrese el estado' };
+				return { id: uid(), type: 'tarjetas', items: '|Fecha|Ingrese la fecha\n|Sistema|Ingrese el sistema\n|Estado|Ingrese el estado' };
 			case 'panel':
 				return { id: uid(), type: 'panel', tone: 'blue', title: 'Informacion', text: 'Detalle la informacion del panel.' };
 			case 'lista':
-				return { id: uid(), type: 'lista', tone: 'blue', title: 'Indicaciones', items: 'âœ… Primera indicacion\nâœ… Segunda indicacion' };
+				return { id: uid(), type: 'lista', tone: 'blue', title: 'Indicaciones', items: 'Primera indicacion\nSegunda indicacion' };
 			case 'adjunto':
 				return { id: uid(), type: 'adjunto', tone: 'green', title: 'Archivo adjunto para descarga', text: 'Puede descargar el archivo desde el siguiente enlace:', button: 'DESCARGAR ARCHIVO', fileName: 'documento.pdf', href: '#' };
 			case 'pie':
-				return { id: uid(), type: 'pie', text: 'ðŸ’» AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional. âœ…' };
+				return { id: uid(), type: 'pie', text: 'AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional.' };
 			case 'titulo':
-				return { id: uid(), type: 'titulo', icon: 'ðŸ“£', text: 'Titulo del comunicado', subtitle: '' };
+				return { id: uid(), type: 'titulo', text: 'Titulo del comunicado', subtitle: '' };
 			case 'imagen':
 				return { id: uid(), type: 'imagen', src: '', alt: 'Imagen del comunicado' };
 			case 'boton':
@@ -171,22 +97,13 @@
 		}
 	}
 
-	function createDefaultPreset() {
-		return ['cabecera', 'titulo', 'meta', 'aviso', 'parrafo', 'pie'].map(defaultBlock);
-	}
-
-	function getPresetBlocks(key) {
-		const configuredPreset = presets[key || ''];
-		return Array.isArray(configuredPreset) && configuredPreset.length ? cloneConfig(configuredPreset) : createDefaultPreset();
-	}
-
 	function readInitialBlocks() {
 		const node = document.getElementById('comInitialBlocks');
 		try {
 			const parsed = JSON.parse(node ? node.textContent : '[]');
-			return Array.isArray(parsed) && parsed.length ? parsed.map(normalizeBlock) : presets[''].map(normalizeBlock);
+			return Array.isArray(parsed) ? parsed.map(normalizeBlock) : [];
 		} catch (e) {
-			return presets[''].map(normalizeBlock);
+			return [];
 		}
 	}
 
@@ -206,7 +123,6 @@
 			cabecera: { icon: 'ti-layout-navbar', label: 'Cabecera' },
 			titulo: { icon: 'ti-heading', label: 'Titulo' },
 			meta: { icon: 'ti-calendar-time', label: 'Metadatos' },
-			aviso: { icon: 'ti-alert-triangle', label: 'Aviso' },
 			imagen: { icon: 'ti-photo', label: 'Imagen' },
 			parrafo: { icon: 'ti-align-left', label: 'Parrafo' },
 			tarjetas: { icon: 'ti-layout-grid', label: 'Tarjetas' },
@@ -240,7 +156,8 @@
 			{ value: 'green', label: 'VERDE' },
 			{ value: 'red', label: 'ROJO' },
 			{ value: 'orange', label: 'NARANJA' },
-			{ value: 'gray', label: 'GRIS' }
+			{ value: 'gray', label: 'GRIS' },
+			{ value: 'white', label: 'BLANCO' }
 		];
 		return '<div class="mb-2"><label class="form-label small mb-1 com-field-label">Color</label><select class="form-select form-select-sm" data-field="tone">' +
 			tones.map(function(tone) {
@@ -263,12 +180,10 @@
 				'<div class="com-control-panel">' + input('Logo URL', 'logo', block.logo, 'url', logoPeCh) + input('Imagen de cabecera URL', 'banner', block.banner, 'url', imagenCabeceraPeCh) +
 				input('Entidad', 'entidad', block.entidad || entidadPeCh) + input('Area', 'area', block.area) + input('Etiqueta', 'badge', block.badge) + toneSelect(block.tone) + '</div>';
 		} else if (block.type === 'titulo') {
-			html += '<div class="com-control-panel">' + input('Icono', 'icon', block.icon) + '<h1 contenteditable="true" data-field="text" style="margin:8px 0 12px;color:#111827;font-size:18px;line-height:1.2;font-weight:800;text-align:center;">' + escapeHtml(block.text) + '</h1>' +
+			html += '<div class="com-control-panel"><h1 contenteditable="true" data-field="text" style="margin:8px 0 12px;color:#111827;font-size:18px;line-height:1.2;font-weight:800;text-align:center;">' + escapeHtml(block.text) + '</h1>' +
 				input('Subtitulo', 'subtitle', block.subtitle) + '</div>';
 		} else if (block.type === 'meta') {
 			html += '<div class="com-control-panel">' + input('Metadatos', 'text', block.text) + '</div>';
-		} else if (block.type === 'aviso') {
-			html += '<div class="com-control-panel">' + toneSelect(block.tone) + input('Titulo', 'title', block.title) + textarea('Texto', 'text', block.text, 3) + '</div>';
 		} else if (block.type === 'tarjetas') {
 			html += '<div class="com-control-panel">' + textarea('Tarjetas: icono|titulo|texto', 'items', block.items, 5) + '</div>';
 		} else if (block.type === 'panel') {
@@ -435,21 +350,16 @@
 			const bg = block.banner ? 'background-image:linear-gradient(90deg,rgba(0,77,153,0.72),rgba(0,0,0,0.12)),url(' + escapeHtml(block.banner) + ');' : 'background:#0b4f7d;';
 			return '<tr><td height="' + headerHeight + '" style="' + bg + 'background-size:cover;background-position:' + escapeHtml(headerPosition) + ';background-repeat:no-repeat;padding:18px 24px;color:#ffffff;height:' + headerHeight + 'px;">' +
 				'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
-				'<td style="vertical-align:top;"><img src="' + escapeHtml(block.logo || logoPeCh) + '" alt="' + escapeHtml(marcaPeCh) + '" style="max-width:235px;height:auto;display:block;border:0;"><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;line-height:1.2;margin-top:8px;">ðŸ› ' + escapeHtml(block.entidad || entidadPeCh) + '</div><div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;">ðŸ’» ' + escapeHtml(block.area) + '</div></td>' +
+				'<td style="vertical-align:top;"><img src="' + escapeHtml(block.logo || logoPeCh) + '" alt="' + escapeHtml(marcaPeCh) + '" style="max-width:235px;height:auto;display:block;border:0;"><div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:800;line-height:1.2;margin-top:8px;">' + escapeHtml(block.entidad || entidadPeCh) + '</div><div style="font-family:Arial,Helvetica,sans-serif;font-size:11px;">' + escapeHtml(block.area) + '</div></td>' +
 				'<td align="right" style="vertical-align:top;"><span style="display:inline-block;background:' + color.solid + ';color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800;border-radius:18px;padding:8px 15px;">' + escapeHtml(block.badge) + '</span></td>' +
 				'</tr></table></td></tr>';
 		}
 		if (block.type === 'titulo') {
-			return '<tr><td style="padding:18px 26px 6px 26px;text-align:center;"><h1 style="margin:0;color:#111827;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.22;font-weight:800;">' + escapeHtml(block.icon) + ' ' + escapeHtml(block.text) + '</h1>' +
+			return '<tr><td style="padding:18px 26px 6px 26px;text-align:center;"><h1 style="margin:0;color:#111827;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.22;font-weight:800;">' + escapeHtml(block.text) + '</h1>' +
 				(block.subtitle ? '<div style="margin-top:8px;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.35;">' + escapeHtml(block.subtitle) + '</div>' : '') + '</td></tr>';
 		}
 		if (block.type === 'meta') {
 			return '<tr><td style="padding:0 26px 14px 26px;text-align:center;color:#334155;font-family:Arial,Helvetica,sans-serif;font-size:10px;">' + escapeHtml(block.text) + '</td></tr>';
-		}
-		if (block.type === 'aviso') {
-			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:9px;padding:11px 13px;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">' +
-				'<div style="color:' + color.title + ';font-weight:800;font-size:13px;">' + escapeHtml(block.title) + '</div>' +
-				(block.text ? '<div style="margin-top:6px;font-size:11px;line-height:1.45;">' + nl2br(block.text) + '</div>' : '') + '</div></td></tr>';
 		}
 		if (block.type === 'parrafo') {
 			return '<tr><td style="padding:10px 26px;"><div style="font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:12px;line-height:1.65;text-align:left;">' + nl2br(block.text) + '</div></td></tr>';
@@ -469,25 +379,25 @@
 			return '<tr><td style="padding:9px 21px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">' + rows + '</table></td></tr>';
 		}
 		if (block.type === 'panel') {
-			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:14px;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">' +
+			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:14px;font-family:Arial,Helvetica,sans-serif;color:' + color.text + ';">' +
 				'<div style="color:' + color.title + ';font-weight:800;font-size:13px;margin-bottom:8px;">' + escapeHtml(block.title) + '</div><div style="font-size:11px;line-height:1.55;">' + nl2br(block.text) + '</div></div></td></tr>';
 		}
 		if (block.type === 'lista') {
 			const items = splitLines(block.items).map(function(item) {
 				return '<div style="margin:5px 0;font-size:11px;line-height:1.38;">' + escapeHtml(item) + '</div>';
 			}).join('');
-			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:14px;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">' +
+			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:14px;font-family:Arial,Helvetica,sans-serif;color:' + color.text + ';">' +
 				(block.title ? '<div style="color:' + color.title + ';font-weight:800;font-size:13px;margin-bottom:8px;">' + escapeHtml(block.title) + '</div>' : '') + items + '</div></td></tr>';
 		}
 		if (block.type === 'boton') {
 			return '<tr><td style="padding:12px 26px;text-align:center;"><a href="' + escapeHtml(block.href || '#') + '" style="display:inline-block;background:' + color.solid + ';color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.2;text-decoration:none;padding:11px 22px;border-radius:7px;font-weight:800;">' + escapeHtml(block.text) + '</a></td></tr>';
 		}
 		if (block.type === 'adjunto') {
-			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:16px;font-family:Arial,Helvetica,sans-serif;color:#0f172a;text-align:left;">' +
-				'<div style="color:' + color.title + ';font-weight:800;font-size:13px;margin-bottom:10px;">ðŸ“ ' + escapeHtml(block.title) + '</div>' +
+			return '<tr><td style="padding:9px 26px;"><div style="background:' + color.bg + ';border:1px solid ' + color.border + ';border-radius:10px;padding:16px;font-family:Arial,Helvetica,sans-serif;color:' + color.text + ';text-align:left;">' +
+				'<div style="color:' + color.title + ';font-weight:800;font-size:13px;margin-bottom:10px;">' + escapeHtml(block.title) + '</div>' +
 				'<div style="font-size:12px;line-height:1.5;margin-bottom:14px;">' + nl2br(block.text) + '</div>' +
-				'<div style="text-align:center;"><a href="' + escapeHtml(block.href || '#') + '" style="display:inline-block;background:' + color.solid + ';color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.2;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:800;">â¬‡ ' + escapeHtml(block.button || 'DESCARGAR ARCHIVO') + '</a>' +
-				(block.fileName ? '<div style="font-size:11px;color:#0f5132;margin-top:10px;">' + escapeHtml(block.fileName) + '</div>' : '') +
+				'<div style="text-align:center;"><a href="' + escapeHtml(block.href || '#') + '" style="display:inline-block;background:' + color.solid + ';color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.2;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:800;">' + escapeHtml(block.button || 'DESCARGAR ARCHIVO') + '</a>' +
+				(block.fileName ? '<div style="font-size:11px;color:' + color.text + ';margin-top:10px;">' + escapeHtml(block.fileName) + '</div>' : '') +
 				'</div></div></td></tr>';
 		}
 		if (block.type === 'firma') {
@@ -520,10 +430,8 @@
 			} catch (e) {
 				nextBlocks = [];
 			}
-		} else {
-			nextBlocks = getPresetBlocks(selectorPlantilla.value);
 		}
-		blocks = (Array.isArray(nextBlocks) && nextBlocks.length ? nextBlocks : getPresetBlocks('')).map(normalizeBlock);
+		blocks = Array.isArray(nextBlocks) ? nextBlocks.map(normalizeBlock) : [];
 		selectedId = null;
 		const firstTitle = blocks.find(function(block) { return block.type === 'titulo' && block.text; });
 		if (firstTitle && !document.getElementById('tituloComunicado').value.trim()) {
@@ -607,7 +515,6 @@
 			IdComunicado: shell.dataset.id || '',
 			IdPlantilla: idPlantillaRaw,
 			TituloComunicado: titulo,
-			AsuntoCorreo: document.getElementById('asuntoCorreo').value.trim(),
 			EstadoComunicado: document.getElementById('estadoComunicado').value,
 			ContenidoJson: JSON.stringify(blocks),
 			HtmlFinal: generateHtml()
@@ -661,28 +568,6 @@
 				window.comNotifySafe('danger', 'Error de conexion', 'No se pudo conectar con el servidor.');
 			});
 		});
-	});
-
-	document.getElementById('btnCopiarHtml').addEventListener('click', function() {
-		const html = generateHtml();
-		function done(ok) {
-			window.comNotifySafe(ok ? 'success' : 'danger', ok ? 'HTML copiado' : 'No se pudo copiar', ok ? 'Pegue el contenido en su correo institucional.' : 'Intente copiar nuevamente.');
-		}
-		if (navigator.clipboard && navigator.clipboard.writeText) {
-			navigator.clipboard.writeText(html).then(function() { done(true); }).catch(function() { done(false); });
-			return;
-		}
-		const temporal = document.createElement('textarea');
-		temporal.value = html;
-		temporal.style.position = 'fixed';
-		temporal.style.left = '-9999px';
-		temporal.style.top = '0';
-		document.body.appendChild(temporal);
-		temporal.focus();
-		temporal.select();
-		const copied = document.execCommand('copy');
-		document.body.removeChild(temporal);
-		done(copied);
 	});
 
 	email.addEventListener('click', function() {

@@ -69,7 +69,6 @@ switch ($action) {
 		$datos = [
 			'IdPlantilla' => $payload['IdPlantilla'] ?? null,
 			'TituloComunicado' => $titulo,
-			'AsuntoCorreo' => $payload['AsuntoCorreo'] ?? null,
 			'ContenidoJson' => $payload['ContenidoJson'] ?? '[]',
 			'HtmlFinal' => $payload['HtmlFinal'] ?? null,
 			'EstadoComunicado' => $payload['EstadoComunicado'] ?? 'BORRADOR',
@@ -141,7 +140,9 @@ switch ($action) {
 	case 'editor':
 		$vistaActual = 'comunicado_editor';
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+		$idPlantilla = isset($_GET['plantilla']) ? (int) $_GET['plantilla'] : 0;
 		$comunicado = $id > 0 ? $model->obtener($id) : null;
+		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla) : null;
 		$plantillas = $plantillaModel->listar(true);
 		$archivos = $archivoModel->listar(true);
 		break;

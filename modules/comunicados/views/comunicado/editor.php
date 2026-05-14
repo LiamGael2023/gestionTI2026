@@ -1,13 +1,15 @@
 <?php
 $comunicado = isset($comunicado) && is_array($comunicado) ? $comunicado : null;
+$plantillaBase = isset($plantillaBase) && is_array($plantillaBase) ? $plantillaBase : null;
 $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 $archivos = isset($archivos) && is_array($archivos) ? $archivos : [];
 
-$initialBlocks = $comunicado && !empty($comunicado['ContenidoJson']) ? (string) $comunicado['ContenidoJson'] : '[]';
+$initialBlocks = $comunicado && !empty($comunicado['ContenidoJson']) ? (string) $comunicado['ContenidoJson'] : ($plantillaBase && !empty($plantillaBase['ContenidoJson']) ? (string) $plantillaBase['ContenidoJson'] : '[]');
 $initialBlocksScript = str_ireplace('</script', '<\/script', $initialBlocks ?: '[]');
 $initialId = $comunicado ? (int) $comunicado['IdComunicado'] : 0;
-$initialPlantilla = $comunicado ? (int) ($comunicado['IdPlantilla'] ?? 0) : 0;
+$initialPlantilla = $comunicado ? (int) ($comunicado['IdPlantilla'] ?? 0) : ($plantillaBase ? (int) ($plantillaBase['IdPlantilla'] ?? 0) : 0);
 $initialEstado = $comunicado ? (string) ($comunicado['EstadoComunicado'] ?? 'BORRADOR') : 'BORRADOR';
+$initialTitulo = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? '') : ($plantillaBase ? 'Nuevo comunicado - ' . (string) ($plantillaBase['NombrePlantilla'] ?? 'Plantilla') : '');
 ?>
 
 <style>
@@ -180,9 +182,6 @@ $initialEstado = $comunicado ? (string) ($comunicado['EstadoComunicado'] ?? 'BOR
 				<button type="button" class="btn btn-outline-primary" id="btnGuardarComoPlantilla">
 					<i class="ti ti-template me-1"></i>Plantilla
 				</button>
-				<button type="button" class="btn btn-success" id="btnCopiarHtml">
-					<i class="ti ti-copy me-1"></i>Copiar HTML
-				</button>
 			</div>
 		</div>
 	</div>
@@ -196,7 +195,6 @@ $initialEstado = $comunicado ? (string) ($comunicado['EstadoComunicado'] ?? 'BOR
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="cabecera"><i class="ti ti-layout-navbar me-2"></i>Cabecera PECH</button>
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="titulo"><i class="ti ti-heading me-2"></i>Titulo</button>
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="meta"><i class="ti ti-calendar-time me-2"></i>Metadatos</button>
-						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="aviso"><i class="ti ti-alert-triangle me-2"></i>Aviso</button>
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="imagen"><i class="ti ti-photo me-2"></i>Imagen</button>
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="parrafo"><i class="ti ti-align-left me-2"></i>Parrafo</button>
 						<button type="button" class="btn btn-outline-primary com-block-button" draggable="true" data-block-type="tarjetas"><i class="ti ti-layout-grid me-2"></i>Tarjetas</button>
@@ -210,13 +208,7 @@ $initialEstado = $comunicado ? (string) ($comunicado['EstadoComunicado'] ?? 'BOR
 
 					<label class="form-label" for="selectorPlantilla">Plantilla</label>
 					<select class="form-select mb-3" id="selectorPlantilla">
-						<option value="">Estandar: PECH informativo</option>
-						<option value="pred_siga_salida">Estandar: SIGA suspendido</option>
-						<option value="pred_siga_ok">Estandar: SIGA restablecido</option>
-						<option value="pred_evento">Estandar: Evento / webinar</option>
-						<option value="pred_modulo">Estandar: Nuevo modulo</option>
-						<option value="pred_bim">Estandar: Capacitacion compacta</option>
-						<option value="pred_salud">Estandar: Campana preventiva</option>
+						<option value="">Seleccione una plantilla</option>
 						<?php foreach ($plantillas as $plantilla): ?>
 							<option value="db_<?php echo (int) $plantilla['IdPlantilla']; ?>" <?php echo $initialPlantilla === (int) $plantilla['IdPlantilla'] ? 'selected' : ''; ?> data-json="<?php echo htmlspecialchars((string) $plantilla['ContenidoJson'], ENT_QUOTES, 'UTF-8'); ?>">
 								<?php echo htmlspecialchars((string) $plantilla['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>
@@ -227,11 +219,7 @@ $initialEstado = $comunicado ? (string) ($comunicado['EstadoComunicado'] ?? 'BOR
 					<div class="row g-2">
 						<div class="col-12">
 							<label class="form-label" for="tituloComunicado">Titulo</label>
-							<input type="text" class="form-control" id="tituloComunicado" maxlength="200" value="<?php echo htmlspecialchars((string) ($comunicado['TituloComunicado'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-						</div>
-						<div class="col-12">
-							<label class="form-label" for="asuntoCorreo">Asunto</label>
-							<input type="text" class="form-control" id="asuntoCorreo" maxlength="250" value="<?php echo htmlspecialchars((string) ($comunicado['AsuntoCorreo'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+							<input type="text" class="form-control" id="tituloComunicado" maxlength="200" value="<?php echo htmlspecialchars($initialTitulo, ENT_QUOTES, 'UTF-8'); ?>">
 						</div>
 						<div class="col-12">
 							<label class="form-label" for="estadoComunicado">Estado</label>

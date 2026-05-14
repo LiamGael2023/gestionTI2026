@@ -35,6 +35,20 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 						<td><span class="badge <?php echo $activo ? 'bg-success-lt' : 'bg-secondary-lt'; ?>"><?php echo $activo ? 'Activa' : 'Inactiva'; ?></span></td>
 						<td class="text-end align-middle">
 							<div class="btn-group" role="group">
+								<?php if ($activo): ?>
+									<a class="btn btn-icon btn-lg js-com-link"
+										title="Usar en comunicado nuevo"
+										href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
+										<i class="ti ti-copy-plus fs-2"></i>
+									</a>
+								<?php endif; ?>
+								<button type="button"
+									class="btn btn-icon btn-lg js-preview-plantilla"
+									title="Previsualizar"
+									data-nombre="<?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>"
+									data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+									<i class="ti ti-eye fs-2"></i>
+								</button>
 								<button type="button"
 									class="btn btn-icon btn-lg js-editar-plantilla"
 									title="Editar"
@@ -72,24 +86,17 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 			</div>
 			<form id="formPlantilla">
 				<input type="hidden" id="plantillaId" name="IdPlantilla">
+				<input type="hidden" id="plantillaJson" value="[]">
+				<input type="hidden" id="plantillaHtml" value="">
 				<div class="modal-body">
 					<div class="row g-3">
-						<div class="col-12 col-md-6">
+						<div class="col-12">
 							<label class="form-label" for="plantillaNombre">Nombre</label>
 							<input type="text" class="form-control" id="plantillaNombre" maxlength="150" required>
 						</div>
-						<div class="col-12 col-md-6">
+						<div class="col-12">
 							<label class="form-label" for="plantillaDescripcion">Descripcion</label>
 							<input type="text" class="form-control" id="plantillaDescripcion" maxlength="500">
-						</div>
-						<div class="col-12">
-							<label class="form-label" for="plantillaJson">Bloques JSON</label>
-							<textarea class="form-control font-monospace" id="plantillaJson" rows="5">[]</textarea>
-							<div class="form-hint">El editor tambien puede guardar plantillas desde el constructor.</div>
-						</div>
-						<div class="col-12">
-							<label class="form-label" for="plantillaHtml">HTML base</label>
-							<textarea class="form-control font-monospace" id="plantillaHtml" rows="5"></textarea>
 						</div>
 					</div>
 				</div>
@@ -102,16 +109,33 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 	</div>
 </div>
 
+<div class="modal fade" id="modalPreviewPlantilla" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-xl modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="modalPreviewPlantillaTitulo">Previsualizar plantilla</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body bg-light">
+				<iframe id="plantillaPreviewFrame" title="Previsualizacion de plantilla" sandbox="" style="width:100%;height:70vh;border:1px solid #d9dee3;border-radius:8px;background:#ffffff;"></iframe>
+			</div>
+		</div>
+	</div>
+</div>
+
 <script>
 	(function() {
 		const modalEl = document.getElementById('modalPlantilla');
 		const modal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+		const previewModalEl = document.getElementById('modalPreviewPlantilla');
+		const previewModal = previewModalEl ? bootstrap.Modal.getOrCreateInstance(previewModalEl) : null;
 		const form = document.getElementById('formPlantilla');
 
 		function limpiar() {
 			form.reset();
 			document.getElementById('plantillaId').value = '';
 			document.getElementById('plantillaJson').value = '[]';
+			document.getElementById('plantillaHtml').value = '';
 			document.getElementById('modalPlantillaTitulo').textContent = 'Nueva plantilla';
 		}
 
@@ -123,6 +147,16 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 			}).then(function(response) {
 				return response.json();
 			});
+		}
+
+		function previewHtml(nombre, html) {
+			if (!html) {
+				window.comNotifySafe('warning', 'Sin vista previa', 'Esta plantilla no tiene HTML base guardado.');
+				return;
+			}
+			document.getElementById('modalPreviewPlantillaTitulo').textContent = nombre || 'Previsualizar plantilla';
+			document.getElementById('plantillaPreviewFrame').srcdoc = html;
+			previewModal.show();
 		}
 
 		document.querySelector('[data-bs-target="#modalPlantilla"]').addEventListener('click', limpiar);
@@ -139,9 +173,15 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 			});
 		});
 
+		document.querySelectorAll('.js-preview-plantilla').forEach(function(btn) {
+			btn.addEventListener('click', function() {
+				previewHtml(this.dataset.nombre || '', this.dataset.html || '');
+			});
+		});
+
 		form.addEventListener('submit', function(event) {
 			event.preventDefault();
-			let json = document.getElementById('plantillaJson').value.trim() || '[]';
+			const json = document.getElementById('plantillaJson').value.trim() || '[]';
 			try {
 				JSON.parse(json);
 			} catch (e) {
