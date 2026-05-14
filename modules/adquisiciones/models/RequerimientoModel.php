@@ -283,7 +283,7 @@ class RequerimientoModel
 	// Registra un nuevo requerimiento con su centro de costo y meta asociada.
 	public function guardarRequerimiento($datos)
 	{
-		$codigoMeta = adqNormalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '000';
+		$codigoMeta = adqNormalizarCodigoMeta($datos['CodigoMeta'] ?? null) ?? '0000';
 		$idMetaSiaf = isset($datos['IdMetaSIAF']) ? (int) $datos['IdMetaSIAF'] : 0;
 		$idMetaSiaf = $idMetaSiaf > 0 ? $idMetaSiaf : null;
 
@@ -292,10 +292,15 @@ class RequerimientoModel
 		}
 
 		$sql = "
+			SET NOCOUNT ON;
+			DECLARE @nuevoRequerimiento TABLE (Id INT);
+
 			INSERT INTO adquisiciones.Requerimiento
 				(IdCentroCosto, IdMetaSIAF, NroPedidoCompra, CodigoMeta, Anio, FechaRegistro, Estado, idUsuarioRegistro)
-			OUTPUT INSERTED.Id
-			VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?)
+			OUTPUT INSERTED.Id INTO @nuevoRequerimiento
+			VALUES (?, ?, ?, ?, ?, GETDATE(), 0, ?);
+
+			SELECT TOP 1 Id FROM @nuevoRequerimiento;
 		";
 
 		$params = [

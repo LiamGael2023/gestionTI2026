@@ -16,9 +16,9 @@
 		</select>
 	</div>
 	<div class="d-flex gap-2">
-		<button class="btn btn-success" onclick="abrirModalImportar()">
+		<!--button class="btn btn-success" onclick="abrirModalImportar()">
 			Importar de SIGA
-		</button>
+		</button-->
 		<button class="btn btn-primary" onclick="nuevoRequerimiento()">
 			Agregar Requerimiento
 		</button>
@@ -109,7 +109,7 @@
 				<h5 class="modal-title">Nuevo Requerimiento</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
-			<form id="form-requerimiento" method="post" action="index.php?module=adquisiciones&action=guardarForm">
+			<form id="form-requerimiento" method="post" action="<?php echo htmlspecialchars(($_SERVER['SCRIPT_NAME'] ?? 'index.php') . '?module=adquisiciones&action=guardarForm', ENT_QUOTES, 'UTF-8'); ?>">
 				<input type="hidden" name="Id" id="IdRequerimiento" value="">
 				<div class="modal-body">
 					<div class="mb-3">
@@ -140,7 +140,7 @@
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Meta SIGA</label>
-						<input type="text" name="CodigoMeta" id="CodigoMeta" class="form-control" placeholder="0000" maxlength="4" pattern="[A-Za-z0-9]{0,4}" autocomplete="off">
+						<input type="text" name="CodigoMeta" id="CodigoMeta" class="form-control" placeholder="0000" maxlength="4" pattern="[A-Za-z0-9]{0,4}">
 					</div>
 					<div class="mb-3">
 						<label class="form-label">Año</label>
@@ -215,6 +215,58 @@
 </div>
 
 <script>
+	const ADQ_INDEX_URL = <?php echo json_encode($_SERVER['SCRIPT_NAME'] ?? 'index.php'); ?>;
+	const ADQ_AJAX_URL = <?php
+		$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+		$scriptDir = $scriptDir === '/' || $scriptDir === '.' ? '' : rtrim($scriptDir, '/');
+		echo json_encode($scriptDir . '/modules/adquisiciones/ajax.php');
+	?>;
+
+	function urlAdquisiciones(action, params) {
+		const url = new URL(ADQ_INDEX_URL, window.location.origin);
+		url.searchParams.set('module', 'adquisiciones');
+		url.searchParams.set('action', action);
+
+		Object.keys(params || {}).forEach(function(key) {
+			const value = params[key];
+			if (value !== undefined && value !== null && value !== '') {
+				url.searchParams.set(key, value);
+			}
+		});
+
+		return url.pathname + url.search;
+	}
+
+	function urlAdquisicionesAjax(action, params) {
+		const url = new URL(ADQ_AJAX_URL, window.location.origin);
+		url.searchParams.set('action', action);
+
+		Object.keys(params || {}).forEach(function(key) {
+			const value = params[key];
+			if (value !== undefined && value !== null && value !== '') {
+				url.searchParams.set(key, value);
+			}
+		});
+
+		return url.pathname + url.search;
+	}
+
+	// Lee respuestas AJAX y reporta cuando el servidor no devuelve JSON valido.
+	function leerRespuestaJson(resp) {
+		return resp.text().then(function(texto) {
+			if (!resp.ok) {
+				throw new Error('Error HTTP ' + resp.status);
+			}
+
+			try {
+				return JSON.parse(texto);
+			} catch (error) {
+				const detalle = texto.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+				throw new Error(detalle ? detalle.slice(0, 220) : 'Respuesta no valida del servidor.');
+			}
+		});
+	}
+
 	// Codifica caracteres especiales de HTML para prevenir inyecciones XSS
 	function escapeHtml(texto) {
 		return String(texto)
@@ -375,7 +427,7 @@
 	function filtrarPorAnio() {
 		const filtro = document.getElementById('filtroAnio');
 		const anio = filtro ? filtro.value : '';
-		const url = 'index.php?module=adquisiciones&action=requerimientos' + (anio ? '&anio=' + anio : '');
+		const url = urlAdquisiciones('requerimientos', { anio: anio });
 		if (typeof window.cargarVistaAdquisiciones === 'function') {
 			window.cargarVistaAdquisiciones(url);
 			return;
@@ -461,7 +513,7 @@
 			if (sinResultados) sinResultados.style.display = 'none';
 			if (loading) loading.style.display = 'block';
 
-			fetch('index.php?module=adquisiciones&action=buscarPedidosSigaAjax', {
+			fetch(urlAdquisicionesAjax('buscarPedidosSigaAjax'), {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -471,10 +523,7 @@
 					}).toString()
 				})
 				.then(function(resp) {
-					if (!resp.ok) {
-						throw new Error('Error HTTP');
-					}
-					return resp.json();
+					return leerRespuestaJson(resp);
 				})
 				.then(function(response) {
 					btn.disabled = false;
@@ -536,7 +585,7 @@
 		btn.disabled = true;
 		btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-		fetch('index.php?module=adquisiciones&action=importarPedidoSigaAjax', {
+		fetch(urlAdquisicionesAjax('importarPedidoSigaAjax'), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -596,7 +645,7 @@
 			const anio = anioEl ? anioEl.value : '';
 			const action = idRequerimiento ? 'actualizarAjax' : 'guardarAjax';
 
-			fetch('index.php?module=adquisiciones&action=' + action, {
+			fetch(urlAdquisicionesAjax(action), {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -604,10 +653,7 @@
 					body: new URLSearchParams(new FormData(form)).toString()
 				})
 				.then(function(resp) {
-					if (!resp.ok) {
-						throw new Error('Error HTTP');
-					}
-					return resp.json();
+					return leerRespuestaJson(resp);
 				})
 				.then(function(response) {
 					if (response.success) {
@@ -634,15 +680,15 @@
 						window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el requerimiento.');
 					}
 				})
-				.catch(function() {
-					window.adqNotifySafe('danger', 'Error de solicitud', 'Ocurrio un error al procesar la solicitud.');
+				.catch(function(error) {
+					window.adqNotifySafe('danger', 'Error de solicitud', error.message || 'Ocurrio un error al procesar la solicitud.');
 				});
 		});
 	}
 
 	// Navega a la página de detalles de un requerimiento específico
 	function detalleRequerimiento(id) {
-		const url = 'index.php?module=adquisiciones&action=requerimiento&id=' + id;
+		const url = urlAdquisiciones('requerimiento', { id: id });
 		if (typeof window.cargarVistaAdquisiciones === 'function') {
 			window.cargarVistaAdquisiciones(url);
 			return;
@@ -664,7 +710,7 @@
 			return;
 		}
 
-		fetch('index.php?module=adquisiciones&action=eliminarAjax', {
+		fetch(urlAdquisicionesAjax('eliminarAjax'), {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
