@@ -54,9 +54,16 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
 
 Auth::check(); 
 
-// Evita contaminar respuestas JSON/PDF de adquisiciones con el layout global.
-if ($module === 'adquisiciones' && preg_match('/Ajax$/', (string) $action)) {
-    include 'modules/adquisiciones/controllers/AdquisicionesController.php';
+// Evita contaminar respuestas JSON/PDF de modulos internos con el layout global.
+if (in_array($module, ['adquisiciones', 'comunicados'], true) && preg_match('/Ajax$/', (string) $action)) {
+    $nombreControladorAjax = ucfirst($module) . "Controller.php";
+    include "modules/$module/controllers/$nombreControladorAjax";
+    exit();
+}
+
+// Muestra comunicados como pagina limpia, sin navbar ni layout administrativo.
+if ($module === 'comunicados' && $action === 'visualizar') {
+    include 'modules/comunicados/controllers/ComunicadosController.php';
     exit();
 }
 
