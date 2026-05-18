@@ -407,8 +407,9 @@
                       <td class="small text-muted">' . htmlspecialchars($value["caracteristicas"] ?? '') . '</td>
                       <td><span class="badge ' . $estadoClass . '">' . $estadoLabel . '</span></td>
                       <td class="d-none d-md-table-cell">
-                        <span class="badge badge-outline text-secondary fw-normal">' . '<i class="ti ti-user me-1"></i>' . htmlspecialchars(trim($value["nombreUsuarioRegistro"] ?? '') ?: ('ID '.($value["idUsuarioRegistro"] ?? '—')), ENT_QUOTES, 'UTF-8') . '</span>
+                        <span class="badge bg-blue-lt px-2 py-1 fw-medium">' . '<i class="ti ti-user me-1"></i>' . htmlspecialchars(trim($value["nombreUsuarioRegistro"] ?? '') ?: ('ID '.($value["idUsuarioRegistro"] ?? '—')), ENT_QUOTES, 'UTF-8') . '</span>
                       </td>
+                      
                       <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
                           ' . $btnArmar . '

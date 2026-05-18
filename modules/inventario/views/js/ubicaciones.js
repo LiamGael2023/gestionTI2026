@@ -24,7 +24,7 @@ function mostrarToast(tipo, mensaje) {
 function manejarRespuesta(data, onSuccess) {
     if (!data || typeof data !== 'object') { mostrarToast('error', 'Respuesta inesperada.'); return; }
     const resultado = (data.resultado ?? '').toString().trim();
-    const mensaje   = (data.mensaje   ?? '').toString().trim();
+    const mensaje = (data.mensaje ?? '').toString().trim();
     switch (resultado) {
         case 'ok':
             mostrarToast('success', mensaje || 'Operación realizada correctamente.');
@@ -71,11 +71,11 @@ function crearCustomSelect(selectId) {
         </div>`;
     sel.parentNode.insertBefore(wrap, sel);
 
-    const display  = wrap.querySelector('.cs-display');
-    const panel    = wrap.querySelector('.cs-panel');
+    const display = wrap.querySelector('.cs-display');
+    const panel = wrap.querySelector('.cs-panel');
     const searchIn = wrap.querySelector('.cs-search');
-    const list     = wrap.querySelector('.cs-list');
-    let opciones   = [];
+    const list = wrap.querySelector('.cs-list');
+    let opciones = [];
 
     function abrir() {
         document.querySelectorAll('.cs-wrap.cs-open').forEach(w => { if (w !== wrap) w.classList.remove('cs-open'); });
@@ -156,32 +156,32 @@ function crearCustomSelect(selectId) {
 async function cargarUbicacionesCombo(cs, placeholder) {
     if (!cs) return;
     try {
-        const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php?listarUbicaciones=1');
+        const res = await fetch('modules/inventario/ajax/ubicaciones.ajax.php?listarUbicaciones=1');
         const data = await res.json();
-        
+
         // Limpiamos y agregamos el placeholder
-        const ops  = [{ value: '', label: placeholder }];
-        
+        const ops = [{ value: '', label: placeholder }];
+
         data.forEach(u => {
-            ops.push({ 
-                value: String(u.idUbicacion), 
+            ops.push({
+                value: String(u.idUbicacion),
                 label: u.rutaPropia // Aquí usamos el nombre que viene del Ajax
             });
         });
-        
+
         cs.setOptions(ops);
-    } catch (e) { 
-        console.error('Error cargando combo:', e); 
+    } catch (e) {
+        console.error('Error cargando combo:', e);
     }
 }
 
 /* ─── DOM READY ─── */
 document.addEventListener("DOMContentLoaded", function () {
 
-    const csNuevoPadre     = crearCustomSelect('nuevoIdUbicacionPadre');
-    const csEditarPadre    = crearCustomSelect('editarIdUbicacionPadre');
-    const csNuevoUbicAmb   = crearCustomSelect('nuevoIdUbicacionAmbiente');
-    const csEditarUbicAmb  = crearCustomSelect('editarIdUbicacionAmbiente');
+    const csNuevoPadre = crearCustomSelect('nuevoIdUbicacionPadre');
+    const csEditarPadre = crearCustomSelect('editarIdUbicacionPadre');
+    const csNuevoUbicAmb = crearCustomSelect('nuevoIdUbicacionAmbiente');
+    const csEditarUbicAmb = crearCustomSelect('editarIdUbicacionAmbiente');
 
     /* ── Modal AGREGAR UBICACIÓN ── */
     document.getElementById('modalAgregarUbicacion')
@@ -198,7 +198,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const fd = new FormData();
         fd.append('idUbicacion', btn.getAttribute('data-id'));
         try {
-            const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: fd });
+            const res = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: fd });
             const json = await res.json();
             if (json.error) { mostrarToast('error', json.error); return; }
 
@@ -208,7 +208,7 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('editarIdUbicacion').value = json.idUbicacion;
             document.getElementById('editarDescripcionUbicacion').value = json.descripcion;
             document.getElementById('editarUbicUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
-            document.getElementById('editarUbicFechaCreacion').textContent   = json.fechaCreacion     ?? '--';
+            document.getElementById('editarUbicFechaCreacion').textContent = json.fechaCreacion ?? '--';
 
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarUbicacion')).show();
         } catch { mostrarToast('error', 'Error al cargar la ubicación.'); }
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const fd = new FormData();
         fd.append('idAmbiente', btn.getAttribute('data-id'));
         try {
-            const res  = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: fd });
+            const res = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', { method: 'POST', body: fd });
             const json = await res.json();
             if (json.error) { mostrarToast('error', json.error); return; }
 
@@ -240,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('editarIdAmbiente').value = json.idAmbiente;
             document.getElementById('editarDescripcionAmbiente').value = json.descripcion;
             document.getElementById('editarAmbUsuarioCreacion').textContent = json.idUsuarioRegistro ?? '--';
-            document.getElementById('editarAmbFechaCreacion').textContent   = json.fechaCreacion     ?? '--';
+            document.getElementById('editarAmbFechaCreacion').textContent = json.fechaCreacion ?? '--';
 
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarAmbiente')).show();
         } catch { mostrarToast('error', 'Error al cargar el ambiente.'); }
@@ -271,7 +271,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dom: `<'card-body border-bottom py-3'<'row g-3 align-items-center'<'col-12 col-md-auto'l><'col-12 col-md-auto ms-auto'<'d-flex gap-2'Bf>>>>tr<'card-footer d-flex align-items-center py-2'<'m-0 text-muted small'i><'pagination m-0 ms-auto'p>>`,
             buttons: [
                 { extend: 'excelHtml5', text: '<i class="ti ti-file-spreadsheet"></i>', className: 'btn btn-outline-success btn-sm m-0' },
-                { extend: 'pdfHtml5',   text: '<i class="ti ti-file-description"></i>',  className: 'btn btn-outline-danger btn-sm m-0' }
+                { extend: 'pdfHtml5', text: '<i class="ti ti-file-description"></i>', className: 'btn btn-outline-danger btn-sm m-0' }
             ],
             initComplete: function () {
                 $('.dataTables_filter input').addClass('form-control form-control-sm m-0').attr('placeholder', 'Buscar...');
@@ -280,4 +280,45 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
 });
+
+/* ── Clic ELIMINAR AMBIENTE ── */
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.btnEliminarAmbiente');
+    if (!btn) return;
+
+    document.getElementById('eliminarIdAmbiente').value = btn.getAttribute('data-id');
+    document.getElementById('eliminarAmbNombre').textContent = btn.getAttribute('data-nombre') || '—';
+
+    bootstrap.Modal.getOrCreateInstance(
+        document.getElementById('modalEliminarAmbiente')
+    ).show();
+});
+
+/* ── Confirmar ELIMINAR AMBIENTE ── */
+document.getElementById('btnConfirmarEliminarAmbiente')
+    ?.addEventListener('click', async function () {
+        const id = document.getElementById('eliminarIdAmbiente').value;
+        if (!id) return;
+
+        this.disabled = true;
+        try {
+            const fd = new FormData();
+            fd.append('eliminarIdAmbiente', id);
+
+            const resp = await fetch('modules/inventario/ajax/ubicaciones.ajax.php', {
+                method: 'POST', body: fd
+            });
+            manejarRespuesta(await resp.json(), () => {
+                bootstrap.Modal.getInstance(
+                    document.getElementById('modalEliminarAmbiente')
+                )?.hide();
+                setTimeout(() => location.reload(), 1200);
+            });
+        } catch {
+            mostrarToast('error', 'Error de servidor al eliminar.');
+        } finally {
+            this.disabled = false;
+        }
+    });

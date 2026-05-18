@@ -277,6 +277,9 @@
 
                   if ($ubicaciones && $ubicaciones !== "error") {
                     foreach ($ubicaciones as $u) {
+                      $nombreUbi = trim($u['nombreUsuario'] ?? '');
+                      $mostrarUsuarioUbi = $nombreUbi !== '' ? htmlspecialchars($nombreUbi, ENT_QUOTES, 'UTF-8') : 'ID: ' . $u['idUsuarioRegistro'];
+
 
                       // 1. Manejo de fecha (Simplificado)
                       $fecha = "Sin fecha";
@@ -304,8 +307,11 @@
                         : '<span class="text-secondary opacity-50">Principal (Raíz)</span>') . '
             </td>
             <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
-            <td data-label="Usuario" class="d-none d-sm-table-cell">
-                <span class="badge badge-outline text-muted fw-normal">ID: ' . ($u["idUsuarioRegistro"] ?? '0') . '</span>
+            <td class="d-none d-sm-table-cell">
+              <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
+                <i class="ti ti-user-circle me-1"></i>
+                  ' . $mostrarUsuarioUbi . '
+              </span>
             </td>
             <td class="text-end">
                 <button class="btn btn-sm btn-icon btn-outline-primary btnEditarUbicacion"
@@ -347,6 +353,9 @@
                   $ambientes = AmbienteController::ctrMostrarAmbiente(null, null);
                   if ($ambientes && $ambientes !== "error") {
                     foreach ($ambientes as $a) {
+                      $nombreUamb = trim($a['nombreUsuario'] ?? '');
+                      $mostrarUsuarioAmb = $nombreUbi !== '' ? htmlspecialchars($nombreUamb, ENT_QUOTES, 'UTF-8') : 'ID: ' . $a['idUsuarioRegistro'];
+
                       $fecha = isset($a["fechaCreacion"])
                         ? ($a["fechaCreacion"] instanceof DateTime
                           ? $a["fechaCreacion"]->format("d/m/Y")
@@ -371,16 +380,25 @@
 
     <td data-label="Fecha" class="small text-muted">' . $fecha . '</td>
     
-    <td data-label="Usuario" class="d-none d-sm-table-cell">
-      <span class="badge badge-outline text-muted fw-normal">ID: ' . ($a["idUsuarioRegistro"] ?? '—') . '</span>
-    </td>
+    <td class="d-none d-sm-table-cell">
+              <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
+                <i class="ti ti-user-circle me-1"></i>
+                  ' . $mostrarUsuarioAmb . '
+              </span>
+            </td>
 
-    <td class="text-end">
-      <button class="btn btn-sm btn-icon btn-outline-primary btnEditarAmbiente"
-              data-id="' . $a["idAmbiente"] . '" title="Editar">
-        <i class="ti ti-edit"></i>
-      </button>
-    </td>
+    <td class="text-end d-flex justify-content-end gap-1">
+  <button class="btn btn-sm btn-icon btn-outline-primary btnEditarAmbiente"
+          data-id="' . $a["idAmbiente"] . '" title="Editar">
+    <i class="ti ti-edit"></i>
+  </button>
+  <button class="btn btn-sm btn-icon btn-outline-danger btnEliminarAmbiente"
+          data-id="' . $a["idAmbiente"] . '"
+          data-nombre="' . htmlspecialchars($a["descripcion"] ?? '', ENT_QUOTES, 'UTF-8') . '"
+          title="Eliminar">
+    <i class="ti ti-trash"></i>
+  </button>
+</td>
   </tr>';
                     }
                   }
@@ -718,6 +736,47 @@
           </button>
         </div>
       </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════ MODAL ELIMINAR AMBIENTE ════════════════════════ -->
+<div class="modal modal-blur fade" id="modalEliminarAmbiente" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+
+      <div class="modal-header px-4 pt-4 pb-3"
+        style="background:#fff3f3;border-bottom:1px solid #f5c2c7;flex-shrink:0">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center text-white"
+            style="width:46px;height:46px;background:#d63939;flex-shrink:0">
+            <i class="ti ti-trash fs-2"></i>
+          </div>
+          <div>
+            <h5 class="mb-0 fw-bold text-danger">Eliminar Ambiente</h5>
+            <small class="text-muted">Esta acción no se puede deshacer</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body px-4 py-3 text-center">
+        <p class="mb-1">¿Estás seguro de eliminar el ambiente:</p>
+        <p class="fw-bold fs-5" id="eliminarAmbNombre">—</p>
+        <p class="text-muted small">Se eliminará el registro y se desvinculará de su ubicación.</p>
+      </div>
+
+      <div class="modal-footer px-4 pb-4 pt-2 justify-content-center gap-2"
+        style="border-top:1px solid #f5c2c7;flex-shrink:0">
+        <input type="hidden" id="eliminarIdAmbiente">
+        <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">
+          <i class="ti ti-x me-1"></i>Cancelar
+        </button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarEliminarAmbiente">
+          <i class="ti ti-trash me-1"></i>Sí, eliminar
+        </button>
+      </div>
 
     </div>
   </div>

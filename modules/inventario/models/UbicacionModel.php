@@ -66,9 +66,11 @@ static public function mdlMostrarUbicacion($item, $valor)
         FROM inventario.ubicacion u
         INNER JOIN Jerarquia j ON u.idUbicacionPadre = j.idUbicacion
     )
-    SELECT u.*, j.rutaPropia 
+    SELECT u.*, j.rutaPropia,
+            LTRIM(RTRIM(ISNULL(us.nombres, '') + ' ' + ISNULL(us.apellidos, ''))) as nombreUsuario
     FROM inventario.ubicacion u
-    LEFT JOIN Jerarquia j ON u.idUbicacion = j.idUbicacion";
+    LEFT JOIN Jerarquia j ON u.idUbicacion = j.idUbicacion
+    LEFT JOIN comun.Usuarios us ON us.id_usuario =  u.idUsuarioRegistro";
 
     if ($item !== null) {
         $sql .= " WHERE u.$item = ?";

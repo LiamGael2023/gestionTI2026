@@ -67,9 +67,11 @@ class AmbienteModel
         )
         SELECT 
             a.*, 
-            j.rutaCompleta AS nombreUbicacion -- Usamos el mismo nombre que espera tu vista
+            j.rutaCompleta AS nombreUbicacion,
+            LTRIM(RTRIM(ISNULL(us.nombres, '') + ' ' + ISNULL(us.apellidos, ''))) as nombreUsuario
         FROM inventario.ambiente a
         LEFT JOIN JerarquiaUbicaciones j ON a.idUbicacion = j.idUbicacion
+        LEFT JOIN comun.Usuarios us ON us.id_usuario =  a.idUsuarioRegistro
     ";
 
         if ($item !== null) {
@@ -91,4 +93,14 @@ class AmbienteModel
         sqlsrv_close($conn);
         return $resultado;
     }
+
+   static public function mdlEliminarAmbiente($idAmbiente)
+{
+    return self::ejecutarSP(
+        "{call inventario.sp_EliminarAmbiente(?)}",
+        [
+            [$idAmbiente, SQLSRV_PARAM_IN],
+        ]
+    );
+}
 }

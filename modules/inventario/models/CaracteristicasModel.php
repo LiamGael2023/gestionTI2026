@@ -98,12 +98,11 @@ class CaracteristicasModel
 
         } else {
             // Consulta general — solo activos
-            $sql = "SELECT c.*, t.descripcion AS tipoDescripcion
-                    FROM $tabla c
+            $sql = "SELECT c.*, u.*, t.descripcion AS tipoDescripcion
+                    FROM $tabla as c
                     LEFT JOIN inventario.tipoCaracteristica t
                       ON c.idTipoCaracteristica = t.idTipoCaracteristica
-                    WHERE c.activo = 1
-                    ORDER BY c.valor ASC";
+                    LEFT JOIN comun.Usuarios u ON u.id_usuario = c.idUsuarioCreacion WHERE c.activo = 1 ORDER BY descripcion ASC";
 
             $stmt = sqlsrv_query($conn, $sql);
 

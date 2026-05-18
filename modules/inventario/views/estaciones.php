@@ -58,6 +58,9 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
                 $estaciones = EstacionController::ctrMostrarEstacion(null, null);
                 if (!is_array($estaciones)) $estaciones = [];
                 foreach ($estaciones as $e) {
+                    $nombreU = trim($e['nombreUsuario'] ?? '');
+                    $mostrarUsuario = $nombreU !== '' ? htmlspecialchars($nombreU, ENT_QUOTES, 'UTF-8') : 'ID: ' . $e['idUsuarioRegistro'];
+
                     $fecha = isset($e["fechaCreacion"])
                         ? ($e["fechaCreacion"] instanceof DateTime
                             ? $e["fechaCreacion"]->format("d/m/Y")
@@ -114,8 +117,11 @@ if (session_status() == PHP_SESSION_NONE) { session_start(); }
                       <td>' . $equiposBadge . '</td>
                       <td class="small text-muted">' . $fecha . '</td>
                       <td class="d-none d-sm-table-cell">
-                        <span class="badge badge-outline text-muted fw-normal">ID: ' . $e["idUsuarioRegistro"] . '</span>
-                      </td>
+                                <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
+                                    <i class="ti ti-user-circle me-1"></i>
+                                    ' . $mostrarUsuario . '
+                                </span>
+                            </td>
                       <td class="text-end">
                         <div class="d-flex justify-content-end gap-1">
                           <button type="button"

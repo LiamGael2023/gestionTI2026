@@ -87,7 +87,7 @@
                                             </td>
                                             <td data-label="Fecha" class="text-muted small">' . $fecha . '</td>
                                             <td data-label="Usuario" class="d-none d-sm-table-cell">
-                                                <span class="badge badge-outline text-muted fw-normal">ID: ' . htmlspecialchars($value["idUsuarioRegistro"], ENT_QUOTES) . '</span>
+                                                <span class="badge bg-blue-lt px-2 py-1 fw-medium"><i class="ti ti-user-circle me-1"></i>' . htmlspecialchars($value["nombres"] . ' ' . $value["apellidos"], ENT_QUOTES) . '</span>
                                             </td>
                                             <td class="text-end">
                                                 <div class="btn-list justify-content-end">

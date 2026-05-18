@@ -48,6 +48,7 @@ class IpModel
         $baseFrom = "
             FROM inventario.ip i
             LEFT JOIN inventario.ubicacion u ON i.idUbicacion = u.idUbicacion
+            LEFT JOIN comun.Usuarios us ON us.id_usuario =  i.idUsuarioRegistro
         ";
 
         // Total sin filtro
@@ -114,7 +115,8 @@ class IpModel
                    i.idUsuarioRegistro,
                    i.fechaCreacion,
                    i.idUsuarioModifica,
-                   i.fechaModificacion
+                   i.fechaModificacion,
+                   LTRIM(RTRIM(ISNULL(us.nombres, '') + ' ' + ISNULL(us.apellidos, ''))) as nombreUsuario
             $baseFrom
             $whereClause
             ORDER BY $orderExpr

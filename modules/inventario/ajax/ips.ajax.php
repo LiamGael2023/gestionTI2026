@@ -75,8 +75,8 @@ if (isset($_GET["serverSide"])) {
                         . htmlspecialchars($ip["descripcionUbicacion"] ?? '') . '</span>',
             "estado"   => $estadoBadge,
             "fecha"    => '<span class="small text-muted">' . fmtFecha($ip["fechaCreacion"] ?? null) . '</span>',
-            "usuario"  => '<span class="badge badge-outline text-muted fw-normal">ID: '
-                        . htmlspecialchars($ip["idUsuarioRegistro"] ?? '') . '</span>',
+            "usuario"  => '<span class="badge bg-blue-lt px-2 py-1 fw-medium"><i class="ti ti-user-circle me-1"></i>'
+                        . htmlspecialchars($ip["nombreUsuario"] ?? '') . '</span>',
             "acciones" => '<button class="btn btn-sm btn-icon btn-outline-primary btnEditarIp"'
                         . ' data-id="' . intval($ip["idIp"]) . '" title="Editar">'
                         . '<i class="ti ti-edit"></i></button>',

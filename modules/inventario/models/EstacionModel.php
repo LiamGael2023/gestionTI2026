@@ -195,18 +195,20 @@ class EstacionModel
             WHERE ip2.idEstacion = est.idEstacion) AS ipsIds,
            (SELECT STRING_AGG(ip2.ipAddress, ', ')
             FROM inventario.ip ip2
-            WHERE ip2.idEstacion = est.idEstacion) AS ipsTexto
+            WHERE ip2.idEstacion = est.idEstacion) AS ipsTexto,
+            LTRIM(RTRIM(ISNULL(u.nombres, '') + ' ' + ISNULL(u.apellidos, ''))) as nombreUsuario
     FROM inventario.estacion est
     LEFT JOIN inventario.estacionActivo ea  ON est.idEstacion = ea.idEstacion
     LEFT JOIN inventario.activo         act ON ea.idActivo    = act.idActivo
     LEFT JOIN inventario.tipoActivo     ta  ON act.idTipoActivo = ta.idTipoActivo
+    LEFT JOIN comun.Usuarios u ON u.id_usuario = est.idUsuarioRegistro
     WHERE est.activo = 1
 ";
         $groupBy = "
             GROUP BY est.idEstacion, est.nombreEstacion,
                      est.codigoAnydesk, est.contrasenaAnydesk, est.direccionFisica,
                      est.idUsuarioRegistro, est.fechaCreacion,
-                     est.idUsuarioModifica, est.fechaModificacion
+                     est.idUsuarioModifica, est.fechaModificacion, u.nombres, u.apellidos
         ";
         if ($item !== null) {
             $sql  .= " AND est.$item = ? " . $groupBy;

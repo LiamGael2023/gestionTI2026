@@ -279,67 +279,67 @@
                           : date('d/m/Y', strtotime($a['fechaAsignacion'])))
                         : '—';
                       echo '
-    <tr>
-        <td>
-            <div class="d-flex align-items-center gap-2">
-                <i class="ti ti-desktop text-primary fs-3"></i>
-                <span class="fw-medium">' . htmlspecialchars($a['nombreEstacion'] ?? '') . '</span>
-            </div>
-        </td>
-        <td>
-            ' . (!empty($a['ipAddress'])
-                        ? '<span class="badge bg-primary-lt text-primary font-monospace">' . htmlspecialchars($a['ipAddress']) . '</span>'
-                        : '<span class="text-muted small">—</span>') . '
-        </td>
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="ti ti-desktop text-primary fs-3"></i>
+                                    <span class="fw-medium">' . htmlspecialchars($a['nombreEstacion'] ?? '') . '</span>
+                                </div>
+                            </td>
+                            <td>
+                                ' . (!empty($a['ipAddress'])
+                                            ? '<span class="badge bg-primary-lt text-primary font-monospace">' . htmlspecialchars($a['ipAddress']) . '</span>'
+                                            : '<span class="text-muted small">—</span>') . '
+                            </td>
 
-        <td class="small text-muted">' . htmlspecialchars($a['nombreSede'] ?? '—') . '</td>
-        <td class="small text-muted">' . htmlspecialchars($a['nombreUbicacion'] ?? '—') . '</td>
-        
-        <td class="small text-muted">' . htmlspecialchars($a['nombreAmbiente'] ?? '—') . '</td>
-        
-        <td>
-            <div class="fw-medium small">' . htmlspecialchars($a['trabajadorResponsable'] ?? '') . '</div>
-            <div class="text-primary small">' . htmlspecialchars($a['dniTrabajadorResponsable'] ?? '') . '</div>
-        </td>
-        <td class="small text-muted">' . htmlspecialchars($a['trabajadorAsignado'] ?? '—') . '</td>
-        <td class="small text-muted">' . $fa . '</td>
-        <td class="d-none d-sm-table-cell">
-            <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
-                <i class="ti ti-user-circle me-1"></i>
-                ' . $mostrarUsuario . '
-            </span>
-        </td>
-        <td class="text-end">
-            <div class="d-flex justify-content-end gap-1">
-                <a href="modules/inventario/ajax/generar_acta.php?idAsignacion=' . $a['idAsignacion'] . '"
-                   class="btn btn-sm btn-icon btn-outline-success"
-                   title="Descargar Acta de Entrega" target="_blank">
-                    <i class="ti ti-file-description"></i>
-                </a>
-                <button type="button"
-                        class="btn btn-sm btn-icon btn-outline-info btnVerHistorial"
-                        data-id="' . $a['idEstacion'] . '"
-                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                        title="Ver historial">
-                    <i class="ti ti-history"></i>
-                </button>
-                <button type="button"
-                        class="btn btn-sm btn-icon btn-outline-warning btnReasignar"
-                        data-id="' . $a['idEstacion'] . '"
-                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                        title="Reasignar">
-                    <i class="ti ti-refresh"></i>
-                </button>
-                <button type="button"
-                        class="btn btn-sm btn-icon btn-outline-danger btnLiberar"
-                        data-idAsignacion="' . $a['idAsignacion'] . '"
-                        data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
-                        title="Liberar asignación">
-                    <i class="ti ti-x"></i>
-                </button>
-            </div>
-        </td>
-    </tr>';
+                            <td class="small text-muted">' . htmlspecialchars($a['nombreSede'] ?? '—') . '</td>
+                            <td class="small text-muted">' . htmlspecialchars($a['nombreUbicacion'] ?? '—') . '</td>
+                            
+                            <td class="small text-muted">' . htmlspecialchars($a['nombreAmbiente'] ?? '—') . '</td>
+                            
+                            <td>
+                                <div class="fw-medium small">' . htmlspecialchars($a['trabajadorResponsable'] ?? '') . '</div>
+                                <div class="text-primary small">' . htmlspecialchars($a['dniTrabajadorResponsable'] ?? '') . '</div>
+                            </td>
+                            <td class="small text-muted">' . htmlspecialchars($a['trabajadorAsignado'] ?? '—') . '</td>
+                            <td class="small text-muted">' . $fa . '</td>
+                            <td class="d-none d-sm-table-cell">
+                                <span class="badge bg-blue-lt px-2 py-1 fw-medium" data-bs-toggle="tooltip">
+                                    <i class="ti ti-user-circle me-1"></i>
+                                    ' . $mostrarUsuario . '
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-1">
+                                    <a href="modules/inventario/ajax/generar_acta.php?idAsignacion=' . $a['idAsignacion'] . '"
+                                      class="btn btn-sm btn-icon btn-outline-success"
+                                      title="Descargar Acta de Entrega" target="_blank">
+                                        <i class="ti ti-file-description"></i>
+                                    </a>
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-outline-info btnVerHistorial"
+                                            data-id="' . $a['idEstacion'] . '"
+                                            data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                                            title="Ver historial">
+                                        <i class="ti ti-history"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-outline-warning btnReasignar"
+                                            data-id="' . $a['idEstacion'] . '"
+                                            data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                                            title="Reasignar">
+                                        <i class="ti ti-refresh"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm btn-icon btn-outline-danger btnLiberar"
+                                            data-idAsignacion="' . $a['idAsignacion'] . '"
+                                            data-nombre="' . htmlspecialchars($a['nombreEstacion'] ?? '') . '"
+                                            title="Liberar asignación">
+                                        <i class="ti ti-x"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>';
                     }
                   }
                   ?>

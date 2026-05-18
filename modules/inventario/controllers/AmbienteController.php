@@ -42,4 +42,13 @@ class AmbienteController
     {
         return AmbienteModel::mdlMostrarAmbiente($item, $valor);
     }
+
+    static public function ctrEliminarAmbiente()
+{
+    if (empty($_POST["eliminarIdAmbiente"])) {
+        return ["resultado" => "error", "mensaje" => "ID de ambiente no recibido."];
+    }
+
+    return AmbienteModel::mdlEliminarAmbiente(intval($_POST["eliminarIdAmbiente"]));
+}
 }

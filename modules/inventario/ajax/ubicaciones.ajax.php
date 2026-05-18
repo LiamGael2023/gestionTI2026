@@ -85,3 +85,8 @@ if (isset($_POST["idAmbiente"])) {
         "fechaModificacion" => fmtFecha($amb["fechaModificacion"] ?? null),
     ]);
 }
+
+/* ─── ELIMINAR AMBIENTE ─── */
+if (isset($_POST["eliminarIdAmbiente"])) {
+    responder(AmbienteController::ctrEliminarAmbiente());
+}

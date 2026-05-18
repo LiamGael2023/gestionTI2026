@@ -74,7 +74,7 @@ class TipoCaracteristicasModel
             $resultado = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
         } else {
             // Consulta general — solo registros activos
-            $sql  = "SELECT * FROM $tabla WHERE activo = 1 ORDER BY descripcion ASC";
+            $sql  = "SELECT * FROM $tabla as tc LEFT JOIN comun.Usuarios u ON u.id_usuario = tc.idUsuarioRegistro WHERE tc.activo = 1 ORDER BY descripcion ASC";
             $stmt = sqlsrv_query($conn, $sql);
 
             if ($stmt === false) return "error";
