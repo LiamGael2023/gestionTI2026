@@ -52,8 +52,8 @@ switch ($action) {
 		$directorio = __DIR__ . '/../uploads';
 		$idComunicado = isset($_POST['IdComunicado']) ? (int) $_POST['IdComunicado'] : null;
 
-		if ($idComunicado > 0 && !$comunicadoModelArchivo->obtener($idComunicado, $idUsuarioSesion)) {
-			comArchivoJson(['success' => false, 'message' => 'El comunicado indicado no pertenece a su usuario.']);
+		if ($idComunicado > 0 && !$comunicadoModelArchivo->obtener($idComunicado)) {
+			comArchivoJson(['success' => false, 'message' => 'El comunicado indicado no existe.']);
 		}
 
 		if (!is_dir($directorio) && !mkdir($directorio, 0775, true)) {
@@ -100,17 +100,17 @@ switch ($action) {
 
 	case 'eliminarArchivoAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $archivoModel->cambiarEstado($id, 0, $idUsuarioSesion);
-		comArchivoJson(['success' => $ok, 'message' => $ok ? 'Archivo inactivado.' : 'No se pudo inactivar el archivo o no pertenece a su usuario.']);
+		$ok = $id > 0 && $archivoModel->cambiarEstado($id, 0);
+		comArchivoJson(['success' => $ok, 'message' => $ok ? 'Archivo inactivado.' : 'No se pudo inactivar el archivo.']);
 		break;
 
 	case 'listarArchivosAjax':
-		comArchivoJson(['success' => true, 'data' => $archivoModel->listar(false, $idUsuarioSesion)]);
+		comArchivoJson(['success' => true, 'data' => $archivoModel->listar(false)]);
 		break;
 
 	default:
 		$vistaActual = 'archivo';
-		$archivos = $archivoModel->listar(false, $idUsuarioSesion);
+		$archivos = $archivoModel->listar(false);
 		include 'modules/comunicados/views/index.php';
 		break;
 }

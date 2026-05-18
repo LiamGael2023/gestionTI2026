@@ -8,18 +8,13 @@ class ComunicadoModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivos = true, $idUsuario = null)
+	public function listar($soloActivos = true)
 	{
 		$where = [];
 		$params = [];
 
 		if ($soloActivos) {
 			$where[] = "c.Activo = 1";
-		}
-
-		if ($idUsuario !== null) {
-			$where[] = "c.IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
 		}
 
 		$sql = "
@@ -29,7 +24,6 @@ class ComunicadoModel
 			FROM comunicados.Comunicado c
 			LEFT JOIN comunicados.Plantilla p
 				ON p.IdPlantilla = c.IdPlantilla
-				AND p.IdUsuarioRegistro = c.IdUsuarioRegistro
 			" . (!empty($where) ? "WHERE " . implode(" AND ", $where) : "") . "
 			ORDER BY c.FechaRegistro DESC, c.IdComunicado DESC
 		";
@@ -37,20 +31,15 @@ class ComunicadoModel
 		return $this->fetchAll($stmt);
 	}
 
-	public function obtener($idComunicado, $idUsuario = null)
+	public function obtener($idComunicado)
 	{
 		$params = [(int) $idComunicado];
-		$filtroUsuario = "";
-		if ($idUsuario !== null) {
-			$filtroUsuario = " AND IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
-		}
 
 		$sql = "
 			SELECT IdComunicado, IdPlantilla, TituloComunicado, ContenidoJson,
 				HtmlFinal, EstadoComunicado, Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Comunicado
-			WHERE IdComunicado = ?" . $filtroUsuario . "
+			WHERE IdComunicado = ?
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
@@ -98,7 +87,6 @@ class ComunicadoModel
 				FechaModificacion = SYSDATETIME(),
 				IdUsuarioModificacion = ?
 			WHERE IdComunicado = ?
-				AND IdUsuarioRegistro = ?
 		";
 		$params = [
 			$this->intONull($datos['IdPlantilla'] ?? null),
@@ -108,7 +96,6 @@ class ComunicadoModel
 			$this->estado($datos['EstadoComunicado'] ?? 'BORRADOR'),
 			$datos['IdUsuarioModificacion'] ?? null,
 			(int) $idComunicado,
-			(int) ($datos['IdUsuarioModificacion'] ?? 0),
 		];
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
@@ -118,15 +105,14 @@ class ComunicadoModel
 		return $ok;
 	}
 
-	public function cambiarEstadoActivo($idComunicado, $activo, $idUsuario)
+	public function cambiarEstadoActivo($idComunicado, $activo, $idUsuarioModificacion = null)
 	{
 		$sql = "
 			UPDATE comunicados.Comunicado
 			SET Activo = ?, FechaModificacion = SYSDATETIME(), IdUsuarioModificacion = ?
 			WHERE IdComunicado = ?
-				AND IdUsuarioRegistro = ?
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuario, (int) $idComunicado, (int) $idUsuario]);
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuarioModificacion, (int) $idComunicado]);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
@@ -134,14 +120,9 @@ class ComunicadoModel
 		return $ok;
 	}
 
-	public function obtenerResumen($idUsuario = null)
+	public function obtenerResumen()
 	{
 		$params = [];
-		$filtroUsuario = "";
-		if ($idUsuario !== null) {
-			$filtroUsuario = "WHERE IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
-		}
 
 		$sql = "
 			SELECT
@@ -150,7 +131,6 @@ class ComunicadoModel
 				SUM(CASE WHEN EstadoComunicado = N'LISTO' AND Activo = 1 THEN 1 ELSE 0 END) AS Listos,
 				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
 			FROM comunicados.Comunicado
-			" . $filtroUsuario . "
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {

@@ -67,8 +67,8 @@ switch ($action) {
 		}
 
 		$idPlantillaPayload = isset($payload['IdPlantilla']) ? (int) $payload['IdPlantilla'] : 0;
-		if ($idPlantillaPayload > 0 && !$plantillaModel->obtener($idPlantillaPayload, $idUsuarioSesion)) {
-			comJson(['success' => false, 'message' => 'La plantilla indicada no pertenece a su usuario.']);
+		if ($idPlantillaPayload > 0 && !$plantillaModel->obtener($idPlantillaPayload)) {
+			comJson(['success' => false, 'message' => 'La plantilla indicada no existe.']);
 		}
 
 		$datos = [
@@ -83,7 +83,7 @@ switch ($action) {
 
 		if ($id > 0) {
 			$ok = $model->actualizar($id, $datos);
-			comJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Comunicado actualizado.' : 'No se pudo actualizar el comunicado o no pertenece a su usuario.']);
+			comJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Comunicado actualizado.' : 'No se pudo actualizar el comunicado.']);
 		}
 
 		$nuevoId = $model->guardar($datos);
@@ -93,24 +93,24 @@ switch ($action) {
 	case 'eliminarComunicadoAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 0, $idUsuarioSesion);
-		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado inactivado.' : 'No se pudo inactivar el comunicado o no pertenece a su usuario.']);
+		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado inactivado.' : 'No se pudo inactivar el comunicado.']);
 		break;
 
 	case 'activarComunicadoAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 1, $idUsuarioSesion);
-		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado activado.' : 'No se pudo activar el comunicado o no pertenece a su usuario.']);
+		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado activado.' : 'No se pudo activar el comunicado.']);
 		break;
 
 	case 'obtenerComunicadoAjax':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		$comunicado = $id > 0 ? $model->obtener($id) : null;
 		comJson(['success' => (bool) $comunicado, 'data' => $comunicado]);
 		break;
 
 	case 'convertirComunicadoPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		$comunicado = $id > 0 ? $model->obtener($id) : null;
 
 		if (!$comunicado) {
 			comJson(['success' => false, 'message' => 'No se encontro el comunicado.']);
@@ -138,7 +138,7 @@ switch ($action) {
 
 	case 'visualizar':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		$comunicado = $id > 0 ? $model->obtener($id) : null;
 		include 'modules/comunicados/views/comunicado/visualizar.php';
 		exit;
 
@@ -146,24 +146,24 @@ switch ($action) {
 		$vistaActual = 'comunicado_editor';
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$idPlantilla = isset($_GET['plantilla']) ? (int) $_GET['plantilla'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
-		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla, $idUsuarioSesion) : null;
-		$plantillas = $plantillaModel->listar(true, $idUsuarioSesion);
-		$archivos = $archivoModel->listar(true, $idUsuarioSesion);
+		$comunicado = $id > 0 ? $model->obtener($id) : null;
+		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla) : null;
+		$plantillas = $plantillaModel->listar(true);
+		$archivos = $archivoModel->listar(true);
 		break;
 
 	case 'comunicados':
 		$vistaActual = 'comunicado';
-		$comunicados = $model->listar(false, $idUsuarioSesion);
+		$comunicados = $model->listar(false);
 		break;
 
 	case 'dashboard':
 	default:
 		$vistaActual = 'dashboard';
-		$resumenComunicados = $model->obtenerResumen($idUsuarioSesion);
-		$comunicadosRecientes = array_slice($model->listar(true, $idUsuarioSesion), 0, 6);
-		$plantillasActivas = $plantillaModel->listar(true, $idUsuarioSesion);
-		$archivosRecientes = array_slice($archivoModel->listar(true, $idUsuarioSesion), 0, 5);
+		$resumenComunicados = $model->obtenerResumen();
+		$comunicadosRecientes = array_slice($model->listar(true), 0, 6);
+		$plantillasActivas = $plantillaModel->listar(true);
+		$archivosRecientes = array_slice($archivoModel->listar(true), 0, 5);
 		break;
 }
 

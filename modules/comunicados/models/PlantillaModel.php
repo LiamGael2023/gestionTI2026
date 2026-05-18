@@ -8,18 +8,13 @@ class PlantillaModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivas = true, $idUsuario = null)
+	public function listar($soloActivas = true)
 	{
 		$where = [];
 		$params = [];
 
 		if ($soloActivas) {
 			$where[] = "Activo = 1";
-		}
-
-		if ($idUsuario !== null) {
-			$where[] = "IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
 		}
 
 		$sql = "
@@ -33,20 +28,15 @@ class PlantillaModel
 		return $this->fetchAll($stmt);
 	}
 
-	public function obtener($idPlantilla, $idUsuario = null)
+	public function obtener($idPlantilla)
 	{
 		$params = [(int) $idPlantilla];
-		$filtroUsuario = "";
-		if ($idUsuario !== null) {
-			$filtroUsuario = " AND IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
-		}
 
 		$sql = "
 			SELECT IdPlantilla, NombrePlantilla, DescripcionPlantilla, ContenidoJson, HtmlBase,
 				Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Plantilla
-			WHERE IdPlantilla = ?" . $filtroUsuario . "
+			WHERE IdPlantilla = ?
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
@@ -92,7 +82,6 @@ class PlantillaModel
 				FechaModificacion = SYSDATETIME(),
 				IdUsuarioModificacion = ?
 			WHERE IdPlantilla = ?
-				AND IdUsuarioRegistro = ?
 		";
 		$params = [
 			trim((string) ($datos['NombrePlantilla'] ?? '')),
@@ -101,7 +90,6 @@ class PlantillaModel
 			$this->nullSiVacio($datos['HtmlBase'] ?? null),
 			$datos['IdUsuarioModificacion'] ?? null,
 			(int) $idPlantilla,
-			(int) ($datos['IdUsuarioModificacion'] ?? 0),
 		];
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
@@ -111,15 +99,14 @@ class PlantillaModel
 		return $ok;
 	}
 
-	public function cambiarEstado($idPlantilla, $activo, $idUsuario)
+	public function cambiarEstado($idPlantilla, $activo, $idUsuarioModificacion = null)
 	{
 		$sql = "
 			UPDATE comunicados.Plantilla
 			SET Activo = ?, FechaModificacion = SYSDATETIME(), IdUsuarioModificacion = ?
 			WHERE IdPlantilla = ?
-				AND IdUsuarioRegistro = ?
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuario, (int) $idPlantilla, (int) $idUsuario]);
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuarioModificacion, (int) $idPlantilla]);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
