@@ -54,19 +54,6 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
 
 Auth::check(); 
 
-// Evita contaminar respuestas JSON/PDF de modulos internos con el layout global.
-if (in_array($module, ['adquisiciones', 'comunicados'], true) && preg_match('/Ajax$/', (string) $action)) {
-    $nombreControladorAjax = ucfirst($module) . "Controller.php";
-    include "modules/$module/controllers/$nombreControladorAjax";
-    exit();
-}
-
-// Muestra comunicados como pagina limpia, sin navbar ni layout administrativo.
-if ($module === 'comunicados' && $action === 'visualizar') {
-    include 'modules/comunicados/controllers/ComunicadosController.php';
-    exit();
-}
-
 include 'public/header.php'; 
 
 // Módulos que siempre deben estar presentes o tienen lógica manual
@@ -106,7 +93,7 @@ if (in_array($module, $modulos_estaticos)) {
             case 'certificados':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Certificados (Franklin)</div></div></div>';
                 break;
-            case 'inventario':
+            case 'adquisiciones':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Adquisiciones (Cristian)</div></div></div>';
                 break;
             default:

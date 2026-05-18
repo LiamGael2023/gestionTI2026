@@ -45,7 +45,7 @@ $comunicados = isset($comunicados) && is_array($comunicados) ? $comunicados : []
 						</td>
 						<td class="text-end align-middle">
 							<div class="btn-group" role="group">
-								<a class="btn btn-icon btn-lg" title="Visualizar" href="index.php?module=comunicados&action=visualizar&id=<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
+								<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/visualizar.php?id=<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
 									<i class="ti ti-eye fs-2"></i>
 								</a>
 								<a class="btn btn-icon btn-lg js-com-link" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
@@ -81,7 +81,7 @@ $comunicados = isset($comunicados) && is_array($comunicados) ? $comunicados : []
 		function postEstado(action, id) {
 			const formData = new FormData();
 			formData.append('id', id);
-			return fetch('index.php?module=comunicados&action=' + action, {
+			return fetch('modules/comunicados/ajax.php?action=' + action, {
 				method: 'POST',
 				body: formData,
 				headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -143,7 +143,7 @@ $comunicados = isset($comunicados) && is_array($comunicados) ? $comunicados : []
 					formData.append('nombre', nombre.trim());
 					formData.append('descripcion', 'Generada desde comunicado');
 
-					fetch('index.php?module=comunicados&action=convertirComunicadoPlantillaAjax', {
+					fetch('modules/comunicados/ajax.php?action=convertirComunicadoPlantillaAjax', {
 						method: 'POST',
 						body: formData,
 						headers: { 'X-Requested-With': 'XMLHttpRequest' }

@@ -479,7 +479,7 @@
 			window.comNotifySafe('warning', 'Seleccione un archivo', 'Debe elegir un archivo para subir.');
 			return;
 		}
-		fetch('index.php?module=comunicados&action=subirArchivoAjax', {
+		fetch('modules/comunicados/ajax.php?action=subirArchivoAjax', {
 			method: 'POST',
 			body: data,
 			headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -520,7 +520,7 @@
 			HtmlFinal: generateHtml()
 		};
 
-		fetch('index.php?module=comunicados&action=guardarComunicadoAjax', {
+		fetch('modules/comunicados/ajax.php?action=guardarComunicadoAjax', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
 			body: JSON.stringify(payload)
@@ -551,7 +551,7 @@
 				return;
 			}
 
-			fetch('index.php?module=comunicados&action=guardarPlantillaAjax', {
+			fetch('modules/comunicados/ajax.php?action=guardarPlantillaAjax', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
 				body: JSON.stringify({

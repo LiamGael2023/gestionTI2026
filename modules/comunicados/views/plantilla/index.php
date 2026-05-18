@@ -140,7 +140,7 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 		}
 
 		function guardar(payload) {
-			return fetch('index.php?module=comunicados&action=guardarPlantillaAjax', {
+			return fetch('modules/comunicados/ajax.php?action=guardarPlantillaAjax', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
 				body: JSON.stringify(payload)
@@ -206,7 +206,7 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 		function cambiarEstado(action, id) {
 			const data = new FormData();
 			data.append('id', id);
-			return fetch('index.php?module=comunicados&action=' + action, {
+			return fetch('modules/comunicados/ajax.php?action=' + action, {
 				method: 'POST',
 				body: data,
 				headers: { 'X-Requested-With': 'XMLHttpRequest' }

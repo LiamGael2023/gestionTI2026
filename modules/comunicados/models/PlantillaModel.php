@@ -8,28 +8,47 @@ class PlantillaModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivas = true)
+	public function listar($soloActivas = true, $idUsuario = null)
 	{
+		$where = [];
+		$params = [];
+
+		if ($soloActivas) {
+			$where[] = "Activo = 1";
+		}
+
+		if ($idUsuario !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = (int) $idUsuario;
+		}
+
 		$sql = "
 			SELECT IdPlantilla, NombrePlantilla, DescripcionPlantilla, ContenidoJson, HtmlBase,
-				Activo, FechaRegistro, FechaModificacion
+				Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Plantilla
-			" . ($soloActivas ? "WHERE Activo = 1" : "") . "
+			" . (!empty($where) ? "WHERE " . implode(" AND ", $where) : "") . "
 			ORDER BY FechaRegistro DESC, IdPlantilla DESC
 		";
-		$stmt = sqlsrv_query($this->db, $sql);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		return $this->fetchAll($stmt);
 	}
 
-	public function obtener($idPlantilla)
+	public function obtener($idPlantilla, $idUsuario = null)
 	{
+		$params = [(int) $idPlantilla];
+		$filtroUsuario = "";
+		if ($idUsuario !== null) {
+			$filtroUsuario = " AND IdUsuarioRegistro = ?";
+			$params[] = (int) $idUsuario;
+		}
+
 		$sql = "
 			SELECT IdPlantilla, NombrePlantilla, DescripcionPlantilla, ContenidoJson, HtmlBase,
-				Activo, FechaRegistro, FechaModificacion
+				Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Plantilla
-			WHERE IdPlantilla = ?
+			WHERE IdPlantilla = ?" . $filtroUsuario . "
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $idPlantilla]);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
 			return null;
 		}
@@ -73,6 +92,7 @@ class PlantillaModel
 				FechaModificacion = SYSDATETIME(),
 				IdUsuarioModificacion = ?
 			WHERE IdPlantilla = ?
+				AND IdUsuarioRegistro = ?
 		";
 		$params = [
 			trim((string) ($datos['NombrePlantilla'] ?? '')),
@@ -81,9 +101,10 @@ class PlantillaModel
 			$this->nullSiVacio($datos['HtmlBase'] ?? null),
 			$datos['IdUsuarioModificacion'] ?? null,
 			(int) $idPlantilla,
+			(int) ($datos['IdUsuarioModificacion'] ?? 0),
 		];
 		$stmt = sqlsrv_query($this->db, $sql, $params);
-		$ok = $stmt !== false;
+		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
 		}
@@ -96,13 +117,24 @@ class PlantillaModel
 			UPDATE comunicados.Plantilla
 			SET Activo = ?, FechaModificacion = SYSDATETIME(), IdUsuarioModificacion = ?
 			WHERE IdPlantilla = ?
+				AND IdUsuarioRegistro = ?
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuario, (int) $idPlantilla]);
-		$ok = $stmt !== false;
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuario, (int) $idPlantilla, (int) $idUsuario]);
+		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
 		}
 		return $ok;
+	}
+
+	private function cambioRealizado($stmt)
+	{
+		if ($stmt === false) {
+			return false;
+		}
+
+		$filas = sqlsrv_rows_affected($stmt);
+		return $filas === false ? false : $filas > 0;
 	}
 
 	private function fetchAll($stmt)

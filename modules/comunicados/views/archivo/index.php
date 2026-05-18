@@ -93,7 +93,7 @@ $archivos = isset($archivos) && is_array($archivos) ? $archivos : [];
 			btn.disabled = true;
 			btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Subiendo...';
 
-			fetch('index.php?module=comunicados&action=subirArchivoAjax', {
+			fetch('modules/comunicados/ajax.php?action=subirArchivoAjax', {
 				method: 'POST',
 				body: data,
 				headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -127,7 +127,7 @@ $archivos = isset($archivos) && is_array($archivos) ? $archivos : [];
 					}
 					const data = new FormData();
 					data.append('id', id);
-					fetch('index.php?module=comunicados&action=eliminarArchivoAjax', {
+					fetch('modules/comunicados/ajax.php?action=eliminarArchivoAjax', {
 						method: 'POST',
 						body: data,
 						headers: { 'X-Requested-With': 'XMLHttpRequest' }

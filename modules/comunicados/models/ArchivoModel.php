@@ -8,16 +8,29 @@ class ArchivoModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivos = true)
+	public function listar($soloActivos = true, $idUsuario = null)
 	{
+		$where = [];
+		$params = [];
+
+		if ($soloActivos) {
+			$where[] = "Activo = 1";
+		}
+
+		if ($idUsuario !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = (int) $idUsuario;
+		}
+
 		$sql = "
 			SELECT IdArchivo, IdComunicado, NombreOriginal, NombreServidor, RutaRelativa,
-				UrlPublica, TipoMime, ExtensionArchivo, TamanoBytes, TipoArchivo, Activo, FechaRegistro
+				UrlPublica, TipoMime, ExtensionArchivo, TamanoBytes, TipoArchivo, Activo, FechaRegistro,
+				IdUsuarioRegistro
 			FROM comunicados.Archivo
-			" . ($soloActivos ? "WHERE Activo = 1" : "") . "
+			" . (!empty($where) ? "WHERE " . implode(" AND ", $where) : "") . "
 			ORDER BY FechaRegistro DESC, IdArchivo DESC
 		";
-		$stmt = sqlsrv_query($this->db, $sql);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		return $this->fetchAll($stmt);
 	}
 
@@ -51,15 +64,30 @@ class ArchivoModel
 		return $row ? (int) $row[0] : true;
 	}
 
-	public function cambiarEstado($idArchivo, $activo)
+	public function cambiarEstado($idArchivo, $activo, $idUsuario)
 	{
-		$sql = "UPDATE comunicados.Archivo SET Activo = ? WHERE IdArchivo = ?";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, (int) $idArchivo]);
-		$ok = $stmt !== false;
+		$sql = "
+			UPDATE comunicados.Archivo
+			SET Activo = ?
+			WHERE IdArchivo = ?
+				AND IdUsuarioRegistro = ?
+		";
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, (int) $idArchivo, (int) $idUsuario]);
+		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
 		}
 		return $ok;
+	}
+
+	private function cambioRealizado($stmt)
+	{
+		if ($stmt === false) {
+			return false;
+		}
+
+		$filas = sqlsrv_rows_affected($stmt);
+		return $filas === false ? false : $filas > 0;
 	}
 
 	private function fetchAll($stmt)
