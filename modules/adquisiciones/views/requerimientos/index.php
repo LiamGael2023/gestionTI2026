@@ -1,104 +1,170 @@
-<!-- Encabezado con filtro de año y botones de acción (importar y agregar requerimiento) -->
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-	<?php $metasSiafActivasLista = (isset($metasSiafActivas) && is_array($metasSiafActivas)) ? $metasSiafActivas : []; ?>
-	<div class="d-flex gap-2 align-items-center flex-wrap">
-		<label class="form-label mb-0 text-nowrap">Filtrar por año:</label>
-		<select id="filtroAnio" class="form-select w-auto" onchange="filtrarPorAnio()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
-			<?php if (empty($aniosDisponibles)): ?>
-				<option value="">Sin registros</option>
-			<?php else: ?>
-				<?php foreach ($aniosDisponibles as $anio): ?>
-					<option value="<?php echo $anio; ?>" <?php echo ($anioFiltro == $anio) ? 'selected' : ''; ?>>
-						<?php echo $anio; ?>
-					</option>
-				<?php endforeach; ?>
-			<?php endif; ?>
-		</select>
-	</div>
-	<div class="d-flex gap-2">
-		<button class="btn btn-success" onclick="abrirModalImportar()">
-			Importar de SIGA
-		</button>
-		<button class="btn btn-primary" onclick="nuevoRequerimiento()">
-			Agregar Requerimiento
-		</button>
-	</div>
-</div>
+<?php
+$metasSiafActivasLista = (isset($metasSiafActivas) && is_array($metasSiafActivas)) ? $metasSiafActivas : [];
+$totalRequerimientosVista = (isset($requerimientos) && is_array($requerimientos)) ? count($requerimientos) : 0;
+?>
 
-<!-- Tabla responsiva que lista todos los requerimientos con columnas principales y botones de acción -->
-<div class="table-responsive">
-	<table class="table table-vcenter card-table table-striped">
-		<thead>
-			<tr>
-				<th>Nro. de Pedido</th>
-				<th>Código Meta</th>
-				<th>Centro de Costo</th>
-				<th>Año</th>
-				<th>Estado</th>
-				<th class="text-end">Acciones</th>
-			</tr>
-		</thead>
-		<tbody id="tabla-requerimientos-body">
-			<?php if (!empty($requerimientos)): ?>
-				<?php foreach ($requerimientos as $req): ?>
-					<tr
-						data-id="<?php echo (int) $req['Id']; ?>"
-						data-id-centro-costo="<?php echo (int) $req['IdCentroCosto']; ?>"
-						data-id-meta-siaf="<?php echo isset($req['IdMetaSIAF']) && (int) $req['IdMetaSIAF'] > 0 ? (int) $req['IdMetaSIAF'] : ''; ?>"
-						data-nro-pedido="<?php echo htmlspecialchars((string) $req['NroPedidoCompra'], ENT_QUOTES, 'UTF-8'); ?>"
-						data-codigo-meta="<?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-						data-anio="<?php echo (int) $req['Anio']; ?>">
-						<td><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
-						<td><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
-						<td>
-							<?php
-							$textoCentroCosto = trim((string) ($req['Siglas'] ?? ''));
-							$nombreCentroCosto = trim((string) ($req['NombreCentroCosto'] ?? ''));
-							echo htmlspecialchars($textoCentroCosto !== '' ? ($textoCentroCosto . ' - ' . $nombreCentroCosto) : $nombreCentroCosto);
-							?>
-						</td>
-						<td><?php echo (int) $req['Anio']; ?></td>
-						<td>
-							<?php if ((int) $req['Estado'] === 1): ?>
-								<span class="badge bg-success-lt">Completo</span>
-							<?php else: ?>
-								<span class="badge bg-warning-lt text-dark">Pendiente</span>
-							<?php endif; ?>
-						</td>
-						<td class="text-end align-middle">
-							<div class="btn-group" role="group">
-								<!-- Editar -->
-								<button type="button"
-									class="btn btn-icon btn-lg"
-									title="Editar"
-									onclick="editarRequerimiento(<?= (int)$req['Id'] ?>)">
-									<i class="ti ti-edit fs-2"></i>
-								</button>
-								<!-- Detalles -->
-								<button type="button"
-									class="btn btn-icon btn-lg"
-									title="Detalles"
-									onclick="detalleRequerimiento(<?= (int)$req['Id'] ?>)">
-									<i class="ti ti-list-details fs-2"></i>
-								</button>
-								<!-- Eliminar -->
-								<button type="button"
-									class="btn btn-icon btn-lg text-danger"
-									title="Eliminar"
-									onclick="eliminarRequerimiento(<?= (int)$req['Id'] ?>)">
-									<i class="ti ti-trash fs-2"></i>
-								</button>
+<style>
+	#requerimientos-table .table > :not(caption) > * > * {
+		padding-top: 0.75rem;
+		padding-bottom: 0.75rem;
+	}
+
+	#requerimientos-table .btn-group .btn-icon {
+		min-width: 2.25rem;
+		min-height: 2.25rem;
+	}
+
+	#requerimientos-table .table-sort {
+		display: inline-flex !important;
+		align-items: center;
+		width: auto;
+		gap: 0.35rem;
+	}
+
+	#requerimientos-table .table-sort::after {
+		margin-left: 0;
+	}
+</style>
+
+<!-- Tabla avanzada de requerimientos con busqueda, ordenamiento y paginacion -->
+<div class="col-12">
+	<div class="card">
+		<div class="card-table">
+			<div class="card-header">
+				<div class="row w-full g-2 align-items-center">
+					<div class="col">
+						<h3 class="card-title mb-0">Requerimientos</h3>
+					</div>
+					<div class="col-md-auto col-sm-12">
+						<div class="ms-auto d-flex flex-wrap btn-list">
+							<div class="input-group input-group-flat w-auto">
+								<span class="input-group-text">
+									<i class="ti ti-search"></i>
+								</span>
+								<input id="requerimientos-table-search" type="text" class="form-control" placeholder="Buscar" autocomplete="off">
 							</div>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			<?php else: ?>
-				<tr>
-					<td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td>
-				</tr>
-			<?php endif; ?>
-		</tbody>
-	</table>
+							<div class="d-flex gap-2 align-items-center">
+								<label class="form-label mb-0 text-nowrap">Año:</label>
+								<select id="filtroAnio" class="form-select w-auto" onchange="filtrarPorAnio()" <?php echo empty($aniosDisponibles) ? 'disabled' : ''; ?>>
+									<?php if (empty($aniosDisponibles)): ?>
+										<option value="">Sin registros</option>
+									<?php else: ?>
+										<?php foreach ($aniosDisponibles as $anio): ?>
+											<option value="<?php echo $anio; ?>" <?php echo ($anioFiltro == $anio) ? 'selected' : ''; ?>>
+												<?php echo $anio; ?>
+											</option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
+							</div>
+							<!--button type="button" class="btn btn-success" onclick="abrirModalImportar()">
+								Importar de SIGA
+							</button-->
+							<button type="button" class="btn btn-primary" onclick="nuevoRequerimiento()">
+								Agregar Requerimiento
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="requerimientos-table">
+				<div class="table-responsive">
+					<table class="table table-vcenter table-selectable">
+						<thead>
+							<tr>
+								<th>
+									<button class="table-sort" data-sort="sort-pedido">Nro. de Pedido</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-meta">Código Meta</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-centro">Centro de Costo</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-anio">Año</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-estado">Estado</button>
+								</th>
+								<th class="text-end">Acciones</th>
+							</tr>
+						</thead>
+						<tbody id="tabla-requerimientos-body" class="table-tbody">
+							<?php if (!empty($requerimientos)): ?>
+								<?php foreach ($requerimientos as $req): ?>
+									<?php
+									$textoCentroCosto = trim((string) ($req['Siglas'] ?? ''));
+									$nombreCentroCosto = trim((string) ($req['NombreCentroCosto'] ?? ''));
+									$centroCostoCompleto = $textoCentroCosto !== '' ? ($textoCentroCosto . ' - ' . $nombreCentroCosto) : $nombreCentroCosto;
+									?>
+									<tr
+										data-id="<?php echo (int) $req['Id']; ?>"
+										data-id-centro-costo="<?php echo (int) $req['IdCentroCosto']; ?>"
+										data-id-meta-siaf="<?php echo isset($req['IdMetaSIAF']) && (int) $req['IdMetaSIAF'] > 0 ? (int) $req['IdMetaSIAF'] : ''; ?>"
+										data-nro-pedido="<?php echo htmlspecialchars((string) $req['NroPedidoCompra'], ENT_QUOTES, 'UTF-8'); ?>"
+										data-codigo-meta="<?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+										data-anio="<?php echo (int) $req['Anio']; ?>">
+										<td class="sort-pedido"><?php echo htmlspecialchars($req['NroPedidoCompra']); ?></td>
+										<td class="sort-meta"><?php echo htmlspecialchars((string) ($req['CodigoMeta'] ?? '')); ?></td>
+										<td class="sort-centro"><?php echo htmlspecialchars($centroCostoCompleto); ?></td>
+										<td class="sort-anio"><?php echo (int) $req['Anio']; ?></td>
+										<td class="sort-estado">
+											<?php if ((int) $req['Estado'] === 1): ?>
+												<span class="badge bg-success-lt">Completo</span>
+											<?php else: ?>
+												<span class="badge bg-warning-lt text-dark">Pendiente</span>
+											<?php endif; ?>
+										</td>
+										<td class="py-0 text-end align-middle">
+											<div class="btn-group" role="group">
+												<button type="button"
+													class="btn btn-icon btn-lg"
+													title="Editar"
+													onclick="editarRequerimiento(<?= (int)$req['Id'] ?>)">
+													<i class="ti ti-edit fs-2"></i>
+												</button>
+												<button type="button"
+													class="btn btn-icon btn-lg"
+													title="Detalles"
+													onclick="detalleRequerimiento(<?= (int)$req['Id'] ?>)">
+													<i class="ti ti-list-details fs-2"></i>
+												</button>
+												<button type="button"
+													class="btn btn-icon btn-lg text-danger"
+													title="Eliminar"
+													onclick="eliminarRequerimiento(<?= (int)$req['Id'] ?>)">
+													<i class="ti ti-trash fs-2"></i>
+												</button>
+											</div>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							<?php else: ?>
+								<tr data-empty-row="true">
+									<td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td>
+								</tr>
+							<?php endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<div id="requerimientos-table-footer" class="card-footer d-flex align-items-center" <?php echo $totalRequerimientosVista === 0 ? 'style="display:none !important;"' : ''; ?>>
+					<div class="dropdown">
+						<a class="btn dropdown-toggle" data-bs-toggle="dropdown">
+							<span id="requerimientos-page-count" class="me-1">10</span>
+							<span>registros</span>
+						</a>
+						<div class="dropdown-menu">
+							<a class="dropdown-item" onclick="setRequerimientosPageListItems(event)" data-value="10">10 registros</a>
+							<a class="dropdown-item" onclick="setRequerimientosPageListItems(event)" data-value="20">20 registros</a>
+							<a class="dropdown-item" onclick="setRequerimientosPageListItems(event)" data-value="50">50 registros</a>
+						</div>
+					</div>
+					<ul class="pagination m-0 ms-auto"></ul>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <!-- Modal Nuevo Requerimiento -->
@@ -225,6 +291,172 @@
 			.replace(/'/g, '&#039;');
 	}
 
+	function obtenerCantidadFilasRequerimientos() {
+		const tbody = document.getElementById('tabla-requerimientos-body');
+		return tbody ? tbody.querySelectorAll('tr[data-id]').length : 0;
+	}
+
+	function actualizarFooterTablaRequerimientos() {
+		const footer = document.getElementById('requerimientos-table-footer');
+		if (!footer) return;
+
+		if (obtenerCantidadFilasRequerimientos() === 0) {
+			footer.style.setProperty('display', 'none', 'important');
+			return;
+		}
+
+		footer.style.removeProperty('display');
+	}
+
+	function cargarListJsRequerimientos(callback) {
+		if (typeof List === 'function') {
+			callback();
+			return;
+		}
+
+		const scriptExistente = document.querySelector('script[data-requerimientos-listjs="true"]');
+		if (scriptExistente) {
+			scriptExistente.addEventListener('load', callback, { once: true });
+			return;
+		}
+
+		const script = document.createElement('script');
+		script.src = 'https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js';
+		script.defer = true;
+		script.dataset.requerimientosListjs = 'true';
+		script.addEventListener('load', callback, { once: true });
+		document.head.appendChild(script);
+	}
+
+	function inicializarTablaRequerimientos() {
+		const contenedor = document.getElementById('requerimientos-table');
+		if (!contenedor) return;
+
+		actualizarFooterTablaRequerimientos();
+
+		if (obtenerCantidadFilasRequerimientos() === 0) {
+			contenedor.dataset.listInitialized = '';
+			if (window.tabler_list) {
+				window.tabler_list['requerimientos-table'] = null;
+			}
+			return;
+		}
+
+		if (contenedor.dataset.listInitialized === '1' && window.tabler_list && window.tabler_list['requerimientos-table']) {
+			actualizarTablaRequerimientosList();
+			return;
+		}
+
+		if (typeof List !== 'function') return;
+
+		window.tabler_list = window.tabler_list || {};
+		try {
+			window.tabler_list['requerimientos-table'] = new List('requerimientos-table', {
+				sortClass: 'table-sort',
+				listClass: 'table-tbody',
+				page: 10,
+				pagination: {
+					item: function(value) {
+						return '<li class="page-item"><a class="page-link cursor-pointer">' + value.page + '</a></li>';
+					},
+					innerWindow: 1,
+					outerWindow: 1,
+					left: 0,
+					right: 0
+				},
+				valueNames: ['sort-pedido', 'sort-meta', 'sort-centro', 'sort-anio', 'sort-estado']
+			});
+		} catch (error) {
+			console.warn('No se pudo inicializar la tabla de requerimientos.', error);
+			return;
+		}
+		contenedor.dataset.listInitialized = '1';
+
+		const searchInput = document.getElementById('requerimientos-table-search');
+		if (searchInput && searchInput.dataset.searchBound !== '1') {
+			searchInput.addEventListener('input', function() {
+				const list = window.tabler_list && window.tabler_list['requerimientos-table'];
+				if (list) {
+					list.search(searchInput.value);
+				}
+			});
+			searchInput.dataset.searchBound = '1';
+		}
+	}
+
+	function actualizarTablaRequerimientosList() {
+		actualizarFooterTablaRequerimientos();
+
+		if (obtenerCantidadFilasRequerimientos() === 0) {
+			const contenedor = document.getElementById('requerimientos-table');
+			if (contenedor) {
+				contenedor.dataset.listInitialized = '';
+			}
+			if (window.tabler_list) {
+				window.tabler_list['requerimientos-table'] = null;
+			}
+			return;
+		}
+
+		const list = window.tabler_list && window.tabler_list['requerimientos-table'];
+		if (!list) {
+			cargarListJsRequerimientos(inicializarTablaRequerimientos);
+			return;
+		}
+
+		if (typeof list.reIndex === 'function') {
+			list.reIndex();
+		}
+
+		const searchInput = document.getElementById('requerimientos-table-search');
+		if (searchInput && typeof list.search === 'function') {
+			list.search(searchInput.value);
+		}
+
+		if (typeof list.update === 'function') {
+			list.update();
+		}
+	}
+
+	function setRequerimientosPageListItems(e) {
+		e.preventDefault();
+		const list = window.tabler_list && window.tabler_list['requerimientos-table'];
+		if (!list) return;
+
+		list.page = parseInt(e.target.dataset.value, 10);
+		list.update();
+
+		const pageCount = document.getElementById('requerimientos-page-count');
+		if (pageCount) {
+			pageCount.innerHTML = e.target.dataset.value;
+		}
+	}
+
+	function enfocarBusquedaRequerimientos(event) {
+		if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+			return;
+		}
+
+		const searchInput = document.getElementById('requerimientos-table-search');
+		if (!searchInput) return;
+
+		event.preventDefault();
+		searchInput.focus();
+	}
+
+	if (!window.requerimientosTableShortcutBound) {
+		document.addEventListener('keydown', enfocarBusquedaRequerimientos);
+		window.requerimientosTableShortcutBound = true;
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', function() {
+			cargarListJsRequerimientos(inicializarTablaRequerimientos);
+		}, { once: true });
+	} else {
+		cargarListJsRequerimientos(inicializarTablaRequerimientos);
+	}
+
 	// Verifica si la tabla está vacía y muestra mensaje correspondiente
 	function asegurarEstadoVacioTablaRequerimientos() {
 		const tbody = document.getElementById('tabla-requerimientos-body');
@@ -232,8 +464,10 @@
 
 		const filasDatos = tbody.querySelectorAll('tr[data-id]');
 		if (filasDatos.length === 0) {
-			tbody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td></tr>';
+			tbody.innerHTML = '<tr data-empty-row="true"><td colspan="6" class="text-center text-secondary">No hay requerimientos registrados.</td></tr>';
 		}
+
+		actualizarTablaRequerimientosList();
 	}
 
 	// Genera el HTML de una fila de tabla con todos los datos del requerimiento
@@ -241,25 +475,23 @@
 		const badgeEstado = parseInt(estado, 10) === 1 ?
 			'<span class="badge bg-success-lt">Completo</span>' :
 			'<span class="badge bg-warning-lt text-dark">Pendiente</span>';
+		const centroCostoTexto = String(centroCosto || '').trim();
 
 		return [
 			'<tr data-id="' + id + '" data-id-centro-costo="' + (idCentroCosto || '') + '" data-id-meta-siaf="' + (idMetaSiaf || '') + '" data-nro-pedido="' + escapeHtml(nroPedido) + '" data-codigo-meta="' + escapeHtml(codigoMeta || '') + '" data-anio="' + parseInt(anio, 10) + '">',
-				'<td>' + escapeHtml(nroPedido) + '</td>',
-				'<td>' + escapeHtml(codigoMeta || '') + '</td>',
-				'<td>' + escapeHtml(centroCosto) + '</td>',
-				'<td>' + parseInt(anio, 10) + '</td>',
-				'<td>' + badgeEstado + '</td>',
-				'<td class="text-end align-middle">',
+				'<td class="sort-pedido">' + escapeHtml(nroPedido) + '</td>',
+				'<td class="sort-meta">' + escapeHtml(codigoMeta || '') + '</td>',
+				'<td class="sort-centro">' + escapeHtml(centroCostoTexto) + '</td>',
+				'<td class="sort-anio">' + parseInt(anio, 10) + '</td>',
+				'<td class="sort-estado">' + badgeEstado + '</td>',
+				'<td class="py-0 text-end align-middle">',
 				'<div class="btn-group" role="group">',
-				// Editar
 				'<button type="button" class="btn btn-icon btn-lg" title="Editar" onclick="editarRequerimiento(' + id + ')">',
 				'<i class="ti ti-edit fs-2"></i>',
 				'</button>',
-				// Detalles
 				'<button type="button" class="btn btn-icon btn-lg" title="Detalles" onclick="detalleRequerimiento(' + id + ')">',
 				'<i class="ti ti-list-details fs-2"></i>',
 				'</button>',
-				// Eliminar
 				'<button type="button" class="btn btn-icon btn-lg text-danger" title="Eliminar" onclick="eliminarRequerimiento(' + id + ')">',
 				'<i class="ti ti-trash fs-2"></i>',
 				'</button>',
@@ -274,12 +506,13 @@
 		const tbody = document.getElementById('tabla-requerimientos-body');
 		if (!tbody) return;
 
-		const filaVacia = tbody.querySelector('tr td[colspan="6"]');
+		const filaVacia = tbody.querySelector('tr[data-empty-row="true"], tr td[colspan="6"], tr td[colspan="7"]');
 		if (filaVacia) {
 			tbody.innerHTML = '';
 		}
 
 		tbody.insertAdjacentHTML('beforeend', construirFilaRequerimiento(id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCosto, anio, estado));
+		actualizarTablaRequerimientosList();
 	}
 
 	// Actualiza una fila existente o la agrega si no existe
@@ -292,10 +525,12 @@
 
 		if (fila) {
 			fila.outerHTML = htmlFila;
+			actualizarTablaRequerimientosList();
 			return;
 		}
 
 		tbody.insertAdjacentHTML('beforeend', htmlFila);
+		actualizarTablaRequerimientosList();
 	}
 
 	// Inicializa el formulario modal para crear un nuevo requerimiento
