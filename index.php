@@ -54,6 +54,12 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
 
 Auth::check(); 
 
+// Evita contaminar respuestas JSON/PDF de adquisiciones con el layout global.
+if ($module === 'adquisiciones' && preg_match('/Ajax$/', (string) $action)) {
+    include 'modules/adquisiciones/controllers/AdquisicionesController.php';
+    exit();
+}
+
 include 'public/header.php'; 
 
 // Módulos que siempre deben estar presentes o tienen lógica manual
@@ -93,7 +99,7 @@ if (in_array($module, $modulos_estaticos)) {
             case 'certificados':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Certificados (Franklin)</div></div></div>';
                 break;
-            case 'adquisiciones':
+            case 'inventario':
                 echo '<div class="container-xl"><div class="card"><div class="card-body">Módulo Adquisiciones (Cristian)</div></div></div>';
                 break;
             default:
