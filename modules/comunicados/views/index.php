@@ -53,13 +53,20 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 				window.comNotifySafe = function(type, title, text) {
 					if (typeof Swal !== 'undefined') {
-						return Swal.fire(comSwalOptions({
+						var notifyOptions = {
 							icon: swalIcon(type),
 							title: title || 'Informacion',
 							text: text || '',
 							confirmButtonText: 'OK',
 							confirmButtonColor: '#206bc4'
-						}));
+						};
+
+						if (type === 'success') {
+							notifyOptions.timer = 2000;
+							notifyOptions.timerProgressBar = true;
+						}
+
+						return Swal.fire(comSwalOptions(notifyOptions));
 					}
 					return window.adqNotifySafe ? window.adqNotifySafe(type, title, text) : alert((title || '') + '\n' + (text || ''));
 				};
@@ -126,6 +133,148 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 					}
 
 					return Promise.resolve(window.prompt(opts.titulo, opts.valor));
+				};
+
+				window.comInitAdvancedTable = function(config) {
+					var opts = Object.assign({
+						page: 10,
+						searchShortcut: true
+					}, config || {});
+					var tableId = opts.tableId;
+					var listKey = opts.listKey || tableId;
+					var footerId = opts.footerId;
+					var searchId = opts.searchId;
+					var pageCountId = opts.pageCountId;
+					var setPageFunctionName = opts.setPageFunctionName;
+
+					if (!tableId || !Array.isArray(opts.valueNames)) {
+						return;
+					}
+
+					function rowCount() {
+						var contenedor = document.getElementById(tableId);
+						return contenedor ? contenedor.querySelectorAll('.table-tbody tr:not([data-empty-row])').length : 0;
+					}
+
+					function updateFooter() {
+						var footer = footerId ? document.getElementById(footerId) : null;
+						if (!footer) return;
+
+						if (rowCount() === 0) {
+							footer.style.setProperty('display', 'none', 'important');
+							return;
+						}
+
+						footer.style.removeProperty('display');
+					}
+
+					function loadList(callback) {
+						if (typeof List === 'function') {
+							callback();
+							return;
+						}
+
+						var existing = document.querySelector('script[data-com-listjs="true"], script[data-comunicados-listjs="true"], script[data-plantillas-listjs="true"], script[data-tecnologias-listjs="true"], script[data-requerimientos-listjs="true"]');
+						if (existing) {
+							existing.addEventListener('load', callback, { once: true });
+							return;
+						}
+
+						var script = document.createElement('script');
+						script.src = 'https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js';
+						script.defer = true;
+						script.dataset.comListjs = 'true';
+						script.addEventListener('load', callback, { once: true });
+						document.head.appendChild(script);
+					}
+
+					function init() {
+						var contenedor = document.getElementById(tableId);
+						if (!contenedor) return;
+
+						updateFooter();
+
+						window.tabler_list = window.tabler_list || {};
+
+						if (rowCount() === 0) {
+							window.tabler_list[listKey] = null;
+							return;
+						}
+
+						if (contenedor.dataset.listInitialized === '1' && window.tabler_list[listKey]) {
+							window.tabler_list[listKey].update();
+							return;
+						}
+
+						if (typeof List !== 'function') return;
+
+						try {
+							window.tabler_list[listKey] = new List(tableId, {
+								sortClass: 'table-sort',
+								listClass: 'table-tbody',
+								page: opts.page,
+								pagination: {
+									item: function(value) {
+										return '<li class="page-item"><a class="page-link cursor-pointer">' + value.page + '</a></li>';
+									},
+									innerWindow: 1,
+									outerWindow: 1,
+									left: 0,
+									right: 0
+								},
+								valueNames: opts.valueNames
+							});
+						} catch (error) {
+							console.warn('No se pudo inicializar la tabla.', error);
+							return;
+						}
+
+						contenedor.dataset.listInitialized = '1';
+
+						var searchInput = searchId ? document.getElementById(searchId) : null;
+						if (searchInput && searchInput.dataset.searchBound !== '1') {
+							searchInput.addEventListener('input', function() {
+								var list = window.tabler_list && window.tabler_list[listKey];
+								if (list) {
+									list.search(searchInput.value);
+								}
+							});
+							searchInput.dataset.searchBound = '1';
+						}
+					}
+
+					if (setPageFunctionName) {
+						window[setPageFunctionName] = function(event) {
+							event.preventDefault();
+							var list = window.tabler_list && window.tabler_list[listKey];
+							if (!list) return;
+
+							list.page = parseInt(event.target.dataset.value, 10);
+							list.update();
+
+							var pageCount = pageCountId ? document.getElementById(pageCountId) : null;
+							if (pageCount) {
+								pageCount.innerHTML = event.target.dataset.value;
+							}
+						};
+					}
+
+					if (opts.searchShortcut && !window.comAdvancedTableShortcutBound) {
+						document.addEventListener('keydown', function(event) {
+							if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+								return;
+							}
+
+							var focusedSearch = document.querySelector('#comunicados-contenido input[id$="-table-search"]');
+							if (!focusedSearch) return;
+
+							event.preventDefault();
+							focusedSearch.focus();
+						});
+						window.comAdvancedTableShortcutBound = true;
+					}
+
+					loadList(init);
 				};
 			})();
 		</script>

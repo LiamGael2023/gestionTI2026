@@ -1,80 +1,161 @@
-﻿<?php
+<?php
 $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
+$totalPlantillasVista = count($plantillas);
 ?>
 
-<div class="row g-2 align-items-center mb-3">
-	<div class="col">
-		<div class="text-secondary">Gestion de estructuras reutilizables para el editor.</div>
-	</div>
-	<div class="col-auto">
-		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPlantilla">
-			<i class="ti ti-plus me-1"></i>Nueva plantilla
-		</button>
-	</div>
-</div>
+<style>
+	#plantillas-table .table > :not(caption) > * > * {
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+	}
 
-<div class="table-responsive">
-	<table class="table table-vcenter card-table table-striped">
-		<thead>
-			<tr>
-				<th>Nombre</th>
-				<th>Descripcion</th>
-				<th>Estado</th>
-				<th class="text-end">Acciones</th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php if (empty($plantillas)): ?>
-				<tr><td colspan="4" class="text-center text-secondary py-4">No hay plantillas registradas.</td></tr>
-			<?php else: ?>
-				<?php foreach ($plantillas as $item): ?>
-					<?php $activo = (int) ($item['Activo'] ?? 0) === 1; ?>
-					<tr>
-						<td class="fw-semibold"><?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?></td>
-						<td><?php echo htmlspecialchars((string) ($item['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-						<td><span class="badge <?php echo $activo ? 'bg-success-lt' : 'bg-secondary-lt'; ?>"><?php echo $activo ? 'Activa' : 'Inactiva'; ?></span></td>
-						<td class="text-end align-middle">
-							<div class="btn-group" role="group">
-								<?php if ($activo): ?>
-									<a class="btn btn-icon btn-lg js-com-link"
-										title="Usar en comunicado nuevo"
-										href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
-										<i class="ti ti-copy-plus fs-2"></i>
-									</a>
-								<?php endif; ?>
-								<button type="button"
-									class="btn btn-icon btn-lg js-preview-plantilla"
-									title="Previsualizar"
-									data-nombre="<?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>"
-									data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-									<i class="ti ti-eye fs-2"></i>
-								</button>
-								<button type="button"
-									class="btn btn-icon btn-lg js-editar-plantilla"
-									title="Editar"
-									data-id="<?php echo (int) $item['IdPlantilla']; ?>"
-									data-nombre="<?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>"
-									data-descripcion="<?php echo htmlspecialchars((string) ($item['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-									data-json="<?php echo htmlspecialchars((string) $item['ContenidoJson'], ENT_QUOTES, 'UTF-8'); ?>"
-									data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
-									<i class="ti ti-edit fs-2"></i>
-								</button>
-								<?php if ($activo): ?>
-									<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-plantilla" title="Inactivar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
-										<i class="ti ti-eye-x fs-2"></i>
-									</button>
-								<?php else: ?>
-									<button type="button" class="btn btn-icon btn-lg text-success js-activar-plantilla" title="Activar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
-										<i class="ti ti-eye-check fs-2"></i>
-									</button>
-								<?php endif; ?>
+	#plantillas-table .btn-group .btn-icon {
+		min-width: 2.25rem;
+		min-height: 2.25rem;
+	}
+
+	#plantillas-table .table-sort {
+		display: inline-flex !important;
+		align-items: center;
+		width: auto;
+		gap: 0.35rem;
+	}
+
+	#plantillas-table .table-sort::after {
+		margin-left: 0;
+	}
+
+	#plantillas-table td {
+		user-select: text;
+	}
+
+	#plantillas-table th:last-child,
+	#plantillas-table td:last-child {
+		text-align: center !important;
+	}
+
+	#plantillas-table td:last-child .btn-group {
+		justify-content: center;
+	}
+</style>
+
+<div class="col-12">
+	<div class="card">
+		<div class="card-table">
+			<div class="card-header">
+				<div class="row w-full g-2 align-items-center">
+					<div class="col">
+						<h3 class="card-title mb-0">Plantillas</h3>
+					</div>
+					<div class="col-md-auto col-sm-12">
+						<div class="ms-auto d-flex flex-wrap btn-list">
+							<div class="input-group input-group-flat w-auto">
+								<span class="input-group-text">
+									<i class="ti ti-search"></i>
+								</span>
+								<input id="plantillas-table-search" type="text" class="form-control" placeholder="Buscar" autocomplete="off">
 							</div>
-						</td>
-					</tr>
-				<?php endforeach; ?>
-			<?php endif; ?>
-		</tbody>
-	</table>
+							<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPlantilla">
+								<i class="ti ti-plus me-1"></i>Nueva plantilla
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div id="plantillas-table">
+				<div class="table-responsive">
+					<table class="table table-vcenter">
+						<thead>
+							<tr>
+								<th>
+									<button class="table-sort" data-sort="sort-nombre">Nombre</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-descripcion">Descripcion</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-estado">Estado</button>
+								</th>
+								<th>Acciones</th>
+							</tr>
+						</thead>
+						<tbody class="table-tbody">
+							<?php if (empty($plantillas)): ?>
+								<tr data-empty-row="true">
+									<td colspan="4" class="text-center text-secondary py-4">No hay plantillas registradas.</td>
+								</tr>
+							<?php else: ?>
+								<?php foreach ($plantillas as $item): ?>
+									<?php $activo = (int) ($item['Activo'] ?? 0) === 1; ?>
+									<tr>
+										<td class="sort-nombre fw-semibold"><?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?></td>
+										<td class="sort-descripcion"><?php echo htmlspecialchars((string) ($item['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+										<td class="sort-estado">
+											<span class="badge <?php echo $activo ? 'bg-success-lt' : 'bg-secondary-lt'; ?>">
+												<?php echo $activo ? 'Activa' : 'Inactiva'; ?>
+											</span>
+										</td>
+										<td class="py-0 align-middle">
+											<div class="btn-group" role="group">
+												<?php if ($activo): ?>
+													<a class="btn btn-icon btn-lg js-com-link"
+														title="Usar en comunicado nuevo"
+														href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
+														<i class="ti ti-copy-plus fs-2"></i>
+													</a>
+												<?php endif; ?>
+												<button type="button"
+													class="btn btn-icon btn-lg js-preview-plantilla"
+													title="Previsualizar"
+													data-nombre="<?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>"
+													data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+													<i class="ti ti-eye fs-2"></i>
+												</button>
+												<button type="button"
+													class="btn btn-icon btn-lg js-editar-plantilla"
+													title="Editar"
+													data-id="<?php echo (int) $item['IdPlantilla']; ?>"
+													data-nombre="<?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?>"
+													data-descripcion="<?php echo htmlspecialchars((string) ($item['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+													data-json="<?php echo htmlspecialchars((string) $item['ContenidoJson'], ENT_QUOTES, 'UTF-8'); ?>"
+													data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+													<i class="ti ti-edit fs-2"></i>
+												</button>
+												<?php if ($activo): ?>
+													<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-plantilla" title="Inactivar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
+														<i class="ti ti-eye-x fs-2"></i>
+													</button>
+												<?php else: ?>
+													<button type="button" class="btn btn-icon btn-lg text-success js-activar-plantilla" title="Activar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
+														<i class="ti ti-eye-check fs-2"></i>
+													</button>
+												<?php endif; ?>
+											</div>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							<?php endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<div id="plantillas-table-footer" class="card-footer d-flex align-items-center" <?php echo $totalPlantillasVista === 0 ? 'style="display:none !important;"' : ''; ?>>
+					<div class="dropdown">
+						<a class="btn dropdown-toggle" data-bs-toggle="dropdown">
+							<span id="plantillas-page-count" class="me-1">10</span>
+							<span>registros</span>
+						</a>
+						<div class="dropdown-menu">
+							<a class="dropdown-item" onclick="setPlantillasPageListItems(event)" data-value="10">10 registros</a>
+							<a class="dropdown-item" onclick="setPlantillasPageListItems(event)" data-value="20">20 registros</a>
+							<a class="dropdown-item" onclick="setPlantillasPageListItems(event)" data-value="50">50 registros</a>
+							<a class="dropdown-item" onclick="setPlantillasPageListItems(event)" data-value="100">100 registros</a>
+						</div>
+					</div>
+					<ul class="pagination m-0 ms-auto"></ul>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <div class="modal fade" id="modalPlantilla" tabindex="-1" aria-hidden="true">
@@ -125,6 +206,17 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 
 <script>
 	(function() {
+		if (typeof window.comInitAdvancedTable === 'function') {
+			window.comInitAdvancedTable({
+				tableId: 'plantillas-table',
+				footerId: 'plantillas-table-footer',
+				searchId: 'plantillas-table-search',
+				pageCountId: 'plantillas-page-count',
+				setPageFunctionName: 'setPlantillasPageListItems',
+				valueNames: ['sort-nombre', 'sort-descripcion', 'sort-estado']
+			});
+		}
+
 		const modalEl = document.getElementById('modalPlantilla');
 		const modal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
 		const previewModalEl = document.getElementById('modalPreviewPlantilla');
@@ -249,4 +341,3 @@ $plantillas = isset($plantillas) && is_array($plantillas) ? $plantillas : [];
 		});
 	})();
 </script>
-
