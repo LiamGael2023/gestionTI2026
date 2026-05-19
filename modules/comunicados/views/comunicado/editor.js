@@ -84,7 +84,7 @@
 			case 'pie':
 				return { id: uid(), type: 'pie', text: 'AREA DE INFORMATICA - PROYECTO ESPECIAL CHAVIMOCHIC\nMensaje informativo institucional.' };
 			case 'titulo':
-				return { id: uid(), type: 'titulo', text: 'Titulo del comunicado', subtitle: '' };
+				return { id: uid(), type: 'titulo', text: 'COMUNICADO NRO. 0XX-2026-PECH-XXX', subtitle: 'Implementación...' };
 			case 'imagen':
 				return { id: uid(), type: 'imagen', src: '', alt: 'Imagen del comunicado' };
 			case 'boton':

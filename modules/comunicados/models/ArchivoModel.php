@@ -8,18 +8,13 @@ class ArchivoModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivos = true, $idUsuario = null)
+	public function listar($soloActivos = true)
 	{
 		$where = [];
 		$params = [];
 
 		if ($soloActivos) {
 			$where[] = "Activo = 1";
-		}
-
-		if ($idUsuario !== null) {
-			$where[] = "IdUsuarioRegistro = ?";
-			$params[] = (int) $idUsuario;
 		}
 
 		$sql = "
@@ -64,15 +59,14 @@ class ArchivoModel
 		return $row ? (int) $row[0] : true;
 	}
 
-	public function cambiarEstado($idArchivo, $activo, $idUsuario)
+	public function cambiarEstado($idArchivo, $activo)
 	{
 		$sql = "
 			UPDATE comunicados.Archivo
 			SET Activo = ?
 			WHERE IdArchivo = ?
-				AND IdUsuarioRegistro = ?
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, (int) $idArchivo, (int) $idUsuario]);
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, (int) $idArchivo]);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);

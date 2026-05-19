@@ -47,7 +47,7 @@ switch ($action) {
 
 		if ($id > 0) {
 			$ok = $plantillaModel->actualizar($id, $datos);
-			comPlantillaJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Plantilla actualizada.' : 'No se pudo actualizar la plantilla o no pertenece a su usuario.']);
+			comPlantillaJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Plantilla actualizada.' : 'No se pudo actualizar la plantilla.']);
 		}
 
 		$nuevoId = $plantillaModel->guardar($datos);
@@ -57,28 +57,28 @@ switch ($action) {
 	case 'eliminarPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 0, $idUsuarioSesion);
-		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla inactivada.' : 'No se pudo inactivar la plantilla o no pertenece a su usuario.']);
+		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla inactivada.' : 'No se pudo inactivar la plantilla.']);
 		break;
 
 	case 'activarPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 1, $idUsuarioSesion);
-		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla activada.' : 'No se pudo activar la plantilla o no pertenece a su usuario.']);
+		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla activada.' : 'No se pudo activar la plantilla.']);
 		break;
 
 	case 'obtenerPlantillaAjax':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$plantilla = $id > 0 ? $plantillaModel->obtener($id, $idUsuarioSesion) : null;
+		$plantilla = $id > 0 ? $plantillaModel->obtener($id) : null;
 		comPlantillaJson(['success' => (bool) $plantilla, 'data' => $plantilla]);
 		break;
 
 	case 'listarPlantillasAjax':
-		comPlantillaJson(['success' => true, 'data' => $plantillaModel->listar(false, $idUsuarioSesion)]);
+		comPlantillaJson(['success' => true, 'data' => $plantillaModel->listar(false)]);
 		break;
 
 	default:
 		$vistaActual = 'plantilla';
-		$plantillas = $plantillaModel->listar(false, $idUsuarioSesion);
+		$plantillas = $plantillaModel->listar(false);
 		include 'modules/comunicados/views/index.php';
 		break;
 }
