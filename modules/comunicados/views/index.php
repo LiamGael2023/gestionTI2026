@@ -44,15 +44,22 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 					return 'info';
 				}
 
+				function comSwalOptions(options) {
+					return Object.assign({
+						width: '24rem',
+						padding: '0 0 1rem'
+					}, options || {});
+				}
+
 				window.comNotifySafe = function(type, title, text) {
 					if (typeof Swal !== 'undefined') {
-						return Swal.fire({
+						return Swal.fire(comSwalOptions({
 							icon: swalIcon(type),
 							title: title || 'Informacion',
 							text: text || '',
 							confirmButtonText: 'OK',
 							confirmButtonColor: '#206bc4'
-						});
+						}));
 					}
 					return window.adqNotifySafe ? window.adqNotifySafe(type, title, text) : alert((title || '') + '\n' + (text || ''));
 				};
@@ -68,7 +75,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 					}, options || {});
 
 					if (typeof Swal !== 'undefined') {
-						return Swal.fire({
+						return Swal.fire(comSwalOptions({
 							icon: opts.icono,
 							title: opts.titulo,
 							text: opts.mensaje,
@@ -77,7 +84,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 							cancelButtonText: opts.textoCancelar,
 							confirmButtonColor: opts.colorAceptar,
 							cancelButtonColor: '#667085'
-						}).then(function(result) {
+						})).then(function(result) {
 							return result.isConfirmed;
 						});
 					}
@@ -96,7 +103,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 					}, options || {});
 
 					if (typeof Swal !== 'undefined') {
-						return Swal.fire({
+						return Swal.fire(comSwalOptions({
 							title: opts.titulo,
 							text: opts.mensaje,
 							input: 'text',
@@ -113,7 +120,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 								}
 								return null;
 							}
-						}).then(function(result) {
+						})).then(function(result) {
 							return result.isConfirmed ? result.value : null;
 						});
 					}
