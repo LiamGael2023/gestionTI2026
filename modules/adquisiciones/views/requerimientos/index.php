@@ -5,8 +5,8 @@ $totalRequerimientosVista = (isset($requerimientos) && is_array($requerimientos)
 
 <style>
 	#requerimientos-table .table > :not(caption) > * > * {
-		padding-top: 0.75rem;
-		padding-bottom: 0.75rem;
+		padding-top: 1rem;
+		padding-bottom: 1rem;
 	}
 
 	#requerimientos-table .btn-group .btn-icon {

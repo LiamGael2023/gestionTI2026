@@ -1,97 +1,161 @@
-<div class="row g-2 align-items-center mb-3">
-	<div class="col-auto">
-		<label for="filtroAnioTec" class="form-label mb-0">Filtrar por año:</label>
-	</div>
-	<div class="col-auto">
-		<select id="filtroAnioTec" class="form-select" onchange="filtrarTecnologiasPorAnio()" <?php echo empty($aniosTecnologias) ? 'disabled' : ''; ?>>
-			<?php if (empty($aniosTecnologias)): ?>
-				<option value="">Sin registros</option>
-			<?php else: ?>
-				<?php foreach ($aniosTecnologias as $a): ?>
-					<option value="<?php echo (int) $a; ?>" <?php echo ($anioTecnologias == $a) ? 'selected' : ''; ?>>
-						<?php echo (int) $a; ?>
-					</option>
-				<?php endforeach; ?>
-			<?php endif; ?>
-		</select>
-	</div>
-	<div class="col-auto ms-auto">
-		<button class="btn btn-success" id="btn-sincronizar-homologacion">
-			Sincronizar de SIGA
-		</button>
-	</div>
-</div>
+<?php $totalTecnologiasVista = (isset($tecnologias) && is_array($tecnologias)) ? count($tecnologias) : 0; ?>
 
-<div class="table-responsive">
-	<table class="table table-vcenter card-table table-striped">
-		<thead>
-			<tr>
-				<th>Código</th>
-				<th>Tecnología</th>
-				<th>Nombre Genérico</th>
-				<th>Estado</th>
-				<th class="text-end">Acciones</th>
-			</tr>
-		</thead>
-		<tbody>
-			<?php if (!empty($tecnologias)): ?>
-				<?php foreach ($tecnologias as $tec): ?>
-					<?php $tieneCodigosDiferentes = isset($tec['TotalCodigosSiga']) && (int) $tec['TotalCodigosSiga'] > 1; ?>
-					<?php $tienePresupuestoAsignado = isset($tec['TienePresupuesto']) && (int) $tec['TienePresupuesto'] === 1; ?>
-					<tr>
-						<td>
-							<?php if ($tieneCodigosDiferentes): ?>
-								<span class="badge bg-warning-lt text-dark"><?php echo (int) $tec['TotalCodigosSiga']; ?> códigos SIGA</span>
-								<div class="small text-secondary mt-1"><?php echo htmlspecialchars((string) $tec['CodigosSiga']); ?></div>
-							<?php else: ?>
-								<span class="badge bg-azure-lt"><?php echo htmlspecialchars($tec['CodigoSiga']); ?></span>
-							<?php endif; ?>
-						</td>
-						<td><?php echo htmlspecialchars($tec['Tecnologia']); ?></td>
-						<td>
-							<?php echo htmlspecialchars($tec['NombreGenerico']); ?>
-							<?php if ($tieneCodigosDiferentes): ?>
-								<div class="text-danger small">Diferencias de Código SIGA</div>
-							<?php endif; ?>
-						</td>
-						<td>
-							<?php if ((int) $tec['EstadoCompleto'] === 1): ?>
-								<span class="badge bg-success-lt">Completo</span>
-							<?php else: ?>
-								<span class="badge bg-warning-lt text-dark">Pendiente</span>
-							<?php endif; ?>
-						</td>
-					<td class="text-end align-middle">
-						<div class="btn-group" role="group">
-							<!-- Detalles -->
-							<button type="button"
-								class="btn btn-icon btn-lg"
-								title="Detalles"
-								onclick="editarTecnologia(<?= (int)$tec['IdCatalogoTecnologico'] ?>)">
-								<i class="ti ti-list-details fs-2"></i>
-							</button>
-							<!-- Presupuesto -->
-							<button type="button"
-								class="btn btn-icon btn-lg btn-presupuesto-tecnologia <?= $tienePresupuestoAsignado ? 'text-success' : '' ?>"
-								title="Presupuesto"
-								data-id-catalogo="<?= (int)$tec['IdCatalogoTecnologico'] ?>"
-								onclick="abrirModalPresupuesto(
-									<?= (int)$tec['IdCatalogoTecnologico'] ?>, 
-									<?= htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>
-								)">
-								<i class="ti ti-calendar-dollar fs-2"></i>
+<style>
+	#tecnologias-table .table > :not(caption) > * > * {
+		padding-top: 1rem;
+		padding-bottom: 1rem;
+	}
+
+	#tecnologias-table .btn-group .btn-icon {
+		min-width: 2.25rem;
+		min-height: 2.25rem;
+	}
+
+	#tecnologias-table .table-sort {
+		display: inline-flex !important;
+		align-items: center;
+		width: auto;
+		gap: 0.35rem;
+	}
+
+	#tecnologias-table .table-sort::after {
+		margin-left: 0;
+	}
+</style>
+
+<div class="col-12">
+	<div class="card">
+		<div class="card-table">
+			<div class="card-header">
+				<div class="row w-full g-2 align-items-center">
+					<div class="col">
+						<h3 class="card-title mb-0">Tecnologías</h3>
+					</div>
+					<div class="col-md-auto col-sm-12">
+						<div class="ms-auto d-flex flex-wrap btn-list">
+							<div class="input-group input-group-flat w-auto">
+								<span class="input-group-text">
+									<i class="ti ti-search"></i>
+								</span>
+								<input id="tecnologias-table-search" type="text" class="form-control" placeholder="Buscar" autocomplete="off">
+							</div>
+							<div class="d-flex gap-2 align-items-center">
+								<label for="filtroAnioTec" class="form-label mb-0 text-nowrap">Año:</label>
+								<select id="filtroAnioTec" class="form-select w-auto" onchange="filtrarTecnologiasPorAnio()" <?php echo empty($aniosTecnologias) ? 'disabled' : ''; ?>>
+									<?php if (empty($aniosTecnologias)): ?>
+										<option value="">Sin registros</option>
+									<?php else: ?>
+										<?php foreach ($aniosTecnologias as $a): ?>
+											<option value="<?php echo (int) $a; ?>" <?php echo ($anioTecnologias == $a) ? 'selected' : ''; ?>>
+												<?php echo (int) $a; ?>
+											</option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
+							</div>
+							<button type="button" class="btn btn-success" id="btn-sincronizar-homologacion">
+								Sincronizar de SIGA
 							</button>
 						</div>
-					</td>
-					</tr>
-				<?php endforeach; ?>
-			<?php else: ?>
-				<tr>
-					<td colspan="5" class="text-center text-secondary">No hay tecnologías registradas para este año.</td>
-				</tr>
-			<?php endif; ?>
-		</tbody>
-	</table>
+					</div>
+				</div>
+			</div>
+			<div id="tecnologias-table">
+				<div class="table-responsive">
+					<table class="table table-vcenter table-selectable">
+						<thead>
+							<tr>
+								<th>
+									<button class="table-sort" data-sort="sort-codigo">Código</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-tecnologia">Tecnología</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-nombre">Nombre Genérico</button>
+								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-estado">Estado</button>
+								</th>
+								<th class="text-end">Acciones</th>
+							</tr>
+						</thead>
+						<tbody class="table-tbody">
+							<?php if (!empty($tecnologias)): ?>
+								<?php foreach ($tecnologias as $tec): ?>
+									<?php $tieneCodigosDiferentes = isset($tec['TotalCodigosSiga']) && (int) $tec['TotalCodigosSiga'] > 1; ?>
+									<?php $tienePresupuestoAsignado = isset($tec['TienePresupuesto']) && (int) $tec['TienePresupuesto'] === 1; ?>
+									<tr>
+										<td class="sort-codigo">
+											<?php if ($tieneCodigosDiferentes): ?>
+												<span class="badge bg-warning-lt text-dark"><?php echo (int) $tec['TotalCodigosSiga']; ?> códigos SIGA</span>
+												<div class="small text-secondary mt-1"><?php echo htmlspecialchars((string) $tec['CodigosSiga']); ?></div>
+											<?php else: ?>
+												<span class="badge bg-azure-lt"><?php echo htmlspecialchars($tec['CodigoSiga']); ?></span>
+											<?php endif; ?>
+										</td>
+										<td class="sort-tecnologia"><?php echo htmlspecialchars($tec['Tecnologia']); ?></td>
+										<td class="sort-nombre">
+											<?php echo htmlspecialchars($tec['NombreGenerico']); ?>
+											<?php if ($tieneCodigosDiferentes): ?>
+												<div class="text-danger small">Diferencias de Código SIGA</div>
+											<?php endif; ?>
+										</td>
+										<td class="sort-estado">
+											<?php if ((int) $tec['EstadoCompleto'] === 1): ?>
+												<span class="badge bg-success-lt">Completo</span>
+											<?php else: ?>
+												<span class="badge bg-warning-lt text-dark">Pendiente</span>
+											<?php endif; ?>
+										</td>
+										<td class="py-0 text-end align-middle">
+											<div class="btn-group" role="group">
+												<button type="button"
+													class="btn btn-icon btn-lg"
+													title="Detalles"
+													onclick="editarTecnologia(<?= (int)$tec['IdCatalogoTecnologico'] ?>)">
+													<i class="ti ti-list-details fs-2"></i>
+												</button>
+												<button type="button"
+													class="btn btn-icon btn-lg btn-presupuesto-tecnologia <?= $tienePresupuestoAsignado ? 'text-success' : '' ?>"
+													title="Presupuesto"
+													data-id-catalogo="<?= (int)$tec['IdCatalogoTecnologico'] ?>"
+													onclick="abrirModalPresupuesto(
+														<?= (int)$tec['IdCatalogoTecnologico'] ?>,
+														<?= htmlspecialchars(json_encode($tec['NombreGenerico']), ENT_QUOTES); ?>
+													)">
+													<i class="ti ti-calendar-dollar fs-2"></i>
+												</button>
+											</div>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							<?php else: ?>
+								<tr data-empty-row="true">
+									<td colspan="5" class="text-center text-secondary">No hay tecnologías registradas para este año.</td>
+								</tr>
+							<?php endif; ?>
+						</tbody>
+					</table>
+				</div>
+				<div id="tecnologias-table-footer" class="card-footer d-flex align-items-center" <?php echo $totalTecnologiasVista === 0 ? 'style="display:none !important;"' : ''; ?>>
+					<div class="dropdown">
+						<a class="btn dropdown-toggle" data-bs-toggle="dropdown">
+							<span id="tecnologias-page-count" class="me-1">10</span>
+							<span>registros</span>
+						</a>
+						<div class="dropdown-menu">
+							<a class="dropdown-item" onclick="setTecnologiasPageListItems(event)" data-value="10">10 registros</a>
+							<a class="dropdown-item" onclick="setTecnologiasPageListItems(event)" data-value="20">20 registros</a>
+							<a class="dropdown-item" onclick="setTecnologiasPageListItems(event)" data-value="50">50 registros</a>
+							<a class="dropdown-item" onclick="setTecnologiasPageListItems(event)" data-value="100">100 registros</a>
+						</div>
+					</div>
+					<ul class="pagination m-0 ms-auto"></ul>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>
 
 <div class="modal fade" id="modalPresupuestoTecnologia" tabindex="-1" aria-labelledby="modalPresupuestoTecnologiaLabel" aria-hidden="true">
@@ -151,6 +215,141 @@
 </div>
 
 <script>
+	function obtenerCantidadFilasTecnologias() {
+		const contenedor = document.getElementById('tecnologias-table');
+		return contenedor ? contenedor.querySelectorAll('.table-tbody tr:not([data-empty-row])').length : 0;
+	}
+
+	function actualizarFooterTablaTecnologias() {
+		const footer = document.getElementById('tecnologias-table-footer');
+		if (!footer) return;
+
+		if (obtenerCantidadFilasTecnologias() === 0) {
+			footer.style.setProperty('display', 'none', 'important');
+			return;
+		}
+
+		footer.style.removeProperty('display');
+	}
+
+	function cargarListJsTecnologias(callback) {
+		if (typeof List === 'function') {
+			callback();
+			return;
+		}
+
+		const scriptExistente = document.querySelector('script[data-tecnologias-listjs="true"], script[data-requerimientos-listjs="true"]');
+		if (scriptExistente) {
+			scriptExistente.addEventListener('load', callback, { once: true });
+			if (typeof List === 'function') {
+				callback();
+			}
+			return;
+		}
+
+		const script = document.createElement('script');
+		script.src = 'https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js';
+		script.defer = true;
+		script.dataset.tecnologiasListjs = 'true';
+		script.addEventListener('load', callback, { once: true });
+		document.head.appendChild(script);
+	}
+
+	function inicializarTablaTecnologias() {
+		const contenedor = document.getElementById('tecnologias-table');
+		if (!contenedor) return;
+
+		actualizarFooterTablaTecnologias();
+
+		if (obtenerCantidadFilasTecnologias() === 0) {
+			contenedor.dataset.listInitialized = '';
+			if (window.tabler_list) {
+				window.tabler_list['tecnologias-table'] = null;
+			}
+			return;
+		}
+
+		if (contenedor.dataset.listInitialized === '1' && window.tabler_list && window.tabler_list['tecnologias-table']) {
+			window.tabler_list['tecnologias-table'].update();
+			return;
+		}
+
+		if (typeof List !== 'function') return;
+
+		window.tabler_list = window.tabler_list || {};
+		try {
+			window.tabler_list['tecnologias-table'] = new List('tecnologias-table', {
+				sortClass: 'table-sort',
+				listClass: 'table-tbody',
+				page: 10,
+				pagination: {
+					item: function(value) {
+						return '<li class="page-item"><a class="page-link cursor-pointer">' + value.page + '</a></li>';
+					},
+					innerWindow: 1,
+					outerWindow: 1,
+					left: 0,
+					right: 0
+				},
+				valueNames: ['sort-codigo', 'sort-tecnologia', 'sort-nombre', 'sort-estado']
+			});
+		} catch (error) {
+			console.warn('No se pudo inicializar la tabla de tecnologías.', error);
+			return;
+		}
+		contenedor.dataset.listInitialized = '1';
+
+		const searchInput = document.getElementById('tecnologias-table-search');
+		if (searchInput && searchInput.dataset.searchBound !== '1') {
+			searchInput.addEventListener('input', function() {
+				const list = window.tabler_list && window.tabler_list['tecnologias-table'];
+				if (list) {
+					list.search(searchInput.value);
+				}
+			});
+			searchInput.dataset.searchBound = '1';
+		}
+	}
+
+	function setTecnologiasPageListItems(e) {
+		e.preventDefault();
+		const list = window.tabler_list && window.tabler_list['tecnologias-table'];
+		if (!list) return;
+
+		list.page = parseInt(e.target.dataset.value, 10);
+		list.update();
+
+		const pageCount = document.getElementById('tecnologias-page-count');
+		if (pageCount) {
+			pageCount.innerHTML = e.target.dataset.value;
+		}
+	}
+
+	function enfocarBusquedaTecnologias(event) {
+		if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') {
+			return;
+		}
+
+		const searchInput = document.getElementById('tecnologias-table-search');
+		if (!searchInput) return;
+
+		event.preventDefault();
+		searchInput.focus();
+	}
+
+	if (!window.tecnologiasTableShortcutBound) {
+		document.addEventListener('keydown', enfocarBusquedaTecnologias);
+		window.tecnologiasTableShortcutBound = true;
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', function() {
+			cargarListJsTecnologias(inicializarTablaTecnologias);
+		}, { once: true });
+	} else {
+		cargarListJsTecnologias(inicializarTablaTecnologias);
+	}
+
 	function filtrarTecnologiasPorAnio() {
 		const anio = document.getElementById('filtroAnioTec').value;
 		const url = 'index.php?module=adquisiciones&action=tecnologias&anio=' + anio;
