@@ -28,15 +28,6 @@ $totalArchivosVista = count($archivos);
 	#archivos-table td {
 		user-select: text;
 	}
-
-	#archivos-table th:last-child,
-	#archivos-table td:last-child {
-		text-align: right !important;
-	}
-
-	#archivos-table td:last-child .btn-group {
-		justify-content: flex-end;
-	}
 </style>
 
 <div class="col-12">

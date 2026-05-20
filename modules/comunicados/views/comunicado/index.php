@@ -28,15 +28,6 @@ $totalComunicadosVista = count($comunicados);
 	#comunicados-table td {
 		user-select: text;
 	}
-
-	#comunicados-table th:last-child,
-	#comunicados-table td:last-child {
-		text-align: right !important;
-	}
-
-	#comunicados-table td:last-child .btn-group {
-		justify-content: flex-end;
-	}
 </style>
 
 <div class="col-12">

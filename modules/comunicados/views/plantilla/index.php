@@ -28,15 +28,6 @@ $totalPlantillasVista = count($plantillas);
 	#plantillas-table td {
 		user-select: text;
 	}
-
-	#plantillas-table th:last-child,
-	#plantillas-table td:last-child {
-		text-align: right !important;
-	}
-
-	#plantillas-table td:last-child .btn-group {
-		justify-content: flex-end;
-	}
 </style>
 
 <div class="col-12">
