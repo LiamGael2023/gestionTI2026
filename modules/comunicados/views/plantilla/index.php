@@ -334,11 +334,21 @@ $totalPlantillasVista = count($plantillas);
 
 		document.querySelectorAll('.js-activar-plantilla').forEach(function(btn) {
 			btn.addEventListener('click', function() {
-				cambiarEstado('activarPlantillaAjax', this.dataset.id).then(function(res) {
-					window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
-					if (res.success) {
-						window.recargarVistaActualComunicados();
+				const id = this.dataset.id;
+				window.comConfirmSafe({
+					titulo: 'Activar plantilla',
+					mensaje: 'Desea activar esta plantilla?',
+					textoAceptar: 'Activar'
+				}).then(function(ok) {
+					if (!ok) {
+						return;
 					}
+					cambiarEstado('activarPlantillaAjax', id).then(function(res) {
+						window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
+						if (res.success) {
+							window.recargarVistaActualComunicados();
+						}
+					});
 				});
 			});
 		});
