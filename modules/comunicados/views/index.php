@@ -25,12 +25,10 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 <div class="page-body">
 	<div class="container-xl">
-		<?php include 'modules/adquisiciones/views/alerts/alertas.php'; ?>
-		<?php include 'modules/adquisiciones/views/alerts/confirmacion.php'; ?>
 		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 		<script>
 			(function() {
-				if (window.comNotifySafe && window.comConfirmSafe && window.comPromptSafe) {
+				if (window.comNotifySafe && window.comConfirmSafe && window.comPromptSafe && window.comShowModalSafe && window.comHideModalSafe) {
 					return;
 				}
 
@@ -68,7 +66,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 						return Swal.fire(comSwalOptions(notifyOptions));
 					}
-					return window.adqNotifySafe ? window.adqNotifySafe(type, title, text) : alert((title || '') + '\n' + (text || ''));
+					return alert((title || '') + '\n' + (text || ''));
 				};
 
 				window.comConfirmSafe = function(options) {
@@ -96,7 +94,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 						});
 					}
 
-					return window.adqConfirmSafe ? window.adqConfirmSafe(opts) : Promise.resolve(confirm(opts.mensaje));
+					return Promise.resolve(confirm(opts.mensaje));
 				};
 
 				window.comPromptSafe = function(options) {
@@ -133,6 +131,59 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 					}
 
 					return Promise.resolve(window.prompt(opts.titulo, opts.valor));
+				};
+
+				window.comHideModalSafe = function(modalEl) {
+					if (!modalEl) {
+						return;
+					}
+
+					if (window.bootstrap && bootstrap.Modal) {
+						var instancia = bootstrap.Modal.getInstance(modalEl);
+						if (instancia) {
+							instancia.hide();
+							return;
+						}
+					}
+
+					modalEl.classList.remove('show');
+					modalEl.style.display = 'none';
+					modalEl.setAttribute('aria-hidden', 'true');
+					modalEl.removeAttribute('aria-modal');
+					modalEl.removeAttribute('role');
+					document.body.classList.remove('modal-open');
+
+					document.querySelectorAll('.modal-backdrop[data-comunicados-fallback="true"]').forEach(function(backdrop) {
+						backdrop.remove();
+					});
+				};
+
+				window.comShowModalSafe = function(modalEl) {
+					if (!modalEl) {
+						return;
+					}
+
+					if (window.bootstrap && bootstrap.Modal) {
+						bootstrap.Modal.getOrCreateInstance(modalEl).show();
+						return;
+					}
+
+					modalEl.style.display = 'block';
+					modalEl.removeAttribute('aria-hidden');
+					modalEl.setAttribute('aria-modal', 'true');
+					modalEl.setAttribute('role', 'dialog');
+					modalEl.classList.add('show');
+					document.body.classList.add('modal-open');
+
+					if (!document.querySelector('.modal-backdrop[data-comunicados-fallback="true"]')) {
+						var backdrop = document.createElement('div');
+						backdrop.className = 'modal-backdrop fade show';
+						backdrop.dataset.comunicadosFallback = 'true';
+						backdrop.addEventListener('click', function() {
+							window.comHideModalSafe(modalEl);
+						});
+						document.body.appendChild(backdrop);
+					}
 				};
 
 				window.comInitAdvancedTable = function(config) {
@@ -283,22 +334,22 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 			<div class="card-header" id="comunicados-nav-container">
 				<ul class="nav nav-pills card-header-pills">
 					<li class="nav-item">
-						<a class="nav-link js-com-nav <?php echo $vistaActual === 'dashboard' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=dashboard">
+						<a class="nav-link <?php echo $vistaActual === 'dashboard' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=dashboard">
 							Dashboard
 						</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link js-com-nav <?php echo strpos($vistaActual, 'comunicado') === 0 ? 'active' : ''; ?>" href="index.php?module=comunicados&action=comunicados">
+						<a class="nav-link <?php echo strpos($vistaActual, 'comunicado') === 0 ? 'active' : ''; ?>" href="index.php?module=comunicados&action=comunicados">
 							Comunicados
 						</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link js-com-nav <?php echo $vistaActual === 'plantilla' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=plantillas">
+						<a class="nav-link <?php echo $vistaActual === 'plantilla' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=plantillas">
 							Plantillas
 						</a>
 					</li>
 					<li class="nav-item">
-						<a class="nav-link js-com-nav <?php echo $vistaActual === 'archivo' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=archivos">
+						<a class="nav-link <?php echo $vistaActual === 'archivo' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=archivos">
 							Archivos
 						</a>
 					</li>
@@ -320,105 +371,53 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 <script>
 	(function() {
-		if (window.cargarVistaComunicados) {
+		if (window.recargarVistaActualComunicados) {
 			return;
 		}
 
-		function ejecutarScripts(contenedor) {
-			const scripts = contenedor.querySelectorAll('script');
-			scripts.forEach(function(scriptViejo) {
-				const scriptNuevo = document.createElement('script');
-				Array.from(scriptViejo.attributes).forEach(function(attr) {
-					scriptNuevo.setAttribute(attr.name, attr.value);
-				});
-
-				if (!scriptViejo.src) {
-					scriptNuevo.textContent = scriptViejo.textContent;
-				}
-
-				scriptViejo.parentNode.replaceChild(scriptNuevo, scriptViejo);
-			});
-		}
-
-		function esUrlInternaComunicados(url) {
-			try {
-				const parsed = new URL(url, window.location.origin);
-				return parsed.searchParams.get('module') === 'comunicados';
-			} catch (e) {
-				return false;
-			}
-		}
-
-		window.cargarVistaComunicados = function(url, options) {
-			const opts = Object.assign({ pushState: true }, options || {});
-
-			return fetch(url, {
-				method: 'GET',
-				headers: {
-					'X-Requested-With': 'XMLHttpRequest'
-				}
-			})
-				.then(function(response) {
-					if (!response.ok) {
-						throw new Error('No se pudo cargar la vista.');
-					}
-					return response.text();
-				})
-				.then(function(html) {
-					const parser = new DOMParser();
-					const doc = parser.parseFromString(html, 'text/html');
-					const nuevoContenido = doc.getElementById('comunicados-contenido');
-					const nuevaNav = doc.getElementById('comunicados-nav-container');
-					const contenidoActual = document.getElementById('comunicados-contenido');
-					const navActual = document.getElementById('comunicados-nav-container');
-
-					if (!nuevoContenido || !contenidoActual) {
-						window.location.href = url;
-						return;
-					}
-
-					if (nuevaNav && navActual) {
-						navActual.innerHTML = nuevaNav.innerHTML;
-					}
-
-					contenidoActual.innerHTML = nuevoContenido.innerHTML;
-					ejecutarScripts(contenidoActual);
-
-					if (opts.pushState) {
-						window.history.pushState({ module: 'comunicados' }, '', url);
-					}
-				})
-				.catch(function() {
-					window.location.href = url;
-				});
-		};
-
 		window.recargarVistaActualComunicados = function() {
-			return window.cargarVistaComunicados(window.location.pathname + window.location.search, {
-				pushState: false
-			});
+			window.location.reload();
 		};
 
 		document.addEventListener('click', function(event) {
-			const link = event.target.closest('a.js-com-link, a.js-com-nav');
-			if (!link) {
+			const modalButton = event.target.closest('[data-bs-target="#modalPlantilla"], [data-bs-target="#modalArchivo"]');
+			if (modalButton) {
+				event.preventDefault();
+				event.stopPropagation();
+
+				const targetSelector = modalButton.getAttribute('data-bs-target');
+				const modalEl = document.querySelector(targetSelector);
+				const form = targetSelector === '#modalPlantilla'
+					? document.getElementById('formPlantilla')
+					: document.getElementById('formArchivo');
+
+				if (form) {
+					form.reset();
+				}
+
+				if (targetSelector === '#modalPlantilla') {
+					const id = document.getElementById('plantillaId');
+					const json = document.getElementById('plantillaJson');
+					const html = document.getElementById('plantillaHtml');
+					const titulo = document.getElementById('modalPlantillaTitulo');
+					if (id) id.value = '';
+					if (json) json.value = '[]';
+					if (html) html.value = '';
+					if (titulo) titulo.textContent = 'Nueva plantilla';
+				}
+
+				if (typeof window.comShowModalSafe === 'function') {
+					window.comShowModalSafe(modalEl);
+				}
 				return;
 			}
 
-			const href = link.getAttribute('href');
-			if (!href || !esUrlInternaComunicados(href)) {
-				return;
-			}
-
-			event.preventDefault();
-			window.cargarVistaComunicados(href);
-		});
-
-		window.addEventListener('popstate', function() {
-			if (new URL(window.location.href).searchParams.get('module') === 'comunicados') {
-				window.cargarVistaComunicados(window.location.pathname + window.location.search, {
-					pushState: false
-				});
+			const closeButton = event.target.closest('#modalPlantilla [data-bs-dismiss="modal"], #modalArchivo [data-bs-dismiss="modal"]');
+			if (closeButton && !(window.bootstrap && bootstrap.Modal)) {
+				event.preventDefault();
+				if (typeof window.comHideModalSafe === 'function') {
+					window.comHideModalSafe(closeButton.closest('.modal'));
+				}
 			}
 		});
 	})();

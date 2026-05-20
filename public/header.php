@@ -63,6 +63,11 @@ if(isset($_SESSION['usuario_id'])){
       }
       body { font-feature-settings: "cv03", "cv04", "cv11"; }
       .bg-pech { background-color: var(--pech-verde) !important; color: #ffffff !important; }
+
+      .table > :not(caption) > * > th:last-child,
+      .table > :not(caption) > * > td:last-child {
+        text-align: right !important;
+      }
       
       .navbar-pech-blue { 
         background-color: var(--pech-azul) !important; 

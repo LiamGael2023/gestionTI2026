@@ -170,7 +170,7 @@ $initialTitulo = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? '') 
 
 	<div class="row g-2 align-items-center mb-3">
 		<div class="col">
-			<a class="btn btn-link px-0 js-com-link" href="index.php?module=comunicados&action=comunicados">
+			<a class="btn btn-link px-0" href="index.php?module=comunicados&action=comunicados">
 				<i class="ti ti-arrow-left me-1"></i>Volver
 			</a>
 		</div>
