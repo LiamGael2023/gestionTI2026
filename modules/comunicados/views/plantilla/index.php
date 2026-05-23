@@ -28,15 +28,6 @@ $totalPlantillasVista = count($plantillas);
 	#plantillas-table td {
 		user-select: text;
 	}
-
-	#plantillas-table th:last-child,
-	#plantillas-table td:last-child {
-		text-align: center !important;
-	}
-
-	#plantillas-table td:last-child .btn-group {
-		justify-content: center;
-	}
 </style>
 
 <div class="col-12">
@@ -98,7 +89,7 @@ $totalPlantillasVista = count($plantillas);
 										<td class="py-0 align-middle">
 											<div class="btn-group" role="group">
 												<?php if ($activo): ?>
-													<a class="btn btn-icon btn-lg js-com-link"
+													<a class="btn btn-icon btn-lg"
 														title="Usar en comunicado nuevo"
 														href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
 														<i class="ti ti-copy-plus fs-2"></i>
@@ -218,13 +209,14 @@ $totalPlantillasVista = count($plantillas);
 		}
 
 		const modalEl = document.getElementById('modalPlantilla');
-		const modal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
 		const previewModalEl = document.getElementById('modalPreviewPlantilla');
-		const previewModal = previewModalEl ? bootstrap.Modal.getOrCreateInstance(previewModalEl) : null;
 		const form = document.getElementById('formPlantilla');
 
 		function limpiar() {
-			form.reset();
+			if (form) {
+				form.reset();
+			}
+
 			document.getElementById('plantillaId').value = '';
 			document.getElementById('plantillaJson').value = '[]';
 			document.getElementById('plantillaHtml').value = '';
@@ -248,10 +240,15 @@ $totalPlantillasVista = count($plantillas);
 			}
 			document.getElementById('modalPreviewPlantillaTitulo').textContent = nombre || 'Previsualizar plantilla';
 			document.getElementById('plantillaPreviewFrame').srcdoc = html;
-			previewModal.show();
+			if (typeof window.comShowModalSafe === 'function') {
+				window.comShowModalSafe(previewModalEl);
+			}
 		}
 
-		document.querySelector('[data-bs-target="#modalPlantilla"]').addEventListener('click', limpiar);
+		const btnNuevaPlantilla = document.querySelector('[data-bs-target="#modalPlantilla"]');
+		if (btnNuevaPlantilla) {
+			btnNuevaPlantilla.addEventListener('click', limpiar);
+		}
 
 		document.querySelectorAll('.js-editar-plantilla').forEach(function(btn) {
 			btn.addEventListener('click', function() {
@@ -261,7 +258,9 @@ $totalPlantillasVista = count($plantillas);
 				document.getElementById('plantillaJson').value = this.dataset.json || '[]';
 				document.getElementById('plantillaHtml').value = this.dataset.html || '';
 				document.getElementById('modalPlantillaTitulo').textContent = 'Editar plantilla';
-				modal.show();
+				if (typeof window.comShowModalSafe === 'function') {
+					window.comShowModalSafe(modalEl);
+				}
 			});
 		});
 
@@ -271,29 +270,33 @@ $totalPlantillasVista = count($plantillas);
 			});
 		});
 
-		form.addEventListener('submit', function(event) {
-			event.preventDefault();
-			const json = document.getElementById('plantillaJson').value.trim() || '[]';
-			try {
-				JSON.parse(json);
-			} catch (e) {
-				window.comNotifySafe('warning', 'JSON invalido', 'Revise la estructura de bloques.');
-				return;
-			}
-			guardar({
-				IdPlantilla: document.getElementById('plantillaId').value,
-				NombrePlantilla: document.getElementById('plantillaNombre').value.trim(),
-				DescripcionPlantilla: document.getElementById('plantillaDescripcion').value.trim(),
-				ContenidoJson: json,
-				HtmlBase: document.getElementById('plantillaHtml').value
-			}).then(function(res) {
+		if (form) {
+			form.addEventListener('submit', function(event) {
+				event.preventDefault();
+				const json = document.getElementById('plantillaJson').value.trim() || '[]';
+				try {
+					JSON.parse(json);
+				} catch (e) {
+					window.comNotifySafe('warning', 'JSON invalido', 'Revise la estructura de bloques.');
+					return;
+				}
+				guardar({
+					IdPlantilla: document.getElementById('plantillaId').value,
+					NombrePlantilla: document.getElementById('plantillaNombre').value.trim(),
+					DescripcionPlantilla: document.getElementById('plantillaDescripcion').value.trim(),
+					ContenidoJson: json,
+					HtmlBase: document.getElementById('plantillaHtml').value
+				}).then(function(res) {
 				window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo guardar', res.message || '');
 				if (res.success) {
-					modal.hide();
+					if (typeof window.comHideModalSafe === 'function') {
+						window.comHideModalSafe(modalEl);
+					}
 					window.recargarVistaActualComunicados();
 				}
+				});
 			});
-		});
+		}
 
 		function cambiarEstado(action, id) {
 			const data = new FormData();
@@ -331,11 +334,21 @@ $totalPlantillasVista = count($plantillas);
 
 		document.querySelectorAll('.js-activar-plantilla').forEach(function(btn) {
 			btn.addEventListener('click', function() {
-				cambiarEstado('activarPlantillaAjax', this.dataset.id).then(function(res) {
-					window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
-					if (res.success) {
-						window.recargarVistaActualComunicados();
+				const id = this.dataset.id;
+				window.comConfirmSafe({
+					titulo: 'Activar plantilla',
+					mensaje: 'Desea activar esta plantilla?',
+					textoAceptar: 'Activar'
+				}).then(function(ok) {
+					if (!ok) {
+						return;
 					}
+					cambiarEstado('activarPlantillaAjax', id).then(function(res) {
+						window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
+						if (res.success) {
+							window.recargarVistaActualComunicados();
+						}
+					});
 				});
 			});
 		});

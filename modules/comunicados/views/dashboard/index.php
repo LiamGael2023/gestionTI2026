@@ -25,7 +25,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 <div class="com-dashboard">
 	<div class="row g-3 mb-3">
 		<div class="col-12 col-md-6 col-xl-3">
-			<a class="card h-100 com-card-clickable text-reset text-decoration-none js-com-link" href="index.php?module=comunicados&action=comunicados">
+			<a class="card h-100 com-card-clickable text-reset text-decoration-none" href="index.php?module=comunicados&action=comunicados">
 				<div class="card-body">
 					<div class="d-flex align-items-start justify-content-between mb-2">
 						<span class="avatar avatar-md bg-blue-lt text-blue"><i class="ti ti-speakerphone"></i></span>
@@ -41,7 +41,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 		</div>
 
 		<div class="col-12 col-md-6 col-xl-3">
-			<a class="card h-100 com-card-clickable text-reset text-decoration-none js-com-link" href="index.php?module=comunicados&action=plantillas">
+			<a class="card h-100 com-card-clickable text-reset text-decoration-none" href="index.php?module=comunicados&action=plantillas">
 				<div class="card-body">
 					<div class="d-flex align-items-start justify-content-between mb-2">
 						<span class="avatar avatar-md bg-green-lt text-green"><i class="ti ti-template"></i></span>
@@ -55,7 +55,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 		</div>
 
 		<div class="col-12 col-md-6 col-xl-3">
-			<a class="card h-100 com-card-clickable text-reset text-decoration-none js-com-link" href="index.php?module=comunicados&action=archivos">
+			<a class="card h-100 com-card-clickable text-reset text-decoration-none" href="index.php?module=comunicados&action=archivos">
 				<div class="card-body">
 					<div class="d-flex align-items-start justify-content-between mb-2">
 						<span class="avatar avatar-md bg-azure-lt text-azure"><i class="ti ti-cloud-upload"></i></span>
@@ -88,7 +88,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 			<div class="card">
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<h3 class="card-title mb-0">Comunicados recientes</h3>
-					<a class="btn btn-primary js-com-link" href="index.php?module=comunicados&action=editor">
+					<a class="btn btn-primary" href="index.php?module=comunicados&action=editor">
 						<i class="ti ti-plus me-1"></i>Nuevo
 					</a>
 				</div>
@@ -112,7 +112,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 										<td><span class="badge <?php echo $item['EstadoComunicado'] === 'LISTO' ? 'bg-success-lt' : 'bg-warning-lt text-dark'; ?>"><?php echo htmlspecialchars((string) $item['EstadoComunicado']); ?></span></td>
 										<td><?php echo htmlspecialchars((string) ($item['NombrePlantilla'] ?? 'Sin plantilla'), ENT_QUOTES, 'UTF-8'); ?></td>
 										<td class="text-end">
-											<a class="btn btn-icon btn-lg js-com-link" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
+											<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
 												<i class="ti ti-edit fs-2"></i>
 											</a>
 										</td>

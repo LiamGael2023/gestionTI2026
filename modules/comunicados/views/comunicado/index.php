@@ -28,15 +28,6 @@ $totalComunicadosVista = count($comunicados);
 	#comunicados-table td {
 		user-select: text;
 	}
-
-	#comunicados-table th:last-child,
-	#comunicados-table td:last-child {
-		text-align: center !important;
-	}
-
-	#comunicados-table td:last-child .btn-group {
-		justify-content: center;
-	}
 </style>
 
 <div class="col-12">
@@ -55,7 +46,7 @@ $totalComunicadosVista = count($comunicados);
 								</span>
 								<input id="comunicados-table-search" type="text" class="form-control" placeholder="Buscar" autocomplete="off">
 							</div>
-							<a class="btn btn-primary js-com-link" href="index.php?module=comunicados&action=editor">
+							<a class="btn btn-primary" href="index.php?module=comunicados&action=editor">
 								<i class="ti ti-plus me-1"></i>Nuevo comunicado
 							</a>
 						</div>
@@ -103,9 +94,9 @@ $totalComunicadosVista = count($comunicados);
 										<td class="py-0 align-middle">
 											<div class="btn-group" role="group">
 												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/visualizar.php?id=<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
-													<i class="ti ti-eye fs-2"></i>
+													<i class="ti ti-eye-share fs-2"></i>
 												</a>
-												<a class="btn btn-icon btn-lg js-com-link" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
+												<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
 													<i class="ti ti-edit fs-2"></i>
 												</a>
 												<button type="button"
