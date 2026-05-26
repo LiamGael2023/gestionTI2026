@@ -7,10 +7,10 @@
  * headers del PDF.
  *
  * URL de uso:
- *   modules/adquisiciones/pdf.php?tipo=especificacion&id=123
- *   modules/adquisiciones/pdf.php?tipo=ficha&id=123
- *   modules/adquisiciones/pdf.php?tipo=orden&id=123
- *   modules/adquisiciones/pdf.php?tipo=verificacion&id=123
+ *   modules/adquisiciones/views/consolidado/pdf.php?tipo=especificacion&id=123
+ *   modules/adquisiciones/views/consolidado/pdf.php?tipo=ficha&id=123
+ *   modules/adquisiciones/views/consolidado/pdf.php?tipo=orden&id=123
+ *   modules/adquisiciones/views/consolidado/pdf.php?tipo=verificacion&id=123
  */
 
 // Evitar cualquier output accidental
@@ -22,9 +22,9 @@ while (ob_get_level() > 0) {
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-// El endpoint vive en modules/adquisiciones/, subimos 2 niveles para llegar al
+// El endpoint vive en modules/adquisiciones/views/consolidado/, subimos 4 niveles para llegar al
 // directorio raíz (CHAVIsystems/) donde están config/, core/, modules/, etc.
-chdir(dirname(__DIR__, 2));
+chdir(dirname(__DIR__, 4));
 
 require_once 'config/config.php';
 require_once 'config/db.php';
@@ -88,7 +88,7 @@ if ($nombre === '') {
 // Guardia final: si por alguna razón algo imprimió antes, lo logueamos y abortamos
 // (en lugar de mandar bytes binarios con Content-Type text/html)
 if (headers_sent($archivoOrigen, $lineaOrigen)) {
-	error_log(sprintf('[adquisiciones/pdf.php] Headers ya enviados en %s:%d', $archivoOrigen, $lineaOrigen));
+	error_log(sprintf('[adquisiciones/views/consolidado/pdf.php] Headers ya enviados en %s:%d', $archivoOrigen, $lineaOrigen));
 	http_response_code(500);
 	exit;
 }

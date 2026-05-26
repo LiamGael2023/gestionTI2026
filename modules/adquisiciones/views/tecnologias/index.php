@@ -481,7 +481,7 @@
 		document.getElementById('btn-guardar-presupuesto').innerHTML = 'Guardar';
 
 		$.ajax({
-			url: 'index.php?module=adquisiciones&action=obtenerPresupuestoTecnologiaAjax&id=' + idCatalogo + '&anio=' + anio,
+			url: 'modules/adquisiciones/ajax.php?action=obtenerPresupuestoTecnologiaAjax&id=' + idCatalogo + '&anio=' + anio,
 			type: 'GET',
 			dataType: 'json',
 			success: function(res) {
@@ -516,7 +516,7 @@
 		btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando...';
 
 			$.ajax({
-			url: 'index.php?module=adquisiciones&action=guardarPresupuestoTecnologiaAjax',
+			url: 'modules/adquisiciones/ajax.php?action=guardarPresupuestoTecnologiaAjax',
 			type: 'POST',
 			dataType: 'json',
 			contentType: 'application/json',

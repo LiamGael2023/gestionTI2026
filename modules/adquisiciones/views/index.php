@@ -26,6 +26,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['req
 
 <div class="page-body">
 	<div class="container-xl">
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 		<?php include __DIR__ . '/alerts/alertas.php'; ?>
 		<?php include __DIR__ . '/alerts/confirmacion.php'; ?>
 

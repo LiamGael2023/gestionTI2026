@@ -16,7 +16,7 @@
 								<button type="button"
 									class="btn btn-icon btn-lg"
 									title="Ver PDF"
-									onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=verificacion&id=<?= (int)$verificacionTecnica['Id'] ?>')">
+									onclick="abrirPdfEnModal('modules/adquisiciones/views/consolidado/pdf.php?tipo=verificacion&id=<?= (int)$verificacionTecnica['Id'] ?>')">
 									<i class="ti ti-file-text fs-2"></i>
 								</button>
 							<?php endif; ?>

@@ -476,7 +476,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			);
 
 			if (!res.ok) {
-				alert('Error: ' + (res.error || 'No se pudo cambiar el estado.'));
+				window.adqNotifySafe('danger', 'Error', res.error || 'No se pudo cambiar el estado.');
 				return;
 			}
 
@@ -501,7 +501,7 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 				);
 			}
 		} catch (err) {
-			alert('Error de conexión: ' + err.message);
+			window.adqNotifySafe('danger', 'Error de conexion', err.message || 'No se pudo conectar con el servidor.');
 		} finally {
 			if (btn) btn.disabled = false;
 		}
