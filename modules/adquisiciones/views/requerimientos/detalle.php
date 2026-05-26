@@ -49,10 +49,7 @@
 	<button
 		id="btn-agregar-item"
 		class="btn btn-primary"
-		type="button"
-		data-bs-toggle="modal"
-		data-bs-target="#modal-detalle"
-		onclick="nuevoDetalle()">Agregar Ítem</button>
+		type="button">Agregar Ítem</button>
 </div>
 
 <!-- Tabla responsiva que lista todos los ítems del requerimiento -->
@@ -280,14 +277,33 @@
 </div>
 
 <script>
-	const idRequerimiento = <?php echo (int) $requerimiento['Id']; ?>;
-	const nroPedidoCompra = <?php echo json_encode((string) $requerimiento['NroPedidoCompra']); ?>;
-	const codigoMetaRequerimiento = <?php echo json_encode((string) ($requerimiento['CodigoMeta'] ?? '')); ?>;
-	const subCentrosCostoDistribucion = <?php echo json_encode($subCentrosCostoDistribucion); ?>;
-	let modoEdicion = false;
-	let estadoActualRequerimiento = <?php echo (int) $requerimiento['Estado']; ?>;
-	let timeoutBusquedaCodigoSiga = null;
-	let solicitudBusquedaCodigoSiga = 0;
+	var idRequerimiento = <?php echo (int) $requerimiento['Id']; ?>;
+	var nroPedidoCompra = <?php echo json_encode((string) $requerimiento['NroPedidoCompra']); ?>;
+	var codigoMetaRequerimiento = <?php echo json_encode((string) ($requerimiento['CodigoMeta'] ?? '')); ?>;
+	var subCentrosCostoDistribucion = <?php echo json_encode($subCentrosCostoDistribucion); ?>;
+	var ADQ_DETALLE_AJAX_URL = <?php
+		$scriptDirDetalle = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+		$scriptDirDetalle = $scriptDirDetalle === '/' || $scriptDirDetalle === '.' ? '' : rtrim($scriptDirDetalle, '/');
+		echo json_encode($scriptDirDetalle . '/modules/adquisiciones/ajax.php');
+	?>;
+	var modoEdicion = false;
+	var estadoActualRequerimiento = <?php echo (int) $requerimiento['Estado']; ?>;
+	var timeoutBusquedaCodigoSiga = null;
+	var solicitudBusquedaCodigoSiga = 0;
+
+	function urlAdquisicionesAjax(action, params) {
+		const url = new URL(ADQ_DETALLE_AJAX_URL, window.location.origin);
+		url.searchParams.set('action', action);
+
+		Object.keys(params || {}).forEach(function(key) {
+			const value = params[key];
+			if (value !== undefined && value !== null && value !== '') {
+				url.searchParams.set(key, value);
+			}
+		});
+
+		return url.pathname + url.search;
+	}
 
 	// Retorna la descripción formateada del pedido incluyendo número
 	function descripcionPedido() {
@@ -343,7 +359,7 @@
 
 	// Realiza una petición POST con datos de formulario y retorna la respuesta JSON
 	function postForm(action, formData) {
-		return fetch('index.php?module=adquisiciones&action=' + action, {
+		return fetch(urlAdquisicionesAjax(action), {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
@@ -579,7 +595,12 @@
 
 	// Obtiene del servidor las distribuciones registradas para un ítem específico
 	function cargarDistribucionesDetalle(idDetalle) {
-		return fetch('index.php?module=adquisiciones&action=obtenerDistribucionDetalleAjax&idDetalle=' + encodeURIComponent(idDetalle))
+		return fetch(urlAdquisicionesAjax('obtenerDistribucionDetalleAjax', {
+				idDetalle: idDetalle,
+				_: Date.now()
+			}), {
+				cache: 'no-store'
+			})
 			.then(function(response) {
 				return response.text().then(function(text) {
 					if (!response.ok) {
@@ -799,11 +820,6 @@
 		setValue('detalle-DescripcionDetallada', datos.DescripcionDetallada || '');
 		setValue('detalle-UnidadMedida', datos.UnidadMedida || 'UND');
 
-		const cantidadInput = document.getElementById('detalle-Cantidad');
-		if (cantidadInput && parseInt(datos.Cantidad, 10) > 0) {
-			cantidadInput.value = parseInt(datos.Cantidad, 10);
-		}
-
 		const idCatalogo = parseInt(datos.IdCatalogoTecnologico, 10) || 0;
 		const catalogoSelect = document.getElementById('detalle-IdCatalogoTecnologico');
 		if (catalogoSelect && idCatalogo > 0 && catalogoSelect.querySelector('option[value="' + idCatalogo + '"]')) {
@@ -824,7 +840,11 @@
 		}
 
 		setHintCodigoSiga('Buscando datos previos...', 'secondary');
-		fetch('index.php?module=adquisiciones&action=buscarDetallePorCodigoSigaAjax&codigoSiga=' + encodeURIComponent(codigo) + '&_=' + Date.now(), {
+		fetch(urlAdquisicionesAjax('buscarDetallePorCodigoSigaAjax', {
+				codigoSiga: codigo,
+				idRequerimiento: idRequerimiento,
+				_: Date.now()
+			}), {
 				cache: 'no-store'
 			})
 			.then(function(response) {

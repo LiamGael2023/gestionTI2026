@@ -796,6 +796,11 @@ function formatearFechaEntregaDashboard($fecha)
 
 <script>
 	(function() {
+		var adqAjaxUrlBase = <?php
+			$scriptDirDashboard = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+			$scriptDirDashboard = $scriptDirDashboard === '/' || $scriptDirDashboard === '.' ? '' : rtrim($scriptDirDashboard, '/');
+			echo json_encode($scriptDirDashboard . '/modules/adquisiciones/ajax.php');
+		?>;
 		var modalCentros = document.getElementById('modalGestionCentrosCosto');
 		var modalTecnologias = document.getElementById('modalGestionTecnologias');
 		var modalTipoSolicitud = document.getElementById('modalGestionTipoSolicitud');
@@ -833,6 +838,27 @@ function formatearFechaEntregaDashboard($fecha)
 				.replace(/'/g, '&#039;');
 		}
 
+		// Construye URLs AJAX directas para evitar respuestas HTML del router principal.
+		function urlAdquisicionesAjax(action, params) {
+			var url = new URL(adqAjaxUrlBase, window.location.origin);
+			url.searchParams.set('action', action);
+
+			Object.keys(params || {}).forEach(function(key) {
+				var value = params[key];
+				if (value !== undefined && value !== null && value !== '') {
+					url.searchParams.set(key, value);
+				}
+			});
+
+			return url.pathname + url.search;
+		}
+
+		function registrarErrorAjax(contexto, xhr, estado, error) {
+			if (window.console && console.error) {
+				console.error(contexto, estado || '', error || '', xhr && xhr.responseText ? xhr.responseText : '');
+			}
+		}
+
 		// Limpia el formulario de gestion de centros de costo.
 		function limpiarFormularioCentro() {
 			document.getElementById('ccIdEditar').value = '';
@@ -867,7 +893,7 @@ function formatearFechaEntregaDashboard($fecha)
 		// Carga y renderiza los centros de costo en su tabla de gestion.
 		function cargarCentrosCosto() {
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarCentrosCostoAjax',
+				url: urlAdquisicionesAjax('listarCentrosCostoAjax'),
 				type: 'GET',
 				dataType: 'json',
 				success: function(response) {
@@ -925,7 +951,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando centros de costo', xhr, estado, error);
 					$('#tablaCentrosCostoGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -934,7 +961,7 @@ function formatearFechaEntregaDashboard($fecha)
 		// Carga y renderiza las tecnologias del catalogo en su tabla de gestion.
 		function cargarTecnologias() {
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarTecnologiasCatalogoAjax',
+				url: urlAdquisicionesAjax('listarTecnologiasCatalogoAjax'),
 				type: 'GET',
 				dataType: 'json',
 				success: function(response) {
@@ -993,7 +1020,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando tecnologias', xhr, estado, error);
 					$('#tablaTecnologiasGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -1002,7 +1030,7 @@ function formatearFechaEntregaDashboard($fecha)
 		// Carga y renderiza los tipos de solicitud en su tabla de gestion.
 		function cargarTiposSolicitud() {
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarTiposSolicitudAjax',
+				url: urlAdquisicionesAjax('listarTiposSolicitudAjax'),
 				type: 'GET',
 				dataType: 'json',
 				success: function(response) {
@@ -1054,7 +1082,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando tipos de solicitud', xhr, estado, error);
 					$('#tablaTiposSolicitudGestion tbody').html('<tr><td colspan="3" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -1085,7 +1114,7 @@ function formatearFechaEntregaDashboard($fecha)
 		function cargarAsociacionesTecnologiaSolicitud() {
 			var anio = Number($('#asocAnio').val()) || new Date().getFullYear();
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarTecnologiaTipoSolicitudAjax',
+				url: urlAdquisicionesAjax('listarTecnologiaTipoSolicitudAjax'),
 				type: 'GET',
 				dataType: 'json',
 				data: {
@@ -1131,7 +1160,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando asociaciones tecnologia tipo solicitud', xhr, estado, error);
 					$('#tablaAsociacionesTecnologiaSolicitud tbody').html('<tr><td colspan="5" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -1140,7 +1170,7 @@ function formatearFechaEntregaDashboard($fecha)
 		// Carga y renderiza las metas SIAF en su tabla de gestion.
 		function cargarMetasSiaf() {
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarMetasSiafAjax',
+				url: urlAdquisicionesAjax('listarMetasSiafAjax'),
 				type: 'GET',
 				dataType: 'json',
 				success: function(response) {
@@ -1202,7 +1232,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando metas SIAF', xhr, estado, error);
 					$('#tablaMetasSiafGestion tbody').html('<tr><td colspan="4" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -1219,7 +1250,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarCentroCostoAjax' : 'agregarCentroCostoAjax'),
+				url: urlAdquisicionesAjax(id ? 'actualizarCentroCostoAjax' : 'agregarCentroCostoAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1260,7 +1291,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=eliminarCentroCostoAjax',
+					url: urlAdquisicionesAjax('eliminarCentroCostoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1292,7 +1323,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=activarCentroCostoAjax',
+					url: urlAdquisicionesAjax('activarCentroCostoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1321,7 +1352,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarTecnologiaCatalogoAjax' : 'agregarTecnologiaAjax'),
+				url: urlAdquisicionesAjax(id ? 'actualizarTecnologiaCatalogoAjax' : 'agregarTecnologiaAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1362,7 +1393,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=eliminarTecnologiaCatalogoAjax',
+					url: urlAdquisicionesAjax('eliminarTecnologiaCatalogoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1394,7 +1425,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=activarTecnologiaCatalogoAjax',
+					url: urlAdquisicionesAjax('activarTecnologiaCatalogoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1422,7 +1453,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarTipoSolicitudAjax' : 'agregarTipoSolicitudAjax'),
+				url: urlAdquisicionesAjax(id ? 'actualizarTipoSolicitudAjax' : 'agregarTipoSolicitudAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1462,7 +1493,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=eliminarTipoSolicitudAjax',
+					url: urlAdquisicionesAjax('eliminarTipoSolicitudAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1495,7 +1526,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=activarTipoSolicitudAjax',
+					url: urlAdquisicionesAjax('activarTipoSolicitudAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1525,7 +1556,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=guardarTecnologiaTipoSolicitudAjax',
+				url: urlAdquisicionesAjax('guardarTecnologiaTipoSolicitudAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1559,7 +1590,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarMetaSiafAjax' : 'agregarMetaSiafAjax'),
+				url: urlAdquisicionesAjax(id ? 'actualizarMetaSiafAjax' : 'agregarMetaSiafAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1604,7 +1635,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=eliminarMetaSiafAjax',
+					url: urlAdquisicionesAjax('eliminarMetaSiafAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1636,7 +1667,7 @@ function formatearFechaEntregaDashboard($fecha)
 				}
 
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=activarMetaSiafAjax',
+					url: urlAdquisicionesAjax('activarMetaSiafAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1705,7 +1736,7 @@ function formatearFechaEntregaDashboard($fecha)
 		// Carga y renderiza los sub-centros de costo en su tabla de gestion.
 		function cargarSubCentrosCosto() {
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=listarSubCentrosCostoAjax',
+				url: urlAdquisicionesAjax('listarSubCentrosCostoAjax'),
 				type: 'GET',
 				dataType: 'json',
 				success: function(response) {
@@ -1766,7 +1797,8 @@ function formatearFechaEntregaDashboard($fecha)
 
 					tbody.html(filas);
 				},
-				error: function() {
+				error: function(xhr, estado, error) {
+					registrarErrorAjax('Error cargando sub-centros de costo', xhr, estado, error);
 					$('#tablaSubCentrosCostoGestion tbody').html('<tr><td colspan="5" class="text-center text-danger py-4">Error de conexión.</td></tr>');
 				}
 			});
@@ -1784,7 +1816,7 @@ function formatearFechaEntregaDashboard($fecha)
 			}
 
 			$.ajax({
-				url: 'index.php?module=adquisiciones&action=' + (id ? 'actualizarSubCentroCostoAjax' : 'agregarSubCentroCostoAjax'),
+				url: urlAdquisicionesAjax(id ? 'actualizarSubCentroCostoAjax' : 'agregarSubCentroCostoAjax'),
 				type: 'POST',
 				dataType: 'json',
 				data: {
@@ -1826,7 +1858,7 @@ function formatearFechaEntregaDashboard($fecha)
 					return;
 				}
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=eliminarSubCentroCostoAjax',
+					url: urlAdquisicionesAjax('eliminarSubCentroCostoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
@@ -1857,7 +1889,7 @@ function formatearFechaEntregaDashboard($fecha)
 					return;
 				}
 				$.ajax({
-					url: 'index.php?module=adquisiciones&action=activarSubCentroCostoAjax',
+					url: urlAdquisicionesAjax('activarSubCentroCostoAjax'),
 					type: 'POST',
 					dataType: 'json',
 					data: {
