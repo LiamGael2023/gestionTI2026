@@ -37,7 +37,7 @@
                                     <button type="button"
                                         class="btn btn-icon btn-lg"
                                         title="Ver PDF"
-                                        onclick="abrirPdfEnModal('modules/adquisiciones/views/consolidado/pdf.php?tipo=ficha&id=<?= (int)$ficha['Id'] ?>')">
+                                        onclick="abrirPdfEnModal('modules/adquisiciones/views/tecnologias/partials/pdf.php?tipo=ficha&id=<?= (int)$ficha['Id'] ?>')">
                                         <i class="ti ti-file-text fs-2"></i>
                                     </button>
                                 <?php else: ?>

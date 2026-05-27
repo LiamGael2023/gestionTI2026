@@ -117,9 +117,9 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 		<button class="btn btn-success" onclick="exportarConsolidado()">
 			Consolidado
 		</button>
-		<!-- button class="btn btn-success" onclick="exportarConsolidadoOficial()">
+		<button class="btn btn-success" onclick="exportarConsolidadoOficial()">
 			Consolidado Oficial
-		</button -->
+		</button>
 	</div>
 </div>
 
@@ -207,5 +207,4 @@ function filtrarConsolidadoPorAnio() {
 	window.location.href = url;
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="modules/adquisiciones/views/consolidado/consolidado.js?v=<?php echo filemtime(__DIR__ . '/consolidado.js'); ?>"></script>
+<script src="modules/adquisiciones/views/consolidado/consolidado.php?v=<?php echo filemtime(__DIR__ . '/consolidado.php'); ?>"></script>
