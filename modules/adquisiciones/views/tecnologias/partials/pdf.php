@@ -1,11 +1,7 @@
 <?php
 /**
  * Endpoint dedicado para servir PDFs binarios del módulo Adquisiciones.
- *
- * Se invoca directamente (no pasa por index.php) para evitar que el layout
- * principal (header, navbar, etc.) contamine la salida con HTML antes de los
- * headers del PDF.
- *
+
  * URL de uso:
  *   modules/adquisiciones/views/tecnologias/partials/pdf.php?tipo=especificacion&id=123
  *   modules/adquisiciones/views/tecnologias/partials/pdf.php?tipo=ficha&id=123
@@ -22,8 +18,7 @@ while (ob_get_level() > 0) {
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-// El endpoint vive en modules/adquisiciones/views/tecnologias/partials/, subimos 5 niveles para llegar al
-// directorio raíz (CHAVIsystems/) donde están config/, core/, modules/, etc.
+// El endpoint vive en modules/adquisiciones/views/tecnologias/partials/
 chdir(dirname(__DIR__, 5));
 
 require_once 'config/config.php';
@@ -32,8 +27,6 @@ require_once 'core/Auth.php';
 
 // Verificación de sesión: si el usuario no está logueado, no entregamos el PDF
 Auth::check();
-
-require_once 'modules/adquisiciones/helpers.php';
 
 // Mapa de tipo -> [tabla, campos_nombre_archivo]
 $tipos = [

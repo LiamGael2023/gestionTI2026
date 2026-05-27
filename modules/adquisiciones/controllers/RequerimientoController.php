@@ -615,7 +615,6 @@ switch ($action) {
 		$aniosDisponibles = $model->obtenerAniosDisponibles();
 		$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
 		$consolidado = $model->obtenerConsolidado($anioFiltro);
-		$consolidadoCabeceraExportacion = $model->obtenerCabeceraConsolidadoCompleta();
 		break;
 
 	// Obtiene datos del consolidado en formato oficial con metas SIAF vía JSON
