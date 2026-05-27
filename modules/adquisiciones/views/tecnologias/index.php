@@ -378,10 +378,22 @@
 		$.ajax({
 			url: 'index.php?module=adquisiciones&action=sincronizarHomologacionAjax',
 			type: 'POST',
-			dataType: 'json',
-			success: function(response) {
+			dataType: 'text',
+			success: function(rawResponse) {
 				btn.disabled = false;
 				btn.innerHTML = 'Sincronizar de SIGA';
+
+				let response;
+				try {
+					const jsonStart = rawResponse.lastIndexOf('{"success"');
+					if (jsonStart === -1) {
+						throw new Error('Respuesta JSON no encontrada.');
+					}
+					response = JSON.parse(rawResponse.substring(jsonStart));
+				} catch (error) {
+					window.adqNotifySafe('danger', 'Error al sincronizar', 'La respuesta del servidor no es valida.');
+					return;
+				}
 
 				if (response.success) {
 					window.adqNotifySafe(
