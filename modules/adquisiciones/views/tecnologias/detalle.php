@@ -348,9 +348,35 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 		});
 	}
 
+	// Construye la URL del puente AJAX para evitar que el layout HTML contamine respuestas JSON.
+	function urlAdquisicionesAjax(action, params) {
+		const query = new URLSearchParams(Object.assign({ action: action }, params || {}));
+		return 'modules/adquisiciones/ajax.php?' + query.toString();
+	}
+
+	// Normaliza URLs antiguas de index.php a ajax.php cuando se espera JSON.
+	function normalizarUrlJson(url) {
+		const urlTexto = String(url || '');
+		const marcaAjax = 'index.php?module=adquisiciones&action=';
+
+		if (!urlTexto.startsWith(marcaAjax)) {
+			return urlTexto;
+		}
+
+		const query = new URLSearchParams(urlTexto.substring('index.php?'.length));
+		const action = query.get('action') || '';
+
+		if (!action.endsWith('Ajax')) {
+			return urlTexto;
+		}
+
+		query.delete('module');
+		return 'modules/adquisiciones/ajax.php?' + query.toString();
+	}
+
 	// Envía datos JSON al servidor mediante petición POST
 	async function enviarJson(url, payload) {
-		const respuesta = await fetch(url, {
+		const respuesta = await fetch(normalizarUrlJson(url), {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -363,7 +389,12 @@ $hayDiferenciaCodigoSiga = count($codigosSigaDetectados) > 1;
 			throw new Error('Error del servidor (' + respuesta.status + '): ' + texto.substring(0, 250));
 		}
 
-		return respuesta.json();
+		const texto = await respuesta.text();
+		try {
+			return JSON.parse(texto);
+		} catch (error) {
+			throw new Error('Respuesta JSON inválida del servidor: ' + texto.substring(0, 250));
+		}
 	}
 
 	// Valida que el archivo sea un PDF válido
