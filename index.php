@@ -73,7 +73,11 @@ $acciones_ajax = [
     'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
     'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data',
     // Acciones AJAX - VOUCHERS
-    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher'
+    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
+    // Acciones AJAX - CHATBOT
+    'chat_enviar',
+    'tool_stock', 'tool_ventas', 'tool_proformas', 'tool_vouchers',
+    'tool_productos', 'tool_clientes', 'tool_mermas'
 ];
 $es_ajax = in_array($action, $acciones_ajax);
 

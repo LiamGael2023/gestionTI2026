@@ -5,7 +5,10 @@ $action = $_GET['action'] ?? 'index';
 $acciones_ajax_bandeja = [
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
     'listar_vouchers', 'guardar_voucher', 'descargar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas',
-    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher'
+    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
+    'chat_enviar',
+    'tool_stock', 'tool_ventas', 'tool_proformas', 'tool_vouchers',
+    'tool_productos', 'tool_clientes', 'tool_mermas'
 ];
 if (!in_array($action, $acciones_ajax_bandeja)) {
     require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
@@ -89,6 +92,17 @@ switch($action) {
         break;
     case 'dashboard':
         include 'modules/produccion_agraria/controllers/DashboardController.php';
+        break;
+    case 'consultas':
+    case 'chat_enviar':
+    case 'tool_stock':
+    case 'tool_ventas':
+    case 'tool_proformas':
+    case 'tool_vouchers':
+    case 'tool_productos':
+    case 'tool_clientes':
+    case 'tool_mermas':
+        include 'modules/consultas/controllers/ConsultasController.php';
         break;
     case 'guardar':
         break;

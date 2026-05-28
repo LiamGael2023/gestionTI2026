@@ -69,6 +69,17 @@
                 </div>
             </a>
         </div>
+        <div class='col-md-4 col-sm-6'>
+            <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=consultas' class='card-link'>
+                <div class='card-link bg-gradient-primary h-100 text-white'>
+                    <div class='card-body text-center'>
+                        <i class='ti ti-message-circle icon-lg mb-3'></i>
+                        <h5 class='card-title'>Consultas IA</h5>
+                        <p class='card-text font-small'>Asistente virtual del sistema</p>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
 </div>
 
