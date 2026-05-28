@@ -314,10 +314,10 @@ tbody tr.mostrando {
                     </button>
                     <div class="vr mx-2 opacity-50"></div>
                     <!-- Exportar -->
-                    <button class="btn btn-light btn-sm" title="Exportar PDF">
+                    <button class="btn btn-light btn-sm" onclick="exportarDetalleProductoPDF()" title="Exportar PDF">
                         <i class="ti ti-file-type-pdf me-1"></i>PDF
                     </button>
-                    <button class="btn btn-light btn-sm" title="Exportar Excel">
+                    <button class="btn btn-light btn-sm" onclick="exportarDetalleProductoExcel()" title="Exportar Excel">
                         <i class="ti ti-file-type-xls me-1"></i>Excel
                     </button>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -325,7 +325,7 @@ tbody tr.mostrando {
             </div>
             <div class="modal-body">
                 <!-- Resumen del Producto -->
-                <div class="row g-3 mb-4">
+                <div class="row g-3 mb-4 d-none">
                     <div class="col-md-3">
                         <div class="card bg-light">
                             <div class="card-body text-center">
@@ -487,6 +487,22 @@ tbody tr.mostrando {
                                 <option value="">Seleccione lote...</option>
                             </select>
                         </div>
+                        
+                        <div class="col-md-12">
+                            <label class="form-label text-muted fw-semibold">Método de Descuento</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="merma_metodo" id="metodo-exacto" value="exacto" checked autocomplete="off">
+                                <label class="btn btn-outline-warning d-flex align-items-center justify-content-center py-2" for="metodo-exacto">
+                                    <i class="ti ti-hash me-2 fs-3"></i>Cantidad Exacta
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="merma_metodo" id="metodo-porcentaje" value="porcentaje" autocomplete="off">
+                                <label class="btn btn-outline-warning d-flex align-items-center justify-content-center py-2" for="metodo-porcentaje">
+                                    <i class="ti ti-percentage me-2 fs-3"></i>Porcentaje (%)
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label">Tipo de Merma</label>
                             <select class="form-select" id="merma-tipo" name="tipo_merma" required>
@@ -497,10 +513,39 @@ tbody tr.mostrando {
                                 <option value="Otro">Otros</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        
+                        <!-- Contenedor Cantidad Exacta -->
+                        <div class="col-md-6" id="container-cantidad-exacta">
                             <label class="form-label">Cantidad Afectada</label>
                             <input type="number" class="form-control" id="merma-cantidad" name="cantidad" min="1" required placeholder="0">
                         </div>
+
+                        <!-- Contenedor Cantidad Porcentual (Oculto por defecto) -->
+                        <div class="col-md-6 d-none" id="container-cantidad-porcentual">
+                            <label class="form-label">Porcentaje de Merma</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="merma-porcentaje" min="0.01" max="100" step="any" placeholder="0.00">
+                                <span class="input-group-text bg-warning-lt text-warning border-warning">%</span>
+                            </div>
+                        </div>
+
+                        <!-- Contenedor Preview Cálculo (Oculto por defecto) -->
+                        <div class="col-12 d-none" id="container-preview-calculado">
+                            <div class="card bg-warning-lt border-0 shadow-none">
+                                <div class="card-body py-2 px-3">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <span class="text-warning-muted small d-block">Equivalente en unidades (Redondeado hacia abajo)</span>
+                                            <strong class="h3 mb-0 text-warning" id="txt-resultado-preview">0 unidades</strong>
+                                        </div>
+                                        <div class="text-warning fs-1">
+                                            <i class="ti ti-calculator"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-12">
                             <label class="form-label">Motivo Detallado</label>
                             <textarea class="form-control" id="merma-motivo" name="motivo" rows="3" placeholder="Describa las causas de la merma..."></textarea>
@@ -646,6 +691,7 @@ function mostrarLotes(productoId, nombreProducto) {
         })
         .then(data => {
             const lotes = data.lotes || [];
+            modalLotesData = lotes; // Guardar caché global
             const stockTotal = data.stock_total || 0;
             
             // Actualizar resumen
@@ -702,6 +748,7 @@ function mostrarLotes(productoId, nombreProducto) {
         })
         .then(data => {
             const movimientos = data.movimientos || [];
+            modalKardexData = movimientos; // Guardar caché global
             
             // Calcular totales (REINTEGRO es entrada - devuelve stock al sistema)
             const totalEntradas = movimientos.filter(m => m.tipo_movimiento === 'Entrada' || m.tipo_movimiento === 'INGRESO' || m.tipo_movimiento === 'REINTEGRO').reduce((sum, m) => sum + (m.cantidad || 0), 0);
@@ -744,6 +791,8 @@ let productoActualId = null;
 let productoActualNombre = null;
 let loteActualId = null;
 let loteActualStock = null;
+let modalLotesData = [];
+let modalKardexData = [];
 
 // Mostrar modal para reportar merma
 function mostrarModalMerma(idLote, codigoLote, stockActual) {
@@ -764,6 +813,18 @@ function mostrarModalMerma(idLote, codigoLote, stockActual) {
     document.getElementById('merma-cantidad').value = '';
     document.getElementById('merma-motivo').value = '';
     
+    // Reiniciar campos de porcentaje y método de descuento
+    const mermaPorcentaje = document.getElementById('merma-porcentaje');
+    if (mermaPorcentaje) {
+        mermaPorcentaje.value = '';
+    }
+    const metodoExacto = document.getElementById('metodo-exacto');
+    if (metodoExacto) {
+        metodoExacto.checked = true;
+        // Lanzar evento change para restablecer la visualización
+        metodoExacto.dispatchEvent(new Event('change'));
+    }
+    
     // Mostrar modal merma
     const modalMerma = new bootstrap.Modal(document.getElementById('modal-reportar-merma'));
     modalMerma.show();
@@ -780,6 +841,12 @@ function guardarMerma(e) {
     
     const formData = new FormData(document.getElementById('form-merma'));
     const cantidad = parseFloat(formData.get('cantidad')) || 0;
+    
+    // Validar cantidad mayor a cero
+    if (cantidad <= 0) {
+        Swal.fire('Advertencia', 'La cantidad de merma a descontar debe ser mayor a 0 unidades', 'warning');
+        return;
+    }
     
     // Validar que no exceda el stock
     if (cantidad > loteActualStock) {
@@ -1274,6 +1341,74 @@ document.addEventListener('DOMContentLoaded', function() {
         formMerma.addEventListener('submit', guardarMerma);
     }
     
+    // Event listeners para la opción porcentual de merma
+    const metodoExacto = document.getElementById('metodo-exacto');
+    const metodoPorcentaje = document.getElementById('metodo-porcentaje');
+    const containerExacta = document.getElementById('container-cantidad-exacta');
+    const containerPorcentual = document.getElementById('container-cantidad-porcentual');
+    const containerPreview = document.getElementById('container-preview-calculado');
+    const mermaCantidadInput = document.getElementById('merma-cantidad');
+    const mermaPorcentajeInput = document.getElementById('merma-porcentaje');
+    const txtResultadoPreview = document.getElementById('txt-resultado-preview');
+    
+    function actualizarVisualizacionMerma() {
+        if (metodoExacto && metodoExacto.checked) {
+            if (containerExacta) containerExacta.classList.remove('d-none');
+            if (containerPorcentual) containerPorcentual.classList.add('d-none');
+            if (containerPreview) containerPreview.classList.add('d-none');
+            if (mermaCantidadInput) {
+                mermaCantidadInput.required = true;
+                mermaCantidadInput.readOnly = false;
+            }
+            if (mermaPorcentajeInput) {
+                mermaPorcentajeInput.required = false;
+            }
+        } else if (metodoPorcentaje && metodoPorcentaje.checked) {
+            if (containerExacta) containerExacta.classList.add('d-none');
+            if (containerPorcentual) containerPorcentual.classList.remove('d-none');
+            if (containerPreview) containerPreview.classList.remove('d-none');
+            if (mermaCantidadInput) {
+                mermaCantidadInput.required = false;
+                mermaCantidadInput.readOnly = true;
+            }
+            if (mermaPorcentajeInput) {
+                mermaPorcentajeInput.required = true;
+            }
+            calcularMermaPorcentual();
+        }
+    }
+    
+    function calcularMermaPorcentual() {
+        if (!mermaPorcentajeInput || !txtResultadoPreview || !mermaCantidadInput) return;
+        
+        let pct = parseFloat(mermaPorcentajeInput.value);
+        if (isNaN(pct)) {
+            pct = 0;
+        } else if (pct > 100) {
+            pct = 100;
+            mermaPorcentajeInput.value = 100;
+        } else if (pct < 0) {
+            pct = 0;
+            mermaPorcentajeInput.value = 0;
+        }
+        
+        // Calcular redondeando hacia abajo (Math.floor) según requerimiento
+        const cantidadCalculada = Math.floor(loteActualStock * (pct / 100));
+        
+        mermaCantidadInput.value = cantidadCalculada;
+        txtResultadoPreview.innerText = `${pct}% de ${loteActualStock} = ${cantidadCalculada} unidades`;
+    }
+    
+    if (metodoExacto) {
+        metodoExacto.addEventListener('change', actualizarVisualizacionMerma);
+    }
+    if (metodoPorcentaje) {
+        metodoPorcentaje.addEventListener('change', actualizarVisualizacionMerma);
+    }
+    if (mermaPorcentajeInput) {
+        mermaPorcentajeInput.addEventListener('input', calcularMermaPorcentual);
+    }
+    
     // Event listeners para filtros
     const filtroCentro = document.getElementById('filtro-centro');
     const filtroClase = document.getElementById('filtro-clase');
@@ -1297,6 +1432,219 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// =================================================================================
+// FUNCIONES DE EXPORTACIÓN (EXCEL / PDF) PARA DETALLE DE PRODUCTO
+// =================================================================================
+
+function exportarDetalleProductoExcel() {
+    if (!productoActualId || !productoActualNombre) {
+        Swal.fire('Advertencia', 'No hay datos cargados para exportar', 'warning');
+        return;
+    }
+    
+    let csvContent = "\uFEFF"; // UTF-8 BOM para Excel
+    csvContent += `REPORTE DE INVENTARIO - DETALLE DE PRODUCTO\n`;
+    csvContent += `Producto;${productoActualNombre}\n`;
+    csvContent += `ID Producto;${productoActualId}\n`;
+    csvContent += `Fecha de Reporte;${new Date().toLocaleString('es-PE')}\n\n`;
+    
+    // Sección Lotes Activos
+    csvContent += `LOTES ACTIVOS - STOCK POR LOTE\n`;
+    csvContent += `Lote;Stock;Antigüedad (días);Estado PEPS\n`;
+    
+    if (modalLotesData.length === 0) {
+        csvContent += `No hay lotes activos\n`;
+    } else {
+        modalLotesData.forEach(lote => {
+            csvContent += `${lote.codigo_lote};${lote.stock_actual};${lote.antiguedad_dias};${lote.estado_texto}\n`;
+        });
+    }
+    
+    csvContent += `\n`;
+    
+    // Sección Kardex del Producto
+    csvContent += `KARDEX DEL PRODUCTO - HISTORIAL DE MOVIMIENTOS\n`;
+    csvContent += `Fecha;Tipo;Motivo/Documento;Lote Afectado;Entrada;Salida;Stock Acumulado\n`;
+    
+    if (modalKardexData.length === 0) {
+        csvContent += `No hay movimientos registrados\n`;
+    } else {
+        modalKardexData.forEach(mov => {
+            const esEntrada = mov.tipo_movimiento === 'Entrada' || mov.tipo_movimiento === 'INGRESO' || mov.tipo_movimiento === 'REINTEGRO';
+            const entrada = esEntrada ? mov.cantidad : 0;
+            const salida = !esEntrada ? mov.cantidad : 0;
+            const fechaStr = new Date(mov.fecha).toLocaleDateString('es-PE');
+            
+            csvContent += `${fechaStr};${mov.tipo_movimiento};${mov.documento || '-'};${mov.codigo_lote || '-'};${entrada};${salida};${mov.saldo_final}\n`;
+        });
+    }
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `reporte_stock_${productoActualNombre.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportarDetalleProductoPDF() {
+    if (!productoActualId || !productoActualNombre) {
+        Swal.fire('Advertencia', 'No hay datos cargados para exportar', 'warning');
+        return;
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    
+    const primaryColor = [18, 53, 91]; 
+    const warningColor = [224, 86, 36]; 
+    
+    // Barra superior decorativa
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 210, 8, 'F');
+    doc.setFillColor(...warningColor);
+    doc.rect(0, 8, 210, 1.5, 'F');
+    
+    // Membrete oficial
+    doc.setTextColor(...primaryColor);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("GOBIERNO REGIONAL LA LIBERTAD", 14, 16);
+    doc.setFontSize(13);
+    doc.text("PROYECTO ESPECIAL CHAVIMOCHIC", 14, 21);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(110, 110, 110);
+    doc.text("SUBGERENCIA DE DESARROLLO AGRÍCOLA", 14, 25);
+    
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, 28, 196, 28);
+    
+    doc.setTextColor(33, 37, 41);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("REPORTE DE INVENTARIO Y STOCK", 14, 36);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(70, 70, 70);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Producto:", 14, 42);
+    doc.setFont("helvetica", "normal");
+    doc.text(productoActualNombre, 35, 42);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("ID Producto:", 14, 47);
+    doc.setFont("helvetica", "normal");
+    doc.text(productoActualId.toString(), 35, 47);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text("Fecha Emisión:", 115, 42);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date().toLocaleString('es-PE'), 145, 42);
+    
+    const stockTotalText = document.getElementById('modal-stock-total')?.textContent || '0';
+    doc.setFont("helvetica", "bold");
+    doc.text("Stock Total:", 115, 47);
+    doc.setFont("helvetica", "normal");
+    doc.text(stockTotalText, 145, 47);
+    
+    // 1. LOTES ACTIVOS
+    doc.setFillColor(...primaryColor);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...primaryColor);
+    doc.text("1. Lotes Activos (Stock por Lote)", 14, 56);
+    
+    const lotesHeaders = [["Código de Lote", "Stock Actual", "Antigüedad", "Estado PEPS"]];
+    const lotesRows = modalLotesData.map(lote => [
+        lote.codigo_lote,
+        parseInt(lote.stock_actual).toLocaleString() + ' unid.',
+        lote.antiguedad_dias + ' días',
+        lote.estado_texto
+    ]);
+    
+    doc.autoTable({
+        startY: 59,
+        head: lotesHeaders,
+        body: lotesRows.length > 0 ? lotesRows : [["No hay lotes activos", "", "", ""]],
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, halign: 'left', fontStyle: 'bold' },
+        styles: { fontSize: 8.5, cellPadding: 2 },
+        columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 35, halign: 'center' },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 40 }
+        },
+        margin: { left: 14, right: 14 }
+    });
+    
+    // 2. KARDEX HISTORIAL
+    let nextY = doc.lastAutoTable.finalY + 10;
+    
+    if (nextY > 230) {
+        doc.addPage();
+        nextY = 20;
+    }
+    
+    doc.setTextColor(...primaryColor);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("2. Kardex del Producto (Historial de Movimientos)", 14, nextY);
+    
+    const kardexHeaders = [["Fecha", "Tipo Movimiento", "Documento/Motivo", "Lote", "Entrada", "Salida", "Saldo Final"]];
+    const kardexRows = modalKardexData.map(mov => {
+        const esEntrada = mov.tipo_movimiento === 'Entrada' || mov.tipo_movimiento === 'INGRESO' || mov.tipo_movimiento === 'REINTEGRO';
+        const entrada = esEntrada ? parseInt(mov.cantidad).toLocaleString() : '-';
+        const salida = !esEntrada ? parseInt(mov.cantidad).toLocaleString() : '-';
+        const fechaStr = new Date(mov.fecha).toLocaleDateString('es-PE');
+        return [
+            fechaStr,
+            mov.tipo_movimiento,
+            mov.documento || '-',
+            mov.codigo_lote || '-',
+            entrada,
+            salida,
+            parseInt(mov.saldo_final).toLocaleString()
+        ];
+    });
+    
+    doc.autoTable({
+        startY: nextY + 3,
+        head: kardexHeaders,
+        body: kardexRows.length > 0 ? kardexRows : [["No hay movimientos registrados", "", "", "", "", "", ""]],
+        theme: 'striped',
+        headStyles: { fillColor: primaryColor, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 1.8 },
+        columnStyles: {
+            0: { cellWidth: 22 },
+            1: { cellWidth: 28 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 32 },
+            4: { cellWidth: 18, halign: 'right' },
+            5: { cellWidth: 18, halign: 'right' },
+            6: { cellWidth: 20, halign: 'right' }
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: function(data) {
+            doc.setFontSize(7.5);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Proyecto Especial Chavimochic - Sistema de Gestión Agraria", 14, 287);
+            
+            const totalPages = doc.internal.getNumberOfPages();
+            doc.text("Página " + data.pageNumber + " de " + totalPages, 185, 287);
+        }
+    });
+    
+    doc.save(`reporte_stock_${productoActualNombre.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.pdf`);
+}
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>

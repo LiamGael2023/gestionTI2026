@@ -84,7 +84,7 @@ try {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
         require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($db);
+        $voucherModel = new VoucherModel($conn);
         $vouchers = $voucherModel->listarVouchers();
         echo json_encode(['success' => true, 'vouchers' => $vouchers]);
         exit;
@@ -95,7 +95,7 @@ try {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
         require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($db);
+        $voucherModel = new VoucherModel($conn);
         
         $input = file_get_contents('php://input');
         error_log("[BandejaController] Raw input: " . substr($input, 0, 200));
@@ -130,7 +130,7 @@ try {
     if ($action == 'descargar_voucher') {
         while (ob_get_level()) { ob_end_clean(); }
         require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($db);
+        $voucherModel = new VoucherModel($conn);
         
         $idVoucher = intval($_GET['id'] ?? 0);
         $archivo = $voucherModel->obtenerArchivoBlob($idVoucher);
@@ -166,7 +166,7 @@ try {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
         require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($db);
+        $voucherModel = new VoucherModel($conn);
         $proformas = $voucherModel->listarProformasDisponibles();
         echo json_encode(['success' => true, 'proformas' => $proformas]);
         exit;
@@ -177,7 +177,7 @@ try {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
         require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($db);
+        $voucherModel = new VoucherModel($conn);
         
         $data = json_decode(file_get_contents('php://input'), true);
         $idVoucher = intval($data['id_voucher'] ?? 0);
@@ -218,10 +218,10 @@ try {
     
     include __DIR__ . '/../views/bandeja/index.php';
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
     exit;
 }

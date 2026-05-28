@@ -66,9 +66,12 @@ $acciones_ajax = [
     'obtener_producto', 'guardar_producto', 'eliminar_producto',
     'obtener_lotes', 'obtener_kardex', 'guardar_lote', 'guardar_merma',
     'obtener_precio_actual', 'guardar_precio',
-    'buscar_producto', 'buscar_clientes', 'guardar_venta',
+    'buscar_producto', 'buscar_clientes', 'guardar_venta', 'crear_cliente_rapido',
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
-    'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher'
+    'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher',
+    // Acciones AJAX - REPORTES
+    'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
+    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data'
 ];
 $es_ajax = in_array($action, $acciones_ajax);
 

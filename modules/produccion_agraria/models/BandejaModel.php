@@ -14,7 +14,7 @@ class BandejaModel {
                        t.estado, t.metodo_pago, t.serie_comprobante, t.correlativo_comprobante,
                        t.responsable_venta,
                        c.nombre_rs as nombre_cliente, c.dni_ruc as documento_cliente, 
-                       CASE WHEN c.tipo_cliente = 1 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
+                       CASE WHEN LEN(c.dni_ruc) = 8 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
                        cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
@@ -79,7 +79,7 @@ class BandejaModel {
                        t.estado, t.metodo_pago, t.tipo_op, t.responsable_venta,
                        t.serie_comprobante, t.correlativo_comprobante, t.doc_justificante,
                        c.nombre_rs as nombre_cliente, c.dni_ruc as documento_cliente, 
-                       CASE WHEN c.tipo_cliente = 1 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
+                       CASE WHEN LEN(c.dni_ruc) = 8 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
                        cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
@@ -252,17 +252,10 @@ class BandejaModel {
         }
     }
 
-    /**
-     * Listar métodos de pago disponibles
-     */
     public function listarMetodosPago() {
         return [
-            ['codigo' => 'EFECTIVO', 'nombre' => 'Efectivo', 'icono' => 'ti-cash'],
-            ['codigo' => 'TRANSFERENCIA', 'nombre' => 'Transferencia', 'icono' => 'ti-transfer'],
-            ['codigo' => 'YAPE', 'nombre' => 'Yape', 'icono' => 'ti-device-mobile'],
-            ['codigo' => 'PLIN', 'nombre' => 'Plin', 'icono' => 'ti-device-mobile'],
-            ['codigo' => 'TARJETA', 'nombre' => 'Tarjeta', 'icono' => 'ti-credit-card'],
-            ['codigo' => 'DEPOSITO', 'nombre' => 'Depósito', 'icono' => 'ti-building-bank'],
+            ['codigo' => 'VENTA', 'nombre' => 'Venta', 'icono' => 'ti-shopping-cart'],
+            ['codigo' => 'DONACION', 'nombre' => 'Donación', 'icono' => 'ti-gift'],
         ];
     }
 

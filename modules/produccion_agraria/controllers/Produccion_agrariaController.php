@@ -2,7 +2,10 @@
 $action = $_GET['action'] ?? 'index';
 
 // Solo cargar modelo si no es acción AJAX de bandeja
-$acciones_ajax_bandeja = ['obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo'];
+$acciones_ajax_bandeja = [
+    'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
+    'listar_vouchers', 'guardar_voucher', 'descargar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas'
+];
 if (!in_array($action, $acciones_ajax_bandeja)) {
     require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
     $model = new Produccion_agrariaModel($conn);
@@ -55,6 +58,7 @@ switch($action) {
     case 'buscar_producto':
     case 'buscar_clientes':
     case 'guardar_venta':
+    case 'crear_cliente_rapido':
         include 'modules/produccion_agraria/controllers/PuntoVentaController.php';
         break;
     // Acciones AJAX - BANDEJA DE PROFORMAS
@@ -62,9 +66,21 @@ switch($action) {
     case 'procesar_proforma':
     case 'anular_proforma':
     case 'siguiente_correlativo':
+    case 'listar_vouchers':
+    case 'guardar_voucher':
+    case 'descargar_voucher':
+    case 'listar_proformas_disponibles':
+    case 'asignar_voucher_proformas':
         include 'modules/produccion_agraria/controllers/BandejaController.php';
         break;
     case 'reportes':
+        include 'modules/produccion_agraria/controllers/ReportesController.php';
+        break;
+    // Acciones AJAX - REPORTES
+    case 'ventas_data':
+    case 'inventario_data':
+    case 'mermas_data':
+    case 'dashboard_data':
         include 'modules/produccion_agraria/controllers/ReportesController.php';
         break;
     case 'dashboard':

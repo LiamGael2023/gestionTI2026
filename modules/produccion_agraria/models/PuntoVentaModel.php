@@ -26,7 +26,7 @@ class PuntoVentaModel {
     public function buscarClientes($query) {
         // Búsqueda solo por nombre
         $sql = "SELECT id_cliente, dni_ruc, nombre_rs, 
-                       CASE WHEN tipo_cliente = 1 THEN 'Persona Natural' ELSE 'Empresa' END as tipo_cliente 
+                       CASE WHEN tipo_cliente = 1 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente 
                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente 
                 WHERE nombre_rs COLLATE SQL_Latin1_General_CP1_CI_AS LIKE ?
                 ORDER BY nombre_rs";
@@ -149,7 +149,7 @@ class PuntoVentaModel {
                 null, // id_voucher - se asigna en proformas
                 $_SESSION['usuario_nombre'] ?? 'Sistema', // responsable_venta
                 'VENTA', // tipo_op
-                null, // metodo_pago - se asigna en proformas
+                $data['metodo_pago'] ?? 'VENTA', // metodo_pago
                 'PENDIENTE', // estado - en proceso para bandeja de proformas
                 $data['total'],
                 null, // serie_comprobante - se asigna en proformas
@@ -290,6 +290,31 @@ class PuntoVentaModel {
             $result[] = $row;
         }
         return $result;
+    }
+
+    public function crearClienteRapido($nombre) {
+        try {
+            $dniTemp = 'TEMP' . date('ymd') . rand(1000, 9999);
+            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.cliente (dni_ruc, nombre_rs, tipo_cliente) VALUES (?, ?, 0)";
+            $stmt = sqlsrv_query($this->db, $sql, [$dniTemp, $nombre]);
+            if ($stmt === false) {
+                throw new Exception('Error al registrar cliente rápido: ' . print_r(sqlsrv_errors(), true));
+            }
+            
+            $sqlId = "SELECT @@IDENTITY as id_cliente";
+            $stmtId = sqlsrv_query($this->db, $sqlId);
+            $rowId = sqlsrv_fetch_array($stmtId, SQLSRV_FETCH_ASSOC);
+            $idCliente = $rowId ? intval($rowId['id_cliente']) : null;
+            
+            return [
+                'success' => true,
+                'id_cliente' => $idCliente,
+                'nombre_rs' => $nombre,
+                'dni_ruc' => $dniTemp
+            ];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 
     private function getLastInsertId() {

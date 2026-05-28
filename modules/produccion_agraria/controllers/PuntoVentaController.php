@@ -51,6 +51,20 @@ try {
         echo json_encode($result);
         exit;
     }
+
+    if ($action == 'crear_cliente_rapido') {
+        ob_clean();
+        header('Content-Type: application/json; charset=utf-8');
+        $data = json_decode(file_get_contents('php://input'), true);
+        $nombre = trim($data['nombre'] ?? '');
+        if (empty($nombre)) {
+            echo json_encode(['success' => false, 'message' => 'El nombre no puede estar vacío']);
+            exit;
+        }
+        $result = $model->crearClienteRapido($nombre);
+        echo json_encode($result);
+        exit;
+    }
     
     // ========================================
     // VISTA

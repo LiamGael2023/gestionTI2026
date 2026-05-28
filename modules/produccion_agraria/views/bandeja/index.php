@@ -184,8 +184,8 @@
                     <label class="form-label required">Método de Pago</label>
                     <div class="row g-2">
                         <?php foreach ($metodosPago as $mp): ?>
-                        <div class="col-4">
-                            <div class="form-check card p-2 text-center">
+                        <div class="col-6">
+                            <div class="form-check card p-2 text-center select-pagocard">
                                 <input class="form-check-input" type="radio" name="metodo_pago" id="mp_<?php echo $mp['codigo']; ?>" value="<?php echo $mp['codigo']; ?>">
                                 <label class="form-check-label d-block" for="mp_<?php echo $mp['codigo']; ?>">
                                     <i class="ti <?php echo $mp['icono']; ?> d-block mb-1" style="font-size: 1.5rem;"></i>
@@ -194,6 +194,38 @@
                             </div>
                         </div>
                         <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <!-- Contenedor dinámico de validación -->
+                <div id="container-validacion-pago" class="card p-3 mb-3 bg-light border-0 shadow-sm rounded-3">
+                    <!-- Validación de VENTA (Boucher) -->
+                    <div id="seccion-venta-boucher" style="display: none;">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold"><i class="ti ti-upload me-2"></i>Validación de Venta</h6>
+                        <div class="mb-3">
+                            <label class="form-label required">Imagen o PDF del Boucher</label>
+                            <input type="file" class="form-control" id="procesar_boucher_file" accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="text-muted">Cargue el comprobante de depósito o transferencia.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Número de Operación</label>
+                            <input type="text" class="form-control" id="procesar_num_operacion" placeholder="Ej: 12345678">
+                        </div>
+                    </div>
+                    
+                    <!-- Validación de DONACION (Resolución) -->
+                    <div id="seccion-donacion-resolucion" style="display: none;">
+                        <h6 class="text-success border-bottom pb-2 mb-3 fw-bold"><i class="ti ti-file-text me-2"></i>Resolución de Donación</h6>
+                        <div class="mb-3">
+                            <label class="form-label required">Número de Resolución</label>
+                            <input type="text" class="form-control" id="procesar_num_resolucion" placeholder="Ej: R.D. N° 045-2026-CH">
+                            <small class="text-muted">Ingrese el código identificador de la resolución.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label required">Documento de Resolución (PDF/Imagen)</label>
+                            <input type="file" class="form-control" id="procesar_resolucion_file" accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="text-muted">Cargue el PDF o imagen que autoriza la donación.</small>
+                        </div>
                     </div>
                 </div>
 
@@ -362,6 +394,16 @@ function getEstadoColor(estado) {
     }[estado] || 'secondary';
 }
 
+// Auxiliar para convertir archivo a base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+}
+
 // Procesar proforma
 function procesarProforma(id) {
     fetch(`${BASE_URL}/produccion_agraria?action=obtener_proforma&id=${id}`)
@@ -381,6 +423,27 @@ function procesarProforma(id) {
             document.getElementById('serie_comprobante').value = '';
             document.getElementById('correlativo_comprobante').value = '';
             document.getElementById('campos-comprobante').style.display = 'none';
+            
+            // Limpiar inputs de validación
+            document.getElementById('procesar_boucher_file').value = '';
+            document.getElementById('procesar_num_operacion').value = '';
+            document.getElementById('procesar_num_resolucion').value = '';
+            document.getElementById('procesar_resolucion_file').value = '';
+            
+            // Ocultar paneles inicialmente
+            const seccionVenta = document.getElementById('seccion-venta-boucher');
+            const seccionDonacion = document.getElementById('seccion-donacion-resolucion');
+            if (seccionVenta) seccionVenta.style.display = 'none';
+            if (seccionDonacion) seccionDonacion.style.display = 'none';
+            
+            // Pre-seleccionar método guardado (VENTA o DONACION)
+            const metodoPre = data.metodo_pago || 'VENTA';
+            const radioEl = document.getElementById(`mp_${metodoPre}`);
+            if (radioEl) {
+                radioEl.checked = true;
+                // Disparar evento change manual
+                radioEl.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             
             new bootstrap.Modal(document.getElementById('modal-procesar')).show();
         });
@@ -413,53 +476,143 @@ function obtenerSiguienteCorrelativo() {
         });
 }
 
-function confirmarProcesar() {
+async function confirmarProcesar() {
     const id = document.getElementById('procesar-id-transaccion').value;
     const metodoPago = document.querySelector('input[name="metodo_pago"]:checked')?.value;
-    const tipoComprobante = document.getElementById('tipo_comprobante').value;
-    const serie = document.getElementById('serie_comprobante').value;
-    const correlativo = document.getElementById('correlativo_comprobante').value;
+    const totalVenta = parseFloat(document.getElementById('procesar-total').textContent.replace('S/ ', ''));
     
     if (!metodoPago) {
         Swal.fire('Error', 'Seleccione un método de pago', 'error');
         return;
     }
-    if (!tipoComprobante) {
-        Swal.fire('Error', 'Seleccione el tipo de comprobante', 'error');
-        return;
-    }
-    if (!serie || !correlativo) {
-        Swal.fire('Error', 'Complete la serie y correlativo', 'error');
-        return;
-    }
     
-    const data = {
-        id_transaccion: id,
-        metodo_pago: metodoPago,
-        serie_comprobante: serie,
-        correlativo_comprobante: correlativo,
-        doc_justificante: `${serie}-${correlativo}`
-    };
+    let idVoucher = null;
+    let docJustificante = '';
+    let tipoComprobante = '';
+    let serie = '';
+    let correlativo = '';
     
-    fetch(`${BASE_URL}/produccion_agraria?action=procesar_proforma`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    })
-    .then(r => r.json())
-    .then(result => {
-        if (result.success) {
+    // Mostrar spinner
+    Swal.fire({
+        title: 'Guardando datos...',
+        text: 'Registrando comprobante y procesando proforma',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    try {
+        if (metodoPago === 'VENTA') {
+            const boucherFile = document.getElementById('procesar_boucher_file').files[0];
+            const numOperacion = document.getElementById('procesar_num_operacion').value.trim();
+            tipoComprobante = document.getElementById('tipo_comprobante').value;
+            serie = document.getElementById('serie_comprobante').value;
+            correlativo = document.getElementById('correlativo_comprobante').value;
+            
+            if (!boucherFile) {
+                Swal.fire('Error', 'Debe cargar el comprobante del boucher', 'error');
+                return;
+            }
+            if (!tipoComprobante) {
+                Swal.fire('Error', 'Seleccione el tipo de comprobante', 'error');
+                return;
+            }
+            if (!serie || !correlativo) {
+                Swal.fire('Error', 'Complete la serie y correlativo del comprobante', 'error');
+                return;
+            }
+            
+            // Subir boucher
+            const base64 = await fileToBase64(boucherFile);
+            const voucherPayload = {
+                num_operation: numOperacion || ('OP-' + id),
+                monto_total: totalVenta,
+                fecha_deposito: new Date().toISOString().substring(0, 10),
+                archivo_base64: base64,
+                archivo_nombre: boucherFile.name
+            };
+            
+            const resV = await fetch(`${BASE_URL}/produccion_agraria?action=guardar_voucher`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(voucherPayload)
+            });
+            const resultV = await resV.json();
+            if (!resultV.success) {
+                throw new Error(resultV.message || 'Error al registrar boucher de pago');
+            }
+            idVoucher = resultV.id_voucher;
+            docJustificante = numOperacion || `${serie}-${correlativo}`;
+            
+        } else if (metodoPago === 'DONACION') {
+            const resolucionFile = document.getElementById('procesar_resolucion_file').files[0];
+            const numResolucion = document.getElementById('procesar_num_resolucion').value.trim();
+            
+            if (!numResolucion) {
+                Swal.fire('Error', 'Ingrese el número de resolución de donación', 'error');
+                return;
+            }
+            if (!resolucionFile) {
+                Swal.fire('Error', 'Cargue el documento digitalizado de la resolución', 'error');
+                return;
+            }
+            
+            // Subir resolución
+            const base64 = await fileToBase64(resolucionFile);
+            const voucherPayload = {
+                num_operation: numResolucion,
+                monto_total: totalVenta,
+                fecha_deposito: new Date().toISOString().substring(0, 10),
+                archivo_base64: base64,
+                archivo_nombre: resolucionFile.name
+            };
+            
+            const resV = await fetch(`${BASE_URL}/produccion_agraria?action=guardar_voucher`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(voucherPayload)
+            });
+            const resultV = await resV.json();
+            if (!resultV.success) {
+                throw new Error(resultV.message || 'Error al registrar el documento de resolución');
+            }
+            idVoucher = resultV.id_voucher;
+            docJustificante = numResolucion;
+        }
+        
+        // Confirmar procesamiento final de la proforma
+        const procesarPayload = {
+            id_transaccion: id,
+            metodo_pago: metodoPago,
+            serie_comprobante: serie || null,
+            correlativo_comprobante: correlativo || null,
+            doc_justificante: docJustificante,
+            id_voucher: idVoucher
+        };
+        
+        const resP = await fetch(`${BASE_URL}/produccion_agraria?action=procesar_proforma`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(procesarPayload)
+        });
+        const resultP = await resP.json();
+        
+        if (resultP.success) {
             Swal.fire({
                 icon: 'success',
                 title: '¡Procesada!',
-                text: 'Proforma procesada correctamente',
+                text: 'Proforma validada correctamente',
                 timer: 2000,
                 showConfirmButton: false
             }).then(() => location.reload());
         } else {
-            Swal.fire('Error', result.message, 'error');
+            throw new Error(resultP.message || 'Error al procesar la proforma');
         }
-    });
+        
+    } catch (err) {
+        Swal.fire('Error', err.message, 'error');
+    }
 }
 
 // Anular proforma
@@ -695,8 +848,21 @@ function calcularMontoSeleccionado() {
     const montoTotal = parseFloat(document.getElementById('voucher-monto-total').textContent);
     const disponible = montoTotal - total;
     
+    const inputSeleccionado = document.getElementById('voucher-monto-seleccionado');
+    if (inputSeleccionado) {
+        inputSeleccionado.textContent = total.toFixed(2);
+    }
+    
     document.getElementById('voucher-monto-disponible').textContent = disponible.toFixed(2);
-    document.getElementById('voucher-monto-disponible').className = disponible < 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
+    
+    const container = document.getElementById('voucher-diferencia-container');
+    if (container) {
+        if (disponible < 0) {
+            container.className = 'h3 mb-0 text-danger fw-bold';
+        } else {
+            container.className = 'h3 mb-0 text-success fw-bold';
+        }
+    }
 }
 
 // Confirmar asignación de voucher
@@ -707,20 +873,18 @@ function confirmarAsignacionVoucher() {
         return;
     }
     
-    const disponible = parseFloat(document.getElementById('voucher-monto-disponible').textContent);
-    if (disponible < 0) {
-        Swal.fire('Error', 'El monto total de proformas excede el voucher', 'error');
-        return;
-    }
-    
     const idsTransacciones = Array.from(checks).map(c => parseInt(c.value));
+    const totalSeleccionado = Array.from(checks).reduce((sum, c) => sum + parseFloat(c.dataset.monto), 0);
+    const montoVoucher = parseFloat(document.getElementById('voucher-monto-total').textContent);
     
     Swal.fire({
         title: '¿Confirmar asignación?',
-        text: `Se asignará el voucher a ${idsTransacciones.length} proforma(s)`,
+        html: `Se asignará el documento a <strong>${idsTransacciones.length} proforma(s)</strong>.<br><br>
+               Monto de Documento: <strong>S/ ${montoVoucher.toFixed(2)}</strong><br>
+               Total de Proformas: <strong>S/ ${totalSeleccionado.toFixed(2)}</strong>`,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Sí, asignar',
+        confirmButtonText: 'Sí, asignar y validar',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
@@ -753,6 +917,57 @@ function confirmarAsignacionVoucher() {
         }
     });
 }
+
+// Listeners dinámicos de interfaz para Venta vs Donación
+document.addEventListener('change', function(e) {
+    // 1. Toggler para Modal Procesar Proforma
+    if (e.target && e.target.name === 'metodo_pago') {
+        const metodo = e.target.value;
+        const seccionVenta = document.getElementById('seccion-venta-boucher');
+        const seccionDonacion = document.getElementById('seccion-donacion-resolucion');
+        const selectComprobante = document.getElementById('tipo_comprobante');
+        const divComprobante = selectComprobante ? selectComprobante.closest('.mb-3') : null;
+        const camposComprobante = document.getElementById('campos-comprobante');
+        
+        if (metodo === 'VENTA') {
+            if (seccionVenta) seccionVenta.style.display = 'block';
+            if (seccionDonacion) seccionDonacion.style.display = 'none';
+            if (divComprobante) divComprobante.style.display = 'block';
+            if (selectComprobante) selectComprobante.value = '';
+            if (camposComprobante) camposComprobante.style.display = 'none';
+        } else if (metodo === 'DONACION') {
+            if (seccionVenta) seccionVenta.style.display = 'none';
+            if (seccionDonacion) seccionDonacion.style.display = 'block';
+            if (divComprobante) divComprobante.style.display = 'none';
+            if (camposComprobante) camposComprobante.style.display = 'none';
+            if (selectComprobante) selectComprobante.value = ''; // Donaciones no emiten comprobantes comerciales
+        }
+    }
+    
+    // 2. Toggler para Formulario de Subir Nuevo Voucher/Resolución
+    if (e.target && e.target.name === 'tipo_doc_subir') {
+        const type = e.target.value;
+        const numLabel = document.getElementById('form-voucher-num-label');
+        const numInput = document.getElementById('form-voucher-num-input');
+        const totalLabel = document.getElementById('form-voucher-monto-label');
+        const dateLabel = document.getElementById('form-voucher-fecha-label');
+        const fileLabel = document.getElementById('form-voucher-archivo-label');
+        
+        if (type === 'VENTA') {
+            if (numLabel) numLabel.innerHTML = 'Número de Operación <span class="text-danger">*</span>';
+            if (numInput) numInput.placeholder = 'Ej: 123456789';
+            if (totalLabel) totalLabel.innerHTML = 'Monto del Voucher (S/) <span class="text-danger">*</span>';
+            if (dateLabel) dateLabel.innerHTML = 'Fecha de Depósito <span class="text-danger">*</span>';
+            if (fileLabel) fileLabel.innerHTML = 'Imagen/PDF del Boucher <span class="text-danger">*</span>';
+        } else {
+            if (numLabel) numLabel.innerHTML = 'Número de Resolución <span class="text-danger">*</span>';
+            if (numInput) numInput.placeholder = 'Ej: R.D. N° 045-2026-CH';
+            if (totalLabel) totalLabel.innerHTML = 'Valor de la Donación (S/) <span class="text-danger">*</span>';
+            if (dateLabel) dateLabel.innerHTML = 'Fecha de Resolución <span class="text-danger">*</span>';
+            if (fileLabel) fileLabel.innerHTML = 'Documento de Resolución (PDF/Imagen) <span class="text-danger">*</span>';
+        }
+    }
+});
 </script>
 
 <!-- MODAL: Vouchers de Pago -->
@@ -806,23 +1021,40 @@ function confirmarAsignacionVoucher() {
             </div>
             <div class="modal-body">
                 <form id="form-voucher" onsubmit="event.preventDefault(); guardarVoucher();">
-                    <div class="mb-3">
-                        <label class="form-label">Número de Operación <span class="text-danger">*</span></label>
-                        <input type="text" name="num_operation" class="form-control" required placeholder="Ej: 123456789">
+                    <div class="mb-3 border-bottom pb-3">
+                        <label class="form-label required">Tipo de Documento</label>
+                        <div class="d-flex gap-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipo_doc_subir" id="tds_venta" value="VENTA" checked>
+                                <label class="form-check-label fw-bold text-primary" for="tds_venta">
+                                    <i class="ti ti-shopping-cart me-1"></i>Boucher de Venta
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipo_doc_subir" id="tds_donacion" value="DONACION">
+                                <label class="form-check-label fw-bold text-success" for="tds_donacion">
+                                    <i class="ti ti-gift me-1"></i>Resolución de Donación
+                                </label>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Monto Total (S/) <span class="text-danger">*</span></label>
+                        <label class="form-label" id="form-voucher-num-label">Número de Operación <span class="text-danger">*</span></label>
+                        <input type="text" name="num_operation" id="form-voucher-num-input" class="form-control" required placeholder="Ej: 123456789">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" id="form-voucher-monto-label">Monto del Voucher (S/) <span class="text-danger">*</span></label>
                         <input type="number" name="monto_total" class="form-control" required step="0.01" min="0.01" placeholder="0.00">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Fecha de Depósito <span class="text-danger">*</span></label>
+                        <label class="form-label" id="form-voucher-fecha-label">Fecha de Depósito <span class="text-danger">*</span></label>
                         <input type="date" name="fecha_deposito" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Archivo (PDF/Imagen)</label>
-                        <input type="file" name="archivo" class="form-control" accept=".pdf,.jpg,.jpeg,.png" onchange="previewVoucher(this)">
+                        <label class="form-label" id="form-voucher-archivo-label">Imagen/PDF del Boucher <span class="text-danger">*</span></label>
+                        <input type="file" name="archivo" class="form-control" required accept=".pdf,.jpg,.jpeg,.png" onchange="previewVoucher(this)">
                         <div id="preview-voucher" class="mt-2"></div>
-                        <small class="text-muted">Opcional. Máx 5MB.</small>
+                        <small class="text-muted">Obligatorio. Máx 5MB.</small>
                     </div>
                 </form>
             </div>
@@ -845,9 +1077,23 @@ function confirmarAsignacionVoucher() {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-info d-flex justify-content-between">
-                    <span><strong>Monto del Voucher:</strong> S/ <span id="voucher-monto-total">0.00</span></span>
-                    <span><strong>Disponible:</strong> S/ <span id="voucher-monto-disponible" class="text-success fw-bold">0.00</span></span>
+                <div class="card bg-primary-lt border-0 shadow-sm mb-3">
+                    <div class="card-body p-3">
+                        <div class="row text-center">
+                            <div class="col-4 border-end">
+                                <div class="text-muted-lt small mb-1 fw-bold text-uppercase">Monto de Documento</div>
+                                <div class="h3 mb-0 text-primary fw-bold">S/ <span id="voucher-monto-total">0.00</span></div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <div class="text-muted-lt small mb-1 fw-bold text-uppercase">Total Seleccionado</div>
+                                <div class="h3 mb-0 text-success fw-bold">S/ <span id="voucher-monto-seleccionado">0.00</span></div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-muted-lt small mb-1 fw-bold text-uppercase">Diferencia / Restante</div>
+                                <div class="h3 mb-0 text-success fw-bold" id="voucher-diferencia-container">S/ <span id="voucher-monto-disponible">0.00</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <p class="text-muted mb-2">Seleccione las proformas que serán validadas con este voucher:</p>

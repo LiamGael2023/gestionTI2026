@@ -202,7 +202,7 @@
                                 <td>
                                     <?php 
                                     $tipo = $cliente['tipo_cliente'];
-                                    $tipoTexto = ($tipo == 1) ? 'Persona Jurídica' : 'Persona Natural';
+                                    $tipoTexto = ($tipo == 1 || $tipo === true) ? 'Planilla' : 'Externo';
                                     echo htmlspecialchars($tipoTexto); 
                                     ?>
                                 </td>
@@ -347,8 +347,8 @@
                         <label class="form-label required">Tipo de Cliente</label>
                         <select class="form-select" id="tipo_cliente" name="tipo_cliente" required>
                             <option value="">Seleccionar...</option>
-                            <option value="0">Persona Natural</option>
-                            <option value="1">Persona Jurídica</option>
+                            <option value="1">Planilla</option>
+                            <option value="0">Externo</option>
                         </select>
                     </div>
                 </div>
@@ -889,7 +889,7 @@ function editarCliente(id) {
                     document.getElementById('id_cliente').value = data.id_cliente;
                     document.getElementById('dni_ruc').value = data.dni_ruc;
                     document.getElementById('nombre_rs').value = data.nombre_rs;
-                    document.getElementById('tipo_cliente').value = data.tipo_cliente || '';
+                    document.getElementById('tipo_cliente').value = (data.tipo_cliente == 1 || data.tipo_cliente === true) ? '1' : '0';
                     document.getElementById('modal-cliente-titulo').textContent = 'Editar Cliente';
                     if (modalCliente) modalCliente.show();
                 } else {

@@ -11,8 +11,32 @@
 
 <div class="page-body">
     <div class="container-xl">
-        <!-- Título -->
-        <h3 class="mb-4 fw-bold">Nueva Venta</h3>
+        <!-- Título y Switch de Modo Venta Masiva -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
+            <div class="form-check form-switch m-0 py-2 px-3 bg-success-lt rounded-pill border border-success border-opacity-25 shadow-sm">
+                <input class="form-check-input bg-success border-success" type="checkbox" id="chk-venta-masiva" style="cursor: pointer;">
+                <label class="form-check-label fw-bold text-success" for="chk-venta-masiva" style="cursor: pointer; font-size: 0.9rem;">
+                    <i class="ti ti-users me-1 fs-3 align-middle"></i> Modo Venta Masiva (Cola)
+                </label>
+            </div>
+        </div>
+
+        <!-- Alerta de Modo Venta Masiva -->
+        <div class="alert alert-success d-none mb-3 shadow-sm border-0 bg-success-lt" id="alert-modo-masivo">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="me-3 text-success fs-1">
+                        <i class="ti ti-info-circle-filled"></i>
+                    </div>
+                    <div>
+                        <strong class="text-success d-block h4 mb-0">Modo Venta Masiva Activo</strong>
+                        <span class="text-muted small">Los datos de Cliente, Producto y Método de Pago permanecerán fijos para registrar consecutivamente a la fila sin recargar la página.</span>
+                    </div>
+                </div>
+                <span class="badge bg-success text-white py-1 px-2 rounded">Alta Velocidad</span>
+            </div>
+        </div>
         
         <!-- Formulario de Encabezado -->
         <div class="row g-2 mb-2">
@@ -33,9 +57,8 @@
             <div class="col-md-4">
                 <select class="form-select" id="metodo_pago">
                     <option value="">Método de pago</option>
-                    <option value="efectivo">Efectivo</option>
-                    <option value="tarjeta">Tarjeta</option>
-                    <option value="transferencia">Transferencia</option>
+                    <option value="VENTA">Venta</option>
+                    <option value="DONACION">Donación</option>
                 </select>
             </div>
         </div>
@@ -98,6 +121,38 @@
                     <button class="btn btn-success" id="btn-procesar">
                         <i class="ti ti-check me-1"></i>Procesar
                     </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel de Historial de Venta Masiva (Oculto por defecto) -->
+        <div class="card d-none mt-3 border-0 shadow-sm" id="card-historial-cola">
+            <div class="card-header bg-success-lt py-2 px-3 border-0">
+                <h4 class="card-title text-success mb-0 d-flex align-items-center fw-bold">
+                    <i class="ti ti-history me-2 fs-3"></i> Últimas Ventas Procesadas en Cola
+                </h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                    <table class="table table-vcenter card-table mb-0" id="tabla-historial-cola">
+                        <thead>
+                            <tr class="text-muted small">
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Producto</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Monto</th>
+                                <th class="text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-historial-cola">
+                            <tr>
+                                <td colspan="6" class="text-center py-3 text-muted small">
+                                    <i class="ti ti-inbox me-1"></i>Ninguna venta registrada en esta sesión de cola
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -347,14 +402,23 @@ busquedaClienteInput.addEventListener('input', function() {
     );
     
     if (resultados.length === 0) {
-        dropdownClientes.innerHTML = '<div class="dropdown-item text-muted">No se encontraron clientes</div>';
+        dropdownClientes.innerHTML = `
+            <div class="dropdown-item text-muted">No se encontraron clientes</div>
+            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                <i class="ti ti-user-plus me-2"></i>Registrar rápido: "${query}"
+            </a>
+        `;
     } else {
         dropdownClientes.innerHTML = resultados.map(c => `
             <a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${c.nombre_rs.replace(/'/g, "\\'")}', '${c.dni_ruc.replace(/'/g, "\\'")}', event)">
                 <div class="fw-semibold">${c.nombre_rs}</div>
                 <div class="small text-muted">${c.dni_ruc} - ${c.tipo_cliente}</div>
             </a>
-        `).join('');
+        `).join('') + `
+            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                <i class="ti ti-user-plus me-2"></i>Registrar rápido: "${query}"
+            </a>
+        `;
     }
     
     dropdownClientes.style.display = 'block';
@@ -367,6 +431,83 @@ function seleccionarCliente(id, nombre, dniRuc, event) {
     document.getElementById('cliente-seleccionado-nombre').value = nombre;
     document.getElementById('busqueda-cliente').value = `${nombre} (${dniRuc})`;
     dropdownClientes.style.display = 'none';
+}
+
+// Registrar cliente rápido desde input de autocompletado
+function registrarClienteRapidoDesdeInput(event, nombre) {
+    if (event) event.preventDefault();
+    
+    if (!nombre || nombre.trim() === '') {
+        Swal.fire('Advertencia', 'El nombre del cliente no puede estar vacío', 'warning');
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Registrando cliente...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=crear_cliente_rapido', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nombre: nombre.trim() })
+    })
+    .then(r => r.text())
+    .then(text => {
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error('Respuesta inválida del servidor');
+        }
+        const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        
+        if (data.success) {
+            // Añadir al array local para futuras búsquedas
+            clientesDisponibles.push({
+                id_cliente: data.id_cliente,
+                nombre_rs: data.nombre_rs,
+                dni_ruc: data.dni_ruc,
+                tipo_cliente: 'Externo'
+            });
+            
+            // Seleccionar automáticamente
+            document.getElementById('id_cliente').value = data.id_cliente;
+            document.getElementById('cliente-seleccionado-nombre').value = data.nombre_rs;
+            document.getElementById('busqueda-cliente').value = `${data.nombre_rs} (${data.dni_ruc})`;
+            dropdownClientes.style.display = 'none';
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Cliente registrado',
+                text: `${data.nombre_rs} fue seleccionado correctamente`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            
+            // Enfocar en cantidad si el producto ya está en tabla
+            setTimeout(() => {
+                const qtyInput = document.querySelector('#tbody-items input[type="number"]');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                } else {
+                    document.getElementById('busqueda-producto').focus();
+                }
+            }, 300);
+        } else {
+            Swal.fire('Error', data.message || 'No se pudo registrar el cliente', 'error');
+        }
+    })
+    .catch(err => {
+        Swal.fire('Error', 'Error de conexión con el servidor: ' + err.message, 'error');
+    });
 }
 
 // Cerrar dropdown de clientes al hacer clic fuera
@@ -549,9 +690,14 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
     // Validaciones
     const idCliente = document.getElementById('id_cliente').value;
     const fecha = document.getElementById('fecha').value;
+    const metodoPago = document.getElementById('metodo_pago').value;
     
     if (!idCliente) {
         Swal.fire('Advertencia', 'Seleccione un cliente', 'warning');
+        return;
+    }
+    if (!metodoPago) {
+        Swal.fire('Advertencia', 'Seleccione el método de pago', 'warning');
         return;
     }
     if (items.length === 0) {
@@ -565,8 +711,13 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         id_cliente: idCliente,
         fecha: fecha,
         total: total,
+        metodo_pago: metodoPago,
         items: items
     };
+    
+    // Deshabilitar botón para evitar doble clic
+    const btnProcesar = document.getElementById('btn-procesar');
+    if (btnProcesar) btnProcesar.disabled = true;
     
     // Enviar al servidor
     fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_venta', {
@@ -578,6 +729,8 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
     })
     .then(r => r.text())
     .then(text => {
+        if (btnProcesar) btnProcesar.disabled = false;
+        
         const trimmed = text.trim();
         const jsonStart = trimmed.indexOf('{');
         const jsonEnd = trimmed.lastIndexOf('}');
@@ -588,13 +741,57 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         try {
             const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
             if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Venta registrada',
-                    text: 'La venta se guardó correctamente',
-                    timer: 1500,
-                    showConfirmButton: false
-                }).then(() => location.reload());
+                // Si el modo de venta masiva está activo
+                const esMasivo = document.getElementById('chk-venta-masiva')?.checked;
+                
+                if (esMasivo) {
+                    const nombreCliente = document.getElementById('cliente-seleccionado-nombre').value || document.getElementById('busqueda-cliente').value;
+                    const primerItem = items[0] || { nombre: 'Producto', cantidad: 0 };
+                    
+                    // Agregar al historial de cola
+                    agregarHistorialCola(nombreCliente, primerItem.nombre, primerItem.cantidad, total);
+                    
+                    // Mostrar toast rápido y no bloqueante
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'bottom-end',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        timerProgressBar: true
+                    });
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Venta en cola registrada con éxito'
+                    });
+                    
+                    // Conservar producto bloqueado y vaciar para la siguiente venta
+                    const lockedProduct = items.length > 0 ? { ...items[0] } : null;
+                    items = [];
+                    if (lockedProduct) {
+                        lockedProduct.cantidad = 1;
+                        lockedProduct.subtotal = lockedProduct.precio;
+                        items.push(lockedProduct);
+                    }
+                    renderItems();
+                    
+                    // Enfocar automáticamente el input de cantidad
+                    setTimeout(() => {
+                        const qtyInput = document.querySelector('#tbody-items input[type="number"]');
+                        if (qtyInput) {
+                            qtyInput.focus();
+                            qtyInput.select();
+                        }
+                    }, 200);
+                } else {
+                    // Flujo estándar: recargar página
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Venta registrada',
+                        text: 'La venta se guardó correctamente',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                }
             } else {
                 Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
             }
@@ -603,7 +800,68 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         }
     })
     .catch(err => {
+        if (btnProcesar) btnProcesar.disabled = false;
         Swal.fire('Error', 'Error de conexión', 'error');
     });
 });
+
+// Event listeners para el Modo Venta Masiva (Cola)
+const chkVentaMasiva = document.getElementById('chk-venta-masiva');
+const alertModoMasivo = document.getElementById('alert-modo-masivo');
+const cardHistorialCola = document.getElementById('card-historial-cola');
+
+if (chkVentaMasiva) {
+    chkVentaMasiva.addEventListener('change', function() {
+        if (this.checked) {
+            if (alertModoMasivo) alertModoMasivo.classList.remove('d-none');
+            if (cardHistorialCola) cardHistorialCola.classList.remove('d-none');
+        } else {
+            if (alertModoMasivo) alertModoMasivo.classList.add('d-none');
+            if (cardHistorialCola) cardHistorialCola.classList.add('d-none');
+        }
+    });
+}
+
+// Función para agregar registros al historial de venta masiva
+function agregarHistorialCola(cliente, producto, cantidad, total) {
+    const tbody = document.getElementById('tbody-historial-cola');
+    if (!tbody) return;
+    
+    const hora = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    // Remover mensaje de vacío si existe
+    if (tbody.innerHTML.includes('Ninguna venta registrada')) {
+        tbody.innerHTML = '';
+    }
+    
+    const tr = document.createElement('tr');
+    tr.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+    tr.innerHTML = `
+        <td>${hora}</td>
+        <td><strong class="text-dark">${cliente}</strong></td>
+        <td>${producto}</td>
+        <td class="text-end fw-bold">${cantidad}</td>
+        <td class="text-end text-success fw-bold">S/. ${parseFloat(total).toFixed(2)}</td>
+        <td class="text-center"><span class="badge bg-success-lt text-success"><i class="ti ti-check me-1"></i>Guardado</span></td>
+    `;
+    
+    tbody.insertBefore(tr, tbody.firstChild);
+    
+    // Suavizar fondo a los 2 segundos
+    setTimeout(() => {
+        tr.style.transition = 'background-color 1s ease';
+        tr.style.backgroundColor = 'transparent';
+    }, 2000);
+}
+
+// Escuchar tecla Enter en el input de cantidad para procesar ágilmente
+const tbodyItems = document.getElementById('tbody-items');
+if (tbodyItems) {
+    tbodyItems.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.type === 'number') {
+            e.preventDefault();
+            document.getElementById('btn-procesar').click();
+        }
+    });
+}
 </script>
