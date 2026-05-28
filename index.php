@@ -71,7 +71,9 @@ $acciones_ajax = [
     'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher',
     // Acciones AJAX - REPORTES
     'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
-    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data'
+    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data',
+    // Acciones AJAX - VOUCHERS
+    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher'
 ];
 $es_ajax = in_array($action, $acciones_ajax);
 

@@ -141,20 +141,32 @@ try {
             exit;
         }
         
-        // Determinar tipo MIME básico
-        $numOperation = $archivo['num_operation'] ?? 'voucher';
-        $extension = pathinfo($numOperation, PATHINFO_EXTENSION);
+        // Usar nombre original del archivo (guardado en url_imagen)
+        $nombreOriginal = $archivo['archivo_nombre'] ?? '';
+        if (empty($nombreOriginal)) {
+            $nombreOriginal = 'voucher_' . $idVoucher . '.bin';
+        }
+        
+        // Determinar tipo MIME por extensión del nombre original
+        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
         $mimeTypes = [
-            'pdf' => 'application/pdf',
-            'jpg' => 'image/jpeg',
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png' => 'image/png'
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'bmp'  => 'image/bmp',
+            'webp' => 'image/webp'
         ];
-        $mimeType = $mimeTypes[strtolower($extension)] ?? 'application/octet-stream';
+        $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
+        
+        // Para PDF e imágenes, mostrar inline (visualizar en navegador); para otros, forzar descarga
+        $disposition = ($mimeType === 'application/pdf' || strpos($mimeType, 'image/') === 0) ? 'inline' : 'attachment';
         
         header('Content-Type: ' . $mimeType);
-        header('Content-Disposition: attachment; filename="voucher_' . $idVoucher . '_' . $numOperation . '"');
+        header('Content-Disposition: ' . $disposition . '; filename="' . $nombreOriginal . '"');
         header('Content-Length: ' . strlen($archivo['archivo_blob']));
+        header('Cache-Control: public, max-age=0');
         
         // Enviar binario directamente
         echo $archivo['archivo_blob'];
@@ -184,6 +196,51 @@ try {
         $idsTransacciones = $data['ids_transacciones'] ?? [];
         
         $result = $voucherModel->asignarVoucherAProformas($idVoucher, $idsTransacciones);
+        echo json_encode($result);
+        exit;
+    }
+    
+    // Des-asignar voucher (quitar de todas las proformas vinculadas)
+    if ($action == 'desasignar_voucher') {
+        while (ob_get_level()) { ob_end_clean(); }
+        header('Content-Type: application/json; charset=utf-8');
+        require_once __DIR__ . '/../models/VoucherModel.php';
+        $voucherModel = new VoucherModel($conn);
+        
+        $data = json_decode(file_get_contents('php://input'), true);
+        $idVoucher = intval($data['id_voucher'] ?? 0);
+        
+        $result = $voucherModel->desasignarVoucher($idVoucher);
+        echo json_encode($result);
+        exit;
+    }
+    
+    // Eliminar voucher completamente
+    if ($action == 'eliminar_voucher') {
+        while (ob_get_level()) { ob_end_clean(); }
+        header('Content-Type: application/json; charset=utf-8');
+        require_once __DIR__ . '/../models/VoucherModel.php';
+        $voucherModel = new VoucherModel($conn);
+        
+        $data = json_decode(file_get_contents('php://input'), true);
+        $idVoucher = intval($data['id_voucher'] ?? 0);
+        
+        $result = $voucherModel->eliminarVoucher($idVoucher);
+        echo json_encode($result);
+        exit;
+    }
+    
+    // Actualizar voucher (editar monto, num_operacion, fecha)
+    if ($action == 'actualizar_voucher') {
+        while (ob_get_level()) { ob_end_clean(); }
+        header('Content-Type: application/json; charset=utf-8');
+        require_once __DIR__ . '/../models/VoucherModel.php';
+        $voucherModel = new VoucherModel($conn);
+        
+        $data = json_decode(file_get_contents('php://input'), true);
+        $idVoucher = intval($data['id_voucher'] ?? 0);
+        
+        $result = $voucherModel->actualizarVoucher($idVoucher, $data);
         echo json_encode($result);
         exit;
     }

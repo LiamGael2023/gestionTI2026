@@ -12,12 +12,13 @@ class VoucherModel {
     public function listarVouchers($filtros = []) {
         $sql = "SELECT v.id_voucher, v.num_operacion as num_operation, v.monto_total, v.fecha_deposito, 
                        v.url_imagen,
+                       CASE WHEN v.archivo_blob IS NOT NULL THEN 1 ELSE 0 END as tiene_archivo,
                        COUNT(t.id_transaccion) as total_proformas,
                        ISNULL(SUM(t.total), 0) as monto_asignado
                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON v.id_voucher = t.id_voucher
                 GROUP BY v.id_voucher, v.num_operacion, v.monto_total, v.fecha_deposito, 
-                         v.url_imagen
+                         v.url_imagen, v.archivo_blob
                 ORDER BY v.id_voucher DESC";
         
         $stmt = sqlsrv_query($this->db, $sql);
@@ -62,14 +63,14 @@ class VoucherModel {
             $data['num_operation'],
             $data['monto_total'],
             $data['fecha_deposito'],
-            null, // url_imagen - ya no se usa
+            $data['archivo_nombre'] ?? null, // url_imagen ahora guarda el nombre original del archivo
             $blobParam
         ];
         
         $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito 
                 (num_operacion, monto_total, fecha_deposito, url_imagen, archivo_blob)
                 OUTPUT INSERTED.id_voucher
-                VALUES (?, ?, ?, ?, CONVERT(VARBINARY(MAX), ?))";
+                VALUES (?, ?, ?, ?, ?)";
         
         $stmt = sqlsrv_query($this->db, $sql, $params);
         
@@ -98,7 +99,7 @@ class VoucherModel {
      * Obtener archivo BLOB de voucher para descarga
      */
     public function obtenerArchivoBlob($idVoucher) {
-        $sql = "SELECT archivo_blob, num_operacion as num_operation 
+        $sql = "SELECT archivo_blob, num_operacion as num_operation, url_imagen as archivo_nombre
                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito
                 WHERE id_voucher = ? AND archivo_blob IS NOT NULL";
         
@@ -195,24 +196,114 @@ class VoucherModel {
     }
 
     /**
-     * Verificar si un voucher ya está asignado a proformas
+     * Des-asignar voucher de todas las proformas vinculadas
      */
-    public function getProformasPorVoucher($idVoucher) {
-        $sql = "SELECT t.id_transaccion, t.total, c.nombre_rs as nombre_cliente
-                FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
-                WHERE t.id_voucher = ?";
-        
-        $stmt = sqlsrv_query($this->db, $sql, [$idVoucher]);
-        if ($stmt === false) {
-            return [];
+    public function desasignarVoucher($idVoucher) {
+        try {
+            sqlsrv_begin_transaction($this->db);
+
+            // Verificar que el voucher exista y tenga proformas asignadas
+            $sqlCheck = "SELECT COUNT(*) as total FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion WHERE id_voucher = ?";
+            $stmtCheck = sqlsrv_query($this->db, $sqlCheck, [$idVoucher]);
+            $rowCheck = sqlsrv_fetch_array($stmtCheck, SQLSRV_FETCH_ASSOC);
+            $totalProformas = $rowCheck['total'] ?? 0;
+
+            if ($totalProformas == 0) {
+                sqlsrv_commit($this->db);
+                return ['success' => true, 'message' => 'El voucher no tiene proformas asignadas'];
+            }
+
+            // Quitar id_voucher y volver estado a PENDIENTE
+            $sqlUpdate = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.transaccion
+                        SET estado = 'PENDIENTE', id_voucher = NULL
+                        WHERE id_voucher = ?";
+            $stmtUpdate = sqlsrv_query($this->db, $sqlUpdate, [$idVoucher]);
+            if ($stmtUpdate === false) {
+                throw new Exception('Error al des-asignar voucher de proformas');
+            }
+
+            sqlsrv_commit($this->db);
+            return ['success' => true, 'message' => 'Voucher des-asignado correctamente. ' . $totalProformas . ' proforma(s) volvieron a estado Pendiente.'];
+
+        } catch (Exception $e) {
+            sqlsrv_rollback($this->db);
+            return ['success' => false, 'message' => $e->getMessage()];
         }
-        
-        $result = [];
-        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-            $result[] = $row;
+    }
+
+    /**
+     * Eliminar voucher completamente
+     */
+    public function eliminarVoucher($idVoucher) {
+        try {
+            sqlsrv_begin_transaction($this->db);
+
+            // Primero des-asignar de cualquier proforma
+            $sqlUpdate = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.transaccion
+                        SET estado = 'PENDIENTE', id_voucher = NULL
+                        WHERE id_voucher = ?";
+            sqlsrv_query($this->db, $sqlUpdate, [$idVoucher]);
+
+            // Luego eliminar el voucher
+            $sqlDelete = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito WHERE id_voucher = ?";
+            $stmtDelete = sqlsrv_query($this->db, $sqlDelete, [$idVoucher]);
+            if ($stmtDelete === false) {
+                throw new Exception('Error al eliminar el voucher');
+            }
+
+            // Verificar que se eliminó
+            if (sqlsrv_rows_affected($stmtDelete) === 0) {
+                throw new Exception('Voucher no encontrado o ya fue eliminado');
+            }
+
+            sqlsrv_commit($this->db);
+            return ['success' => true, 'message' => 'Voucher eliminado correctamente'];
+
+        } catch (Exception $e) {
+            sqlsrv_rollback($this->db);
+            return ['success' => false, 'message' => $e->getMessage()];
         }
-        return $result;
+    }
+
+    /**
+     * Actualizar datos de un voucher (monto, num_operacion, fecha)
+     */
+    public function actualizarVoucher($idVoucher, $data) {
+        try {
+            $campos = [];
+            $params = [];
+
+            if (isset($data['num_operation'])) {
+                $campos[] = "num_operacion = ?";
+                $params[] = $data['num_operation'];
+            }
+            if (isset($data['monto_total'])) {
+                $campos[] = "monto_total = ?";
+                $params[] = $data['monto_total'];
+            }
+            if (isset($data['fecha_deposito'])) {
+                $campos[] = "fecha_deposito = ?";
+                $params[] = $data['fecha_deposito'];
+            }
+
+            if (empty($campos)) {
+                return ['success' => false, 'message' => 'No hay campos para actualizar'];
+            }
+
+            $params[] = $idVoucher;
+            $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito SET " . implode(', ', $campos) . " WHERE id_voucher = ?";
+            $stmt = sqlsrv_query($this->db, $sql, $params);
+
+            if ($stmt === false) {
+                $errors = sqlsrv_errors();
+                $msg = !empty($errors) ? $errors[0]['message'] : 'Error de base de datos';
+                return ['success' => false, 'message' => 'Error al actualizar: ' . $msg];
+            }
+
+            return ['success' => true, 'message' => 'Voucher actualizado correctamente'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 ?>

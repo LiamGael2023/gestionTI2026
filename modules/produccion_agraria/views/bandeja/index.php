@@ -380,6 +380,25 @@ function mostrarDetalle(p) {
             <strong>Método de Pago:</strong> ${p.metodo_pago || '-'}
         </div>
         ` : ''}
+        ${p.id_voucher ? `
+        <div class="alert alert-info mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong><i class="ti ti-file-invoice me-1"></i>Voucher de Pago:</strong> #${p.id_voucher}
+                </div>
+                <div class="btn-group">
+                    <a href="${BASE_URL}/produccion_agraria?action=descargar_voucher&id=${p.id_voucher}" 
+                       class="btn btn-sm btn-primary" target="_blank">
+                        <i class="ti ti-download me-1"></i>Descargar
+                    </a>
+                    <button class="btn btn-sm btn-warning" onclick="desasignarVoucherDesdeProforma(${p.id_voucher})" title="Des-asignar voucher">
+                        <i class="ti ti-link-off me-1"></i>Des-asignar
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted">Documento adjunto al procesar esta proforma</small>
+        </div>
+        ` : ''}
     `;
     
     document.getElementById('detalle-contenido').innerHTML = html;
@@ -702,16 +721,25 @@ function cargarVouchers() {
                             <td class="text-center">
                                 <div class="btn-group">
                                     <a href="${BASE_URL}/produccion_agraria?action=descargar_voucher&id=${v.id_voucher}" 
-                                       class="btn btn-sm btn-info ${!v.url_imagen ? 'disabled' : ''}" 
+                                       class="btn btn-sm btn-info ${!v.tiene_archivo ? 'disabled' : ''}" 
                                        title="Descargar archivo"
                                        target="_blank">
                                         <i class="ti ti-download"></i>
                                     </a>
-                                    ${v.total_proformas === 0 
-                                        ? `<button class="btn btn-sm btn-primary" onclick="mostrarModalAsignarVoucher(${v.id_voucher}, ${v.monto_total})">
-                                            <i class="ti ti-link me-1"></i>Asignar
+                                    <button class="btn btn-sm btn-secondary" onclick="editarVoucher(${v.id_voucher}, '${(v.num_operation || '').replace(/'/g, "\\'")}', ${v.monto_total}, '${v.fecha_deposito || ''}')" title="Editar voucher">
+                                        <i class="ti ti-pencil"></i>
+                                    </button>
+                                    ${v.total_proformas > 0 
+                                        ? `<button class="btn btn-sm btn-warning" onclick="desasignarVoucher(${v.id_voucher}, ${v.total_proformas})" title="Des-asignar de proformas">
+                                            <i class="ti ti-link-off"></i>
                                         </button>` 
                                         : ''}
+                                    <button class="btn btn-sm btn-primary" onclick="mostrarModalAsignarVoucher(${v.id_voucher}, ${v.monto_total})" title="Asignar a proformas">
+                                        <i class="ti ti-link"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="eliminarVoucher(${v.id_voucher}, ${v.total_proformas})" title="Eliminar voucher">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -918,6 +946,183 @@ function confirmarAsignacionVoucher() {
     });
 }
 
+// Des-asignar voucher de todas las proformas vinculadas
+function desasignarVoucher(idVoucher, totalProformas) {
+    Swal.fire({
+        title: '¿Des-asignar voucher?',
+        html: `El voucher <strong>#${idVoucher}</strong> será desvinculado de <strong>${totalProformas} proforma(s)</strong>.<br><br>
+               Las proformas volverán al estado <strong>PENDIENTE</strong>.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, des-asignar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f59e0b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`${BASE_URL}/produccion_agraria?action=desasignar_voucher`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_voucher: idVoucher })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Des-asignado!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    cargarVouchers();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+    });
+}
+
+// Eliminar voucher completamente
+function eliminarVoucher(idVoucher, totalProformas) {
+    let mensajeExtra = '';
+    if (totalProformas > 0) {
+        mensajeExtra = `<br><br><span class="text-danger"><strong>Advertencia:</strong> Este voucher está asignado a ${totalProformas} proforma(s). Al eliminarlo, las proformas volverán a estado PENDIENTE.</span>`;
+    }
+    
+    Swal.fire({
+        title: '¿Eliminar voucher?',
+        html: `Se eliminará permanentemente el voucher <strong>#${idVoucher}</strong> y su archivo adjunto.${mensajeExtra}`,
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc3545'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`${BASE_URL}/produccion_agraria?action=eliminar_voucher`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_voucher: idVoucher })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Eliminado!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    cargarVouchers();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+    });
+}
+
+// Des-asignar voucher desde el detalle de una proforma
+function desasignarVoucherDesdeProforma(idVoucher) {
+    Swal.fire({
+        title: '¿Des-asignar voucher?',
+        html: `Se desvinculará el voucher <strong>#${idVoucher}</strong> de esta proforma.<br>La proforma volverá al estado <strong>PENDIENTE</strong>.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, des-asignar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f59e0b'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`${BASE_URL}/produccion_agraria?action=desasignar_voucher`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_voucher: idVoucher })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Des-asignado!',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    bootstrap.Modal.getInstance(document.getElementById('modal-detalle')).hide();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+    });
+}
+
+// Editar voucher (abrir modal con datos)
+function editarVoucher(idVoucher, numOperation, montoTotal, fechaDeposito) {
+    document.getElementById('editar-voucher-id').textContent = idVoucher;
+    document.getElementById('editar-id-voucher').value = idVoucher;
+    document.getElementById('editar-num-operation').value = numOperation;
+    document.getElementById('editar-monto-total').value = parseFloat(montoTotal).toFixed(2);
+    document.getElementById('editar-fecha-deposito').value = fechaDeposito ? fechaDeposito.substring(0, 10) : '';
+    new bootstrap.Modal(document.getElementById('modal-editar-voucher')).show();
+}
+
+// Guardar edición de voucher
+function guardarEdicionVoucher() {
+    const idVoucher = document.getElementById('editar-id-voucher').value;
+    const numOperation = document.getElementById('editar-num-operation').value.trim();
+    const montoTotal = parseFloat(document.getElementById('editar-monto-total').value);
+    const fechaDeposito = document.getElementById('editar-fecha-deposito').value;
+    
+    if (!numOperation || !montoTotal || !fechaDeposito) {
+        Swal.fire('Error', 'Complete todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Guardando cambios...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+    
+    fetch(`${BASE_URL}/produccion_agraria?action=actualizar_voucher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id_voucher: idVoucher,
+            num_operation: numOperation,
+            monto_total: montoTotal,
+            fecha_deposito: fechaDeposito
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Actualizado!',
+                text: data.message,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            bootstrap.Modal.getInstance(document.getElementById('modal-editar-voucher')).hide();
+            cargarVouchers();
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        Swal.fire('Error', 'Error al conectar con el servidor', 'error');
+    });
+}
+
 // Listeners dinámicos de interfaz para Venta vs Donación
 document.addEventListener('change', function(e) {
     // 1. Toggler para Modal Procesar Proforma
@@ -1062,6 +1267,41 @@ document.addEventListener('change', function(e) {
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="guardarVoucher()">
                     <i class="ti ti-device-floppy me-1"></i>Guardar Voucher
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Editar Voucher -->
+<div class="modal fade" id="modal-editar-voucher" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title"><i class="ti ti-pencil me-2"></i>Editar Voucher #<span id="editar-voucher-id"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-editar-voucher" onsubmit="event.preventDefault(); guardarEdicionVoucher();">
+                    <input type="hidden" id="editar-id-voucher">
+                    <div class="mb-3">
+                        <label class="form-label">Número de Operación / Resolución <span class="text-danger">*</span></label>
+                        <input type="text" id="editar-num-operation" class="form-control" required placeholder="Ej: 123456789">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Monto (S/) <span class="text-danger">*</span></label>
+                        <input type="number" id="editar-monto-total" class="form-control" required step="0.01" min="0.01" placeholder="0.00">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Depósito / Resolución <span class="text-danger">*</span></label>
+                        <input type="date" id="editar-fecha-deposito" class="form-control" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="guardarEdicionVoucher()">
+                    <i class="ti ti-device-floppy me-1"></i>Guardar Cambios
                 </button>
             </div>
         </div>

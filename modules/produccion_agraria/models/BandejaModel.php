@@ -77,7 +77,7 @@ class BandejaModel {
         // Encabezado
         $sql = "SELECT t.id_transaccion, t.id_cliente, t.fecha_creacion, t.total, 
                        t.estado, t.metodo_pago, t.tipo_op, t.responsable_venta,
-                       t.serie_comprobante, t.correlativo_comprobante, t.doc_justificante,
+                       t.serie_comprobante, t.correlativo_comprobante, t.doc_justificante, t.id_voucher,
                        c.nombre_rs as nombre_cliente, c.dni_ruc as documento_cliente, 
                        CASE WHEN LEN(c.dni_ruc) = 8 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
                        cp.nombre_centro

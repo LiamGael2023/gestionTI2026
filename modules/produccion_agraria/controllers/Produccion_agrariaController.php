@@ -4,7 +4,8 @@ $action = $_GET['action'] ?? 'index';
 // Solo cargar modelo si no es acción AJAX de bandeja
 $acciones_ajax_bandeja = [
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
-    'listar_vouchers', 'guardar_voucher', 'descargar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas'
+    'listar_vouchers', 'guardar_voucher', 'descargar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas',
+    'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher'
 ];
 if (!in_array($action, $acciones_ajax_bandeja)) {
     require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
@@ -71,6 +72,9 @@ switch($action) {
     case 'descargar_voucher':
     case 'listar_proformas_disponibles':
     case 'asignar_voucher_proformas':
+    case 'desasignar_voucher':
+    case 'eliminar_voucher':
+    case 'actualizar_voucher':
         include 'modules/produccion_agraria/controllers/BandejaController.php';
         break;
     case 'reportes':
