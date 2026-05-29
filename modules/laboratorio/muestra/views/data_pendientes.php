@@ -38,59 +38,60 @@ try {
     $length = intval($_POST['length'] ?? 10);
     $tipoServicio = strtolower(trim((string)($_POST['tipo_servicio'] ?? 'todos')));
     $filtrarTipo = ($tipoServicio === 'interno' || $tipoServicio === 'externo');
+    $search = trim((string)($_POST['search']['value'] ?? ''));
 
-        $sqlTotal = "SELECT COUNT(*) AS total
-                                 FROM laboratorio.Muestra_Lab m
-                                 WHERE m.Activo = 1
-                                     AND m.Id_Proyecto IS NULL
-                                                                         AND m.Estado = 'Recepcionado'
-                                                                         AND NOT EXISTS (
-                                                                                 SELECT 1
-                                                                                 FROM laboratorio.Muestra_Bitacora mbx
-                                                                                 WHERE mbx.Id_Muestra = m.Id_Muestra
-                                                                                     AND mbx.Muestra_Original IS NOT NULL
-                                                                         )";
-    $paramsTotal = [];
+    $sqlBase = " FROM laboratorio.Muestra_Lab m
+                 INNER JOIN laboratorio.Cliente c ON m.Id_Cliente = c.Id_Cliente
+                 LEFT JOIN laboratorio.Detalle_Suelo ds ON m.Id_Muestra = ds.Id_Muestra AND ds.Activo = 1
+                 LEFT JOIN laboratorio.Detalle_Agua da ON m.Id_Muestra = da.Id_Muestra AND da.Activo = 1";
+    $sqlWhere = " WHERE m.Activo = 1 AND m.Id_Proyecto IS NULL AND m.Estado = 'Recepcionado'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM laboratorio.Muestra_Bitacora mbx
+                      WHERE mbx.Id_Muestra = m.Id_Muestra AND mbx.Muestra_Original IS NOT NULL
+                  )";
+    $paramsBase = [];
     if ($filtrarTipo) {
-        $sqlTotal .= " AND LOWER(ISNULL(m.Tipo_Servicio, '')) = ?";
-        $paramsTotal[] = $tipoServicio;
+        $sqlWhere .= " AND LOWER(ISNULL(m.Tipo_Servicio, '')) = ?";
+        $paramsBase[] = $tipoServicio;
     }
 
-    $stmtTotal = sqlsrv_query($conn, $sqlTotal, $paramsTotal);
+    // Total sin filtro de búsqueda
+    $stmtTotal = sqlsrv_query($conn, "SELECT COUNT(*) AS total" . $sqlBase . $sqlWhere, $paramsBase);
     if ($stmtTotal === false) {
         throw new Exception('No se pudo contar muestras pendientes: ' . print_r(sqlsrv_errors(), true));
     }
     $rowTotal = sqlsrv_fetch_array($stmtTotal, SQLSRV_FETCH_ASSOC);
     $total = intval($rowTotal['total'] ?? 0);
 
+    // Filtro de búsqueda adicional
+    $sqlSearch = '';
+    $paramsSearch = [];
+    if ($search !== '') {
+        $like = '%' . $search . '%';
+        $sqlSearch = " AND (CONCAT(c.Nombres, ' ', c.Apellido_Paterno, ' ', c.Apellido_Materno) LIKE ?
+                        OR ISNULL(m.Valle, '') LIKE ?
+                        OR CAST(m.Id_Muestra AS NVARCHAR) LIKE ?)";
+        $paramsSearch = [$like, $like, $like];
+    }
+
+    // Total filtrado (con búsqueda)
+    $paramsFiltered = array_merge($paramsBase, $paramsSearch);
+    $stmtFiltered = sqlsrv_query($conn, "SELECT COUNT(*) AS total" . $sqlBase . $sqlWhere . $sqlSearch, $paramsFiltered);
+    if ($stmtFiltered === false) {
+        throw new Exception('No se pudo contar muestras filtradas: ' . print_r(sqlsrv_errors(), true));
+    }
+    $rowFiltered = sqlsrv_fetch_array($stmtFiltered, SQLSRV_FETCH_ASSOC);
+    $totalFiltered = intval($rowFiltered['total'] ?? 0);
+
     $sqlData = "SELECT m.*,
                        CONCAT(c.Nombres, ' ', c.Apellido_Paterno, ' ', c.Apellido_Materno) AS Agricultor,
                        CONCAT(m.Eje_X, ', ', m.Eje_Y) AS Ubicacion,
                        CASE WHEN ds.Id_Muestra IS NOT NULL THEN 'Suelo'
                             WHEN da.Id_Muestra IS NOT NULL THEN 'Agua'
-                            ELSE 'Sin clasificar' END AS TipoMuestra
-                FROM laboratorio.Muestra_Lab m
-                INNER JOIN laboratorio.Cliente c ON m.Id_Cliente = c.Id_Cliente
-                LEFT JOIN laboratorio.Detalle_Suelo ds ON m.Id_Muestra = ds.Id_Muestra AND ds.Activo = 1
-                LEFT JOIN laboratorio.Detalle_Agua da ON m.Id_Muestra = da.Id_Muestra AND da.Activo = 1
-                                WHERE m.Activo = 1
-                                    AND m.Id_Proyecto IS NULL
-                                    AND m.Estado = 'Recepcionado'
-                                                                        AND NOT EXISTS (
-                                                                                SELECT 1
-                                                                                FROM laboratorio.Muestra_Bitacora mbx
-                                                                                WHERE mbx.Id_Muestra = m.Id_Muestra
-                                                                                    AND mbx.Muestra_Original IS NOT NULL
-                                                                        )";
-    $paramsData = [];
-    if ($filtrarTipo) {
-        $sqlData .= " AND LOWER(ISNULL(m.Tipo_Servicio, '')) = ?";
-        $paramsData[] = $tipoServicio;
-    }
-    $sqlData .= " ORDER BY m.Id_Muestra DESC
-                OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-    $paramsData[] = $start;
-    $paramsData[] = $length;
+                            ELSE 'Sin clasificar' END AS TipoMuestra";
+    $sqlData .= $sqlBase . $sqlWhere . $sqlSearch;
+    $sqlData .= " ORDER BY m.Id_Muestra DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+    $paramsData = array_merge($paramsFiltered, [$start, $length]);
     $stmtData = sqlsrv_query($conn, $sqlData, $paramsData);
     if ($stmtData === false) {
         throw new Exception('No se pudo cargar muestras pendientes: ' . print_r(sqlsrv_errors(), true));
@@ -122,8 +123,8 @@ try {
 
     echo json_encode([
         'draw' => $draw,
-        'recordsTotal' => intval($total),
-        'recordsFiltered' => intval($total),
+        'recordsTotal' => $total,
+        'recordsFiltered' => $totalFiltered,
         'data' => $data
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 

@@ -29,15 +29,19 @@ try {
     require_once '../../../../core/Auth.php';
     require_once '../../Validaciones.php';
     require_once '../models/ReactivoModel.php';
-    
+    require_once '../models/UnidadMedidaModel.php';
+    require_once '../../proveedor/models/ProveedorModel.php';
+
     Auth::check();
-    
+
     $conn = Conexion::conectar();
     if (!$conn) {
         throw new Exception('Error: No se pudo conectar a la base de datos');
     }
-    
-    $reactivo_model = new ReactivoModel($conn);
+
+    $reactivo_model  = new ReactivoModel($conn);
+    $unidad_model    = new UnidadMedidaModel($conn);
+    $proveedor_model = new ProveedorModel($conn);
     
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
     
@@ -110,19 +114,24 @@ try {
             100
         );
         
-        // Validar Unidad de Medida (opcional, máx 20)
+        // Validar Unidad de Medida (opcional, texto legacy)
         $errores['Unidad_Medida'] = Validaciones::validarTexto(
             $datos['Unidad_Medida'] ?? '',
             false,
             20
         );
-        
+
         // Validar Fecha Vencimiento (opcional, YYYY-MM-DD)
         $errores['Fecha_Vencimiento'] = Validaciones::validarFecha(
             $datos['Fecha_Vencimiento'] ?? '',
             false
         );
-        
+
+        // Validar Tipo (opcional: Agua | Suelo)
+        if (!empty($datos['Tipo']) && !in_array($datos['Tipo'], ['Agua', 'Suelo'])) {
+            $errores['Tipo'] = 'Tipo debe ser Agua o Suelo';
+        }
+
         // Validar Cantidad Inicial (obligatoria para crear, debe ser positiva)
         $cantidadInicial = $datos['Cantidad_Inicial'] ?? null;
         if (empty($cantidadInicial) || !is_numeric($cantidadInicial) || floatval($cantidadInicial) <= 0) {
@@ -210,19 +219,24 @@ try {
             100
         );
         
-        // Validar Unidad de Medida (opcional, máx 20)
+        // Validar Unidad de Medida (opcional, texto legacy)
         $errores['Unidad_Medida'] = Validaciones::validarTexto(
             $datos['Unidad_Medida'] ?? '',
             false,
             20
         );
-        
+
         // Validar Fecha Vencimiento (opcional, YYYY-MM-DD)
         $errores['Fecha_Vencimiento'] = Validaciones::validarFecha(
             $datos['Fecha_Vencimiento'] ?? '',
             false
         );
-        
+
+        // Validar Tipo (opcional: Agua | Suelo)
+        if (!empty($datos['Tipo']) && !in_array($datos['Tipo'], ['Agua', 'Suelo'])) {
+            $errores['Tipo'] = 'Tipo debe ser Agua o Suelo';
+        }
+
         // Si hay errores, devolverlos
         if (Validaciones::hayErrores($errores)) {
             http_response_code(400);
@@ -437,9 +451,10 @@ try {
                     ir.Factura_Referencia,
                     CAST(ir.Fecha_Ingreso AS DATE) as Fecha_Dia,
                     rl.Nombre as Reactivo_Nombre,
-                    rl.Unidad_Medida
+                    ISNULL(um.Abreviatura, '') AS Unidad_Medida
                 FROM laboratorio.Ingreso_Reactivo ir
                 INNER JOIN laboratorio.Reactivo_Lab rl ON ir.Id_Reactivo = rl.Id_Reactivo
+                LEFT JOIN laboratorio.Unidad_Medida um ON um.Id_Unidad_Medida = rl.Id_Unidad_Medida AND um.Activo = 1
                 WHERE CAST(ir.Fecha_Ingreso AS DATE) = ?
                 AND rl.Activo = 1
                 ORDER BY ir.Fecha_Ingreso DESC, rl.Nombre
@@ -505,7 +520,7 @@ try {
                     mk.Concepto,
                     CONVERT(VARCHAR(19), mk.Fecha_Registro, 120) AS Fecha_Hora,
                     rl.Nombre AS Reactivo_Nombre,
-                    rl.Unidad_Medida,
+                    ISNULL(um.Abreviatura, '') AS Unidad_Medida,
                     cr.Id_Muestra_Producto,
                     mp.Id_Muestra,
                     ml.Id_Proyecto,
@@ -519,9 +534,13 @@ try {
                         ELSE 'Salida manual'
                     END AS Tipo_Detalle,
                     COALESCE(
-                        CASE WHEN ml.Id_Proyecto IS NOT NULL THEN 'Proyecto #' + CAST(ml.Id_Proyecto AS VARCHAR(20)) END,
-                        CASE
-                            WHEN ml.Id_Cliente IS NOT NULL THEN 'Cliente: ' + LTRIM(RTRIM(CONCAT(ISNULL(c.Nombres, ''), ' ', ISNULL(c.Apellido_Paterno, ''), ' ', ISNULL(c.Apellido_Materno, ''))))
+                        CASE WHEN ml.Id_Proyecto IS NOT NULL THEN
+                            ISNULL(pm.Nombre_Proyecto, 'Proyecto #' + CAST(ml.Id_Proyecto AS VARCHAR(20)))
+                            + ISNULL(' (' + CONVERT(VARCHAR(10), pm.Fecha_Inicio, 103) + ')', '')
+                            + CASE WHEN pm.Es_Control_Calidad = 1 THEN N' \u2014 Calidad de Agua' ELSE N' \u2014 Monitoreo' END
+                        END,
+                        CASE WHEN ml.Id_Cliente IS NOT NULL THEN
+                            'Cliente: ' + LTRIM(RTRIM(CONCAT(ISNULL(c.Nombres, ''), ' ', ISNULL(c.Apellido_Paterno, ''), ' ', ISNULL(c.Apellido_Materno, ''))))
                         END,
                         'Otros consumos'
                     ) AS Segmento_Principal,
@@ -536,6 +555,8 @@ try {
                 LEFT JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = mp.Id_Muestra AND ml.Activo = 1
                 LEFT JOIN laboratorio.Cliente c ON c.Id_Cliente = ml.Id_Cliente
                 LEFT JOIN laboratorio.Producto_Venta pv ON pv.Id_Producto = mp.Id_Producto_Venta
+                LEFT JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto AND pm.Activo = 1
+                LEFT JOIN laboratorio.Unidad_Medida um ON um.Id_Unidad_Medida = rl.Id_Unidad_Medida AND um.Activo = 1
                 WHERE mk.Activo = 1
                   AND mk.Tipo_Movimiento = 'S'
                   AND CAST(mk.Fecha_Registro AS DATE) = ?
@@ -647,6 +668,104 @@ try {
                 'success' => false,
                 'message' => 'Error al obtener servicios: ' . $e->getMessage()
             ]);
+        }
+        exit;
+    }
+
+    // ==================== PROVEEDORES ====================
+
+    if ($action === 'listar_proveedores') {
+        echo json_encode(['success' => true, 'data' => $proveedor_model->obtenerTodos()]);
+        exit;
+    }
+
+    // ==================== UNIDADES DE MEDIDA ====================
+
+    if ($action === 'listar_unidades') {
+        echo json_encode(['success' => true, 'data' => $unidad_model->obtenerTodos()]);
+        exit;
+    }
+
+    if ($action === 'guardar_unidad') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $id = $unidad_model->guardar($datos);
+            $unidad = $unidad_model->obtenerPorId($id);
+            echo json_encode(['success' => true, 'id' => $id, 'unidad' => $unidad, 'message' => 'Unidad guardada correctamente']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action === 'eliminar_unidad') {
+        try {
+            $id = $_GET['id'] ?? null;
+            if (!$id) { http_response_code(400); echo json_encode(['success' => false, 'message' => 'ID requerido']); exit; }
+            $unidad_model->eliminar($id);
+            echo json_encode(['success' => true, 'message' => 'Unidad eliminada correctamente']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== EDITAR KARDEX ====================
+
+    if ($action === 'editar_ingreso') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $idIngreso = intval($datos['Id_Ingreso'] ?? 0);
+            $nuevaCantidad = floatval($datos['Cantidad'] ?? 0);
+            if (!$idIngreso || $nuevaCantidad <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de ingreso y cantidad válida son requeridos']);
+                exit;
+            }
+            $reactivo_model->editarIngreso($idIngreso, $nuevaCantidad);
+            echo json_encode(['success' => true, 'message' => 'Ingreso actualizado correctamente']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action === 'editar_salida') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $idMovimiento = intval($datos['Id_Movimiento'] ?? 0);
+            $nuevaCantidad = floatval($datos['Cantidad'] ?? 0);
+            $concepto = trim($datos['Concepto'] ?? '');
+            if (!$idMovimiento || $nuevaCantidad <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de movimiento y cantidad válida son requeridos']);
+                exit;
+            }
+            $reactivo_model->editarSalida($idMovimiento, $nuevaCantidad, $concepto ?: 'S/N');
+            echo json_encode(['success' => true, 'message' => 'Salida actualizada correctamente']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    if ($action === 'eliminar_salida') {
+        try {
+            $idMovimiento = intval($_GET['id'] ?? 0);
+            if (!$idMovimiento) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de movimiento requerido']);
+                exit;
+            }
+            $reactivo_model->eliminarSalida($idMovimiento);
+            echo json_encode(['success' => true, 'message' => 'Movimiento eliminado y stock restaurado']);
+        } catch (Exception $e) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
     }

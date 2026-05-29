@@ -54,6 +54,7 @@
             <select id="valle" class="form-select" required>
               <option value="">Seleccione...</option>
             </select>
+            <input type="text" class="form-control mt-2" id="valle_otro" placeholder="Especificar valle" style="display:none;">
           </div>
 
           <div class="col-md-4">
@@ -208,6 +209,15 @@
           option.textContent = item;
           selectValle.appendChild(option);
         });
+        const optOtro = document.createElement('option');
+        optOtro.value = 'Otros';
+        optOtro.textContent = 'Otros (Especificar)';
+        selectValle.appendChild(optOtro);
+        selectValle.addEventListener('change', function () {
+          const otro = document.getElementById('valle_otro');
+          if (selectValle.value === 'Otros') { otro.style.display = ''; otro.required = true; }
+          else { otro.style.display = 'none'; otro.required = false; otro.value = ''; }
+        });
 
         (data.servicios || []).forEach(function (item) {
           const option = document.createElement('option');
@@ -225,7 +235,9 @@
     return {
       tipo_servicio: document.getElementById('tipo_servicio').value,
       id_cliente: document.getElementById('id_cliente').value,
-      valle: document.getElementById('valle').value,
+      valle: (document.getElementById('valle').value === 'Otros'
+        ? document.getElementById('valle_otro').value.trim()
+        : document.getElementById('valle').value),
       fecha_toma: document.getElementById('fecha_toma').value,
       eje_x: document.getElementById('eje_x').value.trim(),
       eje_y: document.getElementById('eje_y').value.trim(),

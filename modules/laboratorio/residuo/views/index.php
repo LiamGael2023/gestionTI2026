@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
@@ -54,23 +54,7 @@ $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
       </div>
     </div>
 
-    <div class="row g-2 mb-3">
-      <div class="col-auto">
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-residuo">
-          <i class="ti ti-plus me-2"></i> Crear Residuo
-        </button>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-normativa">
-          <i class="ti ti-certificate me-2"></i> Crear Normativa SST
-        </button>
-      </div>
-      <div class="col-auto">
-        <a href="?module=laboratorio&action=residuo&view=informe_residuos" class="btn btn-danger">
-          <i class="ti ti-file-text me-2"></i> Crear Informe de Residuos
-        </a>
-      </div>
-    </div>
+
   </div>
 </div>
 
@@ -85,59 +69,104 @@ $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
       </div>
     </div>
 
-        <div class="card">
-            <div class="card-header">
-                <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <a href="#tab-residuos" class="nav-link active" data-bs-toggle="tab" aria-selected="true" role="tab">Inventario de Residuos</a>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <a href="#tab-normativas" class="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">Normativas</a>
-                    </li>
-                </ul>
-            </div>
-            <div class="card-body">
-                <div class="tab-content">
-                    <div class="tab-pane active show" id="tab-residuos" role="tabpanel">
-                        <p class="text-muted small">Listado consolidado de registros actuales. Utilice el buscador para localizar insumos específicos por nombre o código</p>
+    <!-- TABS NAV -->
+    <ul class="nav nav-tabs mb-0" id="residuo-tabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-residuos-btn" data-bs-toggle="tab" data-bs-target="#tab-residuos" type="button" role="tab">
+          <i class="ti ti-trash me-1"></i> Inventario de Residuos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-normativas-btn" data-bs-toggle="tab" data-bs-target="#tab-normativas" type="button" role="tab">
+          <i class="ti ti-certificate me-1"></i> Normativas
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-informes-btn" data-bs-toggle="tab" data-bs-target="#tab-informes" type="button" role="tab">
+          <i class="ti ti-file-text me-1"></i> Informes
+        </button>
+      </li>
+    </ul>
 
-                        <div class="table-responsive">
-                            <table id="tabla-residuos" class="table table-vcenter card-table table-striped" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Nombre Residuo</th>
-                                        <th>Tipo</th>
-                                        <th>SubCategoría</th>
-                                        <th>U.M.</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
+    <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white" id="residuo-tabs-content">
 
-                    <div class="tab-pane" id="tab-normativas" role="tabpanel">
-                        <p class="text-muted small">Listado detallado de las normativas.</p>
-
-                        <div class="table-responsive">
-                            <table id="tabla-normativas" class="table table-vcenter card-table table-striped" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Normativas</th>
-                                        <th>Descripción</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
+      <!-- TAB INVENTARIO -->
+      <div class="tab-pane fade show active" id="tab-residuos" role="tabpanel">
+        <div class="row g-2 align-items-center mb-3">
+          <div class="col">
+            <p class="text-muted small mb-0">Listado consolidado de registros actuales. Utilice el buscador para localizar insumos específicos por nombre o código</p>
+          </div>
+          <div class="col-auto">
+            <?php if (!empty($permisos['crear'])): ?>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-residuo">
+              <i class="ti ti-plus me-2"></i> Crear Residuo
+            </button>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table id="tabla-residuos" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th><th>Nombre Residuo</th><th>Tipo</th><th>SubCategoría</th><th>U.M.</th><th>Acción</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
-    </div>
+
+      <!-- TAB NORMATIVAS -->
+      <div class="tab-pane fade" id="tab-normativas" role="tabpanel">
+        <div class="row g-2 align-items-center mb-3">
+          <div class="col">
+            <p class="text-muted small mb-0">Listado detallado de las normativas SST registradas.</p>
+          </div>
+          <div class="col-auto">
+            <?php if (!empty($permisos['crear'])): ?>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-normativa">
+              <i class="ti ti-certificate me-2"></i> Crear Normativa SST
+            </button>
+            <?php endif; ?>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table id="tabla-normativas" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th><th>Normativas</th><th>Descripción</th><th>Acción</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB INFORMES -->
+      <div class="tab-pane fade" id="tab-informes" role="tabpanel">
+        <div class="row g-2 align-items-center mb-3">
+          <div class="col">
+            <p class="text-muted small mb-0">Historial de informes mensuales generados. Haga clic en ver para consultar el detalle completo.</p>
+          </div>
+          <div class="col-auto">
+            <a href="?module=laboratorio&action=residuo&view=informe_residuos" class="btn btn-danger">
+              <i class="ti ti-file-text me-2"></i> Crear Informe de Residuos
+            </a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table id="tabla-informes" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th><th>Código SST</th><th>Ubicación</th><th>Año</th><th>Mes</th><th>Acción</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /tab-content -->
   </div>
 </div>
 
@@ -164,7 +193,12 @@ $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
 
             <div class="col-md-6 mb-3">
               <label class="form-label">Unidad de Medida <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="unidad_referencia" placeholder="U.M." required>
+              <div class="input-group">
+                <select class="form-select" id="unidad_referencia" required>
+                  <option value="">-- Seleccionar --</option>
+                </select>
+                <button type="button" class="btn btn-outline-secondary" id="btn-nueva-unidad-residuo" title="Nueva unidad de medida"><i class="ti ti-plus"></i></button>
+              </div>
             </div>
           </div>
 
@@ -244,6 +278,34 @@ $usuario_nombre = $_SESSION['usuario_nombre'] ?? 'Usuario';
   </div>
 </div>
 
+<!-- MODAL NUEVA UNIDAD (desde residuo) -->
+<div class="modal fade" id="modal-nueva-unidad-residuo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      <div class="modal-header">
+        <h5 class="modal-title">Nueva Unidad de Medida</h5>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">Nombre <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="nueva-unidad-nombre-res" placeholder="Ej: Kilogramo">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Abreviatura <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="nueva-unidad-abrev-res" placeholder="Ej: kg">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-guardar-nueva-unidad-res">
+          <i class="ti ti-device-floppy me-1"></i> Guardar Unidad
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
@@ -259,6 +321,42 @@ $(document).ready(function() {
     inicializarTablaNormativas();
     cargarServicios();
     cargarNormativas();
+    cargarSelectUnidadesResiduo();
+
+    // Nueva unidad desde modal residuo
+    $('#btn-nueva-unidad-residuo').on('click', function () {
+        $('#nueva-unidad-nombre-res,#nueva-unidad-abrev-res').val('');
+        new bootstrap.Modal(document.getElementById('modal-nueva-unidad-residuo')).show();
+    });
+    $('#btn-guardar-nueva-unidad-res').on('click', function () {
+        var nombre = $('#nueva-unidad-nombre-res').val().trim();
+        var abrev  = $('#nueva-unidad-abrev-res').val().trim();
+        if (!nombre || !abrev) { Swal.fire('Error', 'Nombre y abreviatura son obligatorios', 'error'); return; }
+        var btn = this; btn.disabled = true;
+        $.ajax({
+            url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=guardar_unidad',
+            method: 'POST', contentType: 'application/json', dataType: 'json',
+            data: JSON.stringify({ Nombre: nombre, Abreviatura: abrev }),
+            success: function(r) {
+                btn.disabled = false;
+                if (r.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modal-nueva-unidad-residuo')).hide();
+                    cargarSelectUnidadesResiduo(r.unidad.Abreviatura);
+                    Swal.fire({ title: 'Creado', icon: 'success', timer: 1000, showConfirmButton: false });
+                } else { Swal.fire('Error', r.message, 'error'); }
+            },
+            error: function() { btn.disabled = false; Swal.fire('Error', 'Error de conexión', 'error'); }
+        });
+    });
+
+    // Resetear modal residuo al cerrar
+    $('#modal-residuo').on('hidden.bs.modal', function () {
+        $('#form-residuo')[0].reset();
+        $('#tabla-servicios tbody').empty();
+        cargarSelectUnidadesResiduo();
+    });
+
+    inicializarTablaInformes();
 
     // Recalcular ancho de DataTables al cambiar tabs
     document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function (el) {
@@ -268,6 +366,9 @@ $(document).ready(function() {
             }
             if ($.fn.DataTable.isDataTable('#tabla-normativas')) {
                 $('#tabla-normativas').DataTable().columns.adjust();
+            }
+            if ($.fn.DataTable.isDataTable('#tabla-informes')) {
+                $('#tabla-informes').DataTable().columns.adjust();
             }
         });
     });
@@ -292,9 +393,32 @@ function inicializarTablaResiduos() {
             { data: 4, title: 'U.M.' },
             { data: 5, title: 'Acción', orderable: false, searchable: false }
         ],
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-        }
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
+    });
+}
+
+function inicializarTablaInformes() {
+    $('#tabla-informes').DataTable({
+        processing: true,
+        paging: false,
+        info: false,
+        ajax: {
+            url: 'modules/laboratorio/residuo/views/data_informes.php',
+            type: 'POST',
+            dataSrc: 'data'
+        },
+        columnDefs: [
+            { orderable: false, targets: [5] }
+        ],
+        columns: [
+            { data: 0, title: 'No' },
+            { data: 1, title: 'Código SST' },
+            { data: 2, title: 'Ubicación' },
+            { data: 3, title: 'Año' },
+            { data: 4, title: 'Mes' },
+            { data: 5, title: 'Acción', orderable: false, searchable: false }
+        ],
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
     });
 }
 
@@ -315,8 +439,24 @@ function inicializarTablaNormativas() {
             { data: 2, title: 'Descripción' },
             { data: 3, title: 'Acción', orderable: false, searchable: false }
         ],
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
+    });
+}
+
+function cargarSelectUnidadesResiduo(selVal) {
+    $.ajax({
+        url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=listar_unidades',
+        type: 'GET', dataType: 'json',
+        success: function(r) {
+            var sel = $('#unidad_referencia');
+            var cur = selVal || sel.val();
+            sel.find('option:not(:first)').remove();
+            if (r.success && r.data) {
+                r.data.forEach(function(u) {
+                    sel.append(new Option(u.Nombre + ' (' + u.Abreviatura + ')', u.Abreviatura));
+                });
+            }
+            if (cur) sel.val(cur);
         }
     });
 }
@@ -343,6 +483,69 @@ function cargarServicios() {
 
 function htmlEscape(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function verInforme(id) {
+    window.location.href = '?module=laboratorio&action=residuo&view=ver_informe&id=' + id;
+}
+
+function editarInforme(id) {
+    window.location.href = '?module=laboratorio&action=residuo&view=informe_residuos&id=' + id;
+}
+
+function eliminarInforme(id) {
+    Swal.fire({
+        title: '¿Desactivar informe?',
+        text: 'El informe quedará inactivo',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Desactivar',
+        cancelButtonText: 'Cancelar'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'modules/laboratorio/residuo/controllers/ResiduoAPI.php?action=eliminar_informe&id=' + id,
+                type: 'GET',
+                dataType: 'json',
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire('Desactivado', resp.message || 'Informe desactivado', 'success')
+                            .then(function() { $('#tabla-informes').DataTable().ajax.reload(); });
+                    } else {
+                        Swal.fire('Error', resp.message || 'No se pudo desactivar', 'error');
+                    }
+                },
+                error: function() { Swal.fire('Error', 'Error de conexión', 'error'); }
+            });
+        }
+    });
+}
+
+function reactivarInforme(id) {
+    Swal.fire({
+        title: '¿Reactivar informe?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Reactivar',
+        cancelButtonText: 'Cancelar'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'modules/laboratorio/residuo/controllers/ResiduoAPI.php?action=reactivar_informe&id=' + id,
+                type: 'GET',
+                dataType: 'json',
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire('Reactivado', resp.message || 'Informe reactivado', 'success')
+                            .then(function() { $('#tabla-informes').DataTable().ajax.reload(); });
+                    } else {
+                        Swal.fire('Error', resp.message || 'No se pudo reactivar', 'error');
+                    }
+                },
+                error: function() { Swal.fire('Error', 'Error de conexión', 'error'); }
+            });
+        }
+    });
 }
 
 function cargarNormativas() {
@@ -681,7 +884,8 @@ function editarResiduo(id) {
                 $('#codigo_item').val(residuo.Codigo_Item);
                 $('#tipo_residuo').val(residuo.Tipo_Principal).trigger('change');
                 setTimeout(() => $('#subcategoria').val(residuo.Subcategoria), 100);
-                $('#unidad_referencia').val(residuo.Unidad_Referencia);
+                // Esperar a que el select de unidades esté cargado antes de seleccionar
+                cargarSelectUnidadesResiduo(residuo.Unidad_Referencia);
                 
                 // Cambiar título y botón
                 $('#modal-residuo .modal-title').text('Editar Residuo');

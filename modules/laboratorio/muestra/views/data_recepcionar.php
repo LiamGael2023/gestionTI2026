@@ -42,9 +42,11 @@ try {
     if ($tipoServicio !== 'interno' && $tipoServicio !== 'externo') {
         $tipoServicio = '';
     }
+    $search = trim((string)($_POST['search']['value'] ?? ''));
 
-    $muestras = $model->obtenerPorEstado('Pendiente', $start, $length, $tipoServicio);
     $total = $model->contarPorEstado('Pendiente', $tipoServicio);
+    $totalFiltered = ($search !== '') ? $model->contarPorEstado('Pendiente', $tipoServicio, $search) : $total;
+    $muestras = $model->obtenerPorEstado('Pendiente', $start, $length, $tipoServicio, $search);
 
     $data = [];
     foreach ($muestras as $row) {
@@ -64,8 +66,8 @@ try {
 
     echo json_encode([
         'draw' => $draw,
-        'recordsTotal' => intval($total),
-        'recordsFiltered' => intval($total),
+        'recordsTotal' => $total,
+        'recordsFiltered' => $totalFiltered,
         'data' => $data
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 

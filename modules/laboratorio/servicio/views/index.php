@@ -25,11 +25,13 @@
       </div>
     </div>
     <div class="row g-2">
+      <?php if (!empty($permisos['crear'])): ?>
       <div class="col-auto">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-servicio">
           <i class="ti ti-plus me-2"></i> Nuevo Servicio
         </button>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -74,7 +76,7 @@
 </div>
 
 <!-- Modal Nuevo Servicio -->
-<div class="modal modal-blur fade" id="modal-servicio" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal modal-blur fade" id="modal-servicio" tabindex="-1" role="dialog" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -84,97 +86,145 @@
       <div class="modal-body">
         <form id="form-servicio">
           <input type="hidden" id="Id_Servicio" name="Id_Servicio">
-          
-          <div class="mb-3">
-            <label class="form-label">Nombre <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="Nombre" name="Nombre" placeholder="Nombre del servicio" required>
-          </div>
 
-          <div class="mb-3">
-            <label class="form-label">Descripción</label>
-            <textarea class="form-control" id="Descripcion" name="Descripcion" rows="2" placeholder="Descripción del servicio"></textarea>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label">Tipo de Muestra <span class="text-danger">*</span></label>
-            <select class="form-control" id="Tipo_Muestra" name="Tipo_Muestra" required>
-              <option value="">Seleccionar tipo...</option>
-              <option value="AGUA">AGUA</option>
-              <option value="SUELO">SUELO</option>
-            </select>
-          </div>
-
-          <div class="mb-3">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="Requiere_Reactivos" name="Requiere_Reactivos" value="1" checked>
-              <label class="form-check-label" for="Requiere_Reactivos">
-                Este servicio <strong>requiere reactivos</strong>
-              </label>
+          <div class="row g-3 mb-3">
+            <div class="col-md-8">
+              <label class="form-label">Nombre <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="Nombre" name="Nombre" placeholder="Nombre del servicio" required>
             </div>
-            <small class="text-muted d-block mt-2">Desmarque si es un servicio que no consume reactivos (ej: Conductividad Eléctrica)</small>
-          </div>
-
-          <!-- EQUIPOS -->
-          <div class="mb-3">
-            <label class="form-label">Equipos Requeridos</label>
-            <select class="form-control" id="select-equipo">
-              <option value="">Seleccionar equipo...</option>
-            </select>
-            <small class="text-muted d-block mt-2">Marque si el equipo es <strong>bloqueante</strong> para el servicio</small>
-            <div class="table-responsive mt-2">
-              <table class="table table-sm table-bordered" id="tabla-equipos">
-                <thead class="bg-light">
-                  <tr>
-                    <th style="width:60%;">Equipo</th>
-                    <th style="width:25%;" class="text-center">¿Bloqueante?</th>
-                    <th style="width:15%;" class="text-center">Acción</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+            <div class="col-md-4">
+              <label class="form-label">Tipo de Muestra <span class="text-danger">*</span></label>
+              <select class="form-control" id="Tipo_Muestra" name="Tipo_Muestra" required>
+                <option value="">Seleccionar tipo...</option>
+                <option value="AGUA">AGUA</option>
+                <option value="SUELO">SUELO</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Descripción</label>
+              <textarea class="form-control" id="Descripcion" name="Descripcion" rows="2" placeholder="Descripción del servicio"></textarea>
             </div>
           </div>
 
-          <!-- REACTIVOS -->
-          <div id="seccion-reactivos" class="mb-3">
-            <label class="form-label">Reactivos Necesarios</label>
-            <select class="form-control" id="select-reactivo">
-              <option value="">Seleccionar reactivo...</option>
-            </select>
-            <small class="text-muted d-block mt-2">Especifique la cantidad necesaria para cada muestra</small>
-            <div class="table-responsive mt-2">
-              <table class="table table-sm table-bordered" id="tabla-reactivos">
-                <thead class="bg-light">
-                  <tr>
-                    <th style="width:60%;">Reactivo</th>
-                    <th style="width:25%;" class="text-center">Cantidad</th>
-                    <th style="width:15%;" class="text-center">Acción</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
+          <!-- Tabs: Equipos / Reactivos / Parámetros -->
+          <ul class="nav nav-tabs" id="servicio-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-equipos-btn" data-bs-toggle="tab" data-bs-target="#tab-equipos" type="button" role="tab">
+                <i class="ti ti-tool me-1"></i> Equipos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-reactivos-btn" data-bs-toggle="tab" data-bs-target="#tab-reactivos" type="button" role="tab">
+                <i class="ti ti-flask me-1"></i> Reactivos
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-parametros-btn" data-bs-toggle="tab" data-bs-target="#tab-parametros" type="button" role="tab">
+                <i class="ti ti-chart-bar me-1"></i> Parámetros de Análisis
+                <span id="badge-parametros" class="badge bg-danger ms-1 d-none">!</span>
+              </button>
+            </li>
+          </ul>
 
-          <!-- PARÁMETROS -->
-          <div class="mb-3">
-            <label class="form-label">Parámetros de Análisis</label>
-            <select class="form-control" id="select-parametro">
-              <option value="">Seleccionar parámetro...</option>
-            </select>
-            <small class="text-muted d-block mt-2">Los parámetros se asignan automáticamente al servicio</small>
-            <div class="table-responsive mt-2">
-              <table class="table table-sm table-bordered" id="tabla-parametros">
-                <thead class="bg-light">
-                  <tr>
-                    <th style="width:85%;">Parámetro</th>
-                    <th style="width:15%;" class="text-center">Acción</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+          <div class="tab-content border border-top-0 rounded-bottom p-3" id="servicio-tabs-content">
+
+            <!-- TAB EQUIPOS -->
+            <div class="tab-pane fade show active" id="tab-equipos" role="tabpanel">
+              <div class="d-flex gap-2 align-items-end mb-2">
+                <div class="flex-grow-1">
+                  <label class="form-label mb-1">Seleccionar Equipo</label>
+                  <select class="form-control" id="select-equipo">
+                    <option value="">Seleccionar equipo...</option>
+                  </select>
+                </div>
+                <button type="button" class="btn btn-outline-success btn-sm" style="white-space:nowrap;" onclick="abrirCrearEquipoRapido()">
+                  <i class="ti ti-plus me-1"></i> Nuevo
+                </button>
+              </div>
+              <small class="text-muted d-block mb-2">Marque si el equipo es <strong>bloqueante</strong> para el servicio</small>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered" id="tabla-equipos">
+                  <thead class="bg-light">
+                    <tr>
+                      <th style="width:60%;">Equipo</th>
+                      <th style="width:25%;" class="text-center">¿Bloqueante?</th>
+                      <th style="width:15%;" class="text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
-          </div>
+
+            <!-- TAB REACTIVOS -->
+            <div class="tab-pane fade" id="tab-reactivos" role="tabpanel">
+              <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="Requiere_Reactivos" name="Requiere_Reactivos" value="1" checked>
+                <label class="form-check-label" for="Requiere_Reactivos">
+                  Este servicio <strong>requiere reactivos</strong>
+                </label>
+                <small class="text-muted d-block mt-1">Desmarque si es un servicio que no consume reactivos (ej: Conductividad Eléctrica)</small>
+              </div>
+              <div id="seccion-reactivos">
+                <div class="d-flex gap-2 align-items-end mb-2">
+                  <div class="flex-grow-1">
+                    <label class="form-label mb-1">Seleccionar Reactivo</label>
+                    <select class="form-control" id="select-reactivo">
+                      <option value="">Seleccionar reactivo...</option>
+                    </select>
+                  </div>
+                  <button type="button" class="btn btn-outline-success btn-sm" style="white-space:nowrap;" onclick="abrirCrearReactivoRapido()">
+                    <i class="ti ti-plus me-1"></i> Nuevo
+                  </button>
+                </div>
+                <small class="text-muted d-block mb-2">Especifique la cantidad necesaria para cada muestra</small>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered" id="tabla-reactivos">
+                    <thead class="bg-light">
+                      <tr>
+                        <th style="width:60%;">Reactivo</th>
+                        <th style="width:25%;" class="text-center">Cantidad</th>
+                        <th style="width:15%;" class="text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB PARÁMETROS -->
+            <div class="tab-pane fade" id="tab-parametros" role="tabpanel">
+              <div id="alerta-sin-parametros" class="alert alert-warning py-2 px-3 mb-3 d-none">
+                <i class="ti ti-alert-triangle me-1"></i>
+                <strong>Atención:</strong> No se ha asignado ningún parámetro. Al menos un parámetro es necesario para generar resultados de análisis.
+              </div>
+              <div class="d-flex gap-2 align-items-end mb-2">
+                <div class="flex-grow-1">
+                  <label class="form-label mb-1">Seleccionar Parámetro</label>
+                  <select class="form-control" id="select-parametro">
+                    <option value="">Seleccionar parámetro...</option>
+                  </select>
+                </div>
+                <button type="button" class="btn btn-outline-success btn-sm" style="white-space:nowrap;" onclick="abrirCrearParametroRapido()">
+                  <i class="ti ti-plus me-1"></i> Nuevo
+                </button>
+              </div>
+              <small class="text-muted d-block mb-2">Los parámetros se asignan automáticamente al servicio</small>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered" id="tabla-parametros">
+                  <thead class="bg-light">
+                    <tr>
+                      <th style="width:85%;">Parámetro</th>
+                      <th style="width:15%;" class="text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+
+          </div><!-- /tab-content -->
         </form>
       </div>
       <div class="modal-footer">
@@ -203,7 +253,7 @@ $(document).ready(function() {
     $('#btn-guardar-servicio').click(guardarServicio);
     $('#modal-servicio').on('hidden.bs.modal', limpiarFormulario);
     
-    // Event listener para mostrar/ocultar sección de reactivos
+    // Requiere_Reactivos: toggle seccion-reactivos
     $('#Requiere_Reactivos').change(function() {
         if ($(this).is(':checked')) {
             $('#seccion-reactivos').show();
@@ -237,9 +287,7 @@ function inicializarDataTable() {
             { "data": 5 },  // Estado
             { "data": 6, "orderable": false }  // Acción
         ],
-        "language": { 
-            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" 
-        },
+        "language": { "sProcessing": "Procesando...", "sLengthMenu": "Mostrar _MENU_ registros", "sZeroRecords": "No se encontraron resultados", "sEmptyTable": "No hay datos disponibles", "sInfo": "Mostrando del _START_ al _END_ de _TOTAL_ registros", "sInfoEmpty": "Mostrando 0 registros", "sInfoFiltered": "(filtrado de _MAX_ total)", "sSearch": "Buscar:", "sLoadingRecords": "Cargando...", "oPaginate": { "sFirst": "Primero", "sLast": "\u00DAltimo", "sNext": "Siguiente", "sPrevious": "Anterior" } },
         "order": [[ 0, "desc" ]]
     });
 }
@@ -659,6 +707,11 @@ function actualizarTablaParametros() {
             </tr>
         `);
     });
+
+    // Show/hide badge and warning alert
+    const sinParametros = parametrosSeleccionados.length === 0;
+    $('#badge-parametros').toggleClass('d-none', !sinParametros);
+    $('#alerta-sin-parametros').toggleClass('d-none', !sinParametros);
 }
 
 function eliminarParametro(index) {
@@ -679,6 +732,7 @@ function guardarServicio() {
 
     // Validación 2: Mínimo un equipo
     if (equiposSeleccionados.length === 0) {
+        $('#tab-equipos-btn').tab('show');
         Swal.fire('Validación', 'Debe agregar al menos un equipo requerido', 'warning');
         return;
     }
@@ -686,6 +740,7 @@ function guardarServicio() {
     // Validación 3: Mínimo un reactivo (SOLO si el servicio requiere reactivos)
     const requiereReactivos = $('#Requiere_Reactivos').is(':checked');
     if (requiereReactivos && reactivosSeleccionados.length === 0) {
+        $('#tab-reactivos-btn').tab('show');
         Swal.fire('Validación', 'Debe agregar al menos un reactivo necesario, o desmarque "Requiere Reactivos"', 'warning');
         return;
     }
@@ -693,9 +748,35 @@ function guardarServicio() {
     // Validación 4: Reactivos con cantidad > 0
     const reactivosSinCantidad = reactivosSeleccionados.filter(r => !r.Cantidad_Necesaria || r.Cantidad_Necesaria <= 0);
     if (reactivosSinCantidad.length > 0) {
+        $('#tab-reactivos-btn').tab('show');
         Swal.fire('Validación', 'Todos los reactivos deben tener una cantidad mayor a 0', 'warning');
         return;
     }
+
+    // Advertencia (no bloqueante): sin parámetros
+    if (parametrosSeleccionados.length === 0) {
+        $('#tab-parametros-btn').tab('show');
+        Swal.fire({
+            title: 'Sin parámetros asignados',
+            text: 'Este servicio no tiene parámetros de análisis. Sin parámetros no se generarán resultados. ¿Desea continuar de todas formas?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar igual',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (result.isConfirmed) _ejecutarGuardarServicio();
+        });
+        return;
+    }
+
+    _ejecutarGuardarServicio();
+}
+
+function _ejecutarGuardarServicio() {
+    const nombre = $('#Nombre').val();
+    const tipoMuestra = $('#Tipo_Muestra').val();
+    const idServicio = $('#Id_Servicio').val();
+    const requiereReactivos = $('#Requiere_Reactivos').is(':checked');
 
     const datos = {
         Id_Servicio: idServicio || '',
@@ -708,7 +789,6 @@ function guardarServicio() {
         Parametros: parametrosSeleccionados
     };
 
-    // Determinar acción: si hay Id_Servicio es actualización, sino es nuevo
     const action = idServicio ? 'actualizar' : 'guardar';
     const mensaje = idServicio ? 'Servicio actualizado correctamente' : 'Servicio creado correctamente';
 
@@ -734,7 +814,6 @@ function guardarServicio() {
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 mensaje = xhr.responseJSON.message;
             } else if (xhr.responseText) {
-                // Si no es JSON, mostrar el texto plano
                 try {
                     const parsed = JSON.parse(xhr.responseText);
                     mensaje = parsed.message || xhr.responseText;
@@ -744,6 +823,252 @@ function guardarServicio() {
             }
             Swal.fire('Error', mensaje, 'error');
         }
+    });
+}
+
+// ==================== CREACIÓN RÁPIDA INLINE ====================
+
+function abrirCrearEquipoRapido() {
+    Swal.fire({
+        title: 'Nuevo Equipo',
+        html: `
+            <div class="text-start">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input id="swal-eq-nombre" class="form-control" placeholder="Nombre del equipo">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descripción</label>
+                    <textarea id="swal-eq-desc" class="form-control" rows="2" placeholder="Descripción (opcional)"></textarea>
+                </div>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Crear Equipo',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const nombre = document.getElementById('swal-eq-nombre').value.trim();
+            if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+            return { Nombre: nombre, Descripcion: document.getElementById('swal-eq-desc').value.trim() };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: 'modules/laboratorio/equipo/controllers/EquipoAPI.php?action=guardar',
+            method: 'POST', contentType: 'application/json', dataType: 'json',
+            data: JSON.stringify(result.value),
+            success: function(resp) {
+                if (resp.success) {
+                    const id = resp.id || resp.data?.Id_Equipo;
+                    const nombre = result.value.Nombre;
+                    $('#select-equipo').append(`<option value="${id}">${nombre}</option>`).val(id);
+                    agregarEquipo();
+                    Swal.fire({ title: 'Creado', text: nombre + ' agregado', icon: 'success', timer: 1200, showConfirmButton: false });
+                } else { Swal.fire('Error', resp.message || 'No se pudo crear el equipo', 'error'); }
+            },
+            error: function() { Swal.fire('Error', 'Error al crear el equipo', 'error'); }
+        });
+    });
+}
+
+function abrirCrearReactivoRapido() {
+    Swal.fire({
+        title: 'Nuevo Reactivo',
+        html: `
+            <div class="text-start">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input id="swal-re-nombre" class="form-control" placeholder="Nombre del reactivo">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tipo <span class="text-danger">*</span></label>
+                    <select id="swal-re-tipo" class="form-select">
+                        <option value="Reactivo">Reactivo</option>
+                        <option value="Estándar">Estándar</option>
+                        <option value="Estándar Secundario">Estándar Secundario</option>
+                        <option value="Material de referencia">Material de referencia</option>
+                    </select>
+                </div>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Crear Reactivo',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const nombre = document.getElementById('swal-re-nombre').value.trim();
+            if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+            return { Nombre: nombre, Tipo: document.getElementById('swal-re-tipo').value };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=guardar',
+            method: 'POST', contentType: 'application/json', dataType: 'json',
+            data: JSON.stringify(result.value),
+            success: function(resp) {
+                if (resp.success) {
+                    const id = resp.id || resp.data?.Id_Reactivo;
+                    const nombre = result.value.Nombre;
+                    $('#select-reactivo').append(`<option value="${id}">${nombre}</option>`).val(id);
+                    agregarReactivo();
+                    Swal.fire({ title: 'Creado', text: nombre + ' agregado', icon: 'success', timer: 1200, showConfirmButton: false });
+                } else { Swal.fire('Error', resp.message || 'No se pudo crear el reactivo', 'error'); }
+            },
+            error: function() { Swal.fire('Error', 'Error al crear el reactivo', 'error'); }
+        });
+    });
+}
+
+function abrirCrearParametroRapido(preValues) {
+    preValues = preValues || {};
+
+    Swal.fire({
+        title: 'Nuevo Parámetro',
+        html: `
+            <div class="text-start">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input id="swal-pa-nombre" class="form-control" placeholder="Nombre del parámetro" value="${preValues.Nombre || ''}">
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-7">
+                        <label class="form-label">Unidad de Medida</label>
+                        <div class="input-group input-group-sm">
+                            <select id="swal-pa-unidad" class="form-select">
+                                <option value="">Cargando...</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary" id="swal-pa-nueva-unidad" title="Nueva unidad de medida"><i class="ti ti-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label">Categoría</label>
+                        <select id="swal-pa-categoria" class="form-select">
+                            <option value="">-- Seleccionar --</option>
+                            <option value="Fisico" ${preValues.Categoria === 'Fisico' ? 'selected' : ''}>Fisico</option>
+                            <option value="Quimico" ${preValues.Categoria === 'Quimico' ? 'selected' : ''}>Quimico</option>
+                            <option value="Microbiologico" ${preValues.Categoria === 'Microbiologico' ? 'selected' : ''}>Microbiologico</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descripción</label>
+                    <textarea id="swal-pa-desc" class="form-control" rows="2" placeholder="Descripción (opcional)">${preValues.Descripcion || ''}</textarea>
+                </div>
+            </div>`,
+        didOpen: () => {
+            // Cargar unidades desde la BD
+            $.ajax({
+                url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=listar_unidades',
+                method: 'GET', dataType: 'json',
+                success: function(resp) {
+                    if (resp.success) {
+                        var sel = document.getElementById('swal-pa-unidad');
+                        sel.innerHTML = '<option value="">-- Seleccionar --</option>';
+                        resp.data.forEach(function(u) {
+                            var opt = document.createElement('option');
+                            opt.value = u.Abreviatura;
+                            opt.textContent = u.Nombre + ' (' + u.Abreviatura + ')';
+                            if (preValues.Unidad_Medida && u.Abreviatura === preValues.Unidad_Medida) {
+                                opt.selected = true;
+                            }
+                            sel.appendChild(opt);
+                        });
+                    }
+                },
+                error: function() {
+                    var sel = document.getElementById('swal-pa-unidad');
+                    sel.innerHTML = '<option value="">Error al cargar</option>';
+                }
+            });
+            // Botón nueva unidad
+            document.getElementById('swal-pa-nueva-unidad').addEventListener('click', function() {
+                var savedValues = {
+                    Nombre:      document.getElementById('swal-pa-nombre').value,
+                    Categoria:   document.getElementById('swal-pa-categoria').value,
+                    Descripcion: document.getElementById('swal-pa-desc').value
+                };
+                Swal.close();
+                setTimeout(function() {
+                    Swal.fire({
+                        title: 'Nueva Unidad de Medida',
+                        html: `
+                            <div class="text-start">
+                                <div class="mb-2">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input id="swal-um-nombre" class="form-control" placeholder="Ej: Mililitro">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">Abreviatura <span class="text-danger">*</span></label>
+                                    <input id="swal-um-abrev" class="form-control" placeholder="Ej: mL">
+                                </div>
+                            </div>`,
+                        showCancelButton: true,
+                        confirmButtonText: 'Crear Unidad',
+                        cancelButtonText: 'Volver',
+                        preConfirm: () => {
+                            const n = document.getElementById('swal-um-nombre').value.trim();
+                            const a = document.getElementById('swal-um-abrev').value.trim();
+                            if (!n) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+                            if (!a) { Swal.showValidationMessage('La abreviatura es obligatoria'); return false; }
+                            return { Nombre: n, Abreviatura: a };
+                        }
+                    }).then(function(res) {
+                        if (!res.isConfirmed) {
+                            abrirCrearParametroRapido(savedValues);
+                            return;
+                        }
+                        $.ajax({
+                            url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=guardar_unidad',
+                            method: 'POST', contentType: 'application/json', dataType: 'json',
+                            data: JSON.stringify(res.value),
+                            success: function(r) {
+                                if (r.success) {
+                                    savedValues.Unidad_Medida = r.unidad.Abreviatura;
+                                    abrirCrearParametroRapido(savedValues);
+                                } else {
+                                    Swal.fire('Error', r.message, 'error').then(function() {
+                                        abrirCrearParametroRapido(savedValues);
+                                    });
+                                }
+                            },
+                            error: function() {
+                                Swal.fire('Error', 'Error al crear la unidad', 'error').then(function() {
+                                    abrirCrearParametroRapido(savedValues);
+                                });
+                            }
+                        });
+                    });
+                }, 300);
+            });
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Crear Parámetro',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+            const nombre = document.getElementById('swal-pa-nombre').value.trim();
+            if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+            return {
+                Nombre: nombre,
+                Unidad_Medida: document.getElementById('swal-pa-unidad').value || null,
+                Categoria: document.getElementById('swal-pa-categoria').value || null,
+                Descripcion: document.getElementById('swal-pa-desc').value.trim()
+            };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        $.ajax({
+            url: 'modules/laboratorio/parametro/controllers/ParametroAPI.php?action=guardar',
+            method: 'POST', contentType: 'application/json', dataType: 'json',
+            data: JSON.stringify(result.value),
+            success: function(resp) {
+                if (resp.success) {
+                    const id = resp.id || resp.data?.Id_Parametro;
+                    const nombre = result.value.Nombre;
+                    $('#select-parametro').append(`<option value="${id}">${nombre}</option>`).val(id);
+                    agregarParametro();
+                    Swal.fire({ title: 'Creado', text: nombre + ' agregado', icon: 'success', timer: 1200, showConfirmButton: false });
+                } else { Swal.fire('Error', resp.message || 'No se pudo crear el parámetro', 'error'); }
+            },
+            error: function() { Swal.fire('Error', 'Error al crear el parámetro', 'error'); }
+        });
     });
 }
 </script>

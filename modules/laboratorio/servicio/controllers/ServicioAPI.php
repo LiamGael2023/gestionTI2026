@@ -104,6 +104,18 @@ try {
                     ]);
                 }
             }
+
+            // Guardar parámetros (asignar Id_Servicio en laboratorio.Parametro)
+            if (!empty($datos['Parametros']) && is_array($datos['Parametros'])) {
+                require_once '../../parametro/models/ParametroModel.php';
+                $param_model = new ParametroModel($conn);
+                foreach ($datos['Parametros'] as $parametro) {
+                    $servicio_model->guardarParametro([
+                        'Id_Parametro' => $parametro['Id_Parametro'],
+                        'Id_Servicio'  => $id
+                    ]);
+                }
+            }
             
             echo json_encode(['success' => true, 'id' => $id, 'message' => 'Servicio guardado correctamente']);
             exit;

@@ -1,8 +1,15 @@
 ﻿<?php
 session_start();
 require_once '../../../../config/db.php';
+require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
-$conn = Conexion::conectar();
+$conn     = Conexion::conectar();
+$labModel = new LaboratorioModel($conn);
+$userId   = intval($_SESSION['usuario_id'] ?? 0);
+$perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=parametro');
+if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
+$puedeEditar   = (bool)($perms['editar']   ?? false);
+$puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
 $columns = array(
     0 => 'p.Id_Parametro',
@@ -54,8 +61,8 @@ $contador = $start + 1;
 
 while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
     $acciones = '<div class="btn-group btn-group-sm">' .
-                '<button class="btn btn-ghost-primary" onclick="editarParametro(' . $row['Id_Parametro'] . ')" title="Editar"><i class="ti ti-pencil"></i></button>' .
-                '<button class="btn btn-ghost-danger" onclick="eliminarParametro(' . $row['Id_Parametro'] . ')" title="Eliminar"><i class="ti ti-trash"></i></button>' .
+                ($puedeEditar   ? '<button class="btn btn-ghost-primary" onclick="editarParametro(' . $row['Id_Parametro'] . ')" title="Editar"><i class="ti ti-pencil"></i></button>' : '') .
+                ($puedeEliminar ? '<button class="btn btn-ghost-danger" onclick="eliminarParametro(' . $row['Id_Parametro'] . ')" title="Eliminar"><i class="ti ti-trash"></i></button>' : '') .
                 '</div>';
     
     $servicio = $row['Servicio_Nombre'] ? htmlspecialchars($row['Servicio_Nombre']) : '<span class="text-muted">Sin servicio</span>';

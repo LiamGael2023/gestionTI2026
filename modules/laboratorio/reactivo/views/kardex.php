@@ -21,7 +21,7 @@ $fecha_inicio = "$anio-$mes_str-01";
 $dias_mes = cal_days_in_month(CAL_GREGORIAN, $mes, $anio);
 
 // Obtener todos los reactivos activos
-$sql_reactivos = "SELECT Id_Reactivo, Nombre, Unidad_Medida, Cantidad_Stock, ISNULL(Cantidad_Inicial, 0) AS Cantidad_Inicial FROM laboratorio.Reactivo_Lab WHERE Activo = 1 ORDER BY Nombre";
+$sql_reactivos = "SELECT r.Id_Reactivo, r.Nombre, ISNULL(um.Abreviatura, '') AS Unidad_Medida, r.Cantidad_Stock, ISNULL(r.Cantidad_Inicial, 0) AS Cantidad_Inicial FROM laboratorio.Reactivo_Lab r LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1 WHERE r.Activo = 1 ORDER BY r.Nombre";
 $stmt_react = sqlsrv_query($conn, $sql_reactivos);
 $reactivos = [];
 if ($stmt_react) {

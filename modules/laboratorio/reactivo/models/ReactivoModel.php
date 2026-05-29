@@ -5,6 +5,21 @@ class ReactivoModel {
 
     public function __construct($db) {
         $this->db = $db;
+        $this->migrarColumnas();
+    }
+
+    private function migrarColumnas() {
+        $migraciones = [
+            // Id_Unidad_Medida — FK to laboratorio.Unidad_Medida (not in base DDL)
+            "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='laboratorio' AND TABLE_NAME='Reactivo_Lab' AND COLUMN_NAME='Id_Unidad_Medida')
+             ALTER TABLE laboratorio.Reactivo_Lab ADD Id_Unidad_Medida INT NULL",
+            // Id_Proveedor — FK to laboratorio.Proveedor (not in base DDL)
+            "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='laboratorio' AND TABLE_NAME='Reactivo_Lab' AND COLUMN_NAME='Id_Proveedor')
+             ALTER TABLE laboratorio.Reactivo_Lab ADD Id_Proveedor INT NULL",
+        ];
+        foreach ($migraciones as $sql) {
+            sqlsrv_query($this->db, $sql);
+        }
     }
 
     /**
@@ -44,23 +59,24 @@ class ReactivoModel {
         if (empty($datos['Id_Reactivo'])) {
             // --- INSERTAR NUEVO REACTIVO ---
             $cantidadReferencial = floatval($datos['Cantidad_Inicial'] ?? 0);
-            
-            // IMPORTANTE: Cantidad_Stock se inicializa en 0. 
-            // La Cantidad_Inicial es solo un campo informativo/fijo.
+
             $sql = "INSERT INTO laboratorio.Reactivo_Lab (
-                        Nombre, Unidad_Medida, Fecha_Vencimiento, 
-                        Cantidad_Inicial, Cantidad_Stock, Cantidad_Reservada, 
-                        Fecha_Ingreso, Activo, Fecha_Creacion, Usuario_Creacion
+                        Nombre, Tipo, Fecha_Vencimiento,
+                        Cantidad_Inicial, Cantidad_Stock, Cantidad_Reservada,
+                        Fecha_Ingreso, Activo, Fecha_Creacion, Usuario_Creacion,
+                        Id_Proveedor, Id_Unidad_Medida
                     )
-                    VALUES (?, ?, ?, ?, 0, 0, GETDATE(), 1, GETDATE(), ?); 
+                    VALUES (?, ?, ?, ?, 0, 0, GETDATE(), 1, GETDATE(), ?, ?, ?);
                     SELECT SCOPE_IDENTITY() AS id;";
-            
+
             $params = array(
                 $datos['Nombre'],
-                $datos['Unidad_Medida'] ?? 'UND',
+                !empty($datos['Tipo']) ? $datos['Tipo'] : null,
                 !empty($datos['Fecha_Vencimiento']) ? $datos['Fecha_Vencimiento'] : null,
-                $cantidadReferencial, // Se guarda como referencia fija
-                $usuarioId
+                $cantidadReferencial,
+                $usuarioId,
+                !empty($datos['Id_Proveedor']) ? intval($datos['Id_Proveedor']) : null,
+                !empty($datos['Id_Unidad_Medida']) ? intval($datos['Id_Unidad_Medida']) : null
             );
 
             $stmt = sqlsrv_query($this->db, $sql, $params);
@@ -75,19 +91,23 @@ class ReactivoModel {
         } else {
             // --- ACTUALIZAR REACTIVO EXISTENTE ---
             // Solo actualizamos datos maestros. NUNCA tocamos Cantidad_Stock aquí.
-            $sql = "UPDATE laboratorio.Reactivo_Lab 
-                    SET Nombre = ?, 
-                        Unidad_Medida = ?, 
-                        Fecha_Vencimiento = ?, 
-                        Cantidad_Inicial = ?, 
-                        Fecha_Modificacion = GETDATE() 
+            $sql = "UPDATE laboratorio.Reactivo_Lab
+                    SET Nombre = ?,
+                        Tipo = ?,
+                        Fecha_Vencimiento = ?,
+                        Cantidad_Inicial = ?,
+                        Id_Proveedor = ?,
+                        Id_Unidad_Medida = ?,
+                        Fecha_Modificacion = GETDATE()
                     WHERE Id_Reactivo = ?";
-            
+
             $params = array(
                 $datos['Nombre'],
-                $datos['Unidad_Medida'],
+                !empty($datos['Tipo']) ? $datos['Tipo'] : null,
                 !empty($datos['Fecha_Vencimiento']) ? $datos['Fecha_Vencimiento'] : null,
                 floatval($datos['Cantidad_Inicial'] ?? 0),
+                !empty($datos['Id_Proveedor']) ? intval($datos['Id_Proveedor']) : null,
+                !empty($datos['Id_Unidad_Medida']) ? intval($datos['Id_Unidad_Medida']) : null,
                 $datos['Id_Reactivo']
             );
 
@@ -317,5 +337,174 @@ class ReactivoModel {
     public function reactivar($id) {
         $sql = "UPDATE laboratorio.Reactivo_Lab SET Activo = 1, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?";
         sqlsrv_query($this->db, $sql, array($id));
+    }
+
+    /**
+     * Edita la cantidad de un ingreso y ajusta el stock
+     */
+    public function editarIngreso($idIngreso, $nuevaCantidad) {
+        $stmt = sqlsrv_query($this->db,
+            "SELECT Id_Ingreso, Cantidad, Id_Reactivo, Factura_Referencia FROM laboratorio.Ingreso_Reactivo WHERE Id_Ingreso = ? AND Activo = 1",
+            [intval($idIngreso)]
+        );
+        if ($stmt === false || !($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))) {
+            throw new Exception('Ingreso no encontrado o inactivo');
+        }
+
+        $idReactivo    = $row['Id_Reactivo'];
+        $viejaCantidad = floatval($row['Cantidad']);
+        $diff          = $nuevaCantidad - $viejaCantidad;
+        $esIngresoInicial = (strtoupper(trim($row['Factura_Referencia'] ?? '')) === 'INGRESO INICIAL');
+
+        // Verificar que el stock no quede negativo si reducimos
+        if ($diff < 0) {
+            $stmtStock = sqlsrv_query($this->db,
+                "SELECT Cantidad_Stock FROM laboratorio.Reactivo_Lab WHERE Id_Reactivo = ?",
+                [$idReactivo]
+            );
+            $rowStock = sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC);
+            $stock = floatval($rowStock['Cantidad_Stock'] ?? 0);
+            if ($stock + $diff < 0) {
+                throw new Exception('No se puede reducir: el stock actual (' . $stock . ') quedaría negativo');
+            }
+        }
+
+        // Actualizar Ingreso_Reactivo
+        sqlsrv_query($this->db,
+            "UPDATE laboratorio.Ingreso_Reactivo SET Cantidad = ? WHERE Id_Ingreso = ?",
+            [$nuevaCantidad, intval($idIngreso)]
+        );
+
+        // Ajustar Cantidad_Stock (siempre) y Cantidad_Inicial (solo si es el ingreso inicial)
+        if ($diff != 0) {
+            if ($esIngresoInicial) {
+                sqlsrv_query($this->db,
+                    "UPDATE laboratorio.Reactivo_Lab
+                     SET Cantidad_Stock   = Cantidad_Stock   + ?,
+                         Cantidad_Inicial = ISNULL(Cantidad_Inicial, 0) + ?,
+                         Fecha_Modificacion = GETDATE()
+                     WHERE Id_Reactivo = ?",
+                    [$diff, $diff, $idReactivo]
+                );
+            } else {
+                sqlsrv_query($this->db,
+                    "UPDATE laboratorio.Reactivo_Lab
+                     SET Cantidad_Stock = Cantidad_Stock + ?,
+                         Fecha_Modificacion = GETDATE()
+                     WHERE Id_Reactivo = ?",
+                    [$diff, $idReactivo]
+                );
+            }
+        }
+
+        // Actualizar el registro correspondiente en Movimiento_Kardex (tipo E del mismo día)
+        // Nota: UPDATE TOP(1)...ORDER BY no es válido en SQL Server — usar subquery
+        sqlsrv_query($this->db,
+            "UPDATE laboratorio.Movimiento_Kardex
+             SET Cantidad = ?
+             WHERE Id_Movimiento = (
+                 SELECT TOP 1 Id_Movimiento
+                 FROM laboratorio.Movimiento_Kardex
+                 WHERE Id_Reactivo = ? AND Tipo_Movimiento = 'E' AND Activo = 1
+                   AND CAST(Fecha_Registro AS DATE) = (
+                       SELECT TOP 1 CAST(Fecha_Ingreso AS DATE)
+                       FROM laboratorio.Ingreso_Reactivo
+                       WHERE Id_Ingreso = ?
+                   )
+                 ORDER BY Id_Movimiento DESC
+             )",
+            [$nuevaCantidad, $idReactivo, intval($idIngreso)]
+        );
+    }
+
+    /**
+     * Edita la cantidad/concepto de una salida (Movimiento_Kardex tipo S) y ajusta el stock
+     */
+    public function editarSalida($idMovimiento, $nuevaCantidad, $concepto) {
+        $stmt = sqlsrv_query($this->db,
+            "SELECT Id_Movimiento, Cantidad, Id_Reactivo FROM laboratorio.Movimiento_Kardex WHERE Id_Movimiento = ? AND Tipo_Movimiento = 'S' AND Activo = 1",
+            [intval($idMovimiento)]
+        );
+        if ($stmt === false || !($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))) {
+            throw new Exception('Movimiento de salida no encontrado');
+        }
+
+        $idReactivo   = $row['Id_Reactivo'];
+        $viejaCantidad = floatval($row['Cantidad']);
+        $diff          = $nuevaCantidad - $viejaCantidad; // positivo = más salida
+
+        // Si aumenta la salida, verificar stock disponible
+        if ($diff > 0) {
+            $stmtStock = sqlsrv_query($this->db,
+                "SELECT Cantidad_Stock FROM laboratorio.Reactivo_Lab WHERE Id_Reactivo = ?",
+                [$idReactivo]
+            );
+            $rowStock = sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC);
+            $stock = floatval($rowStock['Cantidad_Stock'] ?? 0);
+            if ($stock - $diff < 0) {
+                throw new Exception('Stock insuficiente. Disponible: ' . $stock . ', diferencia requerida: ' . $diff);
+            }
+        }
+
+        // Actualizar Movimiento_Kardex
+        sqlsrv_query($this->db,
+            "UPDATE laboratorio.Movimiento_Kardex SET Cantidad = ?, Concepto = ? WHERE Id_Movimiento = ?",
+            [$nuevaCantidad, $concepto, intval($idMovimiento)]
+        );
+
+        // Ajustar stock (salida mayor = stock baja; salida menor = stock sube)
+        if ($diff != 0) {
+            sqlsrv_query($this->db,
+                "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?",
+                [$diff, $idReactivo]
+            );
+        }
+    }
+
+    /**
+     * Elimina (soft-delete) una salida manual NO vinculada a ningún consumo/muestra
+     * y restaura el stock correspondiente
+     */
+    public function eliminarSalida($idMovimiento) {
+        // Verificar que existe, es salida tipo S, activa, y NO tiene Consumo_Reaccion vinculado
+        $stmt = sqlsrv_query($this->db,
+            "SELECT mk.Id_Movimiento, mk.Cantidad, mk.Id_Reactivo
+             FROM laboratorio.Movimiento_Kardex mk
+             LEFT JOIN laboratorio.Consumo_Reaccion cr ON cr.Id_Movimiento = mk.Id_Movimiento AND cr.Activo = 1
+             WHERE mk.Id_Movimiento = ? AND mk.Tipo_Movimiento = 'S' AND mk.Activo = 1
+               AND cr.Id_Movimiento IS NULL",
+            [intval($idMovimiento)]
+        );
+        if ($stmt === false || !($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC))) {
+            throw new Exception('Movimiento no encontrado, ya eliminado, o tiene consumos vinculados y no puede borrarse');
+        }
+
+        $idReactivo = $row['Id_Reactivo'];
+        $cantidad   = floatval($row['Cantidad']);
+
+        // Soft-delete en Movimiento_Kardex
+        sqlsrv_query($this->db,
+            "UPDATE laboratorio.Movimiento_Kardex SET Activo = 0 WHERE Id_Movimiento = ?",
+            [intval($idMovimiento)]
+        );
+
+        // Restaurar stock (la salida ya no existe → stock sube)
+        sqlsrv_query($this->db,
+            "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock + ?, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?",
+            [$cantidad, $idReactivo]
+        );
+
+        // Soft-delete del Ajuste_Inventario asociado (si existe)
+        sqlsrv_query($this->db,
+            "UPDATE TOP(1) laboratorio.Ajuste_Inventario
+             SET Activo = 0
+             WHERE Id_Reactivo = ? AND Tipo_Ajuste = 'Salida Manual'
+               AND CAST(Fecha_Ajuste AS DATE) = (
+                   SELECT TOP 1 CAST(Fecha_Registro AS DATE)
+                   FROM laboratorio.Movimiento_Kardex
+                   WHERE Id_Movimiento = ?
+               )",
+            [$idReactivo, intval($idMovimiento)]
+        );
     }
 }

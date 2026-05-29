@@ -553,15 +553,6 @@ foreach ($residuosLeyenda as $residuoItem) {
     </style>
 </head>
 <body>
-
-
-    <div class="container-xl" style="padding-top: 20px;">
-        <div class="breadcrumb-nav">
-            <a href="?module=laboratorio&action=residuo&view=informe_residuos">← RESIDUOS</a>
-        </div>
-    </div>
-
-
 <div class="page-body">
     <div class="container-xl">
             <div class="title-section">

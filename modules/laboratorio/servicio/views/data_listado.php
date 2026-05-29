@@ -1,8 +1,15 @@
 <?php
 session_start();
 require_once '../../../../config/db.php';
+require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
-$conn = Conexion::conectar();
+$conn     = Conexion::conectar();
+$labModel = new LaboratorioModel($conn);
+$userId   = intval($_SESSION['usuario_id'] ?? 0);
+$perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=servicio');
+if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
+$puedeEditar   = (bool)($perms['editar']   ?? false);
+$puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
 // Configuración de columnas
 $columns = array(
@@ -108,15 +115,12 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
     // Botones de acción - Diferentes según si está activo o no
     if ($row['Activo'] == 1) {
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
-                    '<button type="button" class="btn btn-ghost-primary" onclick="editarServicio(' . $row['Id_Servicio'] . ')" title="Editar">' .
-                    '<i class="ti ti-pencil"></i></button>' .
-                    '<button type="button" class="btn btn-ghost-danger" onclick="eliminarServicio(' . $row['Id_Servicio'] . ')" title="Eliminar">' .
-                    '<i class="ti ti-trash"></i></button>' .
+                    ($puedeEditar   ? '<button type="button" class="btn btn-ghost-primary" onclick="editarServicio(' . $row['Id_Servicio'] . ')" title="Editar"><i class="ti ti-pencil"></i></button>' : '') .
+                    ($puedeEliminar ? '<button type="button" class="btn btn-ghost-danger" onclick="eliminarServicio(' . $row['Id_Servicio'] . ')" title="Eliminar"><i class="ti ti-trash"></i></button>' : '') .
                     '</div>';
     } else {
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
-                    '<button type="button" class="btn btn-ghost-success" onclick="reactivarServicio(' . $row['Id_Servicio'] . ')" title="Reactivar">' .
-                    '<i class="ti ti-check"></i></button>' .
+                    ($puedeEditar ? '<button type="button" class="btn btn-ghost-success" onclick="reactivarServicio(' . $row['Id_Servicio'] . ')" title="Reactivar"><i class="ti ti-check"></i></button>' : '<span class="text-muted small">Inactivo</span>') .
                     '</div>';
     }
 

@@ -13,16 +13,13 @@ require_once 'core/Auth.php';
 
 Auth::check();
 
-// Detectar subacción (si es kardex u otra vista)
-$subaction = $_GET['subaction'] ?? 'index';
-
-switch($subaction) {
-    case 'kardex':
-        include __DIR__ . '/../views/kardex.php';
-        break;
-    
-    case 'index':
-    default:
-        include __DIR__ . '/../views/index.php';
-        break;
+// El tab (inventario|kardex) se maneja dentro de index.php via $_GET['tab']
+// Por compatibilidad, ?subaction=kardex redirige a ?tab=kardex
+$subaction = $_GET['subaction'] ?? '';
+if ($subaction === 'kardex' && !isset($_GET['tab'])) {
+    $qs = http_build_query(array_merge($_GET, ['tab' => 'kardex', 'subaction' => '']));
+    header('Location: ?' . $qs);
+    exit;
 }
+
+include __DIR__ . '/../views/index.php';

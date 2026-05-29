@@ -8,6 +8,7 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 ini_set('error_log', 'php://stderr');
+ini_set('memory_limit', '256M');   // necesario para payload base64 de adjuntos
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -108,11 +109,43 @@ try {
                 exit;
             }
 
+            // Si la muestra no pasa, restaurar reactivos consumidos (si hubiera)
+            if (!$pasa) {
+                $sql_movimientos = "
+                    SELECT mk.Id_Movimiento, mk.Id_Reactivo, mk.Cantidad
+                    FROM laboratorio.Movimiento_Kardex mk
+                    INNER JOIN laboratorio.Consumo_Reaccion cr ON mk.Id_Movimiento = cr.Id_Movimiento
+                    INNER JOIN laboratorio.Muestra_Producto mp ON cr.Id_Muestra_Producto = mp.Id_Muestra_Producto
+                    WHERE mp.Id_Muestra = ?
+                      AND mk.Tipo_Movimiento = 'S'
+                      AND mk.Activo = 1
+                      AND cr.Activo = 1
+                      AND mp.Activo = 1
+                ";
+                $stmt_mov = sqlsrv_query($conn, $sql_movimientos, [$id_muestra]);
+                if ($stmt_mov === false) {
+                    throw new Exception('Error al obtener movimientos: ' . print_r(sqlsrv_errors(), true));
+                }
+                $movimientos_revertidos = 0;
+                while ($fila = sqlsrv_fetch_array($stmt_mov, SQLSRV_FETCH_ASSOC)) {
+                    $id_mov   = intval($fila['Id_Movimiento']);
+                    $id_react = intval($fila['Id_Reactivo']);
+                    $cantidad = floatval($fila['Cantidad']);
+                    $r = sqlsrv_query($conn, "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock + ? WHERE Id_Reactivo = ? AND Activo = 1", [$cantidad, $id_react]);
+                    if ($r === false) throw new Exception('Error al restaurar stock: ' . print_r(sqlsrv_errors(), true));
+                    $r = sqlsrv_query($conn, "UPDATE laboratorio.Movimiento_Kardex SET Activo = 0 WHERE Id_Movimiento = ?", [$id_mov]);
+                    if ($r === false) throw new Exception('Error al anular kardex: ' . print_r(sqlsrv_errors(), true));
+                    $r = sqlsrv_query($conn, "UPDATE laboratorio.Consumo_Reaccion SET Activo = 0 WHERE Id_Movimiento = ?", [$id_mov]);
+                    if ($r === false) throw new Exception('Error al anular consumo: ' . print_r(sqlsrv_errors(), true));
+                    $movimientos_revertidos++;
+                }
+            }
+
             $resultado = $muestra_model->confirmarRecepcion($id_muestra, $usuario_id, $pasa, $tipo_servicio, $observacion, $checklist);
 
             echo json_encode([
                 'success' => true,
-                'message' => 'Recepción registrada correctamente',
+                'message' => $pasa ? 'Recepción registrada correctamente' : 'Muestra rechazada en recepción',
                 'estado' => $resultado['estado']
             ]);
         } catch (Exception $e) {
@@ -165,9 +198,38 @@ try {
             $firmar_todos = !empty($datos['firmar_todos']);
             $usuario_id = $_SESSION['usuario_id'] ?? 1;
 
+            // Solo el Encargado de Laboratorio (Id_Rol=1) o administrador puede firmar
+            $es_admin_firma = false;
+            $stmtAdmF = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", [$usuario_id]);
+            if ($stmtAdmF) {
+                $rowAdmF = sqlsrv_fetch_array($stmtAdmF, SQLSRV_FETCH_ASSOC);
+                if ($rowAdmF && in_array(strtolower(trim((string)$rowAdmF['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+                    $es_admin_firma = true;
+                }
+            }
+            $es_encargado = false;
+            $stmtEncF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 1", [$usuario_id]);
+            if ($stmtEncF && sqlsrv_fetch_array($stmtEncF, SQLSRV_FETCH_ASSOC)) {
+                $es_encargado = true;
+            }
+            if (!$es_admin_firma && !$es_encargado) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Solo el Encargado de Laboratorio puede firmar muestras.']);
+                exit;
+            }
+
             if ($id_muestra <= 0) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'ID de muestra inválido']);
+                exit;
+            }
+
+            // Verificar que el usuario tiene firma digital registrada
+            $stmtFirma = sqlsrv_query($conn, "SELECT TOP 1 Id_Usuario FROM laboratorio.Usuario_Lab_Firma WHERE Id_Usuario = ? AND Activo = 1", [$usuario_id]);
+            $firmaRow = $stmtFirma ? sqlsrv_fetch_array($stmtFirma, SQLSRV_FETCH_ASSOC) : null;
+            if (!$firmaRow) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Debes registrar tu firma digital antes de poder firmar muestras. Ve al Módulo Principal → Mi Firma Digital.']);
                 exit;
             }
 
@@ -706,7 +768,10 @@ try {
                 'Fuente_Riego' => trim((string)($datos['fuente_riego'] ?? '')),
                 'Profundidad' => trim((string)($datos['profundidad'] ?? '')),
                 'Numero_Submuestras' => trim((string)($datos['numero_submuestras'] ?? '')),
-                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg'))
+                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg')),
+                'Cultivo_Anterior' => trim((string)($datos['cultivo_anterior'] ?? '')),
+                'Cultivo_Implementado' => trim((string)($datos['cultivo_implementado'] ?? '')),
+                'Cultivo_Por_Implementar' => trim((string)($datos['cultivo_por_implementar'] ?? ''))
             ]);
 
             echo json_encode([
@@ -751,7 +816,11 @@ try {
                 'Fuente_Riego' => trim((string)($datos['fuente_riego'] ?? '')),
                 'Profundidad' => trim((string)($datos['profundidad'] ?? '')),
                 'Numero_Submuestras' => trim((string)($datos['numero_submuestras'] ?? '')),
-                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg'))
+                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg')),
+                'Cultivo_Anterior' => trim((string)($datos['cultivo_anterior'] ?? '')),
+                'Cultivo_Implementado' => trim((string)($datos['cultivo_implementado'] ?? '')),
+                'Cultivo_Por_Implementar' => trim((string)($datos['cultivo_por_implementar'] ?? '')),
+                'Ruta_Imagen' => (isset($datos['ruta_imagen']) && $datos['ruta_imagen'] !== '') ? $datos['ruta_imagen'] : null
             ]);
 
             echo json_encode([
@@ -797,7 +866,10 @@ try {
                 'Fuente_Riego' => trim((string)($datos['fuente_riego'] ?? '')),
                 'Profundidad' => trim((string)($datos['profundidad'] ?? '')),
                 'Numero_Submuestras' => trim((string)($datos['numero_submuestras'] ?? '')),
-                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg'))
+                'Cantidad_Muestra_Suelo' => trim((string)($datos['cantidad_suelo'] ?? '1 Kg')),
+                'Cultivo_Anterior' => trim((string)($datos['cultivo_anterior'] ?? '')),
+                'Cultivo_Implementado' => trim((string)($datos['cultivo_implementado'] ?? '')),
+                'Cultivo_Por_Implementar' => trim((string)($datos['cultivo_por_implementar'] ?? ''))
             ]);
 
             echo json_encode([
@@ -920,6 +992,203 @@ try {
         exit;
     }
     
+    // ==================== RECHAZAR MUESTRA ====================
+
+    if ($action === 'rechazar_muestra') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $id_muestra = intval($datos['id_muestra'] ?? 0);
+            $motivo     = trim($datos['motivo'] ?? '');
+
+            if ($id_muestra <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de muestra inválido']);
+                exit;
+            }
+
+            // Obtener todos los movimientos de salida (kardex) vinculados a esta muestra
+            $sql_movimientos = "
+                SELECT mk.Id_Movimiento, mk.Id_Reactivo, mk.Cantidad
+                FROM laboratorio.Movimiento_Kardex mk
+                INNER JOIN laboratorio.Consumo_Reaccion cr ON mk.Id_Movimiento = cr.Id_Movimiento
+                INNER JOIN laboratorio.Muestra_Producto mp ON cr.Id_Muestra_Producto = mp.Id_Muestra_Producto
+                WHERE mp.Id_Muestra = ?
+                  AND mk.Tipo_Movimiento = 'S'
+                  AND mk.Activo = 1
+                  AND cr.Activo = 1
+                  AND mp.Activo = 1
+            ";
+            $stmt_mov = sqlsrv_query($conn, $sql_movimientos, [$id_muestra]);
+            if ($stmt_mov === false) {
+                throw new Exception('Error al obtener movimientos: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            $movimientos = [];
+            while ($fila = sqlsrv_fetch_array($stmt_mov, SQLSRV_FETCH_ASSOC)) {
+                $movimientos[] = $fila;
+            }
+
+            // Revertir cada salida: restaurar stock y anular kardex + consumo
+            foreach ($movimientos as $mov) {
+                $id_mov    = intval($mov['Id_Movimiento']);
+                $id_react  = intval($mov['Id_Reactivo']);
+                $cantidad  = floatval($mov['Cantidad']);
+
+                // Restaurar stock del reactivo
+                $sql_stock = "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock + ? WHERE Id_Reactivo = ? AND Activo = 1";
+                $r = sqlsrv_query($conn, $sql_stock, [$cantidad, $id_react]);
+                if ($r === false) {
+                    throw new Exception('Error al restaurar stock: ' . print_r(sqlsrv_errors(), true));
+                }
+
+                // Marcar movimiento kardex como inactivo
+                $sql_kardex = "UPDATE laboratorio.Movimiento_Kardex SET Activo = 0 WHERE Id_Movimiento = ?";
+                $r = sqlsrv_query($conn, $sql_kardex, [$id_mov]);
+                if ($r === false) {
+                    throw new Exception('Error al anular kardex: ' . print_r(sqlsrv_errors(), true));
+                }
+
+                // Marcar consumo_reaccion como inactivo
+                $sql_consumo = "UPDATE laboratorio.Consumo_Reaccion SET Activo = 0 WHERE Id_Movimiento = ?";
+                $r = sqlsrv_query($conn, $sql_consumo, [$id_mov]);
+                if ($r === false) {
+                    throw new Exception('Error al anular consumo: ' . print_r(sqlsrv_errors(), true));
+                }
+            }
+
+            // Marcar la muestra como Rechazado
+            $muestra_model->rechazarMuestra($id_muestra, $motivo);
+
+            echo json_encode([
+                'success'            => true,
+                'message'            => 'Muestra rechazada correctamente',
+                'movimientos_revertidos' => count($movimientos)
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al rechazar muestra: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
+    // ==================== OBTENER DETALLE MUESTRA RECHAZADA ====================
+
+    if ($action === 'obtener_rechazada') {
+        try {
+            $id_muestra = intval($_GET['id_muestra'] ?? 0);
+            if ($id_muestra <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de muestra inválido']);
+                exit;
+            }
+            $sql_r = "SELECT m.Id_Muestra,
+                             RTRIM(CONCAT(c.Nombres, ' ', c.Apellido_Paterno,
+                                   CASE WHEN c.Apellido_Materno IS NOT NULL AND c.Apellido_Materno <> '' THEN ' ' + c.Apellido_Materno ELSE '' END)) AS Agricultor,
+                             m.Valle,
+                             m.Tipo_Servicio,
+                             CONVERT(VARCHAR(16), m.Fecha_Analisis, 120) AS Fecha_Analisis,
+                             CONVERT(VARCHAR(16), m.Fecha_Recepcion, 120) AS Fecha_Rechazo,
+                             m.Observacion_Muestra,
+                             CASE WHEN ds.Id_Muestra IS NOT NULL THEN 'Suelo'
+                                  WHEN da.Id_Muestra IS NOT NULL THEN 'Agua'
+                                  ELSE 'Sin clasificar' END AS TipoMuestra
+                      FROM laboratorio.Muestra_Lab m
+                      INNER JOIN laboratorio.Cliente c ON m.Id_Cliente = c.Id_Cliente
+                      LEFT JOIN laboratorio.Detalle_Suelo ds ON m.Id_Muestra = ds.Id_Muestra AND ds.Activo = 1
+                      LEFT JOIN laboratorio.Detalle_Agua   da ON m.Id_Muestra = da.Id_Muestra AND da.Activo = 1
+                      WHERE m.Id_Muestra = ? AND m.Activo = 1";
+            $stmt_r = sqlsrv_query($conn, $sql_r, [$id_muestra]);
+            if ($stmt_r === false) throw new Exception('Error al obtener rechazada: ' . print_r(sqlsrv_errors(), true));
+            $row_r = sqlsrv_fetch_array($stmt_r, SQLSRV_FETCH_ASSOC);
+            if (!$row_r) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Muestra no encontrada']);
+                exit;
+            }
+            // Convertir DateTime a string
+            foreach (['Fecha_Analisis','Fecha_Rechazo'] as $campo) {
+                if ($row_r[$campo] instanceof DateTime) {
+                    $row_r[$campo] = $row_r[$campo]->format('Y-m-d H:i');
+                }
+            }
+            echo json_encode(['success' => true, 'data' => $row_r]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== RETORNAR MUESTRA A ANÁLISIS (corregir resultados) ====================
+
+    if ($action === 'retornar_a_analisis') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $id_muestra = intval($datos['id_muestra'] ?? 0);
+            $usuario_id = $_SESSION['usuario_id'] ?? 0;
+
+            if ($id_muestra <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de muestra inválido']);
+                exit;
+            }
+
+            // Solo Encargado (Id_Rol=1), Analista Jefe (Id_Rol=2) o admin pueden devolver a análisis
+            $es_admin_ret = isset($_SESSION['rol']) && strtolower(trim($_SESSION['rol'])) === 'administrador';
+            if (!$es_admin_ret) {
+                $sql_rol_ret = "SELECT ur.Id_Rol FROM laboratorio.Usuario_Rol ur WHERE ur.Id_Usuario = ? AND ur.Id_Rol IN (1,2)";
+                $stmt_rol_ret = sqlsrv_query($conn, $sql_rol_ret, [$usuario_id]);
+                if ($stmt_rol_ret === false || !sqlsrv_fetch_array($stmt_rol_ret, SQLSRV_FETCH_ASSOC)) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'No tiene permisos para retornar la muestra a análisis']);
+                    exit;
+                }
+            }
+
+            // Verificar que la muestra esté en estado Por Firmar
+            $sql_estado = "SELECT Estado FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ? AND Activo = 1";
+            $stmt_estado = sqlsrv_query($conn, $sql_estado, [$id_muestra]);
+            if ($stmt_estado === false) throw new Exception('Error al verificar estado: ' . print_r(sqlsrv_errors(), true));
+            $row_estado = sqlsrv_fetch_array($stmt_estado, SQLSRV_FETCH_ASSOC);
+            if (!$row_estado || strtolower(trim($row_estado['Estado'])) !== 'por firmar') {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'La muestra no está en estado Por Firmar']);
+                exit;
+            }
+
+            // Revertir estado a En Analisis y limpiar firma
+            $sql_revert = "UPDATE laboratorio.Muestra_Lab
+                           SET Estado = 'En Analisis',
+                               Id_Jefe_Lab = NULL,
+                               Fecha_Modificacion = GETDATE()
+                           WHERE Id_Muestra = ? AND Activo = 1";
+            $r = sqlsrv_query($conn, $sql_revert, [$id_muestra]);
+            if ($r === false) throw new Exception('Error al retornar muestra: ' . print_r(sqlsrv_errors(), true));
+
+            // Revertir estado de solicitudes a En Análisis para permitir re-ingreso
+            $sql_sol = "UPDATE laboratorio.Solicitud_Analisis
+                        SET Estado = 'En Análisis', Fecha_Modificacion = GETDATE()
+                        WHERE Id_Muestra = ?";
+            sqlsrv_query($conn, $sql_sol, [$id_muestra]);
+
+            echo json_encode([
+                'success'  => true,
+                'message'  => 'Muestra retornada a análisis. Puede corregir los resultados.',
+                'id_muestra' => $id_muestra
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al retornar muestra: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => "Acción no encontrada: {$action}"]);
     

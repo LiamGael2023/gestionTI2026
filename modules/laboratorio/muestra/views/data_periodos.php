@@ -20,14 +20,24 @@ try {
     $start = intval($_POST['start'] ?? 0);
     $length = intval($_POST['length'] ?? 10);
     $filtro_control_calidad = isset($_POST['es_control_calidad']) ? intval($_POST['es_control_calidad']) : -1;
+    $filtro_drene = isset($_POST['es_drene']) ? intval($_POST['es_drene']) : -1;
 
     // Obtener todos los proyectos (nota: el modelo obtenerTodos no tiene paginación)
     $proyectos = $model->obtenerTodos(true);
 
     // Filtrar por tipo cuando la tabla lo solicita
-    if ($filtro_control_calidad === 0 || $filtro_control_calidad === 1) {
-        $proyectos = array_values(array_filter($proyectos, function ($row) use ($filtro_control_calidad) {
-            return intval($row['Es_Control_Calidad'] ?? 0) === $filtro_control_calidad;
+    if ($filtro_drene === 1) {
+        $proyectos = array_values(array_filter($proyectos, function ($row) {
+            return intval($row['Es_Drene'] ?? 0) === 1;
+        }));
+    } elseif ($filtro_control_calidad === 1) {
+        $proyectos = array_values(array_filter($proyectos, function ($row) {
+            return intval($row['Es_Control_Calidad'] ?? 0) === 1;
+        }));
+    } elseif ($filtro_control_calidad === 0) {
+        // Monitoreo: excluir tanto calidad de agua como drenes
+        $proyectos = array_values(array_filter($proyectos, function ($row) {
+            return intval($row['Es_Control_Calidad'] ?? 0) === 0 && intval($row['Es_Drene'] ?? 0) === 0;
         }));
     }
     
@@ -57,15 +67,21 @@ try {
         $estado_badge .= '">' . htmlspecialchars($estado) . '</span>';
         
         // Botones según estado
+        $esCalidadAgua = intval($row['Es_Control_Calidad'] ?? 0) === 1;
+        $esDrene = intval($row['Es_Drene'] ?? 0) === 1;
+        $fnExportar = $esCalidadAgua
+            ? 'exportarCalidadAgua(' . $id . ')'
+            : ($esDrene ? 'exportarCalidadAgua(' . $id . ')' : 'exportarProyectoMonitoreo(' . $id . ')');
+
         $accion = '';
         if ($estado === 'Planificado') {
             $accion = '<button type="button" class="btn btn-sm btn-success me-1" onclick="iniciarEjecucion(' . $id . ')" title="Iniciar Ejecución"><i class="ti ti-flash"></i> Iniciar</button> ';
         } else if ($estado === 'En Progreso') {
             $accion = '<button type="button" class="btn btn-sm btn-info me-1" onclick="abrirAnalisis(' . $id . ')" title="Registrar Análisis"><i class="ti ti-microscope"></i> Análisis</button> ';
-            $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="exportarProyectoMonitoreo(' . $id . ')" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
+            $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="' . $fnExportar . '" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
         } else if ($estado === 'Finalizado') {
             $accion = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="verResultados(' . $id . ')" title="Ver Resultados"><i class="ti ti-eye"></i> Resultados</button> ';
-            $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="exportarProyectoMonitoreo(' . $id . ')" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
+            $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="' . $fnExportar . '" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
         }
         
         $accion .= '<button type="button" class="btn btn-sm btn-primary me-1" onclick="editarProyecto(' . $id . ')" title="Editar"><i class="ti ti-edit"></i></button> ';

@@ -42,9 +42,11 @@ try {
     if ($tipoServicio !== 'interno' && $tipoServicio !== 'externo') {
         $tipoServicio = '';
     }
+    $search = trim((string)($_POST['search']['value'] ?? ''));
 
-    $muestras = $model->obtenerPorEstado('Por Firmar', $start, $length, $tipoServicio);
     $total = $model->contarPorEstado('Por Firmar', $tipoServicio);
+    $totalFiltered = ($search !== '') ? $model->contarPorEstado('Por Firmar', $tipoServicio, $search) : $total;
+    $muestras = $model->obtenerPorEstado('Por Firmar', $start, $length, $tipoServicio, $search);
 
     $data = [];
     foreach ($muestras as $row) {
@@ -57,15 +59,16 @@ try {
         $estado = valorTexto($row['Estado'] ?? null);
         $tipo = valorTexto($row['TipoMuestra'] ?? null);
         $agricultorUrl = rawurlencode($agricultor);
-        $accion = '<a class="btn btn-sm btn-success" href="?module=laboratorio&action=muestra&subaction=firma_agricultor&id_muestra=' . $id . '&id_cliente=' . $id_cliente . '&agricultor=' . $agricultorUrl . '" title="Revisar y firmar"><i class="ti ti-signature"></i></a>';
+        $accion  = '<a class="btn btn-sm btn-success me-1" href="?module=laboratorio&action=muestra&subaction=firma_agricultor&id_muestra=' . $id . '&id_cliente=' . $id_cliente . '&agricultor=' . $agricultorUrl . '" title="Revisar y firmar"><i class="ti ti-signature"></i></a>';
+        $accion .= '<button class="btn btn-sm btn-warning" onclick="modificarResultados(' . $id . ', \'' . addslashes($agricultor) . '\')" title="Modificar resultados ingresados"><i class="ti ti-pencil"></i></button>';
         
         $data[] = [$id, $agricultor, $valle, $servicio, $fecha_analisis, $estado, $tipo, $accion];
     }
 
     echo json_encode([
         'draw' => $draw,
-        'recordsTotal' => intval($total),
-        'recordsFiltered' => intval($total),
+        'recordsTotal' => $total,
+        'recordsFiltered' => $totalFiltered,
         'data' => $data
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 

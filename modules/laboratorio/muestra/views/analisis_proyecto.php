@@ -23,6 +23,21 @@ if (!$conn) {
     exit;
 }
 
+// Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
+$puede_finalizar = false;
+$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($_SESSION['usuario_id']));
+if ($stmtPF && sqlsrv_fetch_array($stmtPF, SQLSRV_FETCH_ASSOC)) {
+    $puede_finalizar = true;
+}
+if (!$puede_finalizar) {
+    $stmtAdm = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", array($_SESSION['usuario_id']));
+    if ($stmtAdm) {
+        $rowAdm = sqlsrv_fetch_array($stmtAdm, SQLSRV_FETCH_ASSOC);
+        if ($rowAdm && in_array(strtolower(trim((string)$rowAdm['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+            $puede_finalizar = true;
+        }
+    }
+}
 file_put_contents($log_file, "\n[" . date('Y-m-d H:i:s') . "] === CARGANDO analisis_proyecto.php ===\n", FILE_APPEND);
 file_put_contents($log_file, "Id_Proyecto: $id_proyecto\n", FILE_APPEND);
 
@@ -37,9 +52,17 @@ if (!$stmt_proyecto || !($proyecto = sqlsrv_fetch_array($stmt_proyecto, SQLSRV_F
 
 file_put_contents($log_file, "Proyecto encontrado: " . $proyecto['Nombre_Proyecto'] . "\n", FILE_APPEND);
 
+// Detectar si el proyecto es calidad de agua o drenes (para mostrar columna fuente)
+$es_cc_proyecto    = intval($proyecto['Es_Control_Calidad'] ?? 0) === 1;
+$es_drene_proyecto = intval($proyecto['Es_Drene'] ?? 0) === 1;
+$mostrar_fuente    = $es_cc_proyecto || $es_drene_proyecto;
+
 // Obtener muestras del proyecto con su número de orden
-$sql_muestras = "SELECT DISTINCT m.Id_Muestra, ROW_NUMBER() OVER (ORDER BY m.Id_Muestra) AS NumeroOrden
+$sql_muestras = "SELECT m.Id_Muestra, ROW_NUMBER() OVER (ORDER BY m.Id_Muestra) AS NumeroOrden,
+                 m.Tipo_Servicio,
+                 da.Nivel_Agua
                  FROM laboratorio.Muestra_Lab m
+                 LEFT JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = m.Id_Muestra AND da.Activo = 1
                  WHERE m.Id_Proyecto = ? AND m.Activo = 1
                  ORDER BY m.Id_Muestra";
 $stmt_muestras = sqlsrv_query($conn, $sql_muestras, array($id_proyecto));
@@ -47,7 +70,7 @@ $muestras = [];
 $ids_muestras = [];
 while ($row = sqlsrv_fetch_array($stmt_muestras, SQLSRV_FETCH_ASSOC)) {
     $muestras[] = $row;
-  $ids_muestras[] = intval($row['Id_Muestra'] ?? 0);
+    $ids_muestras[] = intval($row['Id_Muestra'] ?? 0);
 }
 
 file_put_contents($log_file, "Muestras encontradas: " . count($muestras) . "\n", FILE_APPEND);
@@ -135,6 +158,30 @@ if (empty($resultados)) {
 }
 
 file_put_contents($log_file, "✓ Página cargada exitosamente\n", FILE_APPEND);
+
+// Detectar muestras con análisis EXTRA (servicios fuera del plan original del proyecto)
+$muestras_extra_set = [];
+if (!empty($ids_muestras)) {
+    $ph_extra = implode(',', array_fill(0, count($ids_muestras), '?'));
+    $sql_extra = "SELECT DISTINCT sa.Id_Muestra
+                  FROM laboratorio.Solicitud_Analisis sa
+                  WHERE sa.Id_Muestra IN ($ph_extra)
+                    AND sa.Activo = 1
+                    AND sa.Id_Servicio NOT IN (
+                        SELECT ps.Id_Servicio
+                        FROM laboratorio.Proyecto_Detalle_Analisis pda
+                        INNER JOIN laboratorio.Producto_Servicio ps
+                            ON ps.Id_Producto = pda.Id_Producto_Venta AND ps.Activo = 1
+                        WHERE pda.Id_Proyecto = ? AND pda.Activo = 1
+                    )";
+    $params_extra = array_merge(array_values($ids_muestras), [$id_proyecto]);
+    $stmt_extra = sqlsrv_query($conn, $sql_extra, $params_extra);
+    if ($stmt_extra) {
+        while ($row_ex = sqlsrv_fetch_array($stmt_extra, SQLSRV_FETCH_ASSOC)) {
+            $muestras_extra_set[intval($row_ex['Id_Muestra'])] = true;
+        }
+    }
+}
 
 // Obtener nombre del usuario (recepcionista)
 $usuario_nombre = isset($_SESSION['usuario_nombre']) ? $_SESSION['usuario_nombre'] : 'Usuario desconocido';
@@ -339,6 +386,34 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
         max-height: calc(100vh - 240px);
       }
     }
+    /* === Filas especiales === */
+    .fila-extra td {
+      background-color: #BDD7EE !important;
+    }
+    .fila-extra td.sticky-left {
+      background-color: #9DC3E6 !important;
+    }
+    .fila-consumo-agua td.sticky-left-1 {
+      border-left: 3px solid #1565C0 !important;
+    }
+    .fila-extra .param-input {
+      background-color: #dbeafe !important;
+    }
+    .btn-ac-row {
+      font-size: 0.8em;
+      padding: 2px 5px !important;
+      line-height: 1;
+    }
+    .tabla-excel .col-fuente {
+      min-width: 200px;
+      width: 200px;
+      white-space: normal;
+      word-break: break-word;
+      font-size: 0.82em;
+      color: #344054;
+      text-align: left;
+      vertical-align: middle;
+    }
 </style>
 </head>
 <body>
@@ -349,7 +424,6 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="?module=laboratorio">Laboratorio</a></li>
         <li class="breadcrumb-item"><a href="?module=laboratorio">Muestras</a></li>
-        <li class="breadcrumb-item"><a href="?module=laboratorio&action=muestra&subaction=creacion_masiva">Creación Masiva</a></li>
         <li class="breadcrumb-item active" aria-current="page">Análisis de Muestra</li>
       </ol>
     </nav>
@@ -411,7 +485,7 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
             <table class="table table-vcenter tabla-excel">
               <thead>
                 <tr class="excel-title-row">
-                  <th colspan="<?php echo 2 + count($parametros_todos); ?>">
+                  <th colspan="<?php echo 2 + ($mostrar_fuente ? 1 : 0) + count($parametros_todos); ?>">
                     RESULTADOS ANÁLISIS DE <?php echo strtoupper(htmlspecialchars($proyecto['Nombre_Proyecto'])); ?>
                     <br>
                     <?php echo strtoupper(htmlspecialchars($proyecto['Temporada'] ?? '')); ?> - VALLE <?php echo strtoupper(htmlspecialchars($proyecto['Valle'] ?? '')); ?>
@@ -420,6 +494,9 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                 <tr>
                   <th class="sticky-left sticky-left-1">Ac</th>
                   <th class="sticky-left sticky-left-2">No</th>
+                  <?php if ($mostrar_fuente): ?>
+                    <th class="param-col col-fuente"><?php echo $es_drene_proyecto ? 'Dren' : 'Nivel'; ?></th>
+                  <?php endif; ?>
                   <?php foreach ($parametros_todos as $param): ?>
                     <th class="param-col">
                       <?php echo htmlspecialchars($param['Nombre']); ?>
@@ -429,12 +506,41 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                 </tr>
               </thead>
               <tbody>
-                <?php foreach ($muestras as $muestra): ?>
-                  <tr>
-                    <td class="sticky-left sticky-left-1 col-muestra">
-                      <i class="ti ti-files" style="font-size: 1.1em; color: #004d99;"></i>
+                <?php foreach ($muestras as $muestra):
+                  $es_consumo_humano = (isset($muestra['Tipo_Servicio']) && trim((string)$muestra['Tipo_Servicio']) === 'Consumo Humano');
+                  $es_consumo_agua   = (isset($muestra['Tipo_Servicio']) && trim((string)$muestra['Tipo_Servicio']) === 'Consumo de Agua');
+                  $tipo_servicio_val  = trim((string)($muestra['Tipo_Servicio'] ?? ''));
+                  $es_extra = isset($muestras_extra_set[intval($muestra['Id_Muestra'])]);
+                  $row_classes = trim(($es_extra ? 'fila-extra' : '') . ' ' . (($es_consumo_humano || $es_consumo_agua) ? 'fila-consumo-agua' : ''));
+                ?>
+                  <tr data-muestra-id="<?php echo intval($muestra['Id_Muestra']); ?>" <?php if($row_classes): ?>class="<?php echo htmlspecialchars($row_classes); ?>"<?php endif; ?>>
+                    <td class="sticky-left sticky-left-1 col-muestra" style="padding:2px;">
+                      <?php if (!$es_finalizado): ?>
+                        <button type="button" class="btn btn-sm btn-ghost-secondary btn-ac-row"
+                                title="Acciones"
+                          onclick="abrirMenuAccion(<?php echo intval($muestra['Id_Muestra']); ?>, <?php echo intval($muestra['NumeroOrden']); ?>, '<?php echo addslashes($tipo_servicio_val); ?>'); return false;">
+                          <?php if ($es_consumo_humano): ?>
+                            <i class="ti ti-user-check" style="color:#1565C0;" title="Consumo Humano"></i>
+                          <?php elseif ($es_consumo_agua): ?>
+                            <i class="ti ti-droplet" style="color:#1565C0;" title="Consumo de Agua"></i>
+                          <?php else: ?>
+                            <i class="ti ti-dots-vertical" style="color:#888;"></i>
+                          <?php endif; ?>
+                        </button>
+                      <?php else: ?>
+                        <?php if ($es_consumo_humano): ?>
+                          <i class="ti ti-user-check" style="color:#1565C0;" title="Consumo Humano"></i>
+                        <?php elseif ($es_consumo_agua): ?>
+                          <i class="ti ti-droplet" style="color:#1565C0;" title="Consumo de Agua"></i>
+                        <?php else: ?>
+                          <i class="ti ti-files" style="color:#aaa;"></i>
+                        <?php endif; ?>
+                      <?php endif; ?>
                     </td>
                     <td class="sticky-left sticky-left-2 col-muestra"><?php echo $muestra['NumeroOrden']; ?></td>
+                    <?php if ($mostrar_fuente): ?>
+                      <td class="col-fuente"><?php echo htmlspecialchars($muestra['Nivel_Agua'] ?? '—'); ?></td>
+                    <?php endif; ?>
                     <?php foreach ($parametros_todos as $param):
                       $key = $muestra['Id_Muestra'] . '_' . $param['Id_Parametro'];
                       $existe = isset($resultados[$key]);
@@ -454,7 +560,7 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                                  <?php if ($es_finalizado) echo 'disabled'; ?>
                                  value="<?php echo $resultado['Valor_Hallado'] !== null ? floatval($resultado['Valor_Hallado']) : ''; ?>">
                         <?php else: ?>
-                          <input type="number" class="form-control form-control-sm" disabled value="—" style="text-align: center; background-color: #f8f9fa;">
+                          <input type="text" class="form-control form-control-sm" disabled value="—" style="text-align: center; background-color: #f8f9fa;">
                         <?php endif; ?>
                       </td>
                     <?php endforeach; ?>
@@ -483,9 +589,11 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
           <button type="button" class="btn btn-outline-success" onclick="guardarAvance()" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-device-floppy me-2"></i> GUARDAR AVANCE
           </button>
+          <?php if ($puede_finalizar): ?>
           <button type="submit" class="btn btn-success" style="background: #28a745; border: none; font-size: 0.95em; padding: 8px 18px;">
             <i class="ti ti-check me-2"></i> GRABAR RESULTADOS
           </button>
+          <?php endif; ?>
           <?php endif; ?>
         </div>
       </div>
@@ -671,6 +779,364 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ── Menú de acciones (reemplaza Bootstrap dropdown — evita overflow:auto) ────
+function abrirMenuAccion(idMuestra, numMuestra, tipoServicio) {
+  var yaConsumoHumano = (tipoServicio === 'Consumo Humano');
+  var tieneTipo = (tipoServicio !== '');
+  var textoEstado = tieneTipo ? escapeHtml(tipoServicio) : 'Sin designación';
+  var estiloEstado = yaConsumoHumano
+    ? 'background:#e8f1ff;color:#0b5ed7;border:1px solid #b6d4fe;'
+    : (tieneTipo
+      ? 'background:#e6f8f3;color:#0f5132;border:1px solid #a3cfbb;'
+      : 'background:#f1f3f5;color:#495057;border:1px solid #dee2e6;');
+  var labelCH = yaConsumoHumano ? 'Reconfigurar Consumo Humano (con análisis extra)' : 'Marcar Consumo Humano (con análisis extra)';
+
+  var html =
+    '<div style="text-align:left; font-size:0.95em;">' +
+      '<div style="border:1px solid #e9ecef;background:#f8f9fa;border-radius:8px;padding:10px 12px;margin-bottom:12px;">' +
+        '<div style="font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;color:#6c757d;margin-bottom:6px;">Estado actual</div>' +
+        '<span style="display:inline-block;padding:6px 10px;border-radius:999px;font-weight:600;font-size:0.9em;' + estiloEstado + '">' + textoEstado + '</span>' +
+      '</div>' +
+
+      '<div class="form-check mb-2">' +
+        '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_consumo_humano" value="consumo_humano" checked>' +
+        '<label class="form-check-label" for="accion_consumo_humano">' +
+          '<strong>' + labelCH + '</strong><br>' +
+          '<span class="text-muted">Abre el flujo obligatorio para seleccionar servicio extra.</span>' +
+        '</label>' +
+      '</div>' +
+
+      '<div class="form-check mb-2">' +
+        '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_extra" value="extra_analisis">' +
+        '<label class="form-check-label" for="accion_extra">' +
+          '<strong>Agregar Análisis Extra</strong><br>' +
+          '<span class="text-muted">Solo agrega un servicio adicional sin cambiar tipo de muestra.</span>' +
+        '</label>' +
+      '</div>' +
+
+      (tieneTipo
+        ? '<div class="form-check mb-1">' +
+            '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_quitar" value="quitar_tipo">' +
+            '<label class="form-check-label text-danger" for="accion_quitar">' +
+              '<strong>Quitar designación actual</strong>' +
+            '</label>' +
+          '</div>'
+        : '') +
+
+      '<div class="small text-muted mt-3">Selecciona una opción y presiona Continuar.</div>' +
+    '</div>';
+
+  Swal.fire({
+    title: 'Acciones de Muestra #' + numMuestra,
+    html: html,
+    showCloseButton: true,
+    showCancelButton: true,
+    confirmButtonText: 'Continuar',
+    cancelButtonText: 'Cerrar',
+    width: 560,
+    padding: '1rem',
+    preConfirm: function() {
+      var sel = document.querySelector('.swal2-container input[name="accion_muestra"]:checked');
+      if (!sel || !sel.value) {
+        Swal.showValidationMessage('Debes seleccionar una acción');
+        return false;
+      }
+      return sel.value;
+    }
+  }).then(function(result) {
+    if (!result.isConfirmed) return;
+
+    if (result.value === 'consumo_humano') {
+      configurarConsumoHumano(idMuestra, numMuestra);
+      return;
+    }
+
+    if (result.value === 'extra_analisis') {
+      abrirExtraAnalisis(idMuestra, numMuestra);
+      return;
+    }
+
+    if (result.value === 'quitar_tipo') {
+      quitarTipoServicio(idMuestra);
+    }
+  });
+}
+
+// ── Quitar tipo de servicio ──────────────────────────────────────────────────
+function quitarTipoServicio(idMuestra) {
+  Swal.fire({
+    title: 'Quitar designación',
+    text: '¿Eliminar el tipo de servicio asignado a esta muestra?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, quitar',
+    cancelButtonText: 'Cancelar'
+  }).then(function(r) {
+    if (!r.isConfirmed) return;
+    $.ajax({
+      url: apiUrl + '?action=marcar_consumo_agua',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ id_muestra: idMuestra, consumo_agua: false, tipo: null }),
+      dataType: 'json',
+      success: function(resp) {
+        if (resp && resp.success) { window.location.reload(); }
+        else { Swal.fire('Error', (resp && resp.message) || 'No se pudo actualizar', 'error'); }
+      },
+      error: function() { Swal.fire('Error', 'Error de comunicación', 'error'); }
+    });
+  });
+}
+
+// ── Consumo Humano: marcar + análisis extra en un solo flujo ─────────────────
+function configurarConsumoHumano(idMuestra, numMuestra) {
+  mostrarCargaAnalisis('Cargando servicios...', 'Obteniendo servicios disponibles.');
+  $.ajax({
+    url: apiUrl + '?action=listar_servicios_extra&id_proyecto=' + encodeURIComponent(idProyecto) + '&id_muestra=' + encodeURIComponent(idMuestra),
+    method: 'GET',
+    dataType: 'json',
+    success: function(resp) {
+      cerrarCargaAnalisis();
+      const disponibles = (resp && resp.success) ? (resp.servicios || []) : [];
+
+      if (!disponibles.length) {
+        Swal.fire('Sin servicios disponibles', 'No hay servicios extra disponibles para esta muestra. Todos los servicios activos ya fueron asignados.', 'warning');
+        return;
+      }
+
+      let optsServicio = '<option value="">-- Seleccione el análisis extra --</option>';
+      disponibles.forEach(function(s) {
+        optsServicio += '<option value="' + s.id + '" data-reactivos="' + escapeHtml(JSON.stringify(s.reactivos)) + '">'
+                      + escapeHtml(s.nombre) + '</option>';
+      });
+
+      const html =
+        '<div style="text-align:left; font-size:0.95em;">' +
+          '<div class="alert alert-info py-2 mb-3" style="font-size:0.88em;">' +
+            '<i class="ti ti-user-check me-1"></i> Muestra #' + numMuestra +
+            ' se marcará como <strong>Consumo Humano</strong>.' +
+          '</div>' +
+          '<div class="mb-2">' +
+            '<label class="form-label fw-semibold">Análisis extra a agregar <span class="text-danger">*</span></label>' +
+            '<select id="swal-ch-servicio" class="form-select form-select-sm">' + optsServicio + '</select>' +
+            '<div class="form-text text-muted">Requerido para Consumo Humano. Solo se muestran servicios aún no asignados.</div>' +
+          '</div>' +
+          '<div id="swal-ch-reactivos" class="alert alert-warning py-2 d-none mt-2" style="font-size:0.85em;"></div>' +
+        '</div>';
+
+      Swal.fire({
+        title: '<i class="ti ti-user-check me-1"></i> Marcar como Consumo Humano',
+        html: html,
+        width: 580,
+        showCancelButton: true,
+        confirmButtonText: '<i class="ti ti-check me-1"></i>Confirmar',
+        cancelButtonText: 'Cancelar',
+        focusConfirm: false,
+        didOpen: function() {
+          var sel = document.getElementById('swal-ch-servicio');
+          if (!sel) return;
+          sel.addEventListener('change', function() {
+            var opt  = this.options[this.selectedIndex];
+            var infoDiv = document.getElementById('swal-ch-reactivos');
+            if (!opt || !opt.value) {
+              infoDiv.classList.add('d-none');
+              return;
+            }
+            // Reactivos
+            var reactivos = [];
+            try { reactivos = JSON.parse(opt.getAttribute('data-reactivos') || '[]'); } catch(e) {}
+            infoDiv.classList.remove('d-none');
+            if (reactivos.length) {
+              infoDiv.innerHTML = '<strong>Reactivos que se consumirán:</strong><ul class="mb-0 mt-1">' +
+                reactivos.map(function(r) {
+                  return '<li>' + escapeHtml(r.nombre) + ': <strong>' + r.cantidad + ' ' + r.unidad + '</strong></li>';
+                }).join('') + '</ul>';
+            } else {
+              infoDiv.innerHTML = '<em>Este servicio no tiene reactivos registrados en receta.</em>';
+            }
+          });
+        },
+        preConfirm: function() {
+          var sel = document.getElementById('swal-ch-servicio');
+          var idServicio = sel ? (parseInt(sel.value || '0', 10) || 0) : 0;
+          if (!idServicio) {
+            Swal.showValidationMessage('Debe seleccionar el análisis extra para Consumo Humano');
+            return false;
+          }
+          return { id_servicio: idServicio };
+        }
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        var idServicioExtra = result.value.id_servicio;
+
+        mostrarCargaAnalisis('Guardando...', 'Marcando muestra como Consumo Humano...');
+
+        $.ajax({
+          url: apiUrl + '?action=marcar_consumo_agua',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ id_muestra: idMuestra, consumo_agua: true, tipo: 'Consumo Humano' }),
+          dataType: 'json',
+          success: function(resp1) {
+            if (!resp1 || !resp1.success) {
+              cerrarCargaAnalisis();
+              Swal.fire('Error', (resp1 && resp1.message) || 'No se pudo marcar la muestra', 'error');
+              return;
+            }
+            actualizarCargaAnalisis('Creando solicitud de análisis extra...');
+            $.ajax({
+              url: apiUrl + '?action=agregar_analisis_extra',
+              method: 'POST',
+              contentType: 'application/json',
+              data: JSON.stringify({ id_muestra: idMuestra, id_proyecto: idProyecto, id_servicio: idServicioExtra }),
+              dataType: 'json',
+              success: function(resp2) {
+                cerrarCargaAnalisis();
+                if (resp2 && resp2.success) {
+                  Swal.fire('¡Listo!', 'Muestra marcada como <strong>Consumo Humano</strong> y análisis extra agregado.<br><small class="text-muted">' + escapeHtml(resp2.message || '') + '</small>', 'success')
+                    .then(function() { window.location.reload(); });
+                } else {
+                  Swal.fire('Parcialmente completado', 'Muestra marcada como Consumo Humano, pero ocurrió un error al agregar el análisis extra:<br>' + escapeHtml((resp2 && resp2.message) || 'Error desconocido'), 'warning')
+                    .then(function() { window.location.reload(); });
+                }
+              },
+              error: function(xhr) {
+                cerrarCargaAnalisis();
+                var msg = 'Error al agregar análisis extra';
+                try { var p = JSON.parse(xhr.responseText || '{}'); if (p.message) msg = p.message; } catch(e) {}
+                Swal.fire('Parcialmente completado', 'Muestra marcada, pero error en análisis extra: ' + escapeHtml(msg), 'warning')
+                  .then(function() { window.location.reload(); });
+              }
+            });
+          },
+          error: function() {
+            cerrarCargaAnalisis();
+            Swal.fire('Error', 'Error de comunicación al marcar la muestra', 'error');
+          }
+        });
+      });
+    },
+    error: function() {
+      cerrarCargaAnalisis();
+      Swal.fire('Error', 'Error al cargar servicios disponibles', 'error');
+    }
+  });
+}
+
+// ── toggleConsumoAgua (legado, redirige a nuevo flujo) ───────────────────────
+function toggleConsumoAgua(idMuestra, marcar) {
+  if (marcar) { configurarConsumoHumano(idMuestra, '?'); return; }
+  quitarTipoServicio(idMuestra);
+}
+
+// ── Análisis Extra (standalone) ─────────────────────────────────────────────
+function abrirExtraAnalisis(idMuestra, numMuestra) {
+  mostrarCargaAnalisis('Cargando servicios...', 'Obteniendo servicios disponibles.');
+  $.ajax({
+    url: apiUrl + '?action=listar_servicios_extra&id_proyecto=' + encodeURIComponent(idProyecto) + '&id_muestra=' + encodeURIComponent(idMuestra),
+    method: 'GET',
+    dataType: 'json',
+    success: function(resp) {
+      cerrarCargaAnalisis();
+      if (!resp || !resp.success) {
+        Swal.fire('Error', (resp && resp.message) || 'No se pudieron cargar servicios', 'error');
+        return;
+      }
+      const servicios = resp.servicios || [];
+      if (!servicios.length) {
+        Swal.fire('Sin servicios', 'No hay servicios adicionales disponibles para esta muestra (todos ya están asignados).', 'info');
+        return;
+      }
+
+      let opts = '<option value="">Seleccione un servicio...</option>';
+      servicios.forEach(function(s) {
+        opts += '<option value="' + s.id + '" data-reactivos="' + escapeHtml(JSON.stringify(s.reactivos)) + '">'
+              + escapeHtml(s.nombre) + '</option>';
+      });
+
+      const html =
+        '<div style="text-align:left; font-size:0.95em;">' +
+          '<p class="mb-2">Agregar análisis extra a <strong>Muestra #' + numMuestra + '</strong>.</p>' +
+          '<p class="text-muted mb-2">Los reactivos del servicio se consumirán de inmediato. El residuo se registrará al finalizar el análisis.</p>' +
+          '<div class="mb-3"><label class="form-label fw-semibold">Servicio a agregar</label>' +
+          '<select id="swal-servicio-extra" class="form-select form-select-sm">' + opts + '</select></div>' +
+          '<div id="swal-reactivos-info" class="alert alert-info py-2 d-none" style="font-size:0.88em;"></div>' +
+        '</div>';
+
+      Swal.fire({
+        title: '<i class="ti ti-microscope me-1"></i>Análisis Extra',
+        html: html,
+        width: 580,
+        showCancelButton: true,
+        confirmButtonText: '<i class="ti ti-flask me-1"></i>Agregar',
+        cancelButtonText: 'Cancelar',
+        focusConfirm: false,
+        didOpen: function() {
+          document.getElementById('swal-servicio-extra').addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            const infoDiv = document.getElementById('swal-reactivos-info');
+            if (!opt.value) { infoDiv.classList.add('d-none'); return; }
+            let reactivos = [];
+            try { reactivos = JSON.parse(opt.getAttribute('data-reactivos') || '[]'); } catch(e) {}
+            if (reactivos.length) {
+              infoDiv.classList.remove('d-none');
+              infoDiv.innerHTML = '<strong>Reactivos que se consumirán:</strong><ul class="mb-0 mt-1">' +
+                reactivos.map(function(r) {
+                  return '<li>' + escapeHtml(r.nombre) + ': <strong>' + r.cantidad + ' ' + r.unidad + '</strong></li>';
+                }).join('') + '</ul>';
+            } else {
+              infoDiv.classList.remove('d-none');
+              infoDiv.innerHTML = '<em>Este servicio no tiene reactivos registrados en receta.</em>';
+            }
+          });
+        },
+        preConfirm: function() {
+          const idServicio = parseInt(document.getElementById('swal-servicio-extra').value || '0', 10);
+          if (!idServicio) {
+            Swal.showValidationMessage('Debe seleccionar un servicio');
+            return false;
+          }
+          return { id_servicio: idServicio };
+        }
+      }).then(function(result) {
+        if (!result.isConfirmed) return;
+        mostrarCargaAnalisis('Agregando análisis extra...', 'Creando solicitud y consumiendo reactivos...');
+        $.ajax({
+          url: apiUrl + '?action=agregar_analisis_extra',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            id_muestra: idMuestra,
+            id_proyecto: idProyecto,
+            id_servicio: result.value.id_servicio
+          }),
+          dataType: 'json',
+          success: function(resp) {
+            cerrarCargaAnalisis();
+            if (resp && resp.success) {
+              Swal.fire('¡Listo!', resp.message || 'Análisis extra agregado correctamente.', 'success')
+                .then(function() { window.location.reload(); });
+            } else {
+              Swal.fire('Error', (resp && resp.message) || 'No se pudo agregar el análisis extra', 'error');
+            }
+          },
+          error: function(xhr) {
+            cerrarCargaAnalisis();
+            let msg = 'Error al agregar análisis extra';
+            try { const p = JSON.parse(xhr.responseText || '{}'); if (p.message) msg = p.message; } catch(e) {}
+            Swal.fire('Error', msg, 'error');
+          }
+        });
+      });
+    },
+    error: function() {
+      cerrarCargaAnalisis();
+      Swal.fire('Error', 'Error al cargar servicios disponibles', 'error');
+    }
+  });
+}
+
 
 function cargarContextoConsumoExtra(onDone) {
   if (contextoConsumoExtraCache) {

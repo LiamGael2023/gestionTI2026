@@ -104,9 +104,10 @@ while ($row = sqlsrv_fetch_array($stmtParametros, SQLSRV_FETCH_ASSOC)) {
         continue;
     }
     $parametros[] = [
-        'id' => $idParametro,
-        'nombre' => trim((string)($row['Nombre'] ?? ('Parametro #' . $idParametro))),
-        'unidad' => trim((string)($row['Unidad_Medida'] ?? '-')),
+        'id'        => $idParametro,
+        'nombre'    => trim((string)($row['Nombre'] ?? ('Parametro #' . $idParametro))),
+        'unidad'    => trim((string)($row['Unidad_Medida'] ?? '-')),
+        'categoria' => trim((string)($row['Categoria'] ?? '')),
     ];
 }
 
@@ -114,6 +115,25 @@ if (empty($parametros)) {
     http_response_code(409);
     die('El proyecto no tiene parametros asociados para exportar');
 }
+
+// Ordenar parámetros: Físicos → Químicos → Microbiológicos → Otros
+$_catPrioridad = function (string $cat): int {
+    $c = strtoupper(str_replace(
+        ['Á','É','Í','Ó','Ú','á','é','í','ó','ú','ñ','Ñ'],
+        ['A','E','I','O','U','a','e','i','o','u','n','N'],
+        $cat
+    ));
+    if (strpos($c, 'FISIC')       !== false) return 1;
+    if (strpos($c, 'QUIMIC')      !== false) return 2;
+    if (strpos($c, 'MICROBIOLOG') !== false) return 3;
+    return 9;
+};
+usort($parametros, function ($a, $b) use ($_catPrioridad) {
+    $pa = $_catPrioridad((string)($a['categoria'] ?? ''));
+    $pb = $_catPrioridad((string)($b['categoria'] ?? ''));
+    if ($pa !== $pb) return $pa <=> $pb;
+    return strcasecmp((string)($a['nombre'] ?? ''), (string)($b['nombre'] ?? ''));
+});
 
 $formatNumero = function ($valor) {
     if ($valor === null) {
@@ -485,9 +505,52 @@ $forzarFuente = function ($rango, $argbColor, $negrita) use ($sheet) {
     $sheet->getStyle($rango)->getFont()->setBold((bool)$negrita);
 };
 
-$colorVerdeCabecera = 'FF70AD47';
-$colorVerdeFilas = 'FFE2EFDA';
-$colorBlanco = 'FFFFFFFF';
+$colorVerdeCabecera  = 'FF70AD47';
+$colorVerdeFilas     = 'FFE2EFDA';
+$colorBlanco         = 'FFFFFFFF';
+// Celeste intenso para muestras editadas (con resultados ingresados)
+$colorCelesteEditado = 'FF9DC3E6'; // celeste medio-fuerte
+// Celeste más oscuro para Consumo de Agua / Consumo Humano
+$colorCelesteConsumo = 'FF5B9BD5'; // celeste oscuro
+
+// Determinar muestras con análisis EXTRA (servicios fuera del plan original del proyecto)
+$idsParaEdicion = array_map(function($m) { return intval($m['id_muestra']); }, $muestras);
+$muestrasEditadasSet    = [];
+$muestrasConsumoAguaSet = [];
+if (!empty($idsParaEdicion)) {
+    $phEdit = implode(',', array_fill(0, count($idsParaEdicion), '?'));
+
+    // Extra: solicitudes cuyo servicio NO está en el plan del proyecto
+    $sqlEditadas = "SELECT DISTINCT sa.Id_Muestra
+                    FROM laboratorio.Solicitud_Analisis sa
+                    WHERE sa.Id_Muestra IN ($phEdit)
+                      AND sa.Activo = 1
+                      AND sa.Id_Servicio NOT IN (
+                          SELECT ps.Id_Servicio
+                          FROM laboratorio.Proyecto_Detalle_Analisis pda
+                          INNER JOIN laboratorio.Producto_Servicio ps
+                              ON ps.Id_Producto = pda.Id_Producto_Venta AND ps.Activo = 1
+                          WHERE pda.Id_Proyecto = ? AND pda.Activo = 1
+                      )";
+    $paramsEdit = array_merge(array_values($idsParaEdicion), [$id_proyecto]);
+    $stmtEdit = sqlsrv_query($conn, $sqlEditadas, $paramsEdit);
+    if ($stmtEdit !== false) {
+        while ($eRow = sqlsrv_fetch_array($stmtEdit, SQLSRV_FETCH_ASSOC)) {
+            $muestrasEditadasSet[intval($eRow['Id_Muestra'])] = true;
+        }
+    }
+
+    $sqlCA = "SELECT Id_Muestra FROM laboratorio.Muestra_Lab
+              WHERE Id_Muestra IN ($phEdit)
+                AND Tipo_Servicio IN ('Consumo de Agua', 'Consumo Humano')
+                AND Activo = 1";
+    $stmtCA = sqlsrv_query($conn, $sqlCA, $idsParaEdicion);
+    if ($stmtCA !== false) {
+        while ($caRow = sqlsrv_fetch_array($stmtCA, SQLSRV_FETCH_ASSOC)) {
+            $muestrasConsumoAguaSet[intval($caRow['Id_Muestra'])] = true;
+        }
+    }
+}
 
 $titulo = 'RESULTADOS ANALISIS DE ' . strtoupper((string)($proyecto['Nombre_Proyecto'] ?? 'PROYECTO'));
 $subtitulo = strtoupper((string)($proyecto['Temporada'] ?? '')) . ' - ' . strtoupper((string)($proyecto['Valle'] ?? ''));
@@ -653,7 +716,13 @@ foreach ($muestras as $muestra) {
     $idMuestra = intval($muestra['id_muestra']);
     $numero = intval($muestra['numero']);
 
-    $sheet->setCellValue('B' . $fila, 'M' . $numero);
+    $esConsumoAgua = isset($muestrasConsumoAguaSet[$idMuestra]);
+    $esEditada     = isset($muestrasEditadasSet[$idMuestra]);
+
+    // Etiqueta de fila: M{n} o M{n} (CH) para consumo humano/agua
+    $etiquetaMuestra = 'M' . $numero . ($esConsumoAgua ? ' (CH)' : '');
+
+    $sheet->setCellValue('B' . $fila, $etiquetaMuestra);
     $sheet->setCellValue('C' . $fila, $fmtValor($muestra['eje_x']));
     $sheet->setCellValue('D' . $fila, $fmtValor($muestra['eje_y']));
     $sheet->setCellValue('E' . $fila, '');
@@ -686,8 +755,24 @@ foreach ($muestras as $muestra) {
     }
 
     $rangoFilaMuestra = 'B' . $fila . ':' . $colFinEstiloLetra . $fila;
-    $forzarColorRelleno($rangoFilaMuestra, $colorVerdeFilas);
-    $forzarFuente($rangoFilaMuestra, 'FF000000', false);
+
+    // Elegir color de fondo según estado de la muestra
+    if ($esConsumoAgua) {
+        $colorFilaBg = $colorCelesteConsumo;
+        $colorFilaFont = 'FFFFFFFF'; // texto blanco sobre celeste oscuro
+        $negritaFila = true;
+    } elseif ($esEditada) {
+        $colorFilaBg = $colorCelesteEditado;
+        $colorFilaFont = 'FF000000';
+        $negritaFila = false;
+    } else {
+        $colorFilaBg = $colorVerdeFilas;
+        $colorFilaFont = 'FF000000';
+        $negritaFila = false;
+    }
+
+    $forzarColorRelleno($rangoFilaMuestra, $colorFilaBg);
+    $forzarFuente($rangoFilaMuestra, $colorFilaFont, $negritaFila);
     $aplicarBordeBlanco($rangoFilaMuestra);
 
     $fila++;
@@ -699,10 +784,25 @@ $forzarFuente('B11:' . $colFinEstiloLetra . $ultimaFilaExport, 'FF000000', false
 $aplicarBordeBlanco('B11:' . $colFinEstiloLetra . $ultimaFilaExport);
 $forzarColorRelleno('A1:A' . max($fila - 1, 11), $colorBlanco);
 
-// Reaplicar excedencias en rojo/negrita despues de estilos globales
+// Reaplicar colores especiales por muestra y excedencias
 $filaTmp = $inicioFilaData;
 foreach ($muestras as $muestraTmp) {
-    $idMuestraTmp = intval($muestraTmp['id_muestra']);
+    $idMuestraTmp  = intval($muestraTmp['id_muestra']);
+    $esCAReapl     = isset($muestrasConsumoAguaSet[$idMuestraTmp]);
+    $esEditReapl   = isset($muestrasEditadasSet[$idMuestraTmp]);
+
+    // Reaplicar color de fila especial (se pierde con el bloque global anterior)
+    if ($esCAReapl || $esEditReapl) {
+        $bgReapl   = $esCAReapl ? $colorCelesteConsumo : $colorCelesteEditado;
+        $fntReapl  = $esCAReapl ? 'FFFFFFFF' : 'FF000000';
+        $boldReapl = $esCAReapl;
+        $rangoReapl = 'B' . $filaTmp . ':' . $colFinEstiloLetra . $filaTmp;
+        $forzarColorRelleno($rangoReapl, $bgReapl);
+        $forzarFuente($rangoReapl, $fntReapl, $boldReapl);
+        $aplicarBordeBlanco($rangoReapl);
+    }
+
+    // Reaplicar excedencias en rojo/negrita
     $colOffsetTmp = 0;
     foreach ($paramIds as $idParametroTmp) {
         $colTmp = Coordinate::stringFromColumnIndex($inicioColParam + $colOffsetTmp);

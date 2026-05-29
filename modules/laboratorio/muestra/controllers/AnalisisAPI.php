@@ -192,10 +192,11 @@ try {
                 ];
             }
 
-            $sqlReactivos = "SELECT Id_Reactivo, Nombre, Unidad_Medida, ISNULL(Cantidad_Stock, 0) AS Cantidad_Stock
-                             FROM laboratorio.Reactivo_Lab
-                             WHERE Activo = 1
-                             ORDER BY Nombre";
+            $sqlReactivos = "SELECT r.Id_Reactivo, r.Nombre, ISNULL(um.Abreviatura, '') AS Unidad_Medida, ISNULL(r.Cantidad_Stock, 0) AS Cantidad_Stock
+                             FROM laboratorio.Reactivo_Lab r
+                             LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                             WHERE r.Activo = 1
+                             ORDER BY r.Nombre";
             $stmtReactivos = sqlsrv_query($conn, $sqlReactivos);
             if ($stmtReactivos === false) {
                 throw new Exception('Error al obtener reactivos: ' . print_r(sqlsrv_errors(), true));
@@ -660,7 +661,27 @@ try {
         try {
             $datos = json_decode(file_get_contents('php://input'), true);
             $usuario_id = $_SESSION['usuario_id'] ?? 1;
-            
+
+            // Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
+            $es_admin_gr = false;
+            $stmtAdminGR = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", array($usuario_id));
+            if ($stmtAdminGR) {
+                $rowAdminGR = sqlsrv_fetch_array($stmtAdminGR, SQLSRV_FETCH_ASSOC);
+                if ($rowAdminGR && in_array(strtolower(trim((string)$rowAdminGR['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+                    $es_admin_gr = true;
+                }
+            }
+            $es_analista_jefe_gr = false;
+            $stmtAJGR = sqlsrv_query($conn, "SELECT TOP 1 1 AS existe FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($usuario_id));
+            if ($stmtAJGR && sqlsrv_fetch_array($stmtAJGR, SQLSRV_FETCH_ASSOC)) {
+                $es_analista_jefe_gr = true;
+            }
+            if (!$es_admin_gr && !$es_analista_jefe_gr) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Solo el Analista Jefe puede finalizar resultados. Use "Guardar Avance" para guardar un borrador.']);
+                exit;
+            }
+
             // Verificar que Id_Resultado existe (Valor_Hallado puede ser null)
             if (!isset($datos['Id_Resultado']) || !array_key_exists('Valor_Hallado', $datos)) {
                 http_response_code(400);
@@ -696,17 +717,6 @@ try {
             
             $id_solicitud = $row_get['Id_Solicitud_Analisis'];
 
-            $sql_analista = "
-                UPDATE laboratorio.Solicitud_Analisis
-                SET Id_Analista = ?,
-                    Fecha_Modificacion = GETDATE()
-                WHERE Id_Solicitud_Analisis = ? AND Activo = 1
-            ";
-            $stmt_analista = sqlsrv_query($conn, $sql_analista, array($usuario_id, $id_solicitud));
-            if ($stmt_analista === false) {
-                throw new Exception('Error al actualizar Id_Analista en solicitud: ' . print_r(sqlsrv_errors(), true));
-            }
-            
             // UPDATE del Resultado_Analisis
             $sql_update = "
                 UPDATE laboratorio.Resultado_Analisis 
@@ -822,6 +832,10 @@ try {
                     $estado_muestra_actual = strtolower(trim((string)($row_estado_actual_muestra['Estado'] ?? '')));
 
                     $es_cierre_final_muestra = (strtolower($estado_muestra_final) === 'finalizado' && $estado_muestra_actual !== 'finalizado');
+                    $es_por_firmar = (strtolower($estado_muestra_final) === 'por firmar' && $estado_muestra_actual !== 'por firmar');
+
+                    // El usuario que finaliza (Analista Jefe) es el especialista responsable
+                    $id_analista_jefe_firma = $usuario_id;
 
                     if ($es_cierre_final_muestra) {
                         $sql_update_muestra = "
@@ -833,7 +847,16 @@ try {
                                 Fecha_Modificacion = GETDATE()
                             WHERE Id_Muestra = ? AND Activo = 1
                         ";
-                        $params_update_muestra = array($estado_muestra_final, $usuario_id, $usuario_id, $id_muestra);
+                        $params_update_muestra = array($estado_muestra_final, $usuario_id, $id_analista_jefe_firma, $id_muestra);
+                    } elseif ($es_por_firmar) {
+                        $sql_update_muestra = "
+                            UPDATE laboratorio.Muestra_Lab 
+                            SET Estado = ?,
+                                Id_Especialista = ?,
+                                Fecha_Modificacion = GETDATE()
+                            WHERE Id_Muestra = ? AND Activo = 1
+                        ";
+                        $params_update_muestra = array($estado_muestra_final, $id_analista_jefe_firma, $id_muestra);
                     } else {
                         $sql_update_muestra = "
                             UPDATE laboratorio.Muestra_Lab 
@@ -1027,155 +1050,6 @@ try {
                 file_put_contents($log_file, "✓ Usuario asignado en residuos automáticos del trigger: " . intval($afectadosUsuarioRes) . "\n", FILE_APPEND);
             }
             
-            // Verificar si TODAS las solicitudes de la muestra están finalizadas
-            $sql_check_muestra = "
-                SELECT sa.Id_Muestra
-                FROM laboratorio.Solicitud_Analisis sa
-                WHERE sa.Id_Solicitud_Analisis = ?
-                AND sa.Activo = 1
-            ";
-            
-            $stmt_check_muestra = sqlsrv_query($conn, $sql_check_muestra, array($id_solicitud));
-            $row_muestra = sqlsrv_fetch_array($stmt_check_muestra, SQLSRV_FETCH_ASSOC);
-            
-            if ($row_muestra) {
-                $id_muestra = $row_muestra['Id_Muestra'];
-                file_put_contents($log_file, "Id_Muestra: $id_muestra\n", FILE_APPEND);
-                
-                // Verificar si todas las Solicitud_Analisis de la muestra están finalizadas
-                $sql_all_finished = "
-                    SELECT COUNT(*) as total_solicitudes,
-                           SUM(CASE WHEN Estado = 'Finalizado' THEN 1 ELSE 0 END) AS finalizadas
-                    FROM laboratorio.Solicitud_Analisis
-                    WHERE Id_Muestra = ? AND Activo = 1
-                ";
-                
-                $stmt_all_finished = sqlsrv_query($conn, $sql_all_finished, array($id_muestra));
-                $row_all = sqlsrv_fetch_array($stmt_all_finished, SQLSRV_FETCH_ASSOC);
-                
-                file_put_contents($log_file, "Total solicitudes: " . $row_all['total_solicitudes'] . ", Finalizadas: " . $row_all['finalizadas'] . "\n", FILE_APPEND);
-                
-                if ($row_all && intval($row_all['total_solicitudes']) > 0 && 
-                    intval($row_all['total_solicitudes']) === intval($row_all['finalizadas'])) {
-
-                    file_put_contents($log_file, "✓ Todas las solicitudes finalizadas, actualizando muestra...\n", FILE_APPEND);
-
-                    // Para muestras duplicadas por defecto o de proyecto -> Finalizado.
-                    // Solo las muestras normales sin proyecto -> Por Firmar.
-                    $sql_get_proyecto_estado = "
-                        SELECT Id_Proyecto
-                        FROM laboratorio.Muestra_Lab
-                        WHERE Id_Muestra = ? AND Activo = 1
-                    ";
-                    $stmt_get_proyecto_estado = sqlsrv_query($conn, $sql_get_proyecto_estado, array($id_muestra));
-                    $row_proyecto_estado = sqlsrv_fetch_array($stmt_get_proyecto_estado, SQLSRV_FETCH_ASSOC);
-                    $id_proyecto_muestra = intval($row_proyecto_estado['Id_Proyecto'] ?? 0);
-
-                                        $sql_es_duplicada = "
-                                                SELECT TOP 1 1 AS EsDuplicada
-                                                FROM laboratorio.Muestra_Bitacora
-                                                WHERE Id_Muestra = ?
-                                                    AND Muestra_Original IS NOT NULL
-                                        ";
-                                        $stmt_es_duplicada = sqlsrv_query($conn, $sql_es_duplicada, array($id_muestra));
-                                        $row_es_duplicada = $stmt_es_duplicada ? sqlsrv_fetch_array($stmt_es_duplicada, SQLSRV_FETCH_ASSOC) : null;
-                                        $es_muestra_duplicada = $row_es_duplicada ? true : false;
-
-                                        $estado_muestra_final = ($id_proyecto_muestra > 0 || $es_muestra_duplicada) ? 'Finalizado' : 'Por Firmar';
-
-                    $sql_estado_actual_muestra = "
-                        SELECT Estado
-                        FROM laboratorio.Muestra_Lab
-                        WHERE Id_Muestra = ? AND Activo = 1
-                    ";
-                    $stmt_estado_actual_muestra = sqlsrv_query($conn, $sql_estado_actual_muestra, array($id_muestra));
-                    if ($stmt_estado_actual_muestra === false) {
-                        throw new Exception('Error al consultar estado actual de muestra: ' . print_r(sqlsrv_errors(), true));
-                    }
-                    $row_estado_actual_muestra = sqlsrv_fetch_array($stmt_estado_actual_muestra, SQLSRV_FETCH_ASSOC);
-                    $estado_muestra_actual = strtolower(trim((string)($row_estado_actual_muestra['Estado'] ?? '')));
-
-                    $es_cierre_final_muestra = (strtolower($estado_muestra_final) === 'finalizado' && $estado_muestra_actual !== 'finalizado');
-
-                    if ($es_cierre_final_muestra) {
-                        $sql_update_muestra = "
-                            UPDATE laboratorio.Muestra_Lab 
-                            SET Estado = ?,
-                                Id_Jefe_Lab = ?,
-                                Id_Especialista = ?,
-                                Fecha_Validacion = GETDATE(),
-                                Fecha_Modificacion = GETDATE()
-                            WHERE Id_Muestra = ? AND Activo = 1
-                        ";
-                        $params_update_muestra = array($estado_muestra_final, $usuario_id, $usuario_id, $id_muestra);
-                    } else {
-                        $sql_update_muestra = "
-                            UPDATE laboratorio.Muestra_Lab 
-                            SET Estado = ?, 
-                                Fecha_Modificacion = GETDATE()
-                            WHERE Id_Muestra = ? AND Activo = 1
-                        ";
-                        $params_update_muestra = array($estado_muestra_final, $id_muestra);
-                    }
-
-                    $stmt_update_muestra = sqlsrv_query($conn, $sql_update_muestra, $params_update_muestra);
-                    if ($stmt_update_muestra === false) {
-                        throw new Exception('Error al actualizar muestra: ' . print_r(sqlsrv_errors(), true));
-                    }
-
-                    file_put_contents($log_file, "✓ Muestra actualizada a " . $estado_muestra_final . "\n", FILE_APPEND);
-                    
-                    // Verificar si TODAS las muestras del proyecto están finalizadas
-                    $sql_get_proyecto = "
-                        SELECT Id_Proyecto FROM laboratorio.Muestra_Lab 
-                        WHERE Id_Muestra = ? AND Activo = 1
-                    ";
-                    
-                    $stmt_get_proyecto = sqlsrv_query($conn, $sql_get_proyecto, array($id_muestra));
-                    $row_proyecto = sqlsrv_fetch_array($stmt_get_proyecto, SQLSRV_FETCH_ASSOC);
-                    
-                    if ($row_proyecto) {
-                        $id_proyecto = intval($row_proyecto['Id_Proyecto'] ?? 0);
-                        if ($id_proyecto <= 0) {
-                            $id_proyecto = null;
-                        }
-
-                        if ($id_proyecto !== null) {
-                        
-                        // Contar muestras finalizadas vs total de muestras del proyecto
-                        $sql_check_proyecto = "
-                            SELECT COUNT(*) as total_muestras,
-                                   SUM(CASE WHEN Estado = 'Finalizado' THEN 1 ELSE 0 END) AS finalizadas
-                            FROM laboratorio.Muestra_Lab
-                            WHERE Id_Proyecto = ? AND Activo = 1
-                        ";
-                        
-                            $stmt_check_proyecto = sqlsrv_query($conn, $sql_check_proyecto, array($id_proyecto));
-                            $row_proyecto_check = sqlsrv_fetch_array($stmt_check_proyecto, SQLSRV_FETCH_ASSOC);
-                        
-                            file_put_contents($log_file, "Verificando proyecto: Total muestras: " . $row_proyecto_check['total_muestras'] . ", Finalizadas: " . $row_proyecto_check['finalizadas'] . "\n", FILE_APPEND);
-                        
-                        // Si TODAS las muestras están finalizadas, cambiar el proyecto a Finalizado
-                            if ($row_proyecto_check && intval($row_proyecto_check['total_muestras']) > 0 && 
-                                intval($row_proyecto_check['total_muestras']) === intval($row_proyecto_check['finalizadas'])) {
-                            
-                            $sql_update_proyecto = "
-                                UPDATE laboratorio.Proyecto_Monitoreo 
-                                SET Estado = 'Finalizado', 
-                                    Fecha_Modificacion = GETDATE()
-                                WHERE Id_Proyecto = ? AND Activo = 1
-                            ";
-                            
-                                $stmt_update_proyecto = sqlsrv_query($conn, $sql_update_proyecto, array($id_proyecto));
-                                file_put_contents($log_file, "✓ Proyecto actualizado a Finalizado\n", FILE_APPEND);
-                            }
-                        }
-                    }
-                } else {
-                    file_put_contents($log_file, "La muestra aún tiene solicitudes pendientes\n", FILE_APPEND);
-                }
-            }
-            
             file_put_contents($log_file, "✓ AVANCE GUARDADO EXITOSAMENTE\n", FILE_APPEND);
             
             echo json_encode([
@@ -1273,7 +1147,358 @@ try {
         ]);
         exit;
     }
-    
+
+    // ==================== MARCAR CONSUMO DE AGUA ====================
+
+    if ($action === 'marcar_consumo_agua') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($datos)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'JSON inválido']);
+                exit;
+            }
+
+            $id_muestra   = intval($datos['id_muestra'] ?? 0);
+            $consumo_agua = (bool)($datos['consumo_agua'] ?? false);
+            $usuario_id   = intval($_SESSION['usuario_id'] ?? 1);
+
+            if ($id_muestra <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Muestra inválida']);
+                exit;
+            }
+
+            // Acepta tipo explícito ('Consumo Humano', 'Consumo de Agua', null)
+            // Si se envía 'tipo', se usa directamente; si no, se infiere de consumo_agua (legado)
+            $tiposPermitidos = ['Consumo Humano', 'Consumo de Agua'];
+            if (array_key_exists('tipo', $datos)) {
+                $nuevoTipo = ($datos['tipo'] !== null && in_array($datos['tipo'], $tiposPermitidos, true))
+                    ? $datos['tipo']
+                    : null;
+            } else {
+                $nuevoTipo = $consumo_agua ? 'Consumo de Agua' : null;
+            }
+
+            $sql = "UPDATE laboratorio.Muestra_Lab
+                    SET Tipo_Servicio = ?,
+                        Fecha_Modificacion = GETDATE()
+                    WHERE Id_Muestra = ? AND Activo = 1";
+            $stmt = sqlsrv_query($conn, $sql, [$nuevoTipo, $id_muestra]);
+            if ($stmt === false) {
+                throw new Exception('Error al actualizar: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            // Sincronizar Uso_Agua en Detalle_Agua para reflejar Consumo Humano en BD.
+            $nuevoUsoAgua = ($nuevoTipo === 'Consumo Humano' || $nuevoTipo === 'Consumo de Agua')
+                ? 'Consumo Humano'
+                : null;
+
+            $sqlChkDet = "SELECT TOP 1 Id_Muestra
+                          FROM laboratorio.Detalle_Agua
+                          WHERE Id_Muestra = ? AND Activo = 1";
+            $stmtChkDet = sqlsrv_query($conn, $sqlChkDet, [$id_muestra]);
+            if ($stmtChkDet === false) {
+                throw new Exception('Error al validar Detalle_Agua: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            $rowDet = sqlsrv_fetch_array($stmtChkDet, SQLSRV_FETCH_ASSOC);
+            if ($rowDet) {
+                $sqlUpdDet = "UPDATE laboratorio.Detalle_Agua
+                              SET Uso_Agua = ?,
+                                  Fecha_Modificacion = GETDATE()
+                              WHERE Id_Muestra = ? AND Activo = 1";
+                $stmtUpdDet = sqlsrv_query($conn, $sqlUpdDet, [$nuevoUsoAgua, $id_muestra]);
+                if ($stmtUpdDet === false) {
+                    throw new Exception('Error al actualizar Uso_Agua: ' . print_r(sqlsrv_errors(), true));
+                }
+            } elseif ($nuevoUsoAgua !== null) {
+                $sqlInsDet = "INSERT INTO laboratorio.Detalle_Agua
+                              (Id_Muestra, Uso_Agua, Fuente_Agua, Cantidad_Muestra, Nivel_Agua, Usuario_Creacion, Activo, Fecha_Creacion)
+                              VALUES (?, ?, NULL, '1 Litro', NULL, ?, 1, GETDATE())";
+                $stmtInsDet = sqlsrv_query($conn, $sqlInsDet, [$id_muestra, $nuevoUsoAgua, $usuario_id]);
+                if ($stmtInsDet === false) {
+                    throw new Exception('Error al insertar Uso_Agua: ' . print_r(sqlsrv_errors(), true));
+                }
+            }
+
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== LISTAR SERVICIOS DISPONIBLES PARA ANÁLISIS EXTRA ====================
+
+    if ($action === 'listar_servicios_extra') {
+        try {
+            $id_proyecto  = intval($_GET['id_proyecto'] ?? 0);
+            $id_muestra   = intval($_GET['id_muestra'] ?? 0);
+            $incluir_todos = !empty($_GET['todos']);  // si ?todos=1 → muestra todos sin filtrar asignados
+
+            if ($id_proyecto <= 0 || $id_muestra <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Parámetros inválidos']);
+                exit;
+            }
+
+            if ($incluir_todos) {
+                // Modo Consumo Humano: todos los servicios activos, marcando cuáles ya están asignados
+                $sql = "SELECT st.Id_Servicio, st.Nombre,
+                               CASE WHEN EXISTS (
+                                   SELECT 1 FROM laboratorio.Solicitud_Analisis sa
+                                   WHERE sa.Id_Muestra = ? AND sa.Id_Servicio = st.Id_Servicio AND sa.Activo = 1
+                               ) THEN 1 ELSE 0 END AS ya_asignado
+                        FROM laboratorio.Servicio_Tecnico st
+                        WHERE st.Activo = 1
+                        ORDER BY ya_asignado ASC, st.Nombre ASC";
+                $stmt = sqlsrv_query($conn, $sql, [$id_muestra]);
+            } else {
+                // Modo normal: solo servicios aún no asignados a la muestra
+                $sql = "SELECT st.Id_Servicio, st.Nombre, 0 AS ya_asignado
+                        FROM laboratorio.Servicio_Tecnico st
+                        WHERE st.Activo = 1
+                          AND st.Id_Servicio NOT IN (
+                              SELECT sa.Id_Servicio
+                              FROM laboratorio.Solicitud_Analisis sa
+                              WHERE sa.Id_Muestra = ? AND sa.Activo = 1
+                          )
+                        ORDER BY st.Nombre";
+                $stmt = sqlsrv_query($conn, $sql, [$id_muestra]);
+            }
+            if ($stmt === false) {
+                throw new Exception('Error al obtener servicios: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            $servicios = [];
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $idServ = intval($row['Id_Servicio'] ?? 0);
+
+                $sqlRec = "SELECT r.Nombre, rs.Cantidad_Necesaria, ISNULL(um.Abreviatura, '') AS Unidad_Medida
+                           FROM laboratorio.Receta_Servicio rs
+                           INNER JOIN laboratorio.Reactivo_Lab r ON r.Id_Reactivo = rs.Id_Reactivo AND r.Activo = 1
+                           LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                           WHERE rs.Id_Servicio = ? AND rs.Activo = 1";
+                $stmtRec = sqlsrv_query($conn, $sqlRec, [$idServ]);
+                $reactivos = [];
+                if ($stmtRec !== false) {
+                    while ($rRow = sqlsrv_fetch_array($stmtRec, SQLSRV_FETCH_ASSOC)) {
+                        $reactivos[] = [
+                            'nombre'   => trim((string)($rRow['Nombre'] ?? '')),
+                            'cantidad' => floatval($rRow['Cantidad_Necesaria'] ?? 0),
+                            'unidad'   => trim((string)($rRow['Unidad_Medida'] ?? 'UND'))
+                        ];
+                    }
+                }
+
+                $servicios[] = [
+                    'id'          => $idServ,
+                    'nombre'      => trim((string)($row['Nombre'] ?? ('Servicio #' . $idServ))),
+                    'ya_asignado' => (bool)($row['ya_asignado'] ?? false),
+                    'reactivos'   => $reactivos
+                ];
+            }
+
+            echo json_encode(['success' => true, 'servicios' => $servicios]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== AGREGAR ANÁLISIS EXTRA ====================
+
+    if ($action === 'agregar_analisis_extra') {
+        $txStarted = false;
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            if (!is_array($datos)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'JSON inválido']);
+                exit;
+            }
+
+            $id_muestra  = intval($datos['id_muestra']  ?? 0);
+            $id_servicio = intval($datos['id_servicio'] ?? 0);
+            $usuario_id  = intval($_SESSION['usuario_id'] ?? 1);
+
+            if ($id_muestra <= 0 || $id_servicio <= 0) {
+                throw new Exception('Parámetros inválidos: id_muestra y id_servicio son requeridos');
+            }
+
+            // Verificar que la muestra existe
+            $sqlChkMuestra = "SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ? AND Activo = 1";
+            $stmtChk = sqlsrv_query($conn, $sqlChkMuestra, [$id_muestra]);
+            if ($stmtChk === false || !sqlsrv_fetch_array($stmtChk, SQLSRV_FETCH_ASSOC)) {
+                throw new Exception('Muestra no encontrada');
+            }
+
+            if (!sqlsrv_begin_transaction($conn)) {
+                throw new Exception('No se pudo iniciar transacción');
+            }
+            $txStarted = true;
+
+            // 1. Obtener o crear Solicitud_Analisis activa para este servicio y muestra
+            $solicitudExistente = false;
+            $id_solicitud = 0;
+
+            $sqlChkSol = "SELECT TOP 1 Id_Solicitud_Analisis
+                          FROM laboratorio.Solicitud_Analisis
+                          WHERE Id_Muestra = ? AND Id_Servicio = ? AND Activo = 1
+                          ORDER BY Id_Solicitud_Analisis DESC";
+            $stmtChkSol = sqlsrv_query($conn, $sqlChkSol, [$id_muestra, $id_servicio]);
+            if ($stmtChkSol === false) {
+                throw new Exception('Error al validar solicitud existente: ' . print_r(sqlsrv_errors(), true));
+            }
+            $rowChkSol = sqlsrv_fetch_array($stmtChkSol, SQLSRV_FETCH_ASSOC);
+            if ($rowChkSol && intval($rowChkSol['Id_Solicitud_Analisis'] ?? 0) > 0) {
+                $solicitudExistente = true;
+                $id_solicitud = intval($rowChkSol['Id_Solicitud_Analisis']);
+            } else {
+                // Crear solicitud y recuperar ID de forma robusta con OUTPUT INSERTED
+                $sqlSol = "INSERT INTO laboratorio.Solicitud_Analisis
+                           (Id_Muestra, Id_Servicio, Estado, Fecha_Asignacion, Activo, Fecha_Creacion, Usuario_Creacion)
+                           OUTPUT INSERTED.Id_Solicitud_Analisis AS id
+                           VALUES (?, ?, 'En Análisis', GETDATE(), 1, GETDATE(), ?)";
+                $stmtSol = sqlsrv_query($conn, $sqlSol, [$id_muestra, $id_servicio, $usuario_id]);
+                if ($stmtSol === false) {
+                    throw new Exception('Error al crear solicitud: ' . print_r(sqlsrv_errors(), true));
+                }
+                $rowSol = sqlsrv_fetch_array($stmtSol, SQLSRV_FETCH_ASSOC);
+                $id_solicitud = intval($rowSol['id'] ?? 0);
+                if ($id_solicitud <= 0) {
+                    throw new Exception('No se pudo obtener ID de la solicitud creada');
+                }
+            }
+
+            // 2. Crear Resultado_Analisis en blanco para cada parámetro faltante del servicio
+            $sqlParams = "SELECT Id_Parametro FROM laboratorio.Parametro_Analisis
+                          WHERE Id_Servicio = ? AND Activo = 1";
+            $stmtParams = sqlsrv_query($conn, $sqlParams, [$id_servicio]);
+            if ($stmtParams === false) {
+                throw new Exception('Error al obtener parámetros del servicio: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            $resultadosCreados = 0;
+            while ($pRow = sqlsrv_fetch_array($stmtParams, SQLSRV_FETCH_ASSOC)) {
+                $idParam = intval($pRow['Id_Parametro'] ?? 0);
+                if ($idParam <= 0) continue;
+
+                $sqlChkRes = "SELECT TOP 1 Id_Resultado
+                              FROM laboratorio.Resultado_Analisis
+                              WHERE Id_Solicitud_Analisis = ? AND Id_Parametro = ? AND Activo = 1";
+                $stmtChkRes = sqlsrv_query($conn, $sqlChkRes, [$id_solicitud, $idParam]);
+                if ($stmtChkRes === false) {
+                    throw new Exception('Error al verificar resultado existente: ' . print_r(sqlsrv_errors(), true));
+                }
+                if (sqlsrv_fetch_array($stmtChkRes, SQLSRV_FETCH_ASSOC)) {
+                    continue;
+                }
+
+                $sqlRes = "INSERT INTO laboratorio.Resultado_Analisis
+                           (Id_Solicitud_Analisis, Id_Parametro, Activo, Fecha_Creacion, Usuario_Creacion)
+                           VALUES (?, ?, 1, GETDATE(), ?)";
+                $stmtRes = sqlsrv_query($conn, $sqlRes, [$id_solicitud, $idParam, $usuario_id]);
+                if ($stmtRes === false) {
+                    throw new Exception('Error al crear resultado en blanco: ' . print_r(sqlsrv_errors(), true));
+                }
+                $resultadosCreados++;
+            }
+
+            $movimientosCreados = 0;
+            // 3. Consumir reactivos de la receta del servicio DE INMEDIATO (solo si se creó nueva solicitud)
+            if (!$solicitudExistente) {
+                $sqlReceta = "SELECT rs.Id_Reactivo, rs.Cantidad_Necesaria, r.Nombre,
+                                     ISNULL(um.Abreviatura, '') AS Unidad_Medida,
+                                     ISNULL(r.Cantidad_Stock, 0) AS Stock_Actual
+                              FROM laboratorio.Receta_Servicio rs
+                              INNER JOIN laboratorio.Reactivo_Lab r ON r.Id_Reactivo = rs.Id_Reactivo AND r.Activo = 1
+                              LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                              WHERE rs.Id_Servicio = ? AND rs.Activo = 1";
+                $stmtReceta = sqlsrv_query($conn, $sqlReceta, [$id_servicio]);
+                if ($stmtReceta === false) {
+                    throw new Exception('Error al obtener receta: ' . print_r(sqlsrv_errors(), true));
+                }
+
+                while ($rRow = sqlsrv_fetch_array($stmtReceta, SQLSRV_FETCH_ASSOC)) {
+                    $idReactivo  = intval($rRow['Id_Reactivo'] ?? 0);
+                    $cantidad    = round(floatval($rRow['Cantidad_Necesaria'] ?? 0), 4);
+                    $stockActual = round(floatval($rRow['Stock_Actual'] ?? 0), 4);
+                    $nombreRea   = trim((string)($rRow['Nombre'] ?? ''));
+
+                    if ($idReactivo <= 0 || $cantidad <= 0) continue;
+                    if ($stockActual < $cantidad) {
+                        throw new Exception('Stock insuficiente en reactivo "' . $nombreRea . '". Disponible: ' . $stockActual . ', requerido: ' . $cantidad);
+                    }
+
+                    $saldoNuevo = round($stockActual - $cantidad, 4);
+                    $concepto   = 'Análisis Extra - Muestra #' . $id_muestra . ' - Servicio #' . $id_servicio;
+
+                    $sqlMov = "INSERT INTO laboratorio.Movimiento_Kardex
+                               (Id_Reactivo, Fecha_Registro, Tipo_Movimiento, Cantidad, Concepto, Saldo_Resultante, Activo, Fecha_Creacion, Usuario_Creacion)
+                               VALUES (?, GETDATE(), 'S', ?, ?, ?, 1, GETDATE(), ?)";
+                    $stmtMov = sqlsrv_query($conn, $sqlMov, [$idReactivo, $cantidad, $concepto, $saldoNuevo, $usuario_id]);
+                    if ($stmtMov === false) {
+                        throw new Exception('Error en Movimiento_Kardex: ' . print_r(sqlsrv_errors(), true));
+                    }
+
+                    $sqlUpdStock = "UPDATE laboratorio.Reactivo_Lab
+                                    SET Cantidad_Stock = Cantidad_Stock - ?,
+                                        Fecha_Modificacion = GETDATE()
+                                    WHERE Id_Reactivo = ? AND Activo = 1";
+                    $stmtUpdStock = sqlsrv_query($conn, $sqlUpdStock, [$cantidad, $idReactivo]);
+                    if ($stmtUpdStock === false) {
+                        throw new Exception('Error al actualizar stock: ' . print_r(sqlsrv_errors(), true));
+                    }
+
+                    $movimientosCreados++;
+                }
+            }
+
+            // 5. Marcar muestra como modificada
+            $sqlUpdM = "UPDATE laboratorio.Muestra_Lab
+                        SET Fecha_Modificacion = GETDATE()
+                        WHERE Id_Muestra = ? AND Activo = 1";
+            sqlsrv_query($conn, $sqlUpdM, [$id_muestra]);
+
+            sqlsrv_commit($conn);
+
+            if ($solicitudExistente) {
+                $msg = 'La solicitud del servicio ya existía para esta muestra. ';
+                if ($resultadosCreados > 0) {
+                    $msg .= 'Se crearon ' . $resultadosCreados . ' resultado(s) en blanco faltante(s).';
+                } else {
+                    $msg .= 'No fue necesario crear resultados adicionales.';
+                }
+            } else {
+                $msg = 'Análisis extra creado: ' . $resultadosCreados . ' resultado(s) en blanco';
+                if ($movimientosCreados > 0) {
+                    $msg .= ', ' . $movimientosCreados . ' reactivo(s) consumido(s) del inventario';
+                }
+                $msg .= '. El residuo se registrará al finalizar el análisis.';
+            }
+
+            echo json_encode([
+                'success'          => true,
+                'message'          => $msg,
+                'id_solicitud'     => $id_solicitud,
+                'ya_existia'       => $solicitudExistente,
+                'resultados_creados' => $resultadosCreados,
+                'movimientos_creados' => $movimientosCreados
+            ]);
+        } catch (Exception $e) {
+            if ($txStarted) {
+                try { sqlsrv_rollback($conn); } catch (Exception $re) {}
+            }
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => "Acción no encontrada: {$action}"]);
     

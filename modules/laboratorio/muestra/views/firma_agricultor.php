@@ -18,6 +18,35 @@ if (!$conn) {
     exit;
 }
 
+// Verificar si el usuario actual tiene firma registrada
+$usuario_id_actual = intval($_SESSION['usuario_id'] ?? 0);
+$stmtFirmaCheck = sqlsrv_query($conn, "SELECT TOP 1 Img_Firma FROM laboratorio.Usuario_Lab_Firma WHERE Id_Usuario = ? AND Activo = 1", [$usuario_id_actual]);
+$firmaCheckRow   = $stmtFirmaCheck ? sqlsrv_fetch_array($stmtFirmaCheck, SQLSRV_FETCH_ASSOC) : null;
+$tienesFirma     = ($firmaCheckRow !== null && !empty($firmaCheckRow['Img_Firma']));
+
+// Solo el Encargado de Laboratorio (Id_Rol=1) o admin puede ejecutar la firma
+$es_encargado_lab = false;
+$stmtEncLab = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 1", [$usuario_id_actual]);
+if ($stmtEncLab && sqlsrv_fetch_array($stmtEncLab, SQLSRV_FETCH_ASSOC)) {
+    $es_encargado_lab = true;
+}
+if (!$es_encargado_lab) {
+    $stmtAdmLab = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", [$usuario_id_actual]);
+    if ($stmtAdmLab) {
+        $rowAdmLab = sqlsrv_fetch_array($stmtAdmLab, SQLSRV_FETCH_ASSOC);
+        if ($rowAdmLab && in_array(strtolower(trim((string)$rowAdmLab['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+            $es_encargado_lab = true;
+        }
+    }
+}
+$puede_firmar_como_encargado = $es_encargado_lab && $tienesFirma;
+
+$conn = Conexion::conectar();
+if (!$conn) {
+    echo '<div class="alert alert-danger">ERROR: No se pudo conectar a la BD</div>';
+    exit;
+}
+
 if ($id_cliente <= 0 && $id_muestra > 0) {
     $sqlClienteByMuestra = "SELECT TOP 1 Id_Cliente
                            FROM laboratorio.Muestra_Lab
@@ -147,6 +176,30 @@ while ($row = sqlsrv_fetch_array($stmt_resultados, SQLSRV_FETCH_ASSOC)) {
       <div>Se muestran todos los resultados del agricultor en estado Por Firmar. No es posible modificar casilleros en esta pantalla.</div>
     </div>
 
+    <?php if (!$tienesFirma): ?>
+    <div class="alert alert-danger d-flex align-items-center gap-3" role="alert">
+      <i class="ti ti-signature-off" style="font-size:1.6rem;"></i>
+      <div>
+        <strong>No tienes una firma digital registrada.</strong><br>
+        Para poder firmar muestras debes subir tu firma en el
+        <a href="?module=laboratorio" class="alert-link">Módulo Principal → Mi Firma Digital</a>.
+      </div>
+    </div>
+    <?php elseif (!$es_encargado_lab): ?>
+    <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+      <i class="ti ti-lock" style="font-size:1.4rem;"></i>
+      <div>
+        <strong>Solo el Encargado de Laboratorio puede firmar muestras.</strong><br>
+        Estás en modo de solo lectura. La firma de autorización la realiza el Encargado.
+      </div>
+    </div>
+    <?php else: ?>
+    <div class="alert alert-success d-flex align-items-center gap-2" role="alert">
+      <i class="ti ti-circle-check"></i>
+      <div>Tu firma digital está registrada y será incluida automáticamente en el reporte Excel al firmar.</div>
+    </div>
+    <?php endif; ?>
+
     <?php
       $categoria_descripciones = [
           'Parámetros Físicos' => 'Resultados de variables fisicas en muestras pendientes de firma.',
@@ -221,12 +274,21 @@ while ($row = sqlsrv_fetch_array($stmt_resultados, SQLSRV_FETCH_ASSOC)) {
         </button>
       </div>
       <div class="col-auto ms-auto" style="display: flex; gap: 10px;">
+        <?php if ($puede_firmar_como_encargado): ?>
         <button type="button" class="btn btn-outline-success" onclick="firmar(false)">
           <i class="ti ti-signature me-2"></i> FIRMAR ESTA MUESTRA
         </button>
         <button type="button" class="btn btn-success" onclick="firmar(true)">
           <i class="ti ti-signature me-2"></i> FIRMAR TODAS DEL AGRICULTOR
         </button>
+        <?php elseif ($es_encargado_lab && !$tienesFirma): ?>
+        <button type="button" class="btn btn-outline-success" disabled title="Registra tu firma digital primero">
+          <i class="ti ti-signature me-2"></i> FIRMAR ESTA MUESTRA
+        </button>
+        <button type="button" class="btn btn-success" disabled title="Registra tu firma digital primero">
+          <i class="ti ti-signature me-2"></i> FIRMAR TODAS DEL AGRICULTOR
+        </button>
+        <?php endif; ?>
       </div>
     </div>
   </div>

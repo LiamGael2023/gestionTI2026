@@ -43,9 +43,10 @@ class MuestraModel {
         return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
     }
 
-    public function obtenerPorEstado($estado, $offset = 0, $limit = 10, $tipoServicio = '') {
+    public function obtenerPorEstado($estado, $offset = 0, $limit = 10, $tipoServicio = '', $search = '') {
         $tipoServicio = strtolower(trim((string)$tipoServicio));
         $filtrarTipo = ($tipoServicio === 'interno' || $tipoServicio === 'externo');
+        $search = trim((string)$search);
 
         $sql = "SELECT m.*, 
                        CONCAT(c.Nombres, ' ', c.Apellido_Paterno, ' ', c.Apellido_Materno) AS Agricultor,
@@ -71,12 +72,24 @@ class MuestraModel {
             $sql .= " AND LOWER(ISNULL(m.Tipo_Servicio, '')) = ?";
         }
 
+        if ($search !== '') {
+            $sql .= " AND (CONCAT(c.Nombres, ' ', c.Apellido_Paterno, ' ', c.Apellido_Materno) LIKE ?
+                       OR ISNULL(m.Valle, '') LIKE ?
+                       OR CAST(m.Id_Muestra AS NVARCHAR) LIKE ?)";
+        }
+
         $sql .= " ORDER BY m.Id_Muestra DESC 
                 OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
 
         $params = [$estado];
         if ($filtrarTipo) {
             $params[] = $tipoServicio;
+        }
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
         $params[] = $offset;
         $params[] = $limit;
@@ -92,25 +105,37 @@ class MuestraModel {
         return $result;
     }
 
-    public function contarPorEstado($estado, $tipoServicio = '') {
+    public function contarPorEstado($estado, $tipoServicio = '', $search = '') {
         $tipoServicio = strtolower(trim((string)$tipoServicio));
         $filtrarTipo = ($tipoServicio === 'interno' || $tipoServicio === 'externo');
+        $search = trim((string)$search);
 
-        $sql = "SELECT COUNT(*) as total FROM laboratorio.Muestra_Lab 
-                                WHERE Activo = 1
-                                    AND Estado = ?
-                                    AND Id_Proyecto IS NULL
-                                    AND NOT EXISTS (
-                                                SELECT 1
-                                                FROM laboratorio.Muestra_Bitacora mbx
-                                                WHERE mbx.Id_Muestra = laboratorio.Muestra_Lab.Id_Muestra
-                                                    AND mbx.Muestra_Original IS NOT NULL
-                                    )";
+        $sql = "SELECT COUNT(*) as total
+                FROM laboratorio.Muestra_Lab m
+                INNER JOIN laboratorio.Cliente c ON m.Id_Cliente = c.Id_Cliente
+                WHERE m.Activo = 1
+                    AND m.Estado = ?
+                    AND m.Id_Proyecto IS NULL
+                    AND NOT EXISTS (
+                        SELECT 1
+                        FROM laboratorio.Muestra_Bitacora mbx
+                        WHERE mbx.Id_Muestra = m.Id_Muestra
+                            AND mbx.Muestra_Original IS NOT NULL
+                    )";
 
         $params = [$estado];
         if ($filtrarTipo) {
-            $sql .= " AND LOWER(ISNULL(Tipo_Servicio, '')) = ?";
+            $sql .= " AND LOWER(ISNULL(m.Tipo_Servicio, '')) = ?";
             $params[] = $tipoServicio;
+        }
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $sql .= " AND (CONCAT(c.Nombres, ' ', c.Apellido_Paterno, ' ', c.Apellido_Materno) LIKE ?
+                       OR ISNULL(m.Valle, '') LIKE ?
+                       OR CAST(m.Id_Muestra AS NVARCHAR) LIKE ?)";
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
         }
 
         $stmt = sqlsrv_query($this->db, $sql, $params);
@@ -273,7 +298,7 @@ class MuestraModel {
     // ===== TRANSICIONES DE ESTADO =====
 
     public function confirmarRecepcion($id, $usuario_id, $pasa, $tipo_servicio, $observacion, $checklist) {
-        $estadoDestino = $pasa ? 'Recepcionado' : 'Pendiente';
+        $estadoDestino = $pasa ? 'Recepcionado' : 'Rechazado';
 
         $observacionTexto = trim((string)$observacion);
         $checklistJson = json_encode([
@@ -1033,6 +1058,7 @@ class MuestraModel {
             // UPDATE
             $sql = "UPDATE laboratorio.Detalle_Suelo 
                     SET Fuente_Riego=?, Profundidad=?, Numero_Submuestras=?, Cantidad_Muestra=?, 
+                        Cultivo_Anterior=?, Cultivo_Implementado=?, Cultivo_Por_Implementar=?,
                         Fecha_Modificacion=GETDATE() 
                     WHERE Id_Muestra=? AND Activo=1";
             $params = array(
@@ -1040,19 +1066,27 @@ class MuestraModel {
                 $datos['Profundidad'] ?? null,
                 $datos['Numero_Submuestras'] ?? null,
                 $datos['Cantidad_Muestra'] ?? '1 Kg',
+                $datos['Cultivo_Anterior'] ?? null,
+                $datos['Cultivo_Implementado'] ?? null,
+                $datos['Cultivo_Por_Implementar'] ?? null,
                 $datos['Id_Muestra']
             );
         } else {
             // INSERT
             $sql = "INSERT INTO laboratorio.Detalle_Suelo 
-                    (Id_Muestra, Fuente_Riego, Profundidad, Numero_Submuestras, Cantidad_Muestra, Usuario_Creacion, Activo, Fecha_Creacion) 
-                    VALUES (?, ?, ?, ?, ?, ?, 1, GETDATE())";
+                    (Id_Muestra, Fuente_Riego, Profundidad, Numero_Submuestras, Cantidad_Muestra, 
+                     Cultivo_Anterior, Cultivo_Implementado, Cultivo_Por_Implementar,
+                     Usuario_Creacion, Activo, Fecha_Creacion) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE())";
             $params = array(
                 $datos['Id_Muestra'],
                 $datos['Fuente_Riego'] ?? null,
                 $datos['Profundidad'] ?? null,
                 $datos['Numero_Submuestras'] ?? null,
                 $datos['Cantidad_Muestra'] ?? '1 Kg',
+                $datos['Cultivo_Anterior'] ?? null,
+                $datos['Cultivo_Implementado'] ?? null,
+                $datos['Cultivo_Por_Implementar'] ?? null,
                 $usuario_id
             );
         }
@@ -1447,7 +1481,10 @@ class MuestraModel {
                     'Fuente_Riego' => $datos['Fuente_Riego'] ?? null,
                     'Profundidad' => $datos['Profundidad'] ?? null,
                     'Numero_Submuestras' => $datos['Numero_Submuestras'] ?? null,
-                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg'
+                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg',
+                    'Cultivo_Anterior' => $datos['Cultivo_Anterior'] ?? null,
+                    'Cultivo_Implementado' => $datos['Cultivo_Implementado'] ?? null,
+                    'Cultivo_Por_Implementar' => $datos['Cultivo_Por_Implementar'] ?? null
                 ]);
             }
 
@@ -1520,7 +1557,7 @@ class MuestraModel {
                  Fecha_Recepcion, Estado, Tipo_Servicio, Observacion_Muestra, Ruta_Imagen,
                  Id_Jefe_Lab, Es_Control_Calidad, Fecha_Toma,
                  Usuario_Creacion, Activo, Fecha_Creacion)
-                VALUES (?, NULL, NULL, NULL, ?, ?, ?, NULL, ?, ?, ?, NULL,
+                VALUES (?, NULL, NULL, NULL, ?, ?, ?, NULL, ?, ?, ?, ?,
                         NULL, 0, ?, ?, 1, GETDATE());
                 SELECT SCOPE_IDENTITY() AS id;";
 
@@ -1532,6 +1569,7 @@ class MuestraModel {
                 'Pendiente',
                 $tipoServicio,
                 $observacionFinal !== '' ? $observacionFinal : null,
+                $datos['Ruta_Imagen'] ?? null,
                 $fechaToma,
                 $usuarioId
             ]);
@@ -1571,7 +1609,10 @@ class MuestraModel {
                     'Fuente_Riego' => $datos['Fuente_Riego'] ?? null,
                     'Profundidad' => $datos['Profundidad'] ?? null,
                     'Numero_Submuestras' => $datos['Numero_Submuestras'] ?? null,
-                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg'
+                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg',
+                    'Cultivo_Anterior' => $datos['Cultivo_Anterior'] ?? null,
+                    'Cultivo_Implementado' => $datos['Cultivo_Implementado'] ?? null,
+                    'Cultivo_Por_Implementar' => $datos['Cultivo_Por_Implementar'] ?? null
                 ]);
             }
 
@@ -1826,7 +1867,10 @@ class MuestraModel {
                     'Fuente_Riego' => $datos['Fuente_Riego'] ?? null,
                     'Profundidad' => $datos['Profundidad'] ?? null,
                     'Numero_Submuestras' => $datos['Numero_Submuestras'] ?? null,
-                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg'
+                    'Cantidad_Muestra' => $datos['Cantidad_Muestra_Suelo'] ?? '1 Kg',
+                    'Cultivo_Anterior' => $datos['Cultivo_Anterior'] ?? null,
+                    'Cultivo_Implementado' => $datos['Cultivo_Implementado'] ?? null,
+                    'Cultivo_Por_Implementar' => $datos['Cultivo_Por_Implementar'] ?? null
                 ]);
             }
 
@@ -2076,7 +2120,10 @@ class MuestraModel {
                         'Fuente_Riego' => $detalleSuelo['Fuente_Riego'] ?? null,
                         'Profundidad' => $detalleSuelo['Profundidad'] ?? null,
                         'Numero_Submuestras' => $detalleSuelo['Numero_Submuestras'] ?? null,
-                        'Cantidad_Muestra' => $detalleSuelo['Cantidad_Muestra'] ?? '1 Kg'
+                        'Cantidad_Muestra' => $detalleSuelo['Cantidad_Muestra'] ?? '1 Kg',
+                        'Cultivo_Anterior' => $detalleSuelo['Cultivo_Anterior'] ?? null,
+                        'Cultivo_Implementado' => $detalleSuelo['Cultivo_Implementado'] ?? null,
+                        'Cultivo_Por_Implementar' => $detalleSuelo['Cultivo_Por_Implementar'] ?? null
                     ]);
                 }
 

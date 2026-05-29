@@ -11,6 +11,7 @@ try {
     require_once '../../Validaciones.php';
     require_once '../models/EquipoModel.php';
     require_once '../models/EquipoEstadoModel.php';
+    require_once '../../proveedor/models/ProveedorModel.php';
     
     Auth::check();
     
@@ -19,8 +20,9 @@ try {
         throw new Exception('Error: No se pudo conectar a la base de datos');
     }
     
-    $equipo_model = new EquipoModel($conn);
-    $estado_model = new EquipoEstadoModel($conn);
+    $equipo_model    = new EquipoModel($conn);
+    $estado_model    = new EquipoEstadoModel($conn);
+    $proveedor_model = new ProveedorModel($conn);
     
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
     
@@ -65,14 +67,13 @@ try {
             );
         }
         
-        // Validar Proveedor (opcional, máx 100 chars)
-        $errores['Proveedor'] = Validaciones::validarTexto(
-            $datos['Proveedor'] ?? '',
-            false,
-            100
+        // Validar Fecha Adquisicion (opcional)
+        $errores['Fecha_Adquisicion'] = Validaciones::validarFecha(
+            $datos['Fecha_Adquisicion'] ?? '',
+            false
         );
-        
-        // Validar Fechas
+
+        // Validar Fechas calibración
         $errores['Fecha_Ultima_Calibracion'] = Validaciones::validarFecha(
             $datos['Fecha_Ultima_Calibracion'] ?? '',
             false
@@ -81,7 +82,7 @@ try {
             $datos['Fecha_Proxima_Calibracion'] ?? '',
             false
         );
-        
+
         // Validar rango de fechas (próxima >= última)
         if (!$errores['Fecha_Ultima_Calibracion'] && !$errores['Fecha_Proxima_Calibracion']) {
             $errores['fechas'] = Validaciones::validarRangoFechas(
@@ -91,18 +92,18 @@ try {
                 'Fecha Próxima Calibración'
             );
         }
-        
+
         // Si hay errores, devolverlos
         if (Validaciones::hayErrores($errores)) {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
                 'message' => 'Errores en los campos',
-                'errors' => Validaciones::obtenerErrores($errores)
+                'errors'  => Validaciones::obtenerErrores($errores)
             ]);
             exit;
         }
-        
+
         $id = $equipo_model->guardar($datos);
         echo json_encode(['success' => true, 'id' => $id, 'message' => 'Equipo guardado correctamente']);
         exit;
@@ -119,6 +120,13 @@ try {
         $equipo = $equipo_model->obtenerPorId($id);
         
         // Convertir fechas de DateTime a YYYY-MM-DD para JSON
+        // Convertir Fecha_Adquisicion
+        if ($equipo && isset($equipo['Fecha_Adquisicion'])) {
+            if ($equipo['Fecha_Adquisicion'] instanceof DateTime) {
+                $equipo['Fecha_Adquisicion'] = $equipo['Fecha_Adquisicion']->format('Y-m-d');
+            }
+        }
+
         if ($equipo && isset($equipo['Fecha_Ultima_Calibracion'])) {
             if ($equipo['Fecha_Ultima_Calibracion'] instanceof DateTime) {
                 $equipo['Fecha_Ultima_Calibracion'] = $equipo['Fecha_Ultima_Calibracion']->format('Y-m-d');
@@ -179,14 +187,13 @@ try {
             );
         }
         
-        // Validar Proveedor (opcional, máx 100 chars)
-        $errores['Proveedor'] = Validaciones::validarTexto(
-            $datos['Proveedor'] ?? '',
-            false,
-            100
+        // Validar Fecha Adquisicion (opcional)
+        $errores['Fecha_Adquisicion'] = Validaciones::validarFecha(
+            $datos['Fecha_Adquisicion'] ?? '',
+            false
         );
-        
-        // Validar Fechas
+
+        // Validar Fechas calibración
         $errores['Fecha_Ultima_Calibracion'] = Validaciones::validarFecha(
             $datos['Fecha_Ultima_Calibracion'] ?? '',
             false
@@ -195,7 +202,7 @@ try {
             $datos['Fecha_Proxima_Calibracion'] ?? '',
             false
         );
-        
+
         // Validar rango de fechas (próxima >= última)
         if (!$errores['Fecha_Ultima_Calibracion'] && !$errores['Fecha_Proxima_Calibracion']) {
             $errores['fechas'] = Validaciones::validarRangoFechas(
@@ -205,18 +212,18 @@ try {
                 'Fecha Próxima Calibración'
             );
         }
-        
+
         // Si hay errores, devolverlos
         if (Validaciones::hayErrores($errores)) {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
                 'message' => 'Errores en los campos',
-                'errors' => Validaciones::obtenerErrores($errores)
+                'errors'  => Validaciones::obtenerErrores($errores)
             ]);
             exit;
         }
-        
+
         $equipo_model->guardar($datos);
         echo json_encode(['success' => true, 'message' => 'Equipo actualizado correctamente']);
         exit;
@@ -391,10 +398,107 @@ try {
         exit;
     }
     
-    // Acción no encontrada
+    // ==================== HISTORIAL CALIBRACIONES ====================
+    if ($action === 'historial_calibracion') {
+        $id = intval($_GET['id'] ?? 0);
+        if (!$id) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID de equipo requerido']);
+            exit;
+        }
+        $historial = $equipo_model->obtenerHistorialCalibracion($id);
+        echo json_encode(['success' => true, 'data' => $historial]);
+        exit;
+    }
+
+    // ==================== LISTAR PROVEEDORES ====================
+    if ($action === 'listar_proveedores') {
+        $proveedores = $proveedor_model->obtenerTodos();
+        echo json_encode(['success' => true, 'data' => $proveedores]);
+        exit;
+    }
+
+    // ==================== REGISTRAR CALIBRACIÓN ====================
+    if ($action === 'registrar_calibracion') {
+        $datos = json_decode(file_get_contents('php://input'), true);
+
+        $idEquipo = intval($datos['Id_Equipo'] ?? 0);
+        $idEstado = intval($datos['Id_Estado_Nuevo'] ?? 0);
+
+        if (!$idEquipo || !$idEstado) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Equipo y estado son obligatorios']);
+            exit;
+        }
+
+        // Verificar que el estado NO sea Disponible
+        $idDisponible = $equipo_model->obtenerIdEstadoDisponible();
+        if ($idDisponible && $idEstado == $idDisponible) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Durante la calibración debe seleccionar un estado diferente a Disponible']);
+            exit;
+        }
+
+        // Verificar que el estado existe
+        $estadoExiste = Validaciones::validarIdExiste($idEstado, 'laboratorio.Equipo_Estado', $conn, 'Id_Estado');
+        if ($estadoExiste) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $estadoExiste]);
+            exit;
+        }
+
+        $equipo_model->actualizarEstado($idEquipo, $idEstado, false);
+        echo json_encode(['success' => true, 'message' => 'Calibración iniciada correctamente']);
+        exit;
+    }
+
+    // ==================== FINALIZAR CALIBRACIÓN ====================
+    if ($action === 'finalizar_calibracion') {
+        $datos = json_decode(file_get_contents('php://input'), true);
+
+        $idEquipo      = intval($datos['Id_Equipo'] ?? 0);
+        $observacion   = trim($datos['Observacion'] ?? '');
+        $fechaProxima  = !empty($datos['Fecha_Proxima_Calibracion']) ? trim($datos['Fecha_Proxima_Calibracion']) : null;
+
+        if (!$idEquipo) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID de equipo requerido']);
+            exit;
+        }
+        if (empty($observacion)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'La observación de calibración es obligatoria']);
+            exit;
+        }
+        if (strlen($observacion) > 2000) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'La observación no puede superar 2000 caracteres']);
+            exit;
+        }
+        if ($fechaProxima !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaProxima)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Formato de fecha próxima inválido']);
+            exit;
+        }
+
+        $idDisponible = $equipo_model->obtenerIdEstadoDisponible();
+        if (!$idDisponible) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'No se encontró el estado "Disponible" en el sistema']);
+            exit;
+        }
+
+        // Guardar observación + actualizar estado a Disponible + actualizar Fecha_Ultima_Calibracion (y opcionalmente Fecha_Proxima)
+        $equipo_model->registrarObservacionCalibracion($idEquipo, $observacion);
+        $equipo_model->actualizarEstado($idEquipo, $idDisponible, true, $fechaProxima);
+
+        echo json_encode(['success' => true, 'message' => 'Calibración finalizada. Equipo devuelto a estado Disponible.']);
+        exit;
+    }
+
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => "Acción no encontrada: {$action}"]);
-    
+
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);

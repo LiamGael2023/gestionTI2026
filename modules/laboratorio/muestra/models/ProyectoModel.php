@@ -115,8 +115,8 @@ class ProyectoModel {
         if (empty($datos['Id_Proyecto'])) {
             // INSERT - Nuevo proyecto
             $sql = "INSERT INTO laboratorio.Proyecto_Monitoreo 
-                    (Nombre_Proyecto, Valle, Temporada, Fecha_Inicio, Tipo_Muestra, Uso_Agua, Fuente_Agua, Nivel_Agua, Es_Control_Calidad, Id_Responsable, Estado, Usuario_Creacion, Activo, Fecha_Creacion)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); 
+                    (Nombre_Proyecto, Valle, Temporada, Fecha_Inicio, Tipo_Muestra, Uso_Agua, Fuente_Agua, Nivel_Agua, Es_Control_Calidad, Es_Drene, Id_Responsable, Estado, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); 
                     SELECT SCOPE_IDENTITY() AS id;";
             
             $params = array(
@@ -129,6 +129,7 @@ class ProyectoModel {
                 $datos['Fuente_Agua'] ?? null,
                 $datos['Nivel_Agua'] ?? null,
                 intval($datos['Es_Control_Calidad'] ?? 0),
+                intval($datos['Es_Drene'] ?? 0),
                 $datos['Id_Responsable'] ?? $usuario_id,
                 'Planificado', // Estado inicial SIEMPRE Planificado
                 $usuario_id
@@ -162,7 +163,7 @@ class ProyectoModel {
             // Si solo viene Id_Proyecto y Estado, actualizar solo eso
             $claves = array_keys($datos);
             $soloCambioEstado = isset($datos['Id_Proyecto']) && isset($datos['Estado']);
-            $clavesNoEstado = array_diff($claves, array('Id_Proyecto', 'Estado', 'Fuentes_Calidad'));
+            $clavesNoEstado = array_diff($claves, array('Id_Proyecto', 'Estado', 'Fuentes_Calidad', 'Fuentes_Drene'));
             if ($soloCambioEstado && count($clavesNoEstado) === 0) {
                 $sql = "UPDATE laboratorio.Proyecto_Monitoreo 
                         SET Estado = ?, Fecha_Modificacion = GETDATE()
@@ -176,7 +177,7 @@ class ProyectoModel {
                 // Actualizar múltiples campos
                 $sql = "UPDATE laboratorio.Proyecto_Monitoreo 
                         SET Nombre_Proyecto = ?, Valle = ?, Temporada = ?, Fecha_Inicio = ?, Tipo_Muestra = ?, 
-                            Uso_Agua = ?, Fuente_Agua = ?, Nivel_Agua = ?, Es_Control_Calidad = ?,
+                            Uso_Agua = ?, Fuente_Agua = ?, Nivel_Agua = ?, Es_Control_Calidad = ?, Es_Drene = ?,
                             Id_Responsable = ?, Estado = ?, Fecha_Modificacion = GETDATE()
                         WHERE Id_Proyecto = ?";
                 
@@ -190,6 +191,7 @@ class ProyectoModel {
                     $datos['Fuente_Agua'] ?? null,
                     $datos['Nivel_Agua'] ?? null,
                     intval($datos['Es_Control_Calidad'] ?? 0),
+                    intval($datos['Es_Drene'] ?? 0),
                     $datos['Id_Responsable'] ?? null,
                     $estado_nuevo ?? null,
                     $datos['Id_Proyecto']
@@ -208,7 +210,7 @@ class ProyectoModel {
             // Si cambio a "En Progreso", crear muestras
             if ($estado_anterior !== 'En Progreso' && $estado_nuevo === 'En Progreso') {
                 file_put_contents($log_file, "✓ LLAMANDO A crearMuestrasDesdePeriodo(" . $datos['Id_Proyecto'] . ")\n", FILE_APPEND);
-                $this->crearMuestrasDesdePeriodo($datos['Id_Proyecto'], $fuentes_calidad);
+                $this->crearMuestrasDesdePeriodo($datos['Id_Proyecto'], $fuentes_calidad, $datos['Fuentes_Drene'] ?? null);
             } else {
                 file_put_contents($log_file, "✗ NO LLAMAR A crearMuestrasDesdePeriodo (condición no cumplida)\n", FILE_APPEND);
             }
@@ -219,7 +221,7 @@ class ProyectoModel {
 
     // ===== CREAR MUESTRAS CUANDO PROYECTO INICIA =====
 
-    private function crearMuestrasDesdePeriodo($id_proyecto, $fuentes_calidad = null) {
+    private function crearMuestrasDesdePeriodo($id_proyecto, $fuentes_calidad = null, $fuentes_drene = null) {
         $log_file = dirname(__FILE__) . '/../../debug_resultado_analisis.log';
         file_put_contents($log_file, "\n[" . date('Y-m-d H:i:s') . "] === INICIANDO crearMuestrasDesdePeriodo($id_proyecto) ===\n", FILE_APPEND);
         
@@ -228,6 +230,7 @@ class ProyectoModel {
         $proyecto = $this->obtenerPorId($id_proyecto);
         $usuario_id = $_SESSION['usuario_id'] ?? 1;
         $es_control_calidad_proyecto = intval($proyecto['Es_Control_Calidad'] ?? 0) === 1;
+        $es_drene_proyecto = intval($proyecto['Es_Drene'] ?? 0) === 1;
 
         $total_muestras_planificadas = 0;
         foreach ($detalles as $detalleTmp) {
@@ -236,6 +239,9 @@ class ProyectoModel {
 
         $fuentes_calidad_normalizadas = $es_control_calidad_proyecto
             ? $this->normalizarFuentesControlCalidad($fuentes_calidad, $total_muestras_planificadas)
+            : [];
+        $fuentes_drene_normalizadas = $es_drene_proyecto
+            ? $this->normalizarFuentesControlCalidad($fuentes_drene, $total_muestras_planificadas)
             : [];
         $indice_fuente_calidad = 0;
 
@@ -290,9 +296,13 @@ class ProyectoModel {
                 // Crear una muestra por cada unidad planificada
                 for ($i = 0; $i < $cantidad_planificada; $i++) {
                     $esControlMuestra = $es_control_calidad_proyecto ? 1 : 0;
+                    $esDreneMuestra = $es_drene_proyecto ? 1 : 0;
                     $fuente_muestra = $proyecto['Fuente_Agua'] ?? null;
                     if ($es_control_calidad_proyecto) {
                         $fuente_muestra = $this->obtenerFuenteControlCalidadPorIndice($indice_fuente_calidad, $fuentes_calidad_normalizadas);
+                        $indice_fuente_calidad++;
+                    } elseif ($es_drene_proyecto) {
+                        $fuente_muestra = $this->obtenerFuenteControlCalidadPorIndice($indice_fuente_calidad, $fuentes_drene_normalizadas);
                         $indice_fuente_calidad++;
                     }
 
@@ -300,11 +310,11 @@ class ProyectoModel {
                     $sqlMuestra = "INSERT INTO laboratorio.Muestra_Lab 
                         (Id_Cliente, Id_Receptor, Id_Especialista, Id_Proyecto, Valle, Eje_X, Eje_Y,
                          Fecha_Recepcion, Fecha_Toma, Estado, Tipo_Servicio, Observacion_Muestra,
-                         Es_Control_Calidad, Fecha_Analisis,
+                         Es_Control_Calidad, Es_Drene, Fecha_Analisis,
                          Usuario_Creacion, Activo, Fecha_Creacion)
                         VALUES (?, ?, ?, ?, ?, '', '', 
                                 GETDATE(), GETDATE(), 'En Análisis', ?, 'Muestra de Proyecto: ' + ?,
-                                ?, ?,
+                                ?, ?, ?,
                                 ?, 1, GETDATE()); 
                         SELECT SCOPE_IDENTITY() AS id;";
                     
@@ -317,6 +327,7 @@ class ProyectoModel {
                         $detalle['Nombre_Producto'],  // Tipo_Servicio
                         $proyecto['Nombre_Proyecto'], // Observacion
                         $esControlMuestra,            // Es_Control_Calidad
+                        $esDreneMuestra,              // Es_Drene
                         $fecha_analisis_proyecto,     // Fecha_Analisis
                         $usuario_id            // Usuario_Creacion
                     );
@@ -460,7 +471,9 @@ class ProyectoModel {
                         }
 
                         // Si es tipo Agua, crear registro en Detalle_Agua
-                        if ($proyecto['Tipo_Muestra'] === 'Agua' && !empty($proyecto['Uso_Agua']) && !empty($proyecto['Fuente_Agua'])) {
+                        // Nota: Fuente_Agua almacena el tipo (Río/Canal/Pozo = $proyecto['Nivel_Agua']),
+                        //       Nivel_Agua almacena la fuente individual (RIO TABLACHACA / dren name = $fuente_muestra).
+                        if ($proyecto['Tipo_Muestra'] === 'Agua' && !empty($proyecto['Uso_Agua'])) {
                             $sqlDetalleAgua = "INSERT INTO laboratorio.Detalle_Agua 
                                 (Id_Muestra, Uso_Agua, Fuente_Agua, Cantidad_Muestra, Nivel_Agua, Usuario_Creacion, Activo, Fecha_Creacion)
                                 VALUES (?, ?, ?, '1 Litro', ?, ?, 1, GETDATE())";
@@ -468,8 +481,8 @@ class ProyectoModel {
                             $paramsA = array(
                                 $id_muestra,
                                 $proyecto['Uso_Agua'],
-                                $fuente_muestra,
-                                $proyecto['Nivel_Agua'] ?? null,
+                                $proyecto['Nivel_Agua'] ?? null,  // Fuente_Agua = tipo (Río, Canal, etc.)
+                                $fuente_muestra,                  // Nivel_Agua  = fuente individual (RIO TABLACHACA / dren)
                                 $usuario_id
                             );
                             $stmtA = sqlsrv_query($this->db, $sqlDetalleAgua, $paramsA);
@@ -576,6 +589,7 @@ class ProyectoModel {
         }
 
         $es_control_calidad_proyecto = intval($proyecto['Es_Control_Calidad'] ?? 0) === 1;
+        $es_drene_proyecto = intval($proyecto['Es_Drene'] ?? 0) === 1;
         $stmtConteoMuestras = sqlsrv_query(
             $this->db,
             "SELECT COUNT(1) AS total FROM laboratorio.Muestra_Lab WHERE Id_Proyecto = ? AND Activo = 1",
@@ -607,8 +621,12 @@ class ProyectoModel {
 
             for ($i = 0; $i < $cantidad_extra; $i++) {
                 $esControlMuestra = $es_control_calidad_proyecto ? 1 : 0;
+                $esDreneMuestra = $es_drene_proyecto ? 1 : 0;
                 $fuente_muestra = $proyecto['Fuente_Agua'] ?? null;
                 if ($es_control_calidad_proyecto) {
+                    $fuente_muestra = $this->obtenerFuenteControlCalidadPorIndice($indice_fuente_calidad, []);
+                    $indice_fuente_calidad++;
+                } elseif ($es_drene_proyecto) {
                     $fuente_muestra = $this->obtenerFuenteControlCalidadPorIndice($indice_fuente_calidad, []);
                     $indice_fuente_calidad++;
                 }
@@ -616,11 +634,11 @@ class ProyectoModel {
                 $sqlMuestra = "INSERT INTO laboratorio.Muestra_Lab
                     (Id_Cliente, Id_Receptor, Id_Especialista, Id_Proyecto, Valle, Eje_X, Eje_Y,
                      Fecha_Recepcion, Fecha_Toma, Estado, Tipo_Servicio, Observacion_Muestra,
-                     Es_Control_Calidad, Fecha_Analisis,
+                     Es_Control_Calidad, Es_Drene, Fecha_Analisis,
                      Usuario_Creacion, Activo, Fecha_Creacion)
                     VALUES (?, ?, ?, ?, ?, '', '',
                             GETDATE(), GETDATE(), 'En Análisis', ?, 'Muestra adicional de Proyecto: ' + ?,
-                            ?, ?,
+                            ?, ?, ?,
                             ?, 1, GETDATE());
                     SELECT SCOPE_IDENTITY() AS id;";
 
@@ -633,6 +651,7 @@ class ProyectoModel {
                     $detalle['Nombre_Producto'],
                     $proyecto['Nombre_Proyecto'],
                     $esControlMuestra,
+                    $esDreneMuestra,
                     $fecha_analisis_proyecto,
                     $usuario_id
                 );
@@ -755,8 +774,8 @@ class ProyectoModel {
                     $paramsA = array(
                         $id_muestra,
                         $proyecto['Uso_Agua'],
-                        $fuente_muestra,
-                        $proyecto['Nivel_Agua'] ?? null,
+                        $proyecto['Nivel_Agua'] ?? null,  // Fuente_Agua = tipo (Río, Canal, etc.)
+                        $fuente_muestra,                  // Nivel_Agua  = fuente individual
                         $usuario_id
                     );
                     $stmtA = sqlsrv_query($this->db, $sqlDetalleAgua, $paramsA);

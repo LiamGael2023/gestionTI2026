@@ -6,6 +6,7 @@ ini_set('display_errors', '0');
 require_once 'config/db.php';
 require_once 'core/Auth.php';
 require_once 'modules/laboratorio/muestra/models/MuestraModel.php';
+require_once 'modules/laboratorio/models/LaboratorioModel.php';
 
 Auth::check();
 
@@ -30,9 +31,17 @@ switch($subaction) {
         include 'modules/laboratorio/muestra/views/ver_progreso.php';
         break;
     
-    case 'ver_firmar':
+    case 'ver_firmar': {
+        $labModelFirma = new LaboratorioModel($conn);
+        $permFirmar = $labModelFirma->obtenerPermisosSubmodulo($_SESSION['usuario_id'], '?module=laboratorio&action=muestra');
+        if (!$permFirmar || empty($permFirmar['firmar'])) {
+            http_response_code(403);
+            include 'modules/laboratorio/views/sin_acceso.php';
+            break;
+        }
         include 'modules/laboratorio/muestra/views/ver_firmar.php';
         break;
+    }
     
     case 'analisis_proyecto':
         include 'modules/laboratorio/muestra/views/analisis_proyecto.php';
@@ -50,9 +59,17 @@ switch($subaction) {
         include 'modules/laboratorio/muestra/views/bitacora_fecha_detalle.php';
         break;
 
-    case 'firma_agricultor':
+    case 'firma_agricultor': {
+        $labModelFirma = new LaboratorioModel($conn);
+        $permFirmar = $labModelFirma->obtenerPermisosSubmodulo($_SESSION['usuario_id'], '?module=laboratorio&action=muestra');
+        if (!$permFirmar || empty($permFirmar['firmar'])) {
+            http_response_code(403);
+            include 'modules/laboratorio/views/sin_acceso.php';
+            break;
+        }
         include 'modules/laboratorio/muestra/views/firma_agricultor.php';
         break;
+    }
 
     case 'resultados_pasados':
         include 'modules/laboratorio/muestra/views/resultados_pasados.php';

@@ -19,6 +19,22 @@ if (!$conn) {
     exit;
 }
 
+// Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
+$puede_finalizar = false;
+$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($_SESSION['usuario_id']));
+if ($stmtPF && sqlsrv_fetch_array($stmtPF, SQLSRV_FETCH_ASSOC)) {
+    $puede_finalizar = true;
+}
+if (!$puede_finalizar) {
+    $stmtAdm = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", array($_SESSION['usuario_id']));
+    if ($stmtAdm) {
+        $rowAdm = sqlsrv_fetch_array($stmtAdm, SQLSRV_FETCH_ASSOC);
+        if ($rowAdm && in_array(strtolower(trim((string)$rowAdm['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+            $puede_finalizar = true;
+        }
+    }
+}
+
 if ($id_cliente <= 0 && $id_muestra > 0) {
   $sqlClienteByMuestra = "SELECT TOP 1 Id_Cliente
               FROM laboratorio.Muestra_Lab
@@ -371,7 +387,7 @@ $etiquetaCabecera = $filtrarPorBitacora ? 'Punto de toma' : 'Cliente';
                                  <?php if ($es_finalizado) echo 'disabled'; ?>
                                  value="<?php echo $resultado['Valor_Hallado'] !== null ? floatval($resultado['Valor_Hallado']) : ''; ?>">
                         <?php else: ?>
-                          <input type="number" class="form-control form-control-sm" disabled value="-" style="text-align: center;">
+                          <input type="text" class="form-control form-control-sm" disabled value="-" style="text-align: center;">
                         <?php endif; ?>
                       </td>
                     <?php endforeach; ?>
@@ -395,9 +411,11 @@ $etiquetaCabecera = $filtrarPorBitacora ? 'Punto de toma' : 'Cliente';
           <button type="button" class="btn btn-outline-success" onclick="guardarAvance()" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-device-floppy me-2"></i> GUARDAR AVANCE
           </button>
+          <?php if ($puede_finalizar): ?>
           <button type="submit" class="btn btn-success" style="background: #28a745; border: none; font-size: 0.95em; padding: 8px 18px;">
             <i class="ti ti-check me-2"></i> GRABAR RESULTADOS
           </button>
+          <?php endif; ?>
         </div>
         <?php endif; ?>
       </div>

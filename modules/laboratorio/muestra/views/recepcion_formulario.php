@@ -24,6 +24,9 @@ $cantidad = $esAgua ? ($detalleAgua['Cantidad_Muestra'] ?? '-') : ($detalleSuelo
 $fuenteRiego = $detalleSuelo['Fuente_Riego'] ?? '-';
 $profundidadSuelo = $detalleSuelo['Profundidad'] ?? '-';
 $numeroSubmuestras = $detalleSuelo['Numero_Submuestras'] ?? '-';
+$cultivoAnterior = $detalleSuelo['Cultivo_Anterior'] ?? '-';
+$cultivoImplementado = $detalleSuelo['Cultivo_Implementado'] ?? '-';
+$cultivoPorImplementar = $detalleSuelo['Cultivo_Por_Implementar'] ?? '-';
 
 $tipoServicio = trim((string)($muestra['Tipo_Servicio'] ?? 'No definido'));
 $tipoServicioLower = strtolower($tipoServicio);
@@ -79,6 +82,9 @@ $rutaImagen = trim((string)($muestra['Ruta_Imagen'] ?? ''));
               <div class="mb-2"><strong>Fuente de Riego:</strong> <?php echo htmlspecialchars((string)$fuenteRiego); ?></div>
               <div class="mb-2"><strong>Profundidad:</strong> <?php echo htmlspecialchars((string)$profundidadSuelo); ?></div>
               <div class="mb-2"><strong>Número de Submuestras:</strong> <?php echo htmlspecialchars((string)$numeroSubmuestras); ?></div>
+              <div class="mb-2"><strong>Cultivo Anterior:</strong> <?php echo htmlspecialchars((string)$cultivoAnterior); ?></div>
+              <div class="mb-2"><strong>Cultivo Implementado:</strong> <?php echo htmlspecialchars((string)$cultivoImplementado); ?></div>
+              <div class="mb-2"><strong>Cultivo Por Implementar:</strong> <?php echo htmlspecialchars((string)$cultivoPorImplementar); ?></div>
               <div class="mb-2"><strong>Cantidad Muestra:</strong> <?php echo htmlspecialchars((string)$cantidad); ?></div>
             <?php endif; ?>
           </div>
@@ -132,7 +138,41 @@ $rutaImagen = trim((string)($muestra['Ruta_Imagen'] ?? ''));
       <div class="card-body">
         <p class="text-muted">Revise la validez del documento cargado antes de proceder con la aprobación de la muestra.</p>
         <?php if ($rutaImagen !== ''): ?>
-          <a class="btn btn-outline-success btn-sm" href="<?php echo htmlspecialchars($rutaImagen); ?>" target="_blank">Ver adjunto</a>
+          <?php
+            $isPdf   = strpos($rutaImagen, 'data:application/pdf') === 0;
+            $isImage = strpos($rutaImagen, 'data:image/') === 0;
+          ?>
+          <?php if ($isImage): ?>
+            <div class="mb-2">
+              <img src="<?php echo $rutaImagen; ?>"
+                   class="img-thumbnail"
+                   style="max-height:300px; cursor:zoom-in;"
+                   onclick="document.getElementById('adjunto-overlay').style.display='flex';"
+                   title="Click para ampliar">
+            </div>
+            <div id="adjunto-overlay"
+                 onclick="this.style.display='none';"
+                 style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+                        background:rgba(0,0,0,0.87); z-index:9999; align-items:center;
+                        justify-content:center; cursor:zoom-out;">
+              <img src="<?php echo $rutaImagen; ?>" style="max-width:92%; max-height:92%; border-radius:4px;">
+            </div>
+          <?php elseif ($isPdf): ?>
+            <div>
+              <button class="btn btn-outline-primary btn-sm mb-3" id="btn-toggle-pdf"
+                      onclick="var f=document.getElementById('adjunto-pdf-frame');
+                               f.classList.toggle('d-none');
+                               this.textContent = f.classList.contains('d-none') ? 'Ver PDF' : 'Ocultar PDF';">
+                <i class="ti ti-file-type-pdf me-1"></i> Ver PDF
+              </button>
+              <iframe id="adjunto-pdf-frame"
+                      src="<?php echo $rutaImagen; ?>"
+                      class="d-none"
+                      style="width:100%; height:520px; border:1px solid #ddd; border-radius:4px;"></iframe>
+            </div>
+          <?php else: ?>
+            <a class="btn btn-outline-success btn-sm" href="<?php echo htmlspecialchars($rutaImagen); ?>" target="_blank">Ver adjunto</a>
+          <?php endif; ?>
         <?php else: ?>
           <span class="badge bg-secondary">Sin adjunto</span>
         <?php endif; ?>

@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+﻿<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
 <style>
@@ -202,25 +202,26 @@ muestras hayan sido procesadas</p>
               </div>
 
               <div class="col-md-6 mb-3">
-                <label class="form-label">Fuente de Agua <span class="text-danger">*</span></label>
+                <label class="form-label">Tipo <span class="text-danger">*</span></label>
                 <select class="form-select" id="select-fuente">
                   <option value="">Seleccionar...</option>
-                  <option value="Río">Río</option>
-                  <option value="Pozo">Pozo</option>
-                  <option value="Otros">Otros (Especificar)</option>
+                  <option value="Subterráneo">Subterráneo</option>
+                  <option value="Superficial">Superficial</option>
                 </select>
-                <input type="text" class="form-control mt-2" id="fuente-otra" placeholder="Especificar fuente" style="display:none;">
               </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Nivel del Agua <span class="text-danger">*</span></label>
-              <select class="form-select" id="select-nivel-agua">
+              <label class="form-label">Fuente <span class="text-danger">*</span></label>
+              <select class="form-select" id="select-nivel-agua" onchange="$('#nivel-agua-otra-masiva').toggle($(this).val()==='Otros'); if($(this).val()!=='Otros') $('#nivel-agua-otra-masiva').val('');">
                 <option value="">Seleccionar...</option>
-                <option value="Subterraneo">Subterráneo</option>
-                <option value="Superficial">Superficial</option>
+                <option value="Rio">Río</option>
+                <option value="Pozo">Pozo</option>
+                <option value="Canal">Canal</option>
+                <option value="Reservorio">Reservorio</option>
+                <option value="Otros">Otros</option>
               </select>
-            </div>
+              <input type="text" class="form-control mt-2" id="nivel-agua-otra-masiva" placeholder="Especificar fuente" style="display:none;">
           </div>
 
           <!-- Agregar Servicios/Productos -->
@@ -289,7 +290,7 @@ $(document).ready(function() {
     
     $('#tipo-muestra').change(mostrarCamposSegunTipo);
     $('#select-valle').change(mostrarValleOtro);
-    $('#select-fuente').change(mostrarFuenteOtra);
+    $('#select-fuente').change(function() { /* Tipo de Fuente: no Otros option */ });
     $('#check-control-calidad').change(actualizarReglasControlCalidad);
 
     // Limpiar modal al cerrar
@@ -321,9 +322,7 @@ function configurarTablaPeriodos(selectorTabla, esControlCalidad) {
             { data: 5, title: 'Estado' },
             { data: 6, title: 'Acción', orderable: false, searchable: false }
         ],
-        language: {
-            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-        }
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
     });
 }
 
@@ -377,12 +376,7 @@ function mostrarValleOtro() {
 }
 
 function mostrarFuenteOtra() {
-    let fuente = $('#select-fuente').val();
-    if (fuente === 'Otros') {
-        $('#fuente-otra').show().prop('required', true);
-    } else {
-        $('#fuente-otra').hide().prop('required', false);
-    }
+    // Tipo de Fuente no tiene opcion Otros
 }
 
 function agregarServicio() {
@@ -483,9 +477,9 @@ function guardarPeriodo() {
         let fuente = $('#select-fuente').val();
         let nivel = $('#select-nivel-agua').val();
 
-        if (fuente === 'Otros') {
-            fuente = $('#fuente-otra').val().trim();
-            if (!fuente) {
+        if (nivel === 'Otros') {
+            nivel = $('#nivel-agua-otra-masiva').val().trim();
+            if (!nivel) {
                 Swal.fire('Error', 'Especifique la fuente de agua', 'error');
                 return;
             }
@@ -533,7 +527,9 @@ function limpiarFormulario() {
     $('#tabla-servicios-tbody').html('');
     $('#tipo-muestra').val('Agua').trigger('change');
     $('#select-valle').val('').trigger('change');
-    $('#select-fuente').val('').trigger('change');
+    $('#select-fuente').val('');
+    $('#select-nivel-agua').val('');
+    $('#nivel-agua-otra-masiva').hide().val('');
     $('#check-control-calidad').prop('checked', false).trigger('change');
 }
 
@@ -870,11 +866,11 @@ function editarProyecto(id) {
               '<input id="edit-uso-agua" class="form-control" value="' + escapeHtml(proyecto.Uso_Agua) + '">' +
             '</div>' +
             '<div class="col-md-4 mb-2">' +
-              '<label class="form-label">Fuente de Agua</label>' +
+              '<label class="form-label">Tipo</label>' +
               '<input id="edit-fuente-agua" class="form-control" value="' + escapeHtml(proyecto.Fuente_Agua) + '">' +
             '</div>' +
             '<div class="col-md-4 mb-2">' +
-              '<label class="form-label">Nivel de Agua</label>' +
+              '<label class="form-label">Fuente</label>' +
               '<input id="edit-nivel-agua" class="form-control" value="' + escapeHtml(proyecto.Nivel_Agua) + '">' +
             '</div>' +
             '<div class="col-md-12 mb-2">' +
@@ -1182,6 +1178,26 @@ function eliminarProyecto(id) {
           : 'No se pudieron cargar las categorías de límites para exportar.';
         Swal.fire('Error', msg, 'error');
       }
+    });
+  }
+
+  // -------------------------------------------------------
+  // Exportar Calidad de Agua (plantilla AGUAS SUPERFICIALES)
+  // -------------------------------------------------------
+  function exportarCalidadAgua(idProyecto) {
+    Swal.fire({
+      title: 'Exportar Calidad de Agua',
+      text: '¿Desea exportar el informe de resultados de Calidad de Agua de este proyecto?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Exportar Excel',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#198754'
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
+      const params = new URLSearchParams();
+      params.set('id_proyecto', String(idProyecto));
+      window.location.href = 'modules/laboratorio/muestra/controllers/ExportarCalidadAgua.php?' + params.toString();
     });
   }
 

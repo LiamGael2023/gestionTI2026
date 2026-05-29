@@ -10,6 +10,9 @@ Auth::check();
 
 $conn = Conexion::conectar();
 
+// Asegurar que la columna existe en la tabla
+sqlsrv_query($conn, "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='laboratorio' AND TABLE_NAME='Residuo_Catalogo' AND COLUMN_NAME='Unidad_Referencia') ALTER TABLE laboratorio.Residuo_Catalogo ADD Unidad_Referencia NVARCHAR(50) NULL");
+
 // Variables de DataTables
 $draw = intval($_POST['draw'] ?? 1);
 $start = intval($_POST['start'] ?? 0);
@@ -18,8 +21,8 @@ $search = $_POST['search']['value'] ?? '';
 
 $sql_count = "SELECT COUNT(*) as total FROM laboratorio.Residuo_Catalogo";
 $stmt_count = sqlsrv_query($conn, $sql_count);
-$row_count = sqlsrv_fetch_array($stmt_count, SQLSRV_FETCH_ASSOC);
-$totalRecords = $row_count['total'];
+$row_count = $stmt_count ? sqlsrv_fetch_array($stmt_count, SQLSRV_FETCH_ASSOC) : null;
+$totalRecords = $row_count ? intval($row_count['total']) : 0;
 
 // Consulta principal
 $sql = "SELECT 
@@ -43,12 +46,21 @@ if (!empty($search)) {
 }
 
 $sql .= " ORDER BY Id_Residuo_Cat DESC
-        OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+        OFFSET " . $start . " ROWS FETCH NEXT " . $length . " ROWS ONLY";
 
-$params[] = $start;
-$params[] = $length;
-
-$stmt = sqlsrv_query($conn, $sql, $params);
+$stmt = sqlsrv_query($conn, $sql, !empty($params) ? $params : null);
+if ($stmt === false) {
+    $errors = sqlsrv_errors();
+    header('Content-Type: application/json');
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Error en consulta: ' . ($errors[0]['message'] ?? 'Error desconocido')
+    ]);
+    exit;
+}
 $residuos = [];
 
 while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
@@ -72,7 +84,16 @@ while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
     ];
 }
 
-$filteredRecords = !empty($search) ? count($residuos) : $totalRecords;
+// Contar registros filtrados
+if (!empty($search)) {
+    $sql_filtered = "SELECT COUNT(*) as total FROM laboratorio.Residuo_Catalogo WHERE (Nombre_Item LIKE ? OR Codigo_Item LIKE ? OR Subcategoria LIKE ?)";
+    $sParam = '%' . $search . '%';
+    $stmt_filtered = sqlsrv_query($conn, $sql_filtered, [$sParam, $sParam, $sParam]);
+    $row_filtered = $stmt_filtered ? sqlsrv_fetch_array($stmt_filtered, SQLSRV_FETCH_ASSOC) : null;
+    $filteredRecords = $row_filtered ? intval($row_filtered['total']) : 0;
+} else {
+    $filteredRecords = $totalRecords;
+}
 
 header('Content-Type: application/json');
 echo json_encode([

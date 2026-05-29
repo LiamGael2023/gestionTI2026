@@ -15,22 +15,24 @@
     <nav aria-label="breadcrumb" class="mb-3">
       <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="?module=laboratorio">Laboratorio</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Ventas de Servicios</li>
+        <li class="breadcrumb-item active" aria-current="page">Paquetes de Servicios</li>
       </ol>
     </nav>
     
     <div class="row g-2 align-items-center mb-3">
       <div class="col flex-grow-1">
-        <h2 class="page-title">VENTA DE SERVICIOS DE LABORATORIO</h2>
+        <h2 class="page-title">PAQUETES DE SERVICIOS DE LABORATORIO</h2>
         <div class="text-muted mt-1">Configuración del catálogo comercial: Gestión de servicios y paquetes disponibles para la oferta externa.</div>
       </div>
     </div>
     <div class="row g-2">
+      <?php if (!empty($permisos['crear'])): ?>
       <div class="col-auto">
         <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-venta">
-          <i class="ti ti-plus me-2"></i> Vender Servicios
+          <i class="ti ti-plus me-2"></i> Paquete de Servicios
         </button>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -42,7 +44,7 @@
       <div class="d-flex">
         <div>
           <i class="ti ti-info-circle me-2"></i>
-          <strong>Para poner un producto en venta</strong>, defina el costo según su modalidad: si es un Servicio Individual, asigne el precio por ensayo unitario; si es un Paquete, indique el precio total que cubre el conjunto de servicios incluidos.
+          <strong>Empaquetar un conjunto de servicios</strong>, defina el costo según su modalidad: si es un Servicio Individual, asigne el precio por ensayo unitario; si es un Paquete, indique el precio total que cubre el conjunto de servicios incluidos.
         </div>
       </div>
     </div>
@@ -50,7 +52,7 @@
     <!-- Lista de Ventas -->
     <div class="card">
       <div class="card-header">
-        <h3 class="card-title">Lista de Venta de Servicios</h3>
+        <h3 class="card-title">Lista de Paquetes de Servicios</h3>
       </div>
       <div class="card-body">
         <div class="table-responsive">
@@ -82,7 +84,7 @@
     <div class="modal-content">
       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       <div class="modal-header">
-        <h5 class="modal-title" id="modal-titulo">Nuevo Producto de Venta</h5>
+        <h5 class="modal-title" id="modal-titulo">Nuevo Paquete de Servicios</h5>
       </div>
       <div class="modal-body">
         <form id="form-venta">
@@ -196,9 +198,7 @@ function inicializarDataTable() {
           { "data": 7 },  // Estado
           { "data": 8, "orderable": false }  // Acción
         ],
-        "language": { 
-            "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" 
-        },
+        "language": { "sProcessing": "Procesando...", "sLengthMenu": "Mostrar _MENU_ registros", "sZeroRecords": "No se encontraron resultados", "sEmptyTable": "No hay datos disponibles", "sInfo": "Mostrando del _START_ al _END_ de _TOTAL_ registros", "sInfoEmpty": "Mostrando 0 registros", "sInfoFiltered": "(filtrado de _MAX_ total)", "sSearch": "Buscar:", "sLoadingRecords": "Cargando...", "oPaginate": { "sFirst": "Primero", "sLast": "\u00DAltimo", "sNext": "Siguiente", "sPrevious": "Anterior" } },
         "order": [[ 0, "desc" ]]
     });
 }

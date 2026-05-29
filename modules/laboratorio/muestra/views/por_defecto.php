@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+﻿<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
 <style>
@@ -65,10 +65,6 @@
     <div class="row g-2 align-items-center mb-3">
       <div class="col">
         <h2 class="page-title">MUESTRAS POR DEFECTO</h2>
-            <div class="summary-label">Ubicación del punto</div>
-            <div class="summary-value" id="resumen-ubicacion">-</div>
-          </div>
-          <div class="col-6">
         <div class="text-muted mt-1">Creacion de muestras originales para duplicados diarios en bitacora (manana/tarde)</div>
       </div>
     </div>
@@ -208,7 +204,7 @@
   </div>
 </div>
 
-<div class="modal modal-blur fade" id="modal-crear-muestra" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal modal-blur fade" id="modal-crear-muestra" tabindex="-1" role="dialog" aria-hidden="true" data-bs-focus="false">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -226,16 +222,20 @@
             </div>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label" for="id_cliente">Agricultor</label>
-                <select id="id_cliente" class="form-select">
-                  <option value="">Sin agricultor (opcional)</option>
-                </select>
+                <label class="form-label" for="id_cliente">Agricultor / Cliente</label>
+                <div class="d-flex gap-1 align-items-center">
+                  <select id="id_cliente" class="form-select">
+                    <option value="">Sin agricultor (opcional)</option>
+                  </select>
+                  <button type="button" class="btn btn-outline-success btn-sm flex-shrink-0" onclick="abrirCrearClienteRapido()" title="Nuevo Cliente"><i class="ti ti-plus"></i></button>
+                </div>
               </div>
               <div class="col-md-3">
                 <label class="form-label" for="valle">Valle <span class="text-danger">*</span></label>
                 <select id="valle" class="form-select" required>
                   <option value="">Seleccione valle</option>
                 </select>
+                <input type="text" class="form-control mt-2" id="valle_otro" placeholder="Especificar valle" style="display:none;">
               </div>
               <div class="col-md-3">
                 <label class="form-label" for="fecha_registro">Fecha <span class="text-danger">*</span></label>
@@ -298,22 +298,24 @@
                 </select>
               </div>
               <div class="col-md-3">
-                <label class="form-label" for="fuente_agua">Fuente</label>
+                <label class="form-label" for="fuente_agua">Tipo</label>
                 <select id="fuente_agua" class="form-select">
+                  <option value="">Seleccionar</option>
+                  <option value="Subterráneo">Subterráneo</option>
+                  <option value="Superficial">Superficial</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label" for="nivel_agua">Fuente</label>
+                <select id="nivel_agua" class="form-select" onchange="toggleNivelAguaOtro('nivel_agua','nivel_agua_otro')">
                   <option value="">Seleccionar</option>
                   <option value="Rio">Rio</option>
                   <option value="Pozo">Pozo</option>
                   <option value="Canal">Canal</option>
                   <option value="Reservorio">Reservorio</option>
+                  <option value="Otros">Otros</option>
                 </select>
-              </div>
-              <div class="col-md-3">
-                <label class="form-label" for="nivel_agua">Nivel de agua</label>
-                <select id="nivel_agua" class="form-select">
-                  <option value="">Seleccionar</option>
-                  <option value="Superficial">Superficial</option>
-                  <option value="Subterranea">Subterranea</option>
-                </select>
+                <input type="text" id="nivel_agua_otro" class="form-control mt-1" placeholder="Especificar fuente" style="display:none;">
               </div>
               <div class="col-md-3">
                 <label class="form-label" for="cantidad_agua">Cantidad</label>
@@ -328,7 +330,12 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label" for="profundidad">Profundidad</label>
-                <input id="profundidad" type="text" class="form-control" placeholder="Ej: 0-30 cm">
+                <select id="profundidad" class="form-select">
+                  <option value="">Seleccionar</option>
+                  <option>30 CM</option>
+                  <option>60 CM</option>
+                  <option>90 CM</option>
+                </select>
               </div>
               <div class="col-md-2">
                 <label class="form-label" for="numero_submuestras">Nro Submuestras</label>
@@ -337,6 +344,18 @@
               <div class="col-md-3">
                 <label class="form-label" for="cantidad_suelo">Cantidad</label>
                 <input id="cantidad_suelo" type="text" class="form-control" value="1 Kg">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="cultivo_anterior">Cultivo Anterior</label>
+                <input id="cultivo_anterior" type="text" class="form-control" placeholder="Opcional">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="cultivo_implementado">Cultivo Implementado</label>
+                <input id="cultivo_implementado" type="text" class="form-control" placeholder="Opcional">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label" for="cultivo_por_implementar">Cultivo Por Implementar</label>
+                <input id="cultivo_por_implementar" type="text" class="form-control" placeholder="Opcional">
               </div>
             </div>
           </div>
@@ -493,6 +512,75 @@
       document.getElementById('bloque-suelo').classList.toggle('d-none', tipo !== 'Suelo');
     };
 
+    function toggleNivelAguaOtro(selectId, inputId) {
+      const sel = document.getElementById(selectId);
+      const inp = document.getElementById(inputId);
+      if (!sel || !inp) return;
+      inp.style.display = sel.value === 'Otros' ? 'block' : 'none';
+      if (sel.value !== 'Otros') inp.value = '';
+    }
+
+    function abrirCrearClienteRapido() {
+      Swal.fire({
+        title: 'Nuevo Cliente',
+        html: `
+          <div class="text-start">
+            <div class="mb-2">
+              <label class="form-label">DNI</label>
+              <input id="swal-cli-dni" class="form-control" placeholder="DNI del cliente" maxlength="12">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Nombres <span class="text-danger">*</span></label>
+              <input id="swal-cli-nombres" class="form-control" placeholder="Nombres del cliente">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Apellido Paterno <span class="text-danger">*</span></label>
+              <input id="swal-cli-apep" class="form-control" placeholder="Apellido paterno">
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Apellido Materno</label>
+              <input id="swal-cli-apem" class="form-control" placeholder="Apellido materno">
+            </div>
+          </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Crear Cliente',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          const dni = document.getElementById('swal-cli-dni').value.trim();
+          const nombres = document.getElementById('swal-cli-nombres').value.trim();
+          const apep = document.getElementById('swal-cli-apep').value.trim();
+          const apem = document.getElementById('swal-cli-apem').value.trim();
+          if (!nombres) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+          if (!apep) { Swal.showValidationMessage('El apellido paterno es obligatorio'); return false; }
+          return {
+            Dni: dni,
+            Nombres: nombres,
+            Apellido_Paterno: apep,
+            Apellido_Materno: apem
+          };
+        }
+      }).then(result => {
+        if (!result.isConfirmed) return;
+        fetch('modules/laboratorio/proveedor/controllers/ClienteAPI.php?action=guardar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result.value)
+        }).then(r => r.json()).then(resp => {
+          if (resp.success) {
+            const id = resp.id;
+            const nombre = [result.value.Nombres, result.value.Apellido_Paterno, result.value.Apellido_Materno]
+              .filter(Boolean).join(' ');
+            const sel = document.getElementById('id_cliente');
+            const opt = new Option(nombre, id, true, true);
+            sel.appendChild(opt);
+            Swal.fire({ title: 'Creado', text: nombre + ' registrado', icon: 'success', timer: 1200, showConfirmButton: false });
+          } else {
+            Swal.fire('Error', resp.message || 'No se pudo crear el cliente', 'error');
+          }
+        }).catch(err => Swal.fire('Error', err.message || 'Error al crear el cliente', 'error'));
+      });
+    }
+
     const cargarCatalogos = function () {
       fetch(apiUrl + '?action=obtener_catalogos_por_defecto', { method: 'POST' })
         .then(function (resp) { return resp.json(); })
@@ -518,6 +606,15 @@
             option.textContent = valle;
             selectValle.appendChild(option);
           });
+          const optOtro = document.createElement('option');
+          optOtro.value = 'Otros';
+          optOtro.textContent = 'Otros (Especificar)';
+          selectValle.appendChild(optOtro);
+          selectValle.addEventListener('change', function () {
+            const otro = document.getElementById('valle_otro');
+            if (selectValle.value === 'Otros') { otro.style.display = ''; otro.required = true; }
+            else { otro.style.display = 'none'; otro.required = false; otro.value = ''; }
+          });
 
           (data.servicios || []).forEach(function (item) {
             const option = document.createElement('option');
@@ -535,7 +632,9 @@
       const tipoMuestra = document.querySelector('input[name="tipo_muestra"]:checked').value;
       return {
         id_cliente: document.getElementById('id_cliente').value,
-        valle: document.getElementById('valle').value,
+        valle: (document.getElementById('valle').value === 'Otros'
+          ? document.getElementById('valle_otro').value.trim()
+          : document.getElementById('valle').value),
         fecha_registro: document.getElementById('fecha_registro').value,
         ubicacion_punto: document.getElementById('ubicacion_punto').value.trim(),
         punto_toma: document.getElementById('punto_toma').value.trim(),
@@ -547,12 +646,17 @@
         id_producto_venta: document.getElementById('select-servicio').value,
         uso_agua: document.getElementById('uso_agua').value,
         fuente_agua: document.getElementById('fuente_agua').value,
-        nivel_agua: document.getElementById('nivel_agua').value,
+        nivel_agua: (document.getElementById('nivel_agua').value === 'Otros'
+          ? (document.getElementById('nivel_agua_otro').value.trim() || 'Otros')
+          : document.getElementById('nivel_agua').value),
         cantidad_agua: document.getElementById('cantidad_agua').value.trim(),
         fuente_riego: document.getElementById('fuente_riego').value.trim(),
         profundidad: document.getElementById('profundidad').value.trim(),
         numero_submuestras: document.getElementById('numero_submuestras').value,
-        cantidad_suelo: document.getElementById('cantidad_suelo').value.trim()
+        cantidad_suelo: document.getElementById('cantidad_suelo').value.trim(),
+        cultivo_anterior: document.getElementById('cultivo_anterior').value.trim(),
+        cultivo_implementado: document.getElementById('cultivo_implementado').value.trim(),
+        cultivo_por_implementar: document.getElementById('cultivo_por_implementar').value.trim()
       };
     };
 
@@ -778,6 +882,19 @@
           document.getElementById('id_muestra_edicion').value = d.Id_Muestra || '';
           document.getElementById('id_cliente').value = d.Id_Cliente || '';
           document.getElementById('valle').value = d.Valle || '';
+          // Si el valor cargado no está en el select (valle personalizado), usar opción Otros
+          const sValle = document.getElementById('valle');
+          const valleOtro = document.getElementById('valle_otro');
+          if (d.Valle && sValle.value === '') {
+            sValle.value = 'Otros';
+            valleOtro.style.display = '';
+            valleOtro.required = true;
+            valleOtro.value = d.Valle;
+          } else {
+            valleOtro.style.display = 'none';
+            valleOtro.required = false;
+            valleOtro.value = '';
+          }
           document.getElementById('fecha_registro').value = d.Fecha_Registro || '';
           document.getElementById('ubicacion_punto').value = d.Ubicacion_Punto || '';
           document.getElementById('punto_toma').value = d.Punto_Toma || '';
@@ -794,13 +911,25 @@
 
           document.getElementById('uso_agua').value = d.Uso_Agua || '';
           document.getElementById('fuente_agua').value = d.Fuente_Agua || '';
-          document.getElementById('nivel_agua').value = d.Nivel_Agua || '';
+          const nivelStd = ['Rio','Pozo','Canal','Reservorio','Otros',''];
+          const nivelVal = d.Nivel_Agua || '';
+          if (nivelVal && !nivelStd.includes(nivelVal)) {
+            document.getElementById('nivel_agua').value = 'Otros';
+            document.getElementById('nivel_agua_otro').value = nivelVal;
+            document.getElementById('nivel_agua_otro').style.display = 'block';
+          } else {
+            document.getElementById('nivel_agua').value = nivelVal;
+            document.getElementById('nivel_agua_otro').style.display = 'none';
+          }
           document.getElementById('cantidad_agua').value = d.Cantidad_Muestra_Agua || '1 Litro';
 
           document.getElementById('fuente_riego').value = d.Fuente_Riego || '';
           document.getElementById('profundidad').value = d.Profundidad || '';
           document.getElementById('numero_submuestras').value = d.Numero_Submuestras || '';
           document.getElementById('cantidad_suelo').value = d.Cantidad_Muestra_Suelo || '1 Kg';
+          document.getElementById('cultivo_anterior').value = d.Cultivo_Anterior || '';
+          document.getElementById('cultivo_implementado').value = d.Cultivo_Implementado || '';
+          document.getElementById('cultivo_por_implementar').value = d.Cultivo_Por_Implementar || '';
 
           document.getElementById('btn-abrir-confirmacion').textContent = 'Actualizar';
           document.querySelector('#modal-crear-muestra .modal-title').textContent = 'Editar Muestra Por Defecto';
@@ -1131,9 +1260,7 @@
           { data: 'estado', orderable: false, searchable: false },
           { data: 'accion', orderable: false, searchable: false }
         ],
-        language: {
-          url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-        }
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
       });
 
       $('#tabla-muestras-defecto-analisis').DataTable({
@@ -1166,9 +1293,7 @@
           { data: 'turno' },
           { data: 'accion', orderable: false, searchable: false }
         ],
-        language: {
-          url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-        }
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
       });
 
       tablaBitacoras = $('#tabla-bitacoras-defecto').DataTable({
@@ -1199,9 +1324,7 @@
           { data: 'observacion_tarde', orderable: false, searchable: false },
           { data: 'accion', orderable: false, searchable: false }
         ],
-        language: {
-          url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
-        }
+        language: { sProcessing: "Procesando...", sLengthMenu: "Mostrar _MENU_ registros", sZeroRecords: "No se encontraron resultados", sEmptyTable: "No hay datos disponibles", sInfo: "Mostrando del _START_ al _END_ de _TOTAL_ registros", sInfoEmpty: "Mostrando 0 registros", sInfoFiltered: "(filtrado de _MAX_ total)", sSearch: "Buscar:", sLoadingRecords: "Cargando...", oPaginate: { sFirst: "Primero", sLast: "Último", sNext: "Siguiente", sPrevious: "Anterior" } }
       });
 
       $('#tabla-muestras-defecto').on('draw.dt', function () {
@@ -1250,6 +1373,18 @@
 
       document.querySelectorAll('input[name="tipo_muestra"]').forEach(function (radio) {
         radio.addEventListener('change', toggleTipoMuestra);
+      });
+
+      // Mover modales a <body> para evitar conflictos de stacking context con page-wrapper de Tabler
+      document.querySelectorAll('.modal').forEach(function (modal) {
+        document.body.appendChild(modal);
+      });
+
+      // Handler explícito para abrir el modal de creación
+      document.querySelectorAll('[data-bs-target="#modal-crear-muestra"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          bootstrap.Modal.getOrCreateInstance(modalCrearElement).show();
+        });
       });
 
       document.getElementById('btn-abrir-confirmacion').addEventListener('click', abrirConfirmacion);

@@ -164,6 +164,7 @@ try {
     if ($action === 'guardarProyecto') {
         $proyectoModel = new ProyectoModel($conn);
         $es_control_calidad = intval($_POST['es_control_calidad'] ?? 0) === 1 ? 1 : 0;
+        $es_drene = intval($_POST['es_drene'] ?? 0) === 1 ? 1 : 0;
         
         $datos = [
             'Nombre_Proyecto' => $_POST['nombre_proyecto'] ?? null,
@@ -175,6 +176,7 @@ try {
             'Fuente_Agua' => $_POST['fuente_agua'] ?? null,
             'Nivel_Agua' => $_POST['nivel_agua'] ?? null,
             'Es_Control_Calidad' => $es_control_calidad,
+            'Es_Drene' => $es_drene,
             'Id_Responsable' => isset($_POST['id_responsable']) ? intval($_POST['id_responsable']) : $_SESSION['usuario_id'],
             'Estado' => 'Planificado'
         ];
@@ -191,7 +193,7 @@ try {
                 foreach ($_POST['servicios'] as $servicio) {
                     $id_producto = intval($servicio['id'] ?? 0);
                     $cantidad = intval($servicio['cantidad'] ?? 0);
-                    if ($es_control_calidad && $cantidad < 10) {
+                    if (($es_control_calidad || $es_drene) && $cantidad < 10) {
                         $cantidad = 10;
                     }
                     
@@ -271,6 +273,9 @@ try {
             'Es_Control_Calidad' => isset($_POST['es_control_calidad'])
                 ? (intval($_POST['es_control_calidad']) === 1 ? 1 : 0)
                 : intval($proyecto_actual['Es_Control_Calidad'] ?? 0),
+            'Es_Drene' => isset($_POST['es_drene'])
+                ? (intval($_POST['es_drene']) === 1 ? 1 : 0)
+                : intval($proyecto_actual['Es_Drene'] ?? 0),
             'Id_Responsable' => isset($_POST['id_responsable']) ? intval($_POST['id_responsable']) : intval($proyecto_actual['Id_Responsable']),
             'Estado' => $proyecto_actual['Estado'] ?? 'Planificado'
         ];
@@ -284,42 +289,60 @@ try {
 
             if (isset($_POST['servicios']) && is_array($_POST['servicios'])) {
                 $detalles_actuales = $proyectoModel->obtenerDetalles($id_proyecto);
+                // mapa: id_producto => ['cantidad' => int, 'id_detalle' => int]
                 $mapa_actual = [];
                 foreach ($detalles_actuales as $detalle) {
                     $id_producto = intval($detalle['Id_Producto_Venta'] ?? 0);
                     if ($id_producto > 0) {
-                        $mapa_actual[$id_producto] = intval($detalle['Cantidad_Planificada'] ?? 0);
+                        $mapa_actual[$id_producto] = [
+                            'cantidad'   => intval($detalle['Cantidad_Planificada'] ?? 0),
+                            'id_detalle' => intval($detalle['Id_Detalle_Proyecto'] ?? 0)
+                        ];
                     }
                 }
 
+                $es_control_actualizado = intval($datos_actualizados['Es_Control_Calidad'] ?? 0) === 1;
+                $es_drene_actualizado   = intval($datos_actualizados['Es_Drene'] ?? 0) === 1;
+                $ids_enviados = [];
+
                 foreach ($_POST['servicios'] as $servicio) {
                     $id_producto = intval($servicio['id'] ?? 0);
-                    $cantidad = intval($servicio['cantidad'] ?? 0);
-                    $es_control_actualizado = intval($datos_actualizados['Es_Control_Calidad'] ?? 0) === 1;
+                    $cantidad    = intval($servicio['cantidad'] ?? 0);
 
-                    if ($es_control_actualizado && $cantidad < 10) {
-                        throw new Exception('Para proyectos de calidad de agua, cada servicio debe tener al menos 10 muestras planificadas.');
+                    if (($es_control_actualizado || $es_drene_actualizado) && $cantidad < 10) {
+                        throw new Exception('Para proyectos de calidad/drenes, cada servicio debe tener al menos 10 muestras planificadas.');
                     }
 
                     if ($id_producto <= 0 || $cantidad <= 0) {
                         continue;
                     }
 
+                    $ids_enviados[] = $id_producto;
+
                     if ($analisis_iniciado) {
                         if (!array_key_exists($id_producto, $mapa_actual)) {
                             throw new Exception('No se puede agregar nuevas ventas cuando el analisis ya ha iniciado.');
                         }
-
-                        if ($mapa_actual[$id_producto] !== $cantidad) {
+                        if ($mapa_actual[$id_producto]['cantidad'] !== $cantidad) {
                             throw new Exception('No se puede modificar la cantidad de muestras por venta cuando el analisis ya ha iniciado.');
                         }
-
                         continue;
                     }
 
-                    // Antes de iniciar analisis si se permite cambiar cantidad; guardarDetalle
-                    // recalcula y sincroniza la reserva de reactivos del detalle.
+                    // Upsert: actualiza o crea el detalle y sincroniza reserva de reactivos.
                     $proyectoModel->guardarDetalle($id_proyecto, $id_producto, $cantidad);
+                }
+
+                // Eliminar servicios que fueron quitados del proyecto (solo si análisis no inició)
+                if (!$analisis_iniciado) {
+                    foreach ($mapa_actual as $id_producto => $info) {
+                        if (!in_array($id_producto, $ids_enviados, true)) {
+                            $id_detalle = intval($info['id_detalle'] ?? 0);
+                            if ($id_detalle > 0) {
+                                $proyectoModel->eliminarDetalle($id_detalle);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -349,6 +372,10 @@ try {
         if (!is_array($fuentes_calidad)) {
             $fuentes_calidad = null;
         }
+        $fuentes_drene = $_POST['fuentes_drene'] ?? null;
+        if (!is_array($fuentes_drene)) {
+            $fuentes_drene = null;
+        }
 
         if ($id_proyecto <= 0) {
             throw new Exception('ID de proyecto inválido');
@@ -364,7 +391,8 @@ try {
         $id = $proyectoModel->guardar([
             'Id_Proyecto' => $id_proyecto,
             'Estado' => 'En Progreso',
-            'Fuentes_Calidad' => $fuentes_calidad
+            'Fuentes_Calidad' => $fuentes_calidad,
+            'Fuentes_Drene' => $fuentes_drene
         ]);
 
         // Contar muestras creadas

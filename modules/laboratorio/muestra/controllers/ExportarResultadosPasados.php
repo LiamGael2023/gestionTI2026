@@ -67,6 +67,11 @@ $sqlMuestra = "SELECT TOP 1
                 ds.Profundidad,
                 ds.Numero_Submuestras,
                 ds.Cantidad_Muestra AS Cantidad_Suelo,
+                ds.Cultivo_Anterior,
+                ds.Cultivo_Implementado,
+                ds.Cultivo_Por_Implementar,
+                m.Id_Especialista,
+                m.Id_Jefe_Lab,
                 CONCAT(ue.nombres, ' ', ue.apellidos) AS Especialista,
                 CONCAT(uj.nombres, ' ', uj.apellidos) AS JefeLab
               FROM laboratorio.Muestra_Lab m
@@ -94,6 +99,197 @@ if (strcasecmp(trim((string)($muestra['Estado'] ?? '')), 'Finalizado') !== 0) {
     http_response_code(409);
     die('Solo se puede exportar muestras finalizadas');
 }
+
+// ── Firmas digitales ────────────────────────────────────────────────────────
+// Encargado de Laboratorio (Id_Jefe_Lab) → posición IZQUIERDA en el informe
+// Analista Jefe (Id_Especialista)        → posición DERECHA en el informe
+$firmaEncargadoB64 = null;
+$firmaAnalistaB64  = null;
+
+$idJefeLab = intval($muestra['Id_Jefe_Lab'] ?? 0);
+if ($idJefeLab > 0) {
+    $stmtFE = sqlsrv_query($conn,
+        "SELECT TOP 1 Img_Firma FROM laboratorio.Usuario_Lab_Firma WHERE Id_Usuario = ? AND Activo = 1",
+        [$idJefeLab]);
+    if ($stmtFE) {
+        $rowFE = sqlsrv_fetch_array($stmtFE, SQLSRV_FETCH_ASSOC);
+        if ($rowFE && !empty($rowFE['Img_Firma'])) $firmaEncargadoB64 = $rowFE['Img_Firma'];
+    }
+}
+
+$idEspecialista = intval($muestra['Id_Especialista'] ?? 0);
+if ($idEspecialista > 0) {
+    $stmtFA = sqlsrv_query($conn,
+        "SELECT TOP 1 Img_Firma FROM laboratorio.Usuario_Lab_Firma WHERE Id_Usuario = ? AND Activo = 1",
+        [$idEspecialista]);
+    if ($stmtFA) {
+        $rowFA = sqlsrv_fetch_array($stmtFA, SQLSRV_FETCH_ASSOC);
+        if ($rowFA && !empty($rowFA['Img_Firma'])) $firmaAnalistaB64 = $rowFA['Img_Firma'];
+    }
+}
+
+/**
+ * Inyecta firmas digitales como imágenes dentro del XLSX (ZIP) después del restore.
+ */
+$injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow0) {
+    if (!$encargadoB64 && !$analistaB64) return;
+
+    $zip = new \ZipArchive();
+    if ($zip->open($zipPath) !== true) return;
+
+    $nsXdr = 'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+    $nsA   = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+    $nsR   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+    // Caja máxima: ~4 columnas de ancho x 7 filas de alto
+    $maxWemu = 3990000;
+    $maxHemu = 1900238;
+    $emuPerPx = 9525; // 914400 EMU/inch ÷ 96 DPI
+
+    // ─── 1. Decodificar imágenes y calcular dimensiones reales ───────────────
+    // col 1 = columna B (encargado, IZQUIERDA)
+    // col 6 = columna G (analista,  DERECHA)
+    $imagesToAdd = [];
+    foreach ([
+        ['encargado', $encargadoB64, 1],
+        ['analista',  $analistaB64,  6],
+    ] as [$tag, $b64, $colFrom]) {
+        if (!$b64) continue;
+        // Soporta "data:image/...;base64,..." y base64 puro (blob de BD)
+        $b64clean = preg_replace('#^data:image/[\w+\-]+;base64,#', '', trim((string)$b64));
+        $raw = base64_decode($b64clean, true);
+        if ($raw === false || strlen($raw) < 10) continue;
+        // Tipo por magic bytes
+        $isPng = (substr($raw, 0, 8) === "\x89PNG\r\n\x1a\n");
+        $ext   = $isPng ? 'png' : 'jpg';
+
+        // Dimensiones en EMU preservando la relación de aspecto original
+        $imgInfo = function_exists('getimagesizefromstring') ? @getimagesizefromstring($raw) : false;
+        if ($imgInfo && $imgInfo[0] > 0 && $imgInfo[1] > 0) {
+            $emuW = $imgInfo[0] * $emuPerPx;
+            $emuH = $imgInfo[1] * $emuPerPx;
+            $scale = min($maxWemu / $emuW, $maxHemu / $emuH);
+            $cx = (int)round($emuW * $scale);
+            $cy = (int)round($emuH * $scale);
+        } else {
+            // Fallback: proporción 2.5:1 típica de firma
+            $cx = 3192000;
+            $cy = 1276800;
+        }
+
+        $mediaFile = 'xl/media/firma_' . $tag . '.' . $ext;
+        $zip->deleteName($mediaFile);
+        $zip->addFromString($mediaFile, $raw);
+        $imagesToAdd[] = ['tag' => $tag, 'ext' => $ext, 'colFrom' => $colFrom, 'cx' => $cx, 'cy' => $cy];
+    }
+
+    if (empty($imagesToAdd)) { $zip->close(); return; }
+
+    // ─── 2. [Content_Types].xml — registrar extensiones de imagen ────────────
+    $ctXml = $zip->getFromName('[Content_Types].xml');
+    if ($ctXml !== false) {
+        $ctChanged = false;
+        foreach (['png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg'] as $e => $mime) {
+            if (strpos($ctXml, 'Extension="' . $e . '"') === false) {
+                $ctXml    = str_replace('</Types>', '<Default Extension="' . $e . '" ContentType="' . $mime . '"/></Types>', $ctXml);
+                $ctChanged = true;
+            }
+        }
+        if ($ctChanged) {
+            $zip->deleteName('[Content_Types].xml');
+            $zip->addFromString('[Content_Types].xml', $ctXml);
+        }
+    }
+
+    // ─── 3. drawing1.xml.rels — agregar relaciones de imagen ─────────────────
+    $relsPath = 'xl/drawings/_rels/drawing1.xml.rels';
+    $relsXml  = $zip->getFromName($relsPath);
+    if ($relsXml === false || trim($relsXml) === '') {
+        $relsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                 . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+    }
+    preg_match_all('/Id="rId(\d+)"/i', $relsXml, $m2);
+    $maxId   = empty($m2[1]) ? 50 : max(array_map('intval', $m2[1]));
+    $relType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+    foreach ($imagesToAdd as &$info) {
+        $maxId++;
+        $info['rId'] = 'rId' . $maxId;
+        $relsXml = str_replace(
+            '</Relationships>',
+            '<Relationship Id="' . $info['rId'] . '" Type="' . $relType
+                . '" Target="../media/firma_' . $info['tag'] . '.' . $info['ext'] . '"/></Relationships>',
+            $relsXml
+        );
+    }
+    unset($info);
+    $zip->deleteName($relsPath);
+    $zip->addFromString($relsPath, $relsXml);
+
+    // ─── 4. drawing1.xml — inyectar anclas con DOMDocument (oneCellAnchor) ───
+    // oneCellAnchor: la imagen mantiene su tamaño real y no se estira
+    $drawingPath = 'xl/drawings/drawing1.xml';
+    $drawingXml  = $zip->getFromName($drawingPath);
+    if ($drawingXml === false) { $zip->close(); return; }
+
+    $dom = new \DOMDocument('1.0', 'UTF-8');
+    $dom->preserveWhiteSpace = true;
+    if (!@$dom->loadXML($drawingXml)) { $zip->close(); return; }
+    $root = $dom->documentElement;
+
+    if ($root->lookupNamespaceURI('a') === null) {
+        $root->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:a', $nsA);
+    }
+    if ($root->lookupNamespaceURI('r') === null) {
+        $root->setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:r', $nsR);
+    }
+
+    $picId = 9000;
+    foreach ($imagesToAdd as $info) {
+        $picId++;
+        $cx = $info['cx'];
+        $cy = $info['cy'];
+        // oneCellAnchor: posición fija desde celda inicial + dimensiones absolutas
+        $anchorXml = '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<xdr:oneCellAnchor'
+            .   ' xmlns:xdr="' . $nsXdr . '"'
+            .   ' xmlns:a="'   . $nsA   . '"'
+            .   ' xmlns:r="'   . $nsR   . '"'
+            . '>'
+            .   '<xdr:from>'
+            .     '<xdr:col>'    . $info['colFrom'] . '</xdr:col>'
+            .     '<xdr:colOff>114300</xdr:colOff>'
+            .     '<xdr:row>'    . $firmaRow0       . '</xdr:row>'
+            .     '<xdr:rowOff>114300</xdr:rowOff>'
+            .   '</xdr:from>'
+            .   '<xdr:ext cx="' . $cx . '" cy="' . $cy . '"/>'
+            .   '<xdr:pic>'
+            .     '<xdr:nvPicPr>'
+            .       '<xdr:cNvPr id="' . $picId . '" name="Firma_' . htmlspecialchars($info['tag'], ENT_XML1, 'UTF-8') . '"/>'
+            .       '<xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr>'
+            .     '</xdr:nvPicPr>'
+            .     '<xdr:blipFill>'
+            .       '<a:blip r:embed="' . $info['rId'] . '"/>'
+            .       '<a:stretch><a:fillRect/></a:stretch>'
+            .     '</xdr:blipFill>'
+            .     '<xdr:spPr>'
+            .       '<a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $cx . '" cy="' . $cy . '"/></a:xfrm>'
+            .       '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+            .     '</xdr:spPr>'
+            .   '</xdr:pic>'
+            .   '<xdr:clientData/>'
+            . '</xdr:oneCellAnchor>';
+
+        $anchorDoc = new \DOMDocument();
+        if (@$anchorDoc->loadXML($anchorXml)) {
+            $node = $dom->importNode($anchorDoc->documentElement, true);
+            $root->appendChild($node);
+        }
+    }
+
+    $zip->deleteName($drawingPath);
+    $zip->addFromString($drawingPath, $dom->saveXML());
+    $zip->close();
+};
 
 $formatNumero = function ($valor) {
     if ($valor === null || $valor === '') {
@@ -273,6 +469,9 @@ $uso = trim((string)($muestra['Uso_Agua'] ?? '-'));
 $fuenteRiego = trim((string)($muestra['Fuente_Riego'] ?? '-'));
 $profundidadSuelo = trim((string)($muestra['Profundidad'] ?? '-'));
 $numeroSubmuestras = trim((string)($muestra['Numero_Submuestras'] ?? '-'));
+$cultivoAnterior = trim((string)($muestra['Cultivo_Anterior'] ?? ''));
+$cultivoImplementado = trim((string)($muestra['Cultivo_Implementado'] ?? ''));
+$cultivoPorImplementar = trim((string)($muestra['Cultivo_Por_Implementar'] ?? ''));
 $cantidad = $muestra['Cantidad_Muestra'] ?? $muestra['Cantidad_Suelo'] ?? '-';
 $tipoServicio = trim((string)($muestra['Tipo_Servicio'] ?? '-'));
 $especialista = trim((string)($muestra['Especialista'] ?? '-'));
@@ -729,16 +928,9 @@ if ($esSuelo) {
 
     $sheet->setCellValue('D16', ($numeroSubmuestras !== '' ? $numeroSubmuestras : '-'));
 
-    $textoCultivo = $normalizar($fuenteRiego);
-    if (strpos($textoCultivo, 'ANTERIOR') !== false) {
-        $setCheckMark('F18', true);
-    }
-    if (strpos($textoCultivo, 'IMPLEMENTADO') !== false && strpos($textoCultivo, 'POR') === false) {
-        $setCheckMark('I18', true);
-    }
-    if (strpos($textoCultivo, 'POR IMPLEMENTAR') !== false) {
-        $setCheckMark('K18', true);
-    }
+    $sheet->setCellValue('E18', $cultivoAnterior);
+    $sheet->setCellValue('H18', $cultivoImplementado);
+    $sheet->setCellValue('K18', $cultivoPorImplementar);
 
     $setCheckMark('E22', $esInterno);
     $setCheckMark('I22', $esExterno);
@@ -909,6 +1101,12 @@ if ($esSuelo) {
         $sheet->setCellValue($colUnidad . $r, trim((string)($item['normativas'][0]['unidad'] ?? '')));
         $sheet->setCellValue($colResultado . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
         $sheet->setCellValue($colClasificacion . $r, '');
+        $sR = $sheet->getStyle('B' . $r . ':K' . $r);
+        $sR->getFill()->setFillType(Fill::FILL_SOLID);
+        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
     }
 
     $startQuim = $filaHeaderQuim + 1;
@@ -939,6 +1137,12 @@ if ($esSuelo) {
         $sheet->setCellValue($colUnidad . $r, trim((string)($item['normativas'][0]['unidad'] ?? '')));
         $sheet->setCellValue($colResultado . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
         $sheet->setCellValue($colClasificacion . $r, '');
+        $sR = $sheet->getStyle('B' . $r . ':K' . $r);
+        $sR->getFill()->setFillType(Fill::FILL_SOLID);
+        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
     }
 
     $sheet->setCellValue('B' . ($filaObs + 1), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
@@ -969,13 +1173,14 @@ if ($esSuelo) {
     $setCheckMark('K10', $isChicama);
     $sheet->setCellValue('E11', ($isOtroValle ? strtoupper(trim((string)$valle)) : ''));
 
-    $textoNivelAgua = $normalizar($nivelAgua);
-    if ($textoNivelAgua === '-' || $textoNivelAgua === '') {
-        $textoNivelAgua = $normalizar($fuente);
-    }
-    $setCheckMark('F14', strpos($textoNivelAgua, 'SUBTERR') !== false);
-    $setCheckMark('I14', strpos($textoNivelAgua, 'SUPERF') !== false);
-    $setCheckMark('K14', (strpos($textoNivelAgua, 'OTRO') !== false || $textoNivelAgua === '-'));
+    // TIPO DE FUENTE: usa Fuente_Agua (subterránea/superficial)
+    $textoFuente = $normalizar($fuente);
+    $setCheckMark('F14', strpos($textoFuente, 'SUBTERR') !== false);
+    $setCheckMark('I14', strpos($textoFuente, 'SUPERF') !== false);
+    $setCheckMark('K14', (strpos($textoFuente, 'OTRO') !== false || ($textoFuente !== 'SUBTERRANEA' && $textoFuente !== 'SUBTERRANEO' && $textoFuente !== 'SUPERFICIAL' && $textoFuente !== '-' && $textoFuente !== '')));
+
+    // NIVEL DE AGUA: escribe el valor como texto (ej. "Pozo", "Río")
+    $sheet->setCellValue('D18', ($nivelAgua !== '' && $nivelAgua !== '-' ? strtoupper($nivelAgua) : '-'));
 
     $textoUso = $normalizar($uso);
     $setCheckMark('F16', strpos($textoUso, 'CONSUMO') !== false);
@@ -989,6 +1194,13 @@ if ($esSuelo) {
     $sheet->setCellValue('E25', strtoupper(trim((string)($normativasLayout[0]['nombre'] ?? '-'))));
     $sheet->setCellValue('G24', strtoupper(trim((string)($normativasLayout[1]['descripcion'] ?? '-'))));
     $sheet->setCellValue('G25', strtoupper(trim((string)($normativasLayout[1]['nombre'] ?? '-'))));
+    // Pintar celdas de normativa azul explícitamente
+    $sNorm = $sheet->getStyle('E24:H25');
+    $sNorm->getFill()->setFillType(Fill::FILL_SOLID);
+    $sNorm->getFill()->getStartColor()->setARGB('FF2F5597');
+    $sNorm->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+    $sNorm->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+    $sNorm->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
 
     // Detección dinámica de filas en plantilla de agua
     $toAsciiUpper = function ($text) {
@@ -1038,6 +1250,7 @@ if ($esSuelo) {
     if ($filaHeaderMicro === null) { $filaHeaderMicro = 50; }
     if ($filaObs === null) { $filaObs = 55; }
 
+    $desfaseFilasAgua = 0;
     $startFis = $filaHeaderFis + 1;
     $capFis = max(0, $filaHeaderQuim - $startFis);
     $fisCount = count($grupos['fisicos']);
@@ -1056,6 +1269,7 @@ if ($esSuelo) {
         $filaHeaderQuim += $extraFis;
         $filaHeaderMicro += $extraFis;
         $filaObs += $extraFis;
+        $desfaseFilasAgua += $extraFis;
         $capFis = $fisCount;
     }
 
@@ -1069,6 +1283,12 @@ if ($esSuelo) {
         $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
         $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
         $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
+        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
+        $sR->getFill()->setFillType(Fill::FILL_SOLID);
+        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
     }
 
     $startQuim = $filaHeaderQuim + 1;
@@ -1088,6 +1308,7 @@ if ($esSuelo) {
         }
         $filaHeaderMicro += $extraQuim;
         $filaObs += $extraQuim;
+        $desfaseFilasAgua += $extraQuim;
         $capQuim = $quimCount;
     }
 
@@ -1101,6 +1322,12 @@ if ($esSuelo) {
         $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
         $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
         $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
+        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
+        $sR->getFill()->setFillType(Fill::FILL_SOLID);
+        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
     }
 
     $startMicro = $filaHeaderMicro + 1;
@@ -1119,6 +1346,7 @@ if ($esSuelo) {
             );
         }
         $filaObs += $extraMicro;
+        $desfaseFilasAgua += $extraMicro;
         $capMicro = $microCount;
     }
 
@@ -1132,6 +1360,12 @@ if ($esSuelo) {
         $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
         $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
         $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
+        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
+        $sR->getFill()->setFillType(Fill::FILL_SOLID);
+        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
     }
 
     $sheet->setCellValue('B' . ($filaObs + 1), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
@@ -1171,15 +1405,46 @@ if ($previewHtml) {
     $html = ob_get_clean();
 
     $previewCss = '<style>'
-        . 'html,body{margin:0;padding:10px;background:#f3f4f6 !important;}'
-        . 'table{margin:0 auto !important;background:#ffffff !important;}'
-        . 'td,th{min-width:22px !important;}'
+        . 'html,body{margin:0;padding:16px 8px;background:#e8eaf0 !important;font-family:Calibri,Arial,sans-serif;}'
+        . 'table{border-collapse:collapse !important;margin:0 auto !important;background:#ffffff !important;'
+        . '      box-shadow:0 2px 12px rgba(0,0,0,0.18);}'
+        . 'td,th{min-width:20px !important;padding:2px 4px !important;vertical-align:middle !important;}'
         . '</style>';
 
     if (stripos($html, '</head>') !== false) {
         $html = str_ireplace('</head>', $previewCss . '</head>', $html);
     } else {
         $html = $previewCss . $html;
+    }
+
+    // Inyectar firmas como sección HTML al final del reporte
+    if ($firmaEncargadoB64 || $firmaAnalistaB64) {
+        $firmaHtml = '<div style="font-family:Calibri,Arial,sans-serif;padding:16px 24px;background:#fff;">' .
+            '<table style="width:100%;border-collapse:collapse;"><tr>';
+        // Izquierda: Encargado de Laboratorio
+        $firmaHtml .= '<td style="width:45%;text-align:center;padding:8px;">';
+        if ($firmaEncargadoB64) {
+            $firmaHtml .= '<img src="' . htmlspecialchars($firmaEncargadoB64, ENT_QUOTES, 'UTF-8') . '" style="max-height:70px;max-width:200px;object-fit:contain;" alt="Firma encargado">';
+        }
+        $firmaHtml .= '<hr style="border-top:1px solid #333;margin:4px 0;"><div style="font-size:10pt;">' .
+            htmlspecialchars($jefeLab ?: '', ENT_QUOTES, 'UTF-8') . '</div>' .
+            '<div style="font-size:8pt;color:#555;">ENCARGADO DE LABORATORIO</div></td>';
+        // Espacio central
+        $firmaHtml .= '<td style="width:10%;"></td>';
+        // Derecha: Analista Jefe
+        $firmaHtml .= '<td style="width:45%;text-align:center;padding:8px;">';
+        if ($firmaAnalistaB64) {
+            $firmaHtml .= '<img src="' . htmlspecialchars($firmaAnalistaB64, ENT_QUOTES, 'UTF-8') . '" style="max-height:70px;max-width:200px;object-fit:contain;" alt="Firma analista">';
+        }
+        $firmaHtml .= '<hr style="border-top:1px solid #333;margin:4px 0;"><div style="font-size:10pt;">' .
+            htmlspecialchars($especialista ?: '', ENT_QUOTES, 'UTF-8') . '</div>' .
+            '<div style="font-size:8pt;color:#555;">ANALISTA JEFE</div></td>';
+        $firmaHtml .= '</tr></table></div>';
+        if (stripos($html, '</body>') !== false) {
+            $html = str_ireplace('</body>', $firmaHtml . '</body>', $html);
+        } else {
+            $html .= $firmaHtml;
+        }
     }
 
     echo $html;
@@ -1232,6 +1497,12 @@ if ($srcZip->open($plantillaPath) === true && $dstZip->open($tmpFile) === true) 
     $srcZip->close();
     $dstZip->close();
 }
+
+// Inyectar firmas digitales en el XLSX generado
+// 0-indexed OOXML: row 66 = Excel fila 67 (inicio del espacio vacío de firmas, antes de la línea A/B en fila 74)
+// La imagen con cy calculado ocupa ~7 filas y queda justo encima de las líneas A y B
+$firmaRow0 = $esSuelo ? (66 + $desfaseFilasSuelo) : (66 + $desfaseFilasAgua);
+$injectFirmasEnXlsx($tmpFile, $firmaEncargadoB64, $firmaAnalistaB64, $firmaRow0);
 
 readfile($tmpFile);
 @unlink($tmpFile);

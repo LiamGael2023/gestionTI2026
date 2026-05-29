@@ -36,21 +36,25 @@
       </div>
     </div>
     <div class="row g-2">
+      <?php if (!empty($permisos['crear'])): ?>
       <div class="col-auto">
         <button class="btn btn-success" onclick="abrirModalNuevoParametro()">
           <i class="ti ti-plus me-2"></i> Nuevo Parametro
         </button>
       </div>
+      <?php endif; ?>
+      <?php if (!empty($permisos['editar'])): ?>
       <div class="col-auto">
-        <button class="btn btn-primary" onclick="abrirModalNuevaNormativa()">
-          <i class="ti ti-plus me-2"></i> Nueva Normativa
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-gestionar-normativas">
+          <i class="ti ti-book me-2"></i> Normativas
         </button>
       </div>
       <div class="col-auto">
-        <button class="btn btn-danger" onclick="abrirModalNuevoLimite()">
-          <i class="ti ti-plus me-2"></i> Nuevo Limite
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modal-gestionar-limites">
+          <i class="ti ti-scale me-2"></i> Límites Legales
         </button>
       </div>
+      <?php endif; ?>
     </div>
   </div>
 </div>
@@ -58,75 +62,22 @@
 <div class="page-body">
   <div class="container-xl">
     <div class="card">
-      <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs" data-bs-toggle="tabs" role="tablist">
-          <li class="nav-item" role="presentation">
-            <a href="#tab-parametros" class="nav-link active" data-bs-toggle="tab" aria-selected="true" role="tab">Parametros</a>
-          </li>
-          <li class="nav-item" role="presentation">
-            <a href="#tab-normativas" class="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">Normativas</a>
-          </li>
-          <li class="nav-item" role="presentation">
-            <a href="#tab-limites" class="nav-link" data-bs-toggle="tab" aria-selected="false" role="tab">Limites</a>
-          </li>
-        </ul>
-      </div>
       <div class="card-body">
-        <div class="tab-content">
-          <div class="tab-pane active show" id="tab-parametros" role="tabpanel">
-            <div class="table-responsive">
-              <table id="tabla-parametros" class="table table-vcenter card-table table-striped" style="width:100%">
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Nombre</th>
-                    <th>Servicio</th>
-                    <th>Unidad</th>
-                    <th>Categoria</th>
-                    <th>Metodo</th>
-                    <th>Accion</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="tab-pane" id="tab-normativas" role="tabpanel">
-            <div class="table-responsive">
-              <table id="tabla-normativas" class="table table-vcenter card-table table-striped" style="width:100%">
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Nombre</th>
-                    <th>Descripcion</th>
-                    <th>Accion</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
-
-          <div class="tab-pane" id="tab-limites" role="tabpanel">
-            <div class="table-responsive">
-              <table id="tabla-limites" class="table table-vcenter card-table table-striped" style="width:100%">
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Parametro</th>
-                    <th>Normativa</th>
-                    <th>Valor Max</th>
-                    <th>Valor Min</th>
-                    <th>Unidad de Medida</th>
-                    <th>Descripcion</th>
-                    <th>Accion</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </div>
+        <div class="table-responsive">
+          <table id="tabla-parametros" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nombre</th>
+                <th>Servicio</th>
+                <th>Unidad</th>
+                <th>Categoria</th>
+                <th>Metodo</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -174,6 +125,70 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" onclick="guardarParametro()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal gestionar normativas -->
+<div class="modal modal-blur fade" id="modal-gestionar-normativas" tabindex="-1" role="dialog" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h5 class="modal-title">Normativas</h5>
+        <button type="button" class="btn btn-sm btn-success ms-3" onclick="abrirModalNuevaNormativa()">
+          <i class="ti ti-plus me-1"></i> Nueva Normativa
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table id="tabla-normativas" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Nombre</th>
+                <th>Descripcion</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal gestionar limites -->
+<div class="modal modal-blur fade" id="modal-gestionar-limites" tabindex="-1" role="dialog" aria-hidden="true" data-bs-focus="false">
+  <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header">
+        <h5 class="modal-title">Límites Legales</h5>
+        <button type="button" class="btn btn-sm btn-success ms-3" onclick="abrirModalNuevoLimite()">
+          <i class="ti ti-plus me-1"></i> Nuevo Límite
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table id="tabla-limites" class="table table-vcenter card-table table-striped" style="width:100%">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Parametro</th>
+                <th>Normativa</th>
+                <th>Valor Max</th>
+                <th>Valor Min</th>
+                <th>Unidad de Medida</th>
+                <th>Descripcion</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -385,19 +400,12 @@ $(document).ready(function() {
     cargarParametros();
     cargarNormativas();
 
-    // Recalcular anchos cuando se cambia de tab
-    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function (el) {
-      el.addEventListener('shown.bs.tab', function () {
-        if (tablaParametros) {
-          tablaParametros.columns.adjust();
-        }
-        if (tablaNormativas) {
-          tablaNormativas.columns.adjust();
-        }
-        if (tablaLimites) {
-          tablaLimites.columns.adjust();
-        }
-      });
+    // Recalcular anchos cuando se abren los modales de gestión
+    $('#modal-gestionar-normativas').on('shown.bs.modal', function () {
+        if (tablaNormativas) tablaNormativas.columns.adjust().draw(false);
+    });
+    $('#modal-gestionar-limites').on('shown.bs.modal', function () {
+        if (tablaLimites) tablaLimites.columns.adjust().draw(false);
     });
 });
 
