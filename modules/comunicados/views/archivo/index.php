@@ -146,7 +146,7 @@ $totalArchivosVista = count($archivos);
 			<form id="formArchivo">
 				<div class="modal-body">
 					<label class="form-label" for="archivoInput">Archivo</label>
-					<input type="file" class="form-control" id="archivoInput" name="archivo" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required>
+					<input type="file" class="form-control" id="archivoInput" name="archivo" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx" required>
 					<div class="form-hint">Maximo 12 MB. La URL generada puede pegarse en el editor.</div>
 				</div>
 				<div class="modal-footer">
