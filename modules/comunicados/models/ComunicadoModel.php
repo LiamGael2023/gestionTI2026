@@ -8,13 +8,18 @@ class ComunicadoModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivos = true)
+	public function listar($soloActivos = true, $idUsuarioRegistro = null)
 	{
 		$where = [];
 		$params = [];
 
 		if ($soloActivos) {
 			$where[] = "c.Activo = 1";
+		}
+
+		if ($idUsuarioRegistro !== null) {
+			$where[] = "c.IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
 		}
 
 		$sql = "
@@ -31,15 +36,21 @@ class ComunicadoModel
 		return $this->fetchAll($stmt);
 	}
 
-	public function obtener($idComunicado)
+	public function obtener($idComunicado, $idUsuarioRegistro = null)
 	{
+		$where = ["IdComunicado = ?"];
 		$params = [(int) $idComunicado];
+
+		if ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
 
 		$sql = "
 			SELECT IdComunicado, IdPlantilla, TituloComunicado, ContenidoJson,
 				HtmlFinal, EstadoComunicado, Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Comunicado
-			WHERE IdComunicado = ?
+			WHERE " . implode(" AND ", $where) . "
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
@@ -75,19 +86,9 @@ class ComunicadoModel
 		return $row ? (int) $row[0] : true;
 	}
 
-	public function actualizar($idComunicado, array $datos)
+	public function actualizar($idComunicado, array $datos, $idUsuarioRegistro = null)
 	{
-		$sql = "
-			UPDATE comunicados.Comunicado
-			SET IdPlantilla = ?,
-				TituloComunicado = ?,
-				ContenidoJson = ?,
-				HtmlFinal = ?,
-				EstadoComunicado = ?,
-				FechaModificacion = SYSDATETIME(),
-				IdUsuarioModificacion = ?
-			WHERE IdComunicado = ?
-		";
+		$where = "IdComunicado = ?";
 		$params = [
 			$this->intONull($datos['IdPlantilla'] ?? null),
 			trim((string) ($datos['TituloComunicado'] ?? '')),
@@ -97,6 +98,23 @@ class ComunicadoModel
 			$datos['IdUsuarioModificacion'] ?? null,
 			(int) $idComunicado,
 		];
+
+		if ($idUsuarioRegistro !== null) {
+			$where .= " AND IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
+		$sql = "
+			UPDATE comunicados.Comunicado
+			SET IdPlantilla = ?,
+				TituloComunicado = ?,
+				ContenidoJson = ?,
+				HtmlFinal = ?,
+				EstadoComunicado = ?,
+				FechaModificacion = SYSDATETIME(),
+				IdUsuarioModificacion = ?
+			WHERE " . $where . "
+		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
@@ -105,14 +123,22 @@ class ComunicadoModel
 		return $ok;
 	}
 
-	public function cambiarEstadoActivo($idComunicado, $activo, $idUsuarioModificacion = null)
+	public function cambiarEstadoActivo($idComunicado, $activo, $idUsuarioModificacion = null, $idUsuarioRegistro = null)
 	{
+		$where = "IdComunicado = ?";
+		$params = [(int) $activo, $idUsuarioModificacion, (int) $idComunicado];
+
+		if ($idUsuarioRegistro !== null) {
+			$where .= " AND IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
 		$sql = "
 			UPDATE comunicados.Comunicado
 			SET Activo = ?, FechaModificacion = SYSDATETIME(), IdUsuarioModificacion = ?
-			WHERE IdComunicado = ?
+			WHERE " . $where . "
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuarioModificacion, (int) $idComunicado]);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);
@@ -120,9 +146,15 @@ class ComunicadoModel
 		return $ok;
 	}
 
-	public function obtenerResumen()
+	public function obtenerResumen($idUsuarioRegistro = null)
 	{
+		$where = [];
 		$params = [];
+
+		if ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
 
 		$sql = "
 			SELECT
@@ -131,6 +163,7 @@ class ComunicadoModel
 				SUM(CASE WHEN EstadoComunicado = N'LISTO' AND Activo = 1 THEN 1 ELSE 0 END) AS Listos,
 				SUM(CASE WHEN Activo = 0 THEN 1 ELSE 0 END) AS Inactivos
 			FROM comunicados.Comunicado
+			" . (!empty($where) ? "WHERE " . implode(" AND ", $where) : "") . "
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {

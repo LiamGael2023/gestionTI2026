@@ -56,29 +56,29 @@ switch ($action) {
 
 	case 'eliminarPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 0, $idUsuarioSesion);
+		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 0, $idUsuarioSesion, $idUsuarioSesion);
 		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla inactivada.' : 'No se pudo inactivar la plantilla.']);
 		break;
 
 	case 'activarPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 1, $idUsuarioSesion);
+		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 1, $idUsuarioSesion, $idUsuarioSesion);
 		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla activada.' : 'No se pudo activar la plantilla.']);
 		break;
 
 	case 'obtenerPlantillaAjax':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$plantilla = $id > 0 ? $plantillaModel->obtener($id) : null;
+		$plantilla = $id > 0 ? $plantillaModel->obtener($id, $idUsuarioSesion) : null;
 		comPlantillaJson(['success' => (bool) $plantilla, 'data' => $plantilla]);
 		break;
 
 	case 'listarPlantillasAjax':
-		comPlantillaJson(['success' => true, 'data' => $plantillaModel->listar(false)]);
+		comPlantillaJson(['success' => true, 'data' => $plantillaModel->listar(false, $idUsuarioSesion)]);
 		break;
 
 	default:
 		$vistaActual = 'plantilla';
-		$plantillas = $plantillaModel->listar(false);
+		$plantillas = $plantillaModel->listar(false, $idUsuarioSesion);
 		include 'modules/comunicados/views/index.php';
 		break;
 }
