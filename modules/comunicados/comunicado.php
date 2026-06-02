@@ -15,6 +15,18 @@ require_once 'core/Auth.php';
 $_GET['module'] = 'comunicados';
 $_GET['action'] = 'visualizar';
 
+if (!isset($_GET['id'])) {
+	$pathInfo = $_SERVER['PATH_INFO'] ?? '';
+	if ($pathInfo === '' && isset($_SERVER['REQUEST_URI'], $_SERVER['SCRIPT_NAME'])) {
+		$pathInfo = substr(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '', strlen($_SERVER['SCRIPT_NAME']));
+	}
+
+	$idDesdeRuta = trim($pathInfo, '/');
+	if (ctype_digit($idDesdeRuta)) {
+		$_GET['id'] = (int) $idDesdeRuta;
+	}
+}
+
 Auth::check();
 
 require 'modules/comunicados/controllers/ComunicadoController.php';

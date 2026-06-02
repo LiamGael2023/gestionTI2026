@@ -93,7 +93,7 @@ $totalComunicadosVista = count($comunicados);
 										</td>
 										<td class="py-0 align-middle">
 											<div class="btn-group" role="group">
-												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/visualizar.php?id=<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
+												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/comunicado.php/<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
 													<i class="ti ti-eye-share fs-2"></i>
 												</a>
 												<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
