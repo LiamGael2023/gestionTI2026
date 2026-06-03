@@ -82,6 +82,11 @@ switch ($action) {
 		];
 
 		if ($id > 0) {
+			$comunicadoActual = $model->obtener($id, $idUsuarioSesion);
+			if (!$comunicadoActual || (int) ($comunicadoActual['Activo'] ?? 0) !== 1) {
+				comJson(['success' => false, 'message' => 'No se puede editar un comunicado inactivo.']);
+			}
+
 			$ok = $model->actualizar($id, $datos, $idUsuarioSesion);
 			comJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Comunicado actualizado.' : 'No se pudo actualizar el comunicado.']);
 		}
@@ -147,6 +152,10 @@ switch ($action) {
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$idPlantilla = isset($_GET['plantilla']) ? (int) $_GET['plantilla'] : 0;
 		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		if ($id > 0 && (!$comunicado || (int) ($comunicado['Activo'] ?? 0) !== 1)) {
+			header('Location: index.php?module=comunicados&action=comunicados');
+			exit;
+		}
 		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla, $idUsuarioSesion) : null;
 		$plantillas = $plantillaModel->listar(true, $idUsuarioSesion);
 		$archivos = $archivoModel->listar(true, $idUsuarioSesion);

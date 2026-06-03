@@ -380,30 +380,17 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 		};
 
 		document.addEventListener('click', function(event) {
-			const modalButton = event.target.closest('[data-bs-target="#modalPlantilla"], [data-bs-target="#modalArchivo"]');
+			const modalButton = event.target.closest('[data-bs-target="#modalArchivo"]');
 			if (modalButton) {
 				event.preventDefault();
 				event.stopPropagation();
 
 				const targetSelector = modalButton.getAttribute('data-bs-target');
 				const modalEl = document.querySelector(targetSelector);
-				const form = targetSelector === '#modalPlantilla'
-					? document.getElementById('formPlantilla')
-					: document.getElementById('formArchivo');
+				const form = document.getElementById('formArchivo');
 
 				if (form) {
 					form.reset();
-				}
-
-				if (targetSelector === '#modalPlantilla') {
-					const id = document.getElementById('plantillaId');
-					const json = document.getElementById('plantillaJson');
-					const html = document.getElementById('plantillaHtml');
-					const titulo = document.getElementById('modalPlantillaTitulo');
-					if (id) id.value = '';
-					if (json) json.value = '[]';
-					if (html) html.value = '';
-					if (titulo) titulo.textContent = 'Nueva plantilla';
 				}
 
 				if (typeof window.comShowModalSafe === 'function') {

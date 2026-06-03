@@ -67,7 +67,7 @@ $totalComunicadosVista = count($comunicados);
 								<th>
 									<button class="table-sort" data-sort="sort-activo">Activo</button>
 								</th>
-								<th>Acciones</th>
+								<th class="text-end">Acciones</th>
 							</tr>
 						</thead>
 						<tbody class="table-tbody">
@@ -91,14 +91,16 @@ $totalComunicadosVista = count($comunicados);
 												<?php echo $activo ? 'Activo' : 'Inactivo'; ?>
 											</span>
 										</td>
-										<td class="py-0 align-middle">
+										<td class="py-0 align-middle text-end">
 											<div class="btn-group" role="group">
 												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/comunicado.php/<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
 													<i class="ti ti-eye-share fs-2"></i>
 												</a>
-												<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
-													<i class="ti ti-edit fs-2"></i>
-												</a>
+												<?php if ($activo): ?>
+													<a class="btn btn-icon btn-lg js-editar-comunicado" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
+														<i class="ti ti-edit fs-2"></i>
+													</a>
+												<?php endif; ?>
 												<button type="button"
 													class="btn btn-icon btn-lg js-convertir-plantilla"
 													title="Convertir en plantilla"
@@ -168,37 +170,112 @@ $totalComunicadosVista = count($comunicados);
 			});
 		}
 
-		document.querySelectorAll('.js-eliminar-comunicado').forEach(function(btn) {
-			btn.addEventListener('click', function() {
-				const id = this.dataset.id;
-				window.comConfirmSafe({
-					titulo: 'Inactivar comunicado',
-					mensaje: 'Desea inactivar este comunicado?',
-					textoAceptar: 'Inactivar',
-					claseAceptar: 'btn-danger'
-				}).then(function(ok) {
-					if (!ok) {
-						return;
-					}
-					postEstado('eliminarComunicadoAjax', id).then(function(res) {
-						window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
-						if (res.success) {
-							window.recargarVistaActualComunicados();
-						}
-					});
-				});
-			});
-		});
+		function refrescarListaComunicados() {
+			const list = window.tabler_list && window.tabler_list['comunicados-table'];
+			if (!list) {
+				return;
+			}
 
-		document.querySelectorAll('.js-activar-comunicado').forEach(function(btn) {
-			btn.addEventListener('click', function() {
-				postEstado('activarComunicadoAjax', this.dataset.id).then(function(res) {
+			if (typeof list.reIndex === 'function') {
+				list.reIndex();
+			}
+			list.update();
+		}
+
+		function crearBotonEditarComunicado(id) {
+			const link = document.createElement('a');
+			link.className = 'btn btn-icon btn-lg js-editar-comunicado';
+			link.title = 'Editar';
+			link.href = 'index.php?module=comunicados&action=editor&id=' + encodeURIComponent(id);
+			link.innerHTML = '<i class="ti ti-edit fs-2"></i>';
+			return link;
+		}
+
+		function actualizarEstadoComunicado(btn, activo) {
+			const row = btn.closest('tr');
+			if (!row) {
+				return;
+			}
+
+			const estadoCell = row.querySelector('.sort-activo');
+			if (estadoCell) {
+				estadoCell.innerHTML = '<span class="badge ' + (activo ? 'bg-success-lt' : 'bg-secondary-lt') + '">' + (activo ? 'Activo' : 'Inactivo') + '</span>';
+			}
+
+			const group = btn.closest('.btn-group');
+			if (group) {
+				const editar = group.querySelector('.js-editar-comunicado');
+				const visualizar = group.querySelector('a[title="Visualizar"]');
+				if (activo && !editar) {
+					const nuevoEditar = crearBotonEditarComunicado(btn.dataset.id);
+					if (visualizar && visualizar.nextSibling) {
+						group.insertBefore(nuevoEditar, visualizar.nextSibling);
+					} else {
+						group.insertBefore(nuevoEditar, group.firstChild);
+					}
+				}
+				if (!activo && editar) {
+					editar.remove();
+				}
+			}
+
+			btn.className = 'btn btn-icon btn-lg ' + (activo ? 'text-danger js-eliminar-comunicado' : 'text-success js-activar-comunicado');
+			btn.title = activo ? 'Inactivar' : 'Activar';
+			btn.innerHTML = '<i class="ti ' + (activo ? 'ti-eye-x' : 'ti-eye-check') + ' fs-2"></i>';
+
+			refrescarListaComunicados();
+		}
+
+		function inactivarComunicado(btn) {
+			const id = btn.dataset.id;
+			window.comConfirmSafe({
+				titulo: 'Inactivar comunicado',
+				mensaje: 'Desea inactivar este comunicado?',
+				textoAceptar: 'Inactivar',
+				claseAceptar: 'btn-danger'
+			}).then(function(ok) {
+				if (!ok) {
+					return;
+				}
+				postEstado('eliminarComunicadoAjax', id).then(function(res) {
 					window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
 					if (res.success) {
-						window.recargarVistaActualComunicados();
+						actualizarEstadoComunicado(btn, false);
 					}
 				});
 			});
+		}
+
+		function activarComunicado(btn) {
+			window.comConfirmSafe({
+				titulo: 'Activar comunicado',
+				mensaje: 'Desea activar este comunicado?',
+				textoAceptar: 'Activar',
+				colorAceptar: '#206bc4'
+			}).then(function(ok) {
+				if (!ok) {
+					return;
+				}
+				postEstado('activarComunicadoAjax', btn.dataset.id).then(function(res) {
+					window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
+					if (res.success) {
+						actualizarEstadoComunicado(btn, true);
+					}
+				});
+			});
+		}
+
+		document.getElementById('comunicados-table').addEventListener('click', function(event) {
+			const btnInactivar = event.target.closest('.js-eliminar-comunicado');
+			if (btnInactivar) {
+				inactivarComunicado(btnInactivar);
+				return;
+			}
+
+			const btnActivar = event.target.closest('.js-activar-comunicado');
+			if (btnActivar) {
+				activarComunicado(btnActivar);
+			}
 		});
 
 		document.querySelectorAll('.js-convertir-plantilla').forEach(function(btn) {
