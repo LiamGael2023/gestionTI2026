@@ -170,7 +170,7 @@ switch ($action) {
 	default:
 		$vistaActual = 'dashboard';
 		$resumenComunicados = $model->obtenerResumen($idUsuarioSesion);
-		$comunicadosRecientes = array_slice($model->listar(true, $idUsuarioSesion), 0, 6);
+		$comunicadosRecientes = array_slice($model->listar(true, $idUsuarioSesion), 0, 3);
 		$plantillasActivas = $plantillaModel->listar(true, $idUsuarioSesion);
 		$archivosRecientes = array_slice($archivoModel->listar(true, $idUsuarioSesion), 0, 5);
 		break;

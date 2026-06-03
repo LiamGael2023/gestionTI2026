@@ -190,7 +190,9 @@ $totalPlantillasVista = count($plantillas);
 
 		const modalEl = document.getElementById('modalPlantilla');
 		const previewModalEl = document.getElementById('modalPreviewPlantilla');
+		const previewFrame = document.getElementById('plantillaPreviewFrame');
 		const form = document.getElementById('formPlantilla');
+		let htmlPreviewActual = '';
 
 		function guardar(payload) {
 			return fetch('modules/comunicados/ajax.php?action=guardarPlantillaAjax', {
@@ -208,10 +210,41 @@ $totalPlantillasVista = count($plantillas);
 				return;
 			}
 			document.getElementById('modalPreviewPlantillaTitulo').textContent = nombre || 'Previsualizar plantilla';
-			document.getElementById('plantillaPreviewFrame').srcdoc = html;
+			htmlPreviewActual = html;
+			cargarPreviewFrame('');
 			if (typeof window.comShowModalSafe === 'function') {
 				window.comShowModalSafe(previewModalEl);
 			}
+			setTimeout(function() {
+				cargarPreviewFrame(htmlPreviewActual);
+			}, 0);
+		}
+
+		function cargarPreviewFrame(html) {
+			if (!previewFrame) {
+				return;
+			}
+
+			previewFrame.removeAttribute('srcdoc');
+			previewFrame.src = 'about:blank';
+
+			if (!html) {
+				return;
+			}
+
+			setTimeout(function() {
+				previewFrame.removeAttribute('src');
+				previewFrame.srcdoc = html;
+			}, 0);
+		}
+
+		if (previewModalEl) {
+			previewModalEl.addEventListener('shown.bs.modal', function() {
+				cargarPreviewFrame(htmlPreviewActual);
+			});
+			previewModalEl.addEventListener('hidden.bs.modal', function() {
+				cargarPreviewFrame('');
+			});
 		}
 
 		document.querySelectorAll('.js-editar-plantilla').forEach(function(btn) {

@@ -45,7 +45,8 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 				function comSwalOptions(options) {
 					return Object.assign({
 						width: '24rem',
-						padding: '0 0 1rem'
+						padding: '0 0 1rem',
+						heightAuto: false
 					}, options || {});
 				}
 
@@ -140,6 +141,9 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 					if (window.bootstrap && bootstrap.Modal) {
 						var instancia = bootstrap.Modal.getInstance(modalEl);
+						if (!instancia && modalEl.classList.contains('show')) {
+							instancia = bootstrap.Modal.getOrCreateInstance(modalEl);
+						}
 						if (instancia) {
 							instancia.hide();
 							return;
@@ -379,6 +383,10 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 			window.location.reload();
 		};
 
+		function obtenerModalVisibleComunicados() {
+			return document.querySelector('#comunicados-contenido .modal.show');
+		}
+
 		document.addEventListener('click', function(event) {
 			const modalButton = event.target.closest('[data-bs-target="#modalArchivo"]');
 			if (modalButton) {
@@ -399,13 +407,27 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 				return;
 			}
 
-			const closeButton = event.target.closest('#modalPlantilla [data-bs-dismiss="modal"], #modalArchivo [data-bs-dismiss="modal"]');
-			if (closeButton && !(window.bootstrap && bootstrap.Modal)) {
+			const closeButton = event.target.closest('#comunicados-contenido .modal [data-bs-dismiss="modal"]');
+			if (closeButton) {
 				event.preventDefault();
 				if (typeof window.comHideModalSafe === 'function') {
 					window.comHideModalSafe(closeButton.closest('.modal'));
 				}
 			}
+		});
+
+		document.addEventListener('keydown', function(event) {
+			if (event.key !== 'Escape' || document.querySelector('.swal2-container')) {
+				return;
+			}
+
+			const modalEl = obtenerModalVisibleComunicados();
+			if (!modalEl || typeof window.comHideModalSafe !== 'function') {
+				return;
+			}
+
+			event.preventDefault();
+			window.comHideModalSafe(modalEl);
 		});
 	})();
 </script>
