@@ -356,8 +356,7 @@ $totalPlantillasVista = count($plantillas);
 			window.comConfirmSafe({
 				titulo: 'Eliminar plantilla',
 				mensaje: 'Desea eliminar esta plantilla?',
-				textoAceptar: 'Eliminar',
-				claseAceptar: 'btn-danger'
+				textoAceptar: 'Eliminar'
 			}).then(function(ok) {
 				if (!ok) {
 					return;

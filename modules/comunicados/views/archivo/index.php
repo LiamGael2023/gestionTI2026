@@ -225,8 +225,7 @@ $totalArchivosVista = count($archivos);
 					window.comConfirmSafe({
 						titulo: 'Inactivar archivo',
 						mensaje: 'Desea inactivar este archivo?',
-						textoAceptar: 'Inactivar',
-						claseAceptar: 'btn-danger'
+						textoAceptar: 'Inactivar'
 					}).then(function(ok) {
 						if (!ok) {
 							return;

@@ -40,9 +40,6 @@ if (in_array($action, [
 	'plantillas',
 	'guardarPlantillaAjax',
 	'eliminarPlantillaAjax',
-	'activarPlantillaAjax',
-	'obtenerPlantillaAjax',
-	'listarPlantillasAjax',
 ], true)) {
 	comDelegar('modules/comunicados/controllers/PlantillaController.php');
 }
@@ -51,7 +48,6 @@ if (in_array($action, [
 	'archivos',
 	'subirArchivoAjax',
 	'eliminarArchivoAjax',
-	'listarArchivosAjax',
 ], true)) {
 	comDelegar('modules/comunicados/controllers/ArchivoController.php');
 }
@@ -105,12 +101,6 @@ switch ($action) {
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 1, $idUsuarioSesion, $idUsuarioSesion);
 		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado activado.' : 'No se pudo activar el comunicado.']);
-		break;
-
-	case 'obtenerComunicadoAjax':
-		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
-		comJson(['success' => (bool) $comunicado, 'data' => $comunicado]);
 		break;
 
 	case 'convertirComunicadoPlantillaAjax':

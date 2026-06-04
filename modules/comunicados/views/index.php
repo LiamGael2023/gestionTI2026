@@ -229,7 +229,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 							return;
 						}
 
-						var existing = document.querySelector('script[data-com-listjs="true"], script[data-comunicados-listjs="true"], script[data-plantillas-listjs="true"], script[data-tecnologias-listjs="true"], script[data-requerimientos-listjs="true"]');
+						var existing = document.querySelector('script[data-com-listjs="true"]');
 						if (existing) {
 							existing.addEventListener('load', callback, { once: true });
 							return;

@@ -116,10 +116,6 @@ switch ($action) {
 		comArchivoJson(['success' => $ok, 'message' => $ok ? 'Archivo inactivado.' : 'No se pudo inactivar el archivo.']);
 		break;
 
-	case 'listarArchivosAjax':
-		comArchivoJson(['success' => true, 'data' => $archivoModel->listar(false, $idUsuarioSesion)]);
-		break;
-
 	default:
 		$vistaActual = 'archivo';
 		$archivos = $archivoModel->listar(false, $idUsuarioSesion);

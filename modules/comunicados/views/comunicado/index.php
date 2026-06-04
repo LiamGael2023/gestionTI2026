@@ -231,8 +231,7 @@ $totalComunicadosVista = count($comunicados);
 			window.comConfirmSafe({
 				titulo: 'Inactivar comunicado',
 				mensaje: 'Desea inactivar este comunicado?',
-				textoAceptar: 'Inactivar',
-				claseAceptar: 'btn-danger'
+				textoAceptar: 'Inactivar'
 			}).then(function(ok) {
 				if (!ok) {
 					return;
