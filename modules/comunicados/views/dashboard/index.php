@@ -84,7 +84,7 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 	</div>
 
 	<div class="row g-3">
-		<div class="col-12 col-xl-8">
+		<div class="col-12">
 			<div class="card">
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<h3 class="card-title mb-0">Comunicados recientes</h3>
@@ -125,22 +125,5 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 			</div>
 		</div>
 
-		<div class="col-12 col-xl-4">
-			<div class="card">
-				<div class="card-header"><h3 class="card-title mb-0">Plantillas disponibles</h3></div>
-				<div class="list-group list-group-flush">
-					<?php if (empty($plantillasActivas)): ?>
-						<div class="list-group-item text-secondary">Aun no hay plantillas guardadas.</div>
-					<?php else: ?>
-						<?php foreach (array_slice($plantillasActivas, 0, 6) as $plantilla): ?>
-							<div class="list-group-item">
-								<div class="fw-semibold"><?php echo htmlspecialchars((string) $plantilla['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?></div>
-								<div class="text-secondary small"><?php echo htmlspecialchars((string) ($plantilla['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></div>
-							</div>
-						<?php endforeach; ?>
-					<?php endif; ?>
-				</div>
-			</div>
-		</div>
 	</div>
 </div>

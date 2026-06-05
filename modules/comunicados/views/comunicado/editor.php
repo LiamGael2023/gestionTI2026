@@ -253,7 +253,7 @@ $initialTitulo = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? '') 
 				<div class="card-body">
 					<form id="formUploadEditor" class="mb-3">
 						<div class="input-group">
-							<input type="file" class="form-control" name="archivo" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx">
+							<input type="file" class="form-control" name="archivo" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx">
 							<button type="submit" class="btn btn-primary" title="Subir"><i class="ti ti-upload"></i></button>
 						</div>
 					</form>

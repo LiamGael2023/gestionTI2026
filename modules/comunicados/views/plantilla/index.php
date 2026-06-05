@@ -46,9 +46,6 @@ $totalPlantillasVista = count($plantillas);
 								</span>
 								<input id="plantillas-table-search" type="text" class="form-control" placeholder="Buscar" autocomplete="off">
 							</div>
-							<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPlantilla">
-								<i class="ti ti-plus me-1"></i>Nueva plantilla
-							</button>
 						</div>
 					</div>
 				</div>
@@ -64,37 +61,26 @@ $totalPlantillasVista = count($plantillas);
 								<th>
 									<button class="table-sort" data-sort="sort-descripcion">Descripcion</button>
 								</th>
-								<th>
-									<button class="table-sort" data-sort="sort-estado">Estado</button>
-								</th>
-								<th>Acciones</th>
+								<th class="text-end">Acciones</th>
 							</tr>
 						</thead>
 						<tbody class="table-tbody">
 							<?php if (empty($plantillas)): ?>
 								<tr data-empty-row="true">
-									<td colspan="4" class="text-center text-secondary py-4">No hay plantillas registradas.</td>
+									<td colspan="3" class="text-center text-secondary py-4">No hay plantillas registradas.</td>
 								</tr>
 							<?php else: ?>
 								<?php foreach ($plantillas as $item): ?>
-									<?php $activo = (int) ($item['Activo'] ?? 0) === 1; ?>
 									<tr>
 										<td class="sort-nombre fw-semibold"><?php echo htmlspecialchars((string) $item['NombrePlantilla'], ENT_QUOTES, 'UTF-8'); ?></td>
 										<td class="sort-descripcion"><?php echo htmlspecialchars((string) ($item['DescripcionPlantilla'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-										<td class="sort-estado">
-											<span class="badge <?php echo $activo ? 'bg-success-lt' : 'bg-secondary-lt'; ?>">
-												<?php echo $activo ? 'Activa' : 'Inactiva'; ?>
-											</span>
-										</td>
-										<td class="py-0 align-middle">
+										<td class="py-0 align-middle text-end">
 											<div class="btn-group" role="group">
-												<?php if ($activo): ?>
-													<a class="btn btn-icon btn-lg"
-														title="Usar en comunicado nuevo"
-														href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
-														<i class="ti ti-copy-plus fs-2"></i>
-													</a>
-												<?php endif; ?>
+												<a class="btn btn-icon btn-lg js-usar-plantilla"
+													title="Usar en comunicado nuevo"
+													href="index.php?module=comunicados&action=editor&plantilla=<?php echo (int) $item['IdPlantilla']; ?>">
+													<i class="ti ti-copy-plus fs-2"></i>
+												</a>
 												<button type="button"
 													class="btn btn-icon btn-lg js-preview-plantilla"
 													title="Previsualizar"
@@ -112,15 +98,9 @@ $totalPlantillasVista = count($plantillas);
 													data-html="<?php echo htmlspecialchars((string) ($item['HtmlBase'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
 													<i class="ti ti-edit fs-2"></i>
 												</button>
-												<?php if ($activo): ?>
-													<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-plantilla" title="Inactivar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
-														<i class="ti ti-eye-x fs-2"></i>
-													</button>
-												<?php else: ?>
-													<button type="button" class="btn btn-icon btn-lg text-success js-activar-plantilla" title="Activar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
-														<i class="ti ti-eye-check fs-2"></i>
-													</button>
-												<?php endif; ?>
+												<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-plantilla" title="Eliminar" data-id="<?php echo (int) $item['IdPlantilla']; ?>">
+													<i class="ti ti-trash fs-2"></i>
+												</button>
 											</div>
 										</td>
 									</tr>
@@ -153,7 +133,7 @@ $totalPlantillasVista = count($plantillas);
 	<div class="modal-dialog modal-lg modal-dialog-centered">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h5 class="modal-title" id="modalPlantillaTitulo">Nueva plantilla</h5>
+				<h5 class="modal-title" id="modalPlantillaTitulo">Editar plantilla</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<form id="formPlantilla">
@@ -204,24 +184,15 @@ $totalPlantillasVista = count($plantillas);
 				searchId: 'plantillas-table-search',
 				pageCountId: 'plantillas-page-count',
 				setPageFunctionName: 'setPlantillasPageListItems',
-				valueNames: ['sort-nombre', 'sort-descripcion', 'sort-estado']
+				valueNames: ['sort-nombre', 'sort-descripcion']
 			});
 		}
 
 		const modalEl = document.getElementById('modalPlantilla');
 		const previewModalEl = document.getElementById('modalPreviewPlantilla');
+		const previewFrame = document.getElementById('plantillaPreviewFrame');
 		const form = document.getElementById('formPlantilla');
-
-		function limpiar() {
-			if (form) {
-				form.reset();
-			}
-
-			document.getElementById('plantillaId').value = '';
-			document.getElementById('plantillaJson').value = '[]';
-			document.getElementById('plantillaHtml').value = '';
-			document.getElementById('modalPlantillaTitulo').textContent = 'Nueva plantilla';
-		}
+		let htmlPreviewActual = '';
 
 		function guardar(payload) {
 			return fetch('modules/comunicados/ajax.php?action=guardarPlantillaAjax', {
@@ -239,15 +210,41 @@ $totalPlantillasVista = count($plantillas);
 				return;
 			}
 			document.getElementById('modalPreviewPlantillaTitulo').textContent = nombre || 'Previsualizar plantilla';
-			document.getElementById('plantillaPreviewFrame').srcdoc = html;
+			htmlPreviewActual = html;
+			cargarPreviewFrame('');
 			if (typeof window.comShowModalSafe === 'function') {
 				window.comShowModalSafe(previewModalEl);
 			}
+			setTimeout(function() {
+				cargarPreviewFrame(htmlPreviewActual);
+			}, 0);
 		}
 
-		const btnNuevaPlantilla = document.querySelector('[data-bs-target="#modalPlantilla"]');
-		if (btnNuevaPlantilla) {
-			btnNuevaPlantilla.addEventListener('click', limpiar);
+		function cargarPreviewFrame(html) {
+			if (!previewFrame) {
+				return;
+			}
+
+			previewFrame.removeAttribute('srcdoc');
+			previewFrame.src = 'about:blank';
+
+			if (!html) {
+				return;
+			}
+
+			setTimeout(function() {
+				previewFrame.removeAttribute('src');
+				previewFrame.srcdoc = html;
+			}, 0);
+		}
+
+		if (previewModalEl) {
+			previewModalEl.addEventListener('shown.bs.modal', function() {
+				cargarPreviewFrame(htmlPreviewActual);
+			});
+			previewModalEl.addEventListener('hidden.bs.modal', function() {
+				cargarPreviewFrame('');
+			});
 		}
 
 		document.querySelectorAll('.js-editar-plantilla').forEach(function(btn) {
@@ -273,6 +270,11 @@ $totalPlantillasVista = count($plantillas);
 		if (form) {
 			form.addEventListener('submit', function(event) {
 				event.preventDefault();
+				if (!document.getElementById('plantillaId').value) {
+					window.comNotifySafe('warning', 'Accion no disponible', 'La creacion manual de plantillas no esta habilitada.');
+					return;
+				}
+
 				const json = document.getElementById('plantillaJson').value.trim() || '[]';
 				try {
 					JSON.parse(json);
@@ -310,47 +312,69 @@ $totalPlantillasVista = count($plantillas);
 			});
 		}
 
-		document.querySelectorAll('.js-eliminar-plantilla').forEach(function(btn) {
-			btn.addEventListener('click', function() {
-				const id = this.dataset.id;
-				window.comConfirmSafe({
-					titulo: 'Inactivar plantilla',
-					mensaje: 'Desea inactivar esta plantilla?',
-					textoAceptar: 'Inactivar',
-					claseAceptar: 'btn-danger'
-				}).then(function(ok) {
-					if (!ok) {
-						return;
-					}
-					cambiarEstado('eliminarPlantillaAjax', id).then(function(res) {
-						window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
-						if (res.success) {
-							window.recargarVistaActualComunicados();
-						}
-					});
-				});
-			});
-		});
+		function refrescarListaPlantillas() {
+			const list = window.tabler_list && window.tabler_list['plantillas-table'];
+			if (!list) {
+				return;
+			}
 
-		document.querySelectorAll('.js-activar-plantilla').forEach(function(btn) {
-			btn.addEventListener('click', function() {
-				const id = this.dataset.id;
-				window.comConfirmSafe({
-					titulo: 'Activar plantilla',
-					mensaje: 'Desea activar esta plantilla?',
-					textoAceptar: 'Activar'
-				}).then(function(ok) {
-					if (!ok) {
-						return;
+			if (typeof list.reIndex === 'function') {
+				list.reIndex();
+			}
+			list.update();
+		}
+
+		function actualizarTablaPlantillas() {
+			const tbody = document.querySelector('#plantillas-table .table-tbody');
+			if (!tbody) {
+				return;
+			}
+
+			if (!tbody.querySelector('tr:not([data-empty-row])')) {
+				tbody.innerHTML = '<tr data-empty-row="true"><td colspan="3" class="text-center text-secondary py-4">No hay plantillas registradas.</td></tr>';
+				const footer = document.getElementById('plantillas-table-footer');
+				if (footer) {
+					footer.style.setProperty('display', 'none', 'important');
+				}
+			}
+
+			refrescarListaPlantillas();
+		}
+
+		function eliminarFilaPlantilla(btn) {
+			const row = btn.closest('tr');
+			if (!row) {
+				return;
+			}
+
+			row.remove();
+			actualizarTablaPlantillas();
+		}
+
+		function eliminarPlantilla(btn) {
+			const id = btn.dataset.id;
+			window.comConfirmSafe({
+				titulo: 'Eliminar plantilla',
+				mensaje: 'Desea eliminar esta plantilla?',
+				textoAceptar: 'Eliminar'
+			}).then(function(ok) {
+				if (!ok) {
+					return;
+				}
+				cambiarEstado('eliminarPlantillaAjax', id).then(function(res) {
+					window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
+					if (res.success) {
+						eliminarFilaPlantilla(btn);
 					}
-					cambiarEstado('activarPlantillaAjax', id).then(function(res) {
-						window.comNotifySafe(res.success ? 'success' : 'danger', res.success ? 'Operacion correcta' : 'No se pudo completar', res.message || '');
-						if (res.success) {
-							window.recargarVistaActualComunicados();
-						}
-					});
 				});
 			});
+		}
+
+		document.getElementById('plantillas-table').addEventListener('click', function(event) {
+			const btnEliminar = event.target.closest('.js-eliminar-plantilla');
+			if (btnEliminar) {
+				eliminarPlantilla(btnEliminar);
+			}
 		});
 	})();
 </script>

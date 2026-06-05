@@ -1,10 +1,4 @@
 <?php
-/**
- * Endpoint directo para acciones Ajax de comunicados sin pasar por index.php.
- *
- * URL de uso:
- *   modules/comunicados/ajax.php?action=guardarComunicadoAjax
- */
 
 while (ob_get_level() > 0) {
 	ob_end_clean();
