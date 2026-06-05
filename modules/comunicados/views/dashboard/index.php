@@ -112,9 +112,19 @@ $porcentajeListos = $totalComunicados > 0 ? round(($listos / $totalComunicados) 
 										<td><span class="badge <?php echo $item['EstadoComunicado'] === 'LISTO' ? 'bg-success-lt' : 'bg-warning-lt text-dark'; ?>"><?php echo htmlspecialchars((string) $item['EstadoComunicado']); ?></span></td>
 										<td><?php echo htmlspecialchars((string) ($item['NombrePlantilla'] ?? 'Sin plantilla'), ENT_QUOTES, 'UTF-8'); ?></td>
 										<td class="text-end">
-											<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
-												<i class="ti ti-edit fs-2"></i>
-											</a>
+											<?php if (
+												!empty($esAdministrador)
+												|| (int) ($item['IdUsuarioRegistro'] ?? 0) === (int) ($idUsuarioSesion ?? 0)
+												|| (string) ($item['EstadoComunicado'] ?? 'BORRADOR') !== 'LISTO'
+											): ?>
+												<a class="btn btn-icon btn-lg" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
+													<i class="ti ti-edit fs-2"></i>
+												</a>
+											<?php else: ?>
+												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/comunicado.php/<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
+													<i class="ti ti-eye-share fs-2"></i>
+												</a>
+											<?php endif; ?>
 										</td>
 									</tr>
 								<?php endforeach; ?>

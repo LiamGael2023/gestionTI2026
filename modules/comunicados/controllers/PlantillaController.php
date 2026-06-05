@@ -11,6 +11,7 @@ if (!isset($conn) || $conn === null) {
 $plantillaModel = new PlantillaModel($conn);
 $action = $_GET['action'] ?? 'plantillas';
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+$idUsuarioFiltro = $idUsuarioSesion === 1 ? null : $idUsuarioSesion;
 
 function comPlantillaJson($payload)
 {
@@ -56,13 +57,13 @@ switch ($action) {
 
 	case 'eliminarPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 0, $idUsuarioSesion, $idUsuarioSesion);
+		$ok = $id > 0 && $plantillaModel->cambiarEstado($id, 0, $idUsuarioSesion, $idUsuarioFiltro);
 		comPlantillaJson(['success' => $ok, 'message' => $ok ? 'Plantilla eliminada.' : 'No se pudo eliminar la plantilla.']);
 		break;
 
 	default:
 		$vistaActual = 'plantilla';
-		$plantillas = $plantillaModel->listar(true, $idUsuarioSesion);
+		$plantillas = $plantillaModel->listar(true, $idUsuarioFiltro);
 		include 'modules/comunicados/views/index.php';
 		break;
 }

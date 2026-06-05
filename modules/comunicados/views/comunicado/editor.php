@@ -223,10 +223,13 @@ $initialTitulo = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? '') 
 						</div>
 						<div class="col-12">
 							<label class="form-label" for="estadoComunicado">Estado</label>
-							<select class="form-select" id="estadoComunicado">
+							<select class="form-select" id="estadoComunicado" <?php echo empty($esAutorComunicado) ? 'disabled' : ''; ?>>
 								<option value="BORRADOR" <?php echo $initialEstado === 'BORRADOR' ? 'selected' : ''; ?>>Borrador</option>
 								<option value="LISTO" <?php echo $initialEstado === 'LISTO' ? 'selected' : ''; ?>>Listo</option>
 							</select>
+							<?php if (empty($esAutorComunicado)): ?>
+								<div class="form-hint">Solo el autor o el administrador puede publicar el comunicado o devolverlo a borrador.</div>
+							<?php endif; ?>
 						</div>
 					</div>
 				</div>

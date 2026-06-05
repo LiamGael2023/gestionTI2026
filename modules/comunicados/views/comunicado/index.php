@@ -67,18 +67,23 @@ $totalComunicadosVista = count($comunicados);
 								<th>
 									<button class="table-sort" data-sort="sort-activo">Activo</button>
 								</th>
+								<th>
+									<button class="table-sort" data-sort="sort-creado-por">Creado por</button>
+								</th>
 								<th class="text-end">Acciones</th>
 							</tr>
 						</thead>
 						<tbody class="table-tbody">
 							<?php if (empty($comunicados)): ?>
 								<tr data-empty-row="true">
-									<td colspan="4" class="text-center text-secondary py-4">No hay comunicados registrados.</td>
+									<td colspan="5" class="text-center text-secondary py-4">No hay comunicados registrados.</td>
 								</tr>
 							<?php else: ?>
 								<?php foreach ($comunicados as $item): ?>
 									<?php $activo = (int) ($item['Activo'] ?? 0) === 1; ?>
 									<?php $estadoComunicado = (string) ($item['EstadoComunicado'] ?? 'BORRADOR'); ?>
+									<?php $puedeGestionar = !empty($esAdministrador) || (int) ($item['IdUsuarioRegistro'] ?? 0) === (int) ($idUsuarioSesion ?? 0); ?>
+									<?php $puedeEditar = $puedeGestionar || $estadoComunicado !== 'LISTO'; ?>
 									<tr>
 										<td class="sort-titulo fw-semibold"><?php echo htmlspecialchars((string) $item['TituloComunicado'], ENT_QUOTES, 'UTF-8'); ?></td>
 										<td class="sort-estado">
@@ -91,31 +96,38 @@ $totalComunicadosVista = count($comunicados);
 												<?php echo $activo ? 'Activo' : 'Inactivo'; ?>
 											</span>
 										</td>
+										<td class="sort-creado-por">
+											<?php echo htmlspecialchars((string) ($item['UsuarioRegistro'] ?? ('Usuario #' . (int) ($item['IdUsuarioRegistro'] ?? 0))), ENT_QUOTES, 'UTF-8'); ?>
+										</td>
 										<td class="py-0 align-middle text-end">
 											<div class="btn-group" role="group">
 												<a class="btn btn-icon btn-lg" title="Visualizar" href="modules/comunicados/comunicado.php/<?php echo (int) $item['IdComunicado']; ?>" target="_blank" rel="noopener">
 													<i class="ti ti-eye-share fs-2"></i>
 												</a>
-												<?php if ($activo): ?>
+												<?php if ($puedeEditar && $activo): ?>
 													<a class="btn btn-icon btn-lg js-editar-comunicado" title="Editar" href="index.php?module=comunicados&action=editor&id=<?php echo (int) $item['IdComunicado']; ?>">
 														<i class="ti ti-edit fs-2"></i>
 													</a>
 												<?php endif; ?>
-												<button type="button"
-													class="btn btn-icon btn-lg js-convertir-plantilla"
-													title="Convertir en plantilla"
-													data-id="<?php echo (int) $item['IdComunicado']; ?>"
-													data-titulo="<?php echo htmlspecialchars((string) $item['TituloComunicado'], ENT_QUOTES, 'UTF-8'); ?>">
-													<i class="ti ti-template fs-2"></i>
-												</button>
 												<?php if ($activo): ?>
-													<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-comunicado" title="Inactivar" data-id="<?php echo (int) $item['IdComunicado']; ?>">
-														<i class="ti ti-eye-x fs-2"></i>
+													<button type="button"
+														class="btn btn-icon btn-lg js-convertir-plantilla"
+														title="Convertir en plantilla"
+														data-id="<?php echo (int) $item['IdComunicado']; ?>"
+														data-titulo="<?php echo htmlspecialchars((string) $item['TituloComunicado'], ENT_QUOTES, 'UTF-8'); ?>">
+														<i class="ti ti-template fs-2"></i>
 													</button>
-												<?php else: ?>
-													<button type="button" class="btn btn-icon btn-lg text-success js-activar-comunicado" title="Activar" data-id="<?php echo (int) $item['IdComunicado']; ?>">
-														<i class="ti ti-eye-check fs-2"></i>
-													</button>
+												<?php endif; ?>
+												<?php if ($puedeGestionar): ?>
+													<?php if ($activo): ?>
+														<button type="button" class="btn btn-icon btn-lg text-danger js-eliminar-comunicado" title="Inactivar" data-id="<?php echo (int) $item['IdComunicado']; ?>">
+															<i class="ti ti-eye-x fs-2"></i>
+														</button>
+													<?php else: ?>
+														<button type="button" class="btn btn-icon btn-lg text-success js-activar-comunicado" title="Activar" data-id="<?php echo (int) $item['IdComunicado']; ?>">
+															<i class="ti ti-eye-check fs-2"></i>
+														</button>
+													<?php endif; ?>
 												<?php endif; ?>
 											</div>
 										</td>
@@ -154,7 +166,7 @@ $totalComunicadosVista = count($comunicados);
 				searchId: 'comunicados-table-search',
 				pageCountId: 'comunicados-page-count',
 				setPageFunctionName: 'setComunicadosPageListItems',
-				valueNames: ['sort-titulo', 'sort-estado', 'sort-activo']
+				valueNames: ['sort-titulo', 'sort-estado', 'sort-activo', 'sort-creado-por']
 			});
 		}
 

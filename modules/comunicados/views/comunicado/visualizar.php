@@ -1,5 +1,5 @@
 <?php
-$tituloPagina = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? 'Comunicado') : 'Comunicado no encontrado';
+$tituloPagina = $comunicado ? (string) ($comunicado['TituloComunicado'] ?? 'Comunicado') : 'Comunicado no disponible';
 $htmlFinal = $comunicado ? trim((string) ($comunicado['HtmlFinal'] ?? '')) : '';
 $htmlFinal = preg_replace(
 	'/^<table\b[^>]*width="100%"[^>]*>\s*<tr><td[^>]*>\s*(<table\b.*<\/table>)\s*<\/td><\/tr><\/table>$/is',

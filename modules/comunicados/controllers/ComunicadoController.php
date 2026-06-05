@@ -15,6 +15,11 @@ $plantillaModel = new PlantillaModel($conn);
 $archivoModel = new ArchivoModel($conn);
 $action = $_GET['action'] ?? 'dashboard';
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+$esAdministrador = $idUsuarioSesion === 1;
+$idUsuarioPropietarioFiltro = $esAdministrador ? null : $idUsuarioSesion;
+$unidadIdSesion = $model->obtenerUnidadUsuario($idUsuarioSesion);
+$unidadIdVisibilidad = $esAdministrador ? null : $unidadIdSesion;
+$idUsuarioVisibilidad = (!$esAdministrador && $unidadIdSesion === null) ? $idUsuarioSesion : null;
 
 function comJson($payload)
 {
@@ -62,6 +67,10 @@ switch ($action) {
 			comJson(['success' => false, 'message' => 'Debe ingresar el titulo del comunicado.']);
 		}
 
+		if ($unidadIdSesion === null) {
+			comJson(['success' => false, 'message' => 'El usuario no tiene una unidad asociada y no puede guardar comunicados.']);
+		}
+
 		$idPlantillaPayload = isset($payload['IdPlantilla']) ? (int) $payload['IdPlantilla'] : 0;
 		if ($idPlantillaPayload > 0 && !$plantillaModel->obtener($idPlantillaPayload)) {
 			comJson(['success' => false, 'message' => 'La plantilla indicada no existe.']);
@@ -75,15 +84,33 @@ switch ($action) {
 			'EstadoComunicado' => $payload['EstadoComunicado'] ?? 'BORRADOR',
 			'IdUsuarioRegistro' => $idUsuarioSesion,
 			'IdUsuarioModificacion' => $idUsuarioSesion,
+			'IdUnidad' => $unidadIdSesion,
 		];
 
 		if ($id > 0) {
-			$comunicadoActual = $model->obtener($id, $idUsuarioSesion);
+			$comunicadoActual = $model->obtenerEditable($id, $unidadIdVisibilidad, $idUsuarioVisibilidad);
 			if (!$comunicadoActual || (int) ($comunicadoActual['Activo'] ?? 0) !== 1) {
 				comJson(['success' => false, 'message' => 'No se puede editar un comunicado inactivo.']);
 			}
 
-			$ok = $model->actualizar($id, $datos, $idUsuarioSesion);
+			$esAutor = (int) ($comunicadoActual['IdUsuarioRegistro'] ?? 0) === $idUsuarioSesion;
+			$puedeAdministrarEstado = $esAdministrador || $esAutor;
+			$estadoActual = strtoupper((string) ($comunicadoActual['EstadoComunicado'] ?? 'BORRADOR'));
+			$estadoSolicitado = strtoupper(trim((string) ($datos['EstadoComunicado'] ?? 'BORRADOR')));
+
+			if (!$puedeAdministrarEstado && $estadoActual === 'LISTO') {
+				comJson(['success' => false, 'message' => 'El comunicado ya fue publicado y solo el autor o el administrador puede modificarlo.']);
+			}
+
+			if (!$puedeAdministrarEstado && $estadoSolicitado !== $estadoActual) {
+				comJson(['success' => false, 'message' => 'Solo el autor o el administrador puede publicar el comunicado o devolverlo a borrador.']);
+			}
+
+			if (!$esAdministrador && $estadoActual === 'LISTO' && $estadoSolicitado === 'LISTO') {
+				comJson(['success' => false, 'message' => 'Debe devolver el comunicado a borrador antes de modificar su contenido.']);
+			}
+
+			$ok = $model->actualizar($id, $datos, $unidadIdVisibilidad, $idUsuarioVisibilidad);
 			comJson(['success' => $ok, 'id' => $id, 'message' => $ok ? 'Comunicado actualizado.' : 'No se pudo actualizar el comunicado.']);
 		}
 
@@ -93,19 +120,19 @@ switch ($action) {
 
 	case 'eliminarComunicadoAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 0, $idUsuarioSesion, $idUsuarioSesion);
+		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 0, $idUsuarioSesion, $idUsuarioPropietarioFiltro);
 		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado inactivado.' : 'No se pudo inactivar el comunicado.']);
 		break;
 
 	case 'activarComunicadoAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 1, $idUsuarioSesion, $idUsuarioSesion);
+		$ok = $id > 0 && $model->cambiarEstadoActivo($id, 1, $idUsuarioSesion, $idUsuarioPropietarioFiltro);
 		comJson(['success' => $ok, 'message' => $ok ? 'Comunicado activado.' : 'No se pudo activar el comunicado.']);
 		break;
 
 	case 'convertirComunicadoPlantillaAjax':
 		$id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		$comunicado = $id > 0 ? $model->obtenerVisible($id, $unidadIdVisibilidad, $idUsuarioVisibilidad) : null;
 
 		if (!$comunicado) {
 			comJson(['success' => false, 'message' => 'No se encontro el comunicado.']);
@@ -133,7 +160,7 @@ switch ($action) {
 
 	case 'visualizar':
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
+		$comunicado = $id > 0 ? $model->obtenerVisible($id, $unidadIdVisibilidad, $idUsuarioVisibilidad) : null;
 		include 'modules/comunicados/views/comunicado/visualizar.php';
 		exit;
 
@@ -141,28 +168,30 @@ switch ($action) {
 		$vistaActual = 'comunicado_editor';
 		$id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 		$idPlantilla = isset($_GET['plantilla']) ? (int) $_GET['plantilla'] : 0;
-		$comunicado = $id > 0 ? $model->obtener($id, $idUsuarioSesion) : null;
-		if ($id > 0 && (!$comunicado || (int) ($comunicado['Activo'] ?? 0) !== 1)) {
+		$comunicado = $id > 0 ? $model->obtenerEditable($id, $unidadIdVisibilidad, $idUsuarioVisibilidad) : null;
+		$esAutorComunicado = !$comunicado || $esAdministrador || (int) ($comunicado['IdUsuarioRegistro'] ?? 0) === $idUsuarioSesion;
+		$estaPublicado = $comunicado && strtoupper((string) ($comunicado['EstadoComunicado'] ?? 'BORRADOR')) === 'LISTO';
+		if ($id > 0 && (!$comunicado || (int) ($comunicado['Activo'] ?? 0) !== 1 || ($estaPublicado && !$esAutorComunicado))) {
 			header('Location: index.php?module=comunicados&action=comunicados');
 			exit;
 		}
-		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla, $idUsuarioSesion) : null;
-		$plantillas = $plantillaModel->listar(true, $idUsuarioSesion);
-		$archivos = $archivoModel->listar(true, $idUsuarioSesion);
+		$plantillaBase = (!$comunicado && $idPlantilla > 0) ? $plantillaModel->obtener($idPlantilla, $idUsuarioPropietarioFiltro) : null;
+		$plantillas = $plantillaModel->listar(true, $idUsuarioPropietarioFiltro);
+		$archivos = $archivoModel->listar(true, $idUsuarioPropietarioFiltro);
 		break;
 
 	case 'comunicados':
 		$vistaActual = 'comunicado';
-		$comunicados = $model->listar(false, $idUsuarioSesion);
+		$comunicados = $model->listar(false, $unidadIdVisibilidad, $idUsuarioVisibilidad);
 		break;
 
 	case 'dashboard':
 	default:
 		$vistaActual = 'dashboard';
-		$resumenComunicados = $model->obtenerResumen($idUsuarioSesion);
-		$comunicadosRecientes = array_slice($model->listar(true, $idUsuarioSesion), 0, 3);
-		$plantillasActivas = $plantillaModel->listar(true, $idUsuarioSesion);
-		$archivosRecientes = array_slice($archivoModel->listar(true, $idUsuarioSesion), 0, 5);
+		$resumenComunicados = $model->obtenerResumen($unidadIdVisibilidad, $idUsuarioVisibilidad);
+		$comunicadosRecientes = array_slice($model->listar(true, $unidadIdVisibilidad, $idUsuarioVisibilidad), 0, 3);
+		$plantillasActivas = $plantillaModel->listar(true, $idUsuarioPropietarioFiltro);
+		$archivosRecientes = array_slice($archivoModel->listar(true, $idUsuarioPropietarioFiltro), 0, 5);
 		break;
 }
 

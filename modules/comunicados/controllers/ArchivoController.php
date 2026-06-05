@@ -13,6 +13,7 @@ $archivoModel = new ArchivoModel($conn);
 $comunicadoModelArchivo = new ComunicadoModel($conn);
 $action = $_GET['action'] ?? 'archivos';
 $idUsuarioSesion = isset($_SESSION['usuario_id']) ? (int) $_SESSION['usuario_id'] : 0;
+$idUsuarioFiltro = $idUsuarioSesion === 1 ? null : $idUsuarioSesion;
 
 function comArchivoJson($payload)
 {
@@ -64,7 +65,7 @@ switch ($action) {
 		$directorio = comArchivoUploadDir();
 		$idComunicado = isset($_POST['IdComunicado']) ? (int) $_POST['IdComunicado'] : null;
 
-		if ($idComunicado > 0 && !$comunicadoModelArchivo->obtener($idComunicado, $idUsuarioSesion)) {
+		if ($idComunicado > 0 && !$comunicadoModelArchivo->obtener($idComunicado, $idUsuarioFiltro)) {
 			comArchivoJson(['success' => false, 'message' => 'El comunicado indicado no existe.']);
 		}
 
@@ -118,7 +119,7 @@ switch ($action) {
 
 	default:
 		$vistaActual = 'archivo';
-		$archivos = $archivoModel->listar(false, $idUsuarioSesion);
+		$archivos = $archivoModel->listar(false, $idUsuarioFiltro);
 		include 'modules/comunicados/views/index.php';
 		break;
 }

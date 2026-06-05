@@ -8,7 +8,24 @@ class ComunicadoModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivos = true, $idUsuarioRegistro = null)
+	public function obtenerUnidadUsuario($idUsuario)
+	{
+		$sql = "
+			SELECT unidad_id
+			FROM comun.Usuarios
+			WHERE id_usuario = ?
+		";
+		$stmt = sqlsrv_query($this->db, $sql, [(int) $idUsuario]);
+		if (!$stmt) {
+			return null;
+		}
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		sqlsrv_free_stmt($stmt);
+		$unidadId = (int) ($row['unidad_id'] ?? 0);
+		return $unidadId > 0 ? $unidadId : null;
+	}
+
+	public function listar($soloActivos = true, $unidadId = null, $idUsuarioRegistro = null)
 	{
 		$where = [];
 		$params = [];
@@ -17,7 +34,10 @@ class ComunicadoModel
 			$where[] = "c.Activo = 1";
 		}
 
-		if ($idUsuarioRegistro !== null) {
+		if ($unidadId !== null) {
+			$where[] = "c.IdUnidad = ?";
+			$params[] = $unidadId;
+		} elseif ($idUsuarioRegistro !== null) {
 			$where[] = "c.IdUsuarioRegistro = ?";
 			$params[] = $idUsuarioRegistro;
 		}
@@ -25,15 +45,54 @@ class ComunicadoModel
 		$sql = "
 			SELECT c.IdComunicado, c.IdPlantilla, c.TituloComunicado,
 				c.EstadoComunicado, c.Activo, c.FechaRegistro, c.FechaModificacion,
-				c.IdUsuarioRegistro, p.NombrePlantilla
+				c.IdUsuarioRegistro, c.IdUnidad, p.NombrePlantilla,
+				COALESCE(
+					NULLIF(LTRIM(RTRIM(CONCAT(u.nombres, ' ', u.apellidos))), ''),
+					u.usuario,
+					CONCAT('Usuario #', c.IdUsuarioRegistro)
+				) AS UsuarioRegistro
 			FROM comunicados.Comunicado c
 			LEFT JOIN comunicados.Plantilla p
 				ON p.IdPlantilla = c.IdPlantilla
+			LEFT JOIN comun.Usuarios u
+				ON u.id_usuario = c.IdUsuarioRegistro
 			" . (!empty($where) ? "WHERE " . implode(" AND ", $where) : "") . "
 			ORDER BY c.FechaRegistro DESC, c.IdComunicado DESC
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		return $this->fetchAll($stmt);
+	}
+
+	public function obtenerVisible($idComunicado, $unidadId = null, $idUsuarioRegistro = null)
+	{
+		$where = ["IdComunicado = ?", "Activo = 1"];
+		$params = [(int) $idComunicado];
+
+		if ($unidadId !== null) {
+			$where[] = "IdUnidad = ?";
+			$params[] = $unidadId;
+		} elseif ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
+		return $this->obtenerConFiltro($where, $params);
+	}
+
+	public function obtenerEditable($idComunicado, $unidadId = null, $idUsuarioRegistro = null)
+	{
+		$where = ["IdComunicado = ?"];
+		$params = [(int) $idComunicado];
+
+		if ($unidadId !== null) {
+			$where[] = "IdUnidad = ?";
+			$params[] = $unidadId;
+		} elseif ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
+		return $this->obtenerConFiltro($where, $params);
 	}
 
 	public function obtener($idComunicado, $idUsuarioRegistro = null)
@@ -46,28 +105,16 @@ class ComunicadoModel
 			$params[] = $idUsuarioRegistro;
 		}
 
-		$sql = "
-			SELECT IdComunicado, IdPlantilla, TituloComunicado, ContenidoJson,
-				HtmlFinal, EstadoComunicado, Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
-			FROM comunicados.Comunicado
-			WHERE " . implode(" AND ", $where) . "
-		";
-		$stmt = sqlsrv_query($this->db, $sql, $params);
-		if (!$stmt) {
-			return null;
-		}
-		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-		sqlsrv_free_stmt($stmt);
-		return $row ?: null;
+		return $this->obtenerConFiltro($where, $params);
 	}
 
 	public function guardar(array $datos)
 	{
 		$sql = "
 			INSERT INTO comunicados.Comunicado
-				(IdPlantilla, TituloComunicado, ContenidoJson, HtmlFinal, EstadoComunicado, IdUsuarioRegistro)
+				(IdPlantilla, TituloComunicado, ContenidoJson, HtmlFinal, EstadoComunicado, IdUsuarioRegistro, IdUnidad)
 			OUTPUT INSERTED.IdComunicado
-			VALUES (?, ?, ?, ?, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
 		";
 		$params = [
 			$this->intONull($datos['IdPlantilla'] ?? null),
@@ -76,6 +123,7 @@ class ComunicadoModel
 			$this->nullSiVacio($datos['HtmlFinal'] ?? null),
 			$this->estado($datos['EstadoComunicado'] ?? 'BORRADOR'),
 			$datos['IdUsuarioRegistro'] ?? null,
+			$this->intONull($datos['IdUnidad'] ?? null),
 		];
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
@@ -86,7 +134,7 @@ class ComunicadoModel
 		return $row ? (int) $row[0] : true;
 	}
 
-	public function actualizar($idComunicado, array $datos, $idUsuarioRegistro = null)
+	public function actualizar($idComunicado, array $datos, $unidadId = null, $idUsuarioRegistro = null)
 	{
 		$where = "IdComunicado = ?";
 		$params = [
@@ -99,7 +147,10 @@ class ComunicadoModel
 			(int) $idComunicado,
 		];
 
-		if ($idUsuarioRegistro !== null) {
+		if ($unidadId !== null) {
+			$where .= " AND IdUnidad = ?";
+			$params[] = $unidadId;
+		} elseif ($idUsuarioRegistro !== null) {
 			$where .= " AND IdUsuarioRegistro = ?";
 			$params[] = $idUsuarioRegistro;
 		}
@@ -146,12 +197,15 @@ class ComunicadoModel
 		return $ok;
 	}
 
-	public function obtenerResumen($idUsuarioRegistro = null)
+	public function obtenerResumen($unidadId = null, $idUsuarioRegistro = null)
 	{
 		$where = [];
 		$params = [];
 
-		if ($idUsuarioRegistro !== null) {
+		if ($unidadId !== null) {
+			$where[] = "IdUnidad = ?";
+			$params[] = $unidadId;
+		} elseif ($idUsuarioRegistro !== null) {
 			$where[] = "IdUsuarioRegistro = ?";
 			$params[] = $idUsuarioRegistro;
 		}
@@ -172,6 +226,24 @@ class ComunicadoModel
 		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
 		sqlsrv_free_stmt($stmt);
 		return $row ?: ['TotalComunicados' => 0, 'Borradores' => 0, 'Listos' => 0, 'Inactivos' => 0];
+	}
+
+	private function obtenerConFiltro(array $where, array $params)
+	{
+		$sql = "
+			SELECT IdComunicado, IdPlantilla, TituloComunicado, ContenidoJson,
+				HtmlFinal, EstadoComunicado, Activo, FechaRegistro, FechaModificacion,
+				IdUsuarioRegistro, IdUnidad
+			FROM comunicados.Comunicado
+			WHERE " . implode(" AND ", $where) . "
+		";
+		$stmt = sqlsrv_query($this->db, $sql, $params);
+		if (!$stmt) {
+			return null;
+		}
+		$row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		sqlsrv_free_stmt($stmt);
+		return $row ?: null;
 	}
 
 	private function cambioRealizado($stmt)
