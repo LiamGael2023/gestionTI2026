@@ -32,6 +32,7 @@ class PresupuestoTecnologicoModel
 		$sql = "
 			INSERT INTO adquisiciones.PresupuestoTecnologia
 				(IdCatalogoTecnologico, Anio, Monto, idUsuarioRegistro)
+			OUTPUT INSERTED.Id
 			VALUES (?, ?, ?, ?)
 		";
 		$params = [
@@ -44,13 +45,11 @@ class PresupuestoTecnologicoModel
 		if (!$stmt) {
 			return false;
 		}
+
+		$rowId = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_NUMERIC);
 		sqlsrv_free_stmt($stmt);
 
-		$stmtId = sqlsrv_query($this->db, 'SELECT SCOPE_IDENTITY() AS Id');
-		$rowId  = $stmtId ? sqlsrv_fetch_array($stmtId, SQLSRV_FETCH_ASSOC) : null;
-		sqlsrv_free_stmt($stmtId);
-
-		return $rowId ? (int) $rowId['Id'] : true;
+		return $rowId ? (int) $rowId[0] : true;
 	}
 
 	// Actualiza el monto de un presupuesto tecnologico existente.

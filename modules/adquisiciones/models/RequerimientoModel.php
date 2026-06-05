@@ -464,7 +464,7 @@ class RequerimientoModel
 						ELSE LTRIM(RTRIM(ISNULL(ct.NombreGenerico, 'SIN CLASIFICAR')))
 					END
 				) AS Equipo,
-				'' AS TipoSolicitud,
+				UPPER(LTRIM(RTRIM(ISNULL(tipoSolicitud.NombreTipoSolicitud, '')))) AS TipoSolicitud,
 				c.Id AS IdCentroCosto,
 				c.Siglas AS CentroCosto,
 				dist.IdSubCentroCosto AS IdSubCentroCosto,
@@ -476,6 +476,15 @@ class RequerimientoModel
 			INNER JOIN adquisiciones.CentroCosto c ON c.Id = dist.IdCentroCosto
 			LEFT JOIN adquisiciones.SubCentroCosto sc ON sc.Id = dist.IdSubCentroCosto
 			LEFT JOIN adquisiciones.CatalogoTecnologico ct ON ct.Id = d.IdCatalogoTecnologico AND ct.Activo = 1
+			OUTER APPLY (
+				SELECT TOP 1 ts.Nombre AS NombreTipoSolicitud
+				FROM adquisiciones.CatalogoTecnologicoTipoSolicitud ctts
+				INNER JOIN adquisiciones.TipoSolicitud ts ON ts.Id = ctts.IdTipoSolicitud AND ts.Activo = 1
+				WHERE ctts.IdCatalogoTecnologico = d.IdCatalogoTecnologico
+				  AND ctts.Anio = r.Anio
+				  AND ctts.Activo = 1
+				ORDER BY ctts.Id DESC
+			) tipoSolicitud
 		";
 
 		$params = [];
@@ -485,7 +494,7 @@ class RequerimientoModel
 		}
 
 			$sql .= "
-				GROUP BY ct.Codigo, ct.NombreGenerico, c.Id, c.Siglas, dist.IdSubCentroCosto, sc.Siglas
+				GROUP BY ct.Codigo, ct.NombreGenerico, tipoSolicitud.NombreTipoSolicitud, c.Id, c.Siglas, dist.IdSubCentroCosto, sc.Siglas
 				ORDER BY
 					CASE
 						WHEN PATINDEX('%[0-9]%', ct.Codigo) > 0 THEN LEFT(ct.Codigo, PATINDEX('%[0-9]%', ct.Codigo) - 1)
@@ -811,7 +820,7 @@ class RequerimientoModel
 	}
 
 	// Obtiene el consolidado en formato oficial agrupado por metas presupuestales.
-	public function obtenerConsolidadoFormatoOficial($anio, $metasCabecera = [])
+	public function obtenerConsolidadoFormatoOficial($anio, $metasCabecera = [], $soloMetasSiaf = false)
 	{
 		$metasNormalizadas = $this->normalizarMetasCabeceraOficial($metasCabecera);
 		$selectMetas = [];
@@ -821,13 +830,16 @@ class RequerimientoModel
 			$idMetaSiaf = (int) ($meta['IdMetaSIAF'] ?? 0);
 			$codigoMeta = $meta['CodigoMeta'];
 			$aliasMeta = $this->obtenerAliasMetaOficial($codigoMeta);
+			$condicionMeta = $soloMetasSiaf
+				? "(? > 0 AND r.IdMetaSIAF = ?)"
+				: "(
+							(? > 0 AND r.IdMetaSIAF = ?)
+							OR RIGHT('0000' + LTRIM(RTRIM(ISNULL(ms.CodigoMeta, ISNULL(r.CodigoMeta, '')))), 4) = RIGHT('0000' + ?, 4)
+						)";
 			$selectMetas[] = "
 				SUM(
 					CASE
-						WHEN (
-							(? > 0 AND r.IdMetaSIAF = ?)
-							OR RIGHT('0000' + LTRIM(RTRIM(ISNULL(ms.CodigoMeta, ISNULL(r.CodigoMeta, '')))), 4) = RIGHT('0000' + ?, 4)
-						)
+						WHEN {$condicionMeta}
 						THEN dist.Cantidad
 						ELSE 0
 					END
@@ -835,7 +847,9 @@ class RequerimientoModel
 			";
 			$params[] = $idMetaSiaf;
 			$params[] = $idMetaSiaf;
-			$params[] = $codigoMeta;
+			if (!$soloMetasSiaf) {
+				$params[] = $codigoMeta;
+			}
 		}
 
 		$sqlSelectMetas = '';

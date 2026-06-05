@@ -1,25 +1,17 @@
 <?php
 // Inicializar variables si no existen
 $consolidado = $consolidado ?? ['equipos' => [], 'centrosCosto' => [], 'cabeceraCentros' => [], 'matriz' => []];
-$consolidadoCabeceraExportacion = $consolidadoCabeceraExportacion ?? ['cabeceraCentros' => [], 'centrosCosto' => []];
 $aniosDisponibles = $aniosDisponibles ?? [];
 $anioFiltro = $anioFiltro ?? null;
 
 $equipos = $consolidado['equipos'];
 $centrosCosto = $consolidado['centrosCosto'];
 $cabeceraCentros = $consolidado['cabeceraCentros'] ?? [];
-$cabeceraCentrosExportacion = $consolidadoCabeceraExportacion['cabeceraCentros'] ?? [];
 $matriz = $consolidado['matriz'];
-$tiposSolicitudPorEquipo = $consolidado['tiposSolicitudPorEquipo'] ?? [];
 $diagnosticoConsolidado = $consolidado['diagnostico'] ?? [];
 $mensajeSinDatos = trim((string) ($diagnosticoConsolidado['mensaje'] ?? ''));
 if ($mensajeSinDatos === '') {
 	$mensajeSinDatos = 'No hay requerimientos registrados para el año seleccionado.';
-}
-
-// Usar la cabecera web como respaldo cuando no hay cabecera de exportacion.
-if (empty($cabeceraCentrosExportacion)) {
-	$cabeceraCentrosExportacion = $cabeceraCentros;
 }
 
 // Preparar columnas agrupadas por centro para mostrar en la tabla web.
@@ -40,38 +32,6 @@ foreach ($cabeceraCentros as $grupoCentro) {
 	$columnasPadreWeb[] = [
 		'label' => (string) ($grupoCentro['label'] ?? ''),
 		'keys' => $keys,
-	];
-}
-
-// Aplanar las columnas visibles para enviarlas al exportador.
-$columnasPlano = [];
-foreach ($cabeceraCentros as $grupoCentro) {
-	$columnasGrupo = $grupoCentro['columnas'] ?? [];
-	if (!empty($columnasGrupo)) {
-		foreach ($columnasGrupo as $columna) {
-			$columnasPlano[] = $columna;
-		}
-		continue;
-	}
-	$columnasPlano[] = [
-		'key' => '',
-		'label' => (string) ($grupoCentro['label'] ?? ''),
-	];
-}
-
-// Aplanar las columnas de exportacion para generar el archivo consolidado.
-$columnasPlanoExportacion = [];
-foreach ($cabeceraCentrosExportacion as $grupoCentro) {
-	$columnasGrupo = $grupoCentro['columnas'] ?? [];
-	if (!empty($columnasGrupo)) {
-		foreach ($columnasGrupo as $columna) {
-			$columnasPlanoExportacion[] = $columna;
-		}
-		continue;
-	}
-	$columnasPlanoExportacion[] = [
-		'key' => '',
-		'label' => (string) ($grupoCentro['label'] ?? ''),
 	];
 }
 
@@ -117,9 +77,9 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 		<button class="btn btn-success" onclick="exportarConsolidado()">
 			Consolidado
 		</button>
-		<!-- button class="btn btn-success" onclick="exportarConsolidadoOficial()">
+		<!--button class="btn btn-success" onclick="exportarConsolidadoOficial()">
 			Consolidado Oficial
-		</button -->
+		</button-->
 	</div>
 </div>
 
@@ -183,16 +143,6 @@ $totalGeneral = array_sum($totalesPorCentroCosto);
 <?php endif; ?>
 
 <script>
-// Publicar los datos del consolidado para las funciones de exportacion en JavaScript.
-window.adqConsolidadoCabeceraCentros = <?php echo json_encode($cabeceraCentros, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoColumnasPlano = <?php echo json_encode($columnasPlano, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoCabeceraCentrosExportacion = <?php echo json_encode($cabeceraCentrosExportacion, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoColumnasPlanoExportacion = <?php echo json_encode($columnasPlanoExportacion, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoTotalesPorColumna = <?php echo json_encode($totalesPorCentroCosto, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoEquipos = <?php echo json_encode($equipos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoMatriz = <?php echo json_encode($matriz, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-window.adqConsolidadoTiposSolicitudPorEquipo = <?php echo json_encode($tiposSolicitudPorEquipo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
-
 // Recarga el consolidado filtrando por el anio seleccionado.
 function filtrarConsolidadoPorAnio() {
 	const anio = document.getElementById('filtroAnioConsolidado').value;
@@ -207,5 +157,4 @@ function filtrarConsolidadoPorAnio() {
 	window.location.href = url;
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="modules/adquisiciones/views/consolidado/consolidado.js?v=<?php echo filemtime(__DIR__ . '/consolidado.js'); ?>"></script>
+<script src="modules/adquisiciones/views/consolidado/consolidado.php?v=<?php echo filemtime(__DIR__ . '/consolidado.php'); ?>"></script>

@@ -899,8 +899,10 @@ $totalRequerimientosVista = (isset($requerimientos) && is_array($requerimientos)
 							const filaActual = document.querySelector('tr[data-id="' + idRequerimiento + '"]');
 							const estadoActual = filaActual ? (filaActual.querySelector('.bg-success-lt') ? 1 : 0) : 0;
 							actualizarFilaRequerimiento(idRequerimiento, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCostoTexto, anio, estadoActual);
+							window.adqNotifySafe('success', 'Requerimiento actualizado', response.message || 'Requerimiento actualizado correctamente.');
 						} else {
 							agregarFilaRequerimiento(response.id, idCentroCosto, idMetaSiaf, nroPedido, codigoMeta, centroCostoTexto, anio, 0);
+							window.adqNotifySafe('success', 'Requerimiento creado', response.message || 'Requerimiento registrado correctamente.');
 						}
 
 						form.reset();
@@ -967,6 +969,7 @@ $totalRequerimientosVista = (isset($requerimientos) && is_array($requerimientos)
 						fila.remove();
 						asegurarEstadoVacioTablaRequerimientos();
 					}
+					window.adqNotifySafe('success', 'Requerimiento eliminado', response.message || 'Requerimiento eliminado correctamente.');
 				} else {
 					window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el requerimiento.');
 				}

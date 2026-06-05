@@ -1,28 +1,17 @@
-<div id="adq-alert-stack" class="position-fixed bottom-0 end-0 p-3 d-flex flex-column gap-2" style="z-index: 1100;" aria-live="polite" aria-atomic="false"></div>
-
 <script>
 	(function() {
-		if (window.adqNotify && window.adqNotifySafe) {
+		if (window.adqNotify && window.adqNotifySafe && window.adqAlertSafe) {
 			return;
 		}
 
-		function ensureContainer() {
-			let container = document.getElementById('adq-alert-stack');
-			if (!container) {
-				container = document.createElement('div');
-				container.id = 'adq-alert-stack';
-				container.className = 'position-fixed bottom-0 end-0 p-3 d-flex flex-column gap-2';
-				container.style.zIndex = '1100';
-				container.setAttribute('aria-live', 'polite');
-				container.setAttribute('aria-atomic', 'false');
-				document.body.appendChild(container);
+		function swalIcon(type) {
+			if (type === 'danger') {
+				return 'error';
 			}
-			return container;
-		}
-
-		function getAlertType(type) {
-			const allowed = ['success', 'info', 'warning', 'danger'];
-			return allowed.indexOf(type) >= 0 ? type : 'info';
+			if (['success', 'warning', 'info', 'question', 'error'].indexOf(type) >= 0) {
+				return type;
+			}
+			return 'info';
 		}
 
 		function getDefaultHeading(type) {
@@ -38,50 +27,38 @@
 			}
 		}
 
+		function swalOptions(options) {
+			return Object.assign({
+				width: '24rem',
+				padding: '0 0 1rem'
+			}, options || {});
+		}
+
 		window.adqNotify = function(type, heading, description, options) {
-			const opts = Object.assign({ delay: 5200, autohide: true }, options || {});
-			const alertType = getAlertType(type);
-			const alertHeading = heading || getDefaultHeading(alertType);
+			const opts = Object.assign({}, options || {});
+			const icon = swalIcon(type);
+			const alertHeading = heading || getDefaultHeading(type);
 			const alertDescription = description || '';
-			const stack = ensureContainer();
 
-			const alertEl = document.createElement('div');
-			alertEl.className = 'alert alert-' + alertType;
-			alertEl.style.margin = '0';
-			alertEl.setAttribute('role', 'alert');
+			if (typeof Swal !== 'undefined') {
+				const swalConfig = {
+					icon: icon,
+					title: alertHeading,
+					text: alertDescription,
+					confirmButtonText: 'OK',
+					confirmButtonColor: '#206bc4'
+				};
 
-			const contentWrap = document.createElement('div');
-			const headingEl = document.createElement('h4');
-			headingEl.className = 'alert-heading';
-			headingEl.textContent = alertHeading;
-
-			const descriptionEl = document.createElement('div');
-			descriptionEl.className = 'alert-description';
-			descriptionEl.textContent = alertDescription;
-			descriptionEl.style.whiteSpace = 'pre-line';
-
-			contentWrap.appendChild(headingEl);
-			if (alertDescription !== '') {
-				contentWrap.appendChild(descriptionEl);
-			}
-
-			alertEl.appendChild(contentWrap);
-			stack.appendChild(alertEl);
-
-			function closeAlert() {
-				if (!alertEl.parentNode) {
-					return;
+				if (type === 'success') {
+					swalConfig.timer = opts.delay || 2000;
+					swalConfig.timerProgressBar = true;
 				}
-				alertEl.parentNode.removeChild(alertEl);
+
+				return Swal.fire(swalOptions(swalConfig));
 			}
 
-			alertEl.addEventListener('click', closeAlert);
-
-			if (opts.autohide) {
-				window.setTimeout(closeAlert, opts.delay);
-			}
-
-			return alertEl;
+			console.warn((alertHeading || '') + '\n' + (alertDescription || ''));
+			return Promise.resolve();
 		};
 
 		window.adqNotifySafe = function(type, heading, description, options) {
@@ -90,6 +67,20 @@
 			}
 			console.warn(description || heading || 'Ocurrio un evento.');
 			return null;
+		};
+
+		window.adqAlertSafe = function(type, heading, html, options) {
+			if (typeof Swal !== 'undefined') {
+				return Swal.fire(swalOptions(Object.assign({
+					icon: swalIcon(type),
+					title: heading || getDefaultHeading(type),
+					html: html || '',
+					confirmButtonText: 'OK',
+					confirmButtonColor: '#206bc4'
+				}, options || {})));
+			}
+			console.warn((heading || '') + '\n' + String(html || '').replace(/<[^>]*>/g, ''));
+			return Promise.resolve();
 		};
 	})();
 </script>
