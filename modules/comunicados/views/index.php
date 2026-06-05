@@ -10,7 +10,100 @@ $vistas = [
 ];
 
 $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['dashboard'];
+
+$itemsMenuComunicados = [
+	[
+		'action' => 'dashboard',
+		'icon' => 'ti ti-layout-dashboard',
+		'label' => 'Dashboard',
+		'group' => ['dashboard'],
+	],
+	[
+		'action' => 'comunicados',
+		'icon' => 'ti ti-speakerphone',
+		'label' => 'Comunicados',
+		'group' => ['comunicado', 'comunicado_editor'],
+	],
+	[
+		'action' => 'plantillas',
+		'icon' => 'ti ti-template',
+		'label' => 'Plantillas',
+		'group' => ['plantilla'],
+	],
+	[
+		'action' => 'archivos',
+		'icon' => 'ti ti-archive',
+		'label' => 'Archivos',
+		'group' => ['archivo'],
+	],
+];
 ?>
+
+<style>
+	.com-submenu {
+		background: #fff;
+		border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+		position: sticky;
+		top: 0;
+		z-index: 1020;
+	}
+
+	.com-submenu .navbar-nav {
+		flex-wrap: nowrap;
+		padding-left: 1rem;
+		scrollbar-width: none;
+	}
+
+	.com-submenu .navbar-nav::-webkit-scrollbar {
+		display: none;
+	}
+
+	.com-submenu .nav-link {
+		align-items: center;
+		border-radius: .4rem;
+		color: #475569;
+		display: flex;
+		font-size: .85rem;
+		font-weight: 600;
+		gap: .5rem;
+		height: 2.75rem;
+		line-height: 1;
+		padding: 0 1.1rem;
+		transition: all .15s ease;
+		white-space: nowrap;
+	}
+
+	.com-submenu .nav-link i {
+		font-size: .95rem;
+	}
+
+	.com-submenu .nav-link:hover {
+		background: var(--tblr-bg-surface-secondary, #f8fafc);
+		color: var(--tblr-primary, #0054a6);
+	}
+
+	.com-submenu .nav-link.active {
+		background: transparent;
+		color: var(--tblr-primary, #0054a6);
+	}
+</style>
+
+<div class="navbar-expand-md com-submenu d-print-none" id="comunicados-nav-container">
+	<div class="container-xl">
+		<ul class="navbar-nav d-flex flex-row gap-3 py-2 overflow-auto">
+			<?php foreach ($itemsMenuComunicados as $item): ?>
+				<?php $activo = in_array($vistaActual, $item['group'], true); ?>
+				<li class="nav-item">
+					<a class="nav-link <?php echo $activo ? 'active' : ''; ?>" href="index.php?module=comunicados&action=<?php echo $item['action']; ?>">
+						<i class="<?php echo $item['icon']; ?>"></i>
+						<?php echo $item['label']; ?>
+					</a>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+	</div>
+</div>
 
 <div class="page-header d-print-none">
 	<div class="container-xl">
@@ -335,31 +428,6 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 		</script>
 
 		<div class="card">
-			<div class="card-header" id="comunicados-nav-container">
-				<ul class="nav nav-pills card-header-pills">
-					<li class="nav-item">
-						<a class="nav-link <?php echo $vistaActual === 'dashboard' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=dashboard">
-							Dashboard
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link <?php echo strpos($vistaActual, 'comunicado') === 0 ? 'active' : ''; ?>" href="index.php?module=comunicados&action=comunicados">
-							Comunicados
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link <?php echo $vistaActual === 'plantilla' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=plantillas">
-							Plantillas
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link <?php echo $vistaActual === 'archivo' ? 'active' : ''; ?>" href="index.php?module=comunicados&action=archivos">
-							Archivos
-						</a>
-					</li>
-				</ul>
-			</div>
-
 			<div class="card-body" id="comunicados-contenido">
 				<?php if (file_exists($vistaPath)): ?>
 					<?php include $vistaPath; ?>
