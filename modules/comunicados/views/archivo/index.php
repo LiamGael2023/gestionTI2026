@@ -70,7 +70,7 @@ $totalArchivosVista = count($archivos);
 								<th>
 									<button class="table-sort" data-sort="sort-estado">Estado</button>
 								</th>
-								<th>Acciones</th>
+								<th class="text-end">Acciones</th>
 							</tr>
 						</thead>
 						<tbody class="table-tbody">
@@ -98,7 +98,7 @@ $totalArchivosVista = count($archivos);
 												<?php echo $activo ? 'Activo' : 'Inactivo'; ?>
 											</span>
 										</td>
-										<td class="py-0 align-middle">
+										<td class="py-0 align-middle text-end">
 											<div class="btn-group" role="group">
 												<a class="btn btn-icon btn-lg" title="Abrir" href="<?php echo htmlspecialchars($urlPublica, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
 													<i class="ti ti-external-link fs-2"></i>
@@ -146,7 +146,7 @@ $totalArchivosVista = count($archivos);
 			<form id="formArchivo">
 				<div class="modal-body">
 					<label class="form-label" for="archivoInput">Archivo</label>
-					<input type="file" class="form-control" id="archivoInput" name="archivo" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required>
+					<input type="file" class="form-control" id="archivoInput" name="archivo" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.xls,.xlsx" required>
 					<div class="form-hint">Maximo 12 MB. La URL generada puede pegarse en el editor.</div>
 				</div>
 				<div class="modal-footer">
@@ -225,8 +225,7 @@ $totalArchivosVista = count($archivos);
 					window.comConfirmSafe({
 						titulo: 'Inactivar archivo',
 						mensaje: 'Desea inactivar este archivo?',
-						textoAceptar: 'Inactivar',
-						claseAceptar: 'btn-danger'
+						textoAceptar: 'Inactivar'
 					}).then(function(ok) {
 						if (!ok) {
 							return;

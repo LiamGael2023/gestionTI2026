@@ -8,13 +8,18 @@ class PlantillaModel
 		$this->db = $db;
 	}
 
-	public function listar($soloActivas = true)
+	public function listar($soloActivos = true, $idUsuarioRegistro = null)
 	{
 		$where = [];
 		$params = [];
 
-		if ($soloActivas) {
+		if ($soloActivos) {
 			$where[] = "Activo = 1";
+		}
+
+		if ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
 		}
 
 		$sql = "
@@ -28,15 +33,21 @@ class PlantillaModel
 		return $this->fetchAll($stmt);
 	}
 
-	public function obtener($idPlantilla)
+	public function obtener($idPlantilla, $idUsuarioRegistro = null)
 	{
+		$where = ["IdPlantilla = ?"];
 		$params = [(int) $idPlantilla];
+
+		if ($idUsuarioRegistro !== null) {
+			$where[] = "IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
 
 		$sql = "
 			SELECT IdPlantilla, NombrePlantilla, DescripcionPlantilla, ContenidoJson, HtmlBase,
 				Activo, FechaRegistro, FechaModificacion, IdUsuarioRegistro
 			FROM comunicados.Plantilla
-			WHERE IdPlantilla = ?
+			WHERE " . implode(" AND ", $where) . "
 		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		if (!$stmt) {
@@ -71,18 +82,9 @@ class PlantillaModel
 		return $row ? (int) $row[0] : true;
 	}
 
-	public function actualizar($idPlantilla, array $datos)
+	public function actualizar($idPlantilla, array $datos, $idUsuarioRegistro = null)
 	{
-		$sql = "
-			UPDATE comunicados.Plantilla
-			SET NombrePlantilla = ?,
-				DescripcionPlantilla = ?,
-				ContenidoJson = ?,
-				HtmlBase = ?,
-				FechaModificacion = SYSDATETIME(),
-				IdUsuarioModificacion = ?
-			WHERE IdPlantilla = ?
-		";
+		$where = "IdPlantilla = ?";
 		$params = [
 			trim((string) ($datos['NombrePlantilla'] ?? '')),
 			$this->nullSiVacio($datos['DescripcionPlantilla'] ?? null),
@@ -91,6 +93,22 @@ class PlantillaModel
 			$datos['IdUsuarioModificacion'] ?? null,
 			(int) $idPlantilla,
 		];
+
+		if ($idUsuarioRegistro !== null) {
+			$where .= " AND IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
+		$sql = "
+			UPDATE comunicados.Plantilla
+			SET NombrePlantilla = ?,
+				DescripcionPlantilla = ?,
+				ContenidoJson = ?,
+				HtmlBase = ?,
+				FechaModificacion = SYSDATETIME(),
+				IdUsuarioModificacion = ?
+			WHERE " . $where . "
+		";
 		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
@@ -99,14 +117,22 @@ class PlantillaModel
 		return $ok;
 	}
 
-	public function cambiarEstado($idPlantilla, $activo, $idUsuarioModificacion = null)
+	public function cambiarEstado($idPlantilla, $activo, $idUsuarioModificacion = null, $idUsuarioRegistro = null)
 	{
+		$where = "IdPlantilla = ?";
+		$params = [(int) $activo, $idUsuarioModificacion, (int) $idPlantilla];
+
+		if ($idUsuarioRegistro !== null) {
+			$where .= " AND IdUsuarioRegistro = ?";
+			$params[] = $idUsuarioRegistro;
+		}
+
 		$sql = "
 			UPDATE comunicados.Plantilla
 			SET Activo = ?, FechaModificacion = SYSDATETIME(), IdUsuarioModificacion = ?
-			WHERE IdPlantilla = ?
+			WHERE " . $where . "
 		";
-		$stmt = sqlsrv_query($this->db, $sql, [(int) $activo, $idUsuarioModificacion, (int) $idPlantilla]);
+		$stmt = sqlsrv_query($this->db, $sql, $params);
 		$ok = $this->cambioRealizado($stmt);
 		if ($stmt) {
 			sqlsrv_free_stmt($stmt);

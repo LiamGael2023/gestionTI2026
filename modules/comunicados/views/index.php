@@ -45,7 +45,8 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 				function comSwalOptions(options) {
 					return Object.assign({
 						width: '24rem',
-						padding: '0 0 1rem'
+						padding: '0 0 1rem',
+						heightAuto: false
 					}, options || {});
 				}
 
@@ -140,6 +141,9 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 
 					if (window.bootstrap && bootstrap.Modal) {
 						var instancia = bootstrap.Modal.getInstance(modalEl);
+						if (!instancia && modalEl.classList.contains('show')) {
+							instancia = bootstrap.Modal.getOrCreateInstance(modalEl);
+						}
 						if (instancia) {
 							instancia.hide();
 							return;
@@ -225,7 +229,7 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 							return;
 						}
 
-						var existing = document.querySelector('script[data-com-listjs="true"], script[data-comunicados-listjs="true"], script[data-plantillas-listjs="true"], script[data-tecnologias-listjs="true"], script[data-requerimientos-listjs="true"]');
+						var existing = document.querySelector('script[data-com-listjs="true"]');
 						if (existing) {
 							existing.addEventListener('load', callback, { once: true });
 							return;
@@ -379,31 +383,22 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 			window.location.reload();
 		};
 
+		function obtenerModalVisibleComunicados() {
+			return document.querySelector('#comunicados-contenido .modal.show');
+		}
+
 		document.addEventListener('click', function(event) {
-			const modalButton = event.target.closest('[data-bs-target="#modalPlantilla"], [data-bs-target="#modalArchivo"]');
+			const modalButton = event.target.closest('[data-bs-target="#modalArchivo"]');
 			if (modalButton) {
 				event.preventDefault();
 				event.stopPropagation();
 
 				const targetSelector = modalButton.getAttribute('data-bs-target');
 				const modalEl = document.querySelector(targetSelector);
-				const form = targetSelector === '#modalPlantilla'
-					? document.getElementById('formPlantilla')
-					: document.getElementById('formArchivo');
+				const form = document.getElementById('formArchivo');
 
 				if (form) {
 					form.reset();
-				}
-
-				if (targetSelector === '#modalPlantilla') {
-					const id = document.getElementById('plantillaId');
-					const json = document.getElementById('plantillaJson');
-					const html = document.getElementById('plantillaHtml');
-					const titulo = document.getElementById('modalPlantillaTitulo');
-					if (id) id.value = '';
-					if (json) json.value = '[]';
-					if (html) html.value = '';
-					if (titulo) titulo.textContent = 'Nueva plantilla';
 				}
 
 				if (typeof window.comShowModalSafe === 'function') {
@@ -412,13 +407,27 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['das
 				return;
 			}
 
-			const closeButton = event.target.closest('#modalPlantilla [data-bs-dismiss="modal"], #modalArchivo [data-bs-dismiss="modal"]');
-			if (closeButton && !(window.bootstrap && bootstrap.Modal)) {
+			const closeButton = event.target.closest('#comunicados-contenido .modal [data-bs-dismiss="modal"]');
+			if (closeButton) {
 				event.preventDefault();
 				if (typeof window.comHideModalSafe === 'function') {
 					window.comHideModalSafe(closeButton.closest('.modal'));
 				}
 			}
+		});
+
+		document.addEventListener('keydown', function(event) {
+			if (event.key !== 'Escape' || document.querySelector('.swal2-container')) {
+				return;
+			}
+
+			const modalEl = obtenerModalVisibleComunicados();
+			if (!modalEl || typeof window.comHideModalSafe !== 'function') {
+				return;
+			}
+
+			event.preventDefault();
+			window.comHideModalSafe(modalEl);
 		});
 	})();
 </script>
