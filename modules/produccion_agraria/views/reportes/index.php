@@ -993,43 +993,64 @@ function aplicarFiltros() {
         promise = fetch(url + 'action=ventas_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderVentas(res.data, res.kpis);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderVentas(res.data, res.kpis);
+                }
             });
     } else if (tabActiva === 'inventario') {
         promise = fetch(url + 'action=inventario_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderInventario(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderInventario(res.data);
+                }
             });
     } else if (tabActiva === 'mermas') {
         promise = fetch(url + 'action=mermas_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderMermas(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderMermas(res.data);
+                }
             });
     } else if (tabActiva === 'vouchers') {
         promise = fetch(url + 'action=vouchers_report_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderVouchers(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderVouchers(res.data);
+                }
             });
     } else if (tabActiva === 'clientes-rep') {
         promise = fetch(url + 'action=clientes_report_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderClientes(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderClientes(res.data);
+                }
             });
     } else if (tabActiva === 'consolidado') {
         promise = fetch(url + 'action=consolidado_report_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderConsolidado(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderConsolidado(res.data);
+                }
             });
     } else if (tabActiva === 'precios') {
         promise = fetch(url + 'action=precios_report_data&' + qs)
             .then(r => r.json())
             .then(res => {
-                if (res.success) renderPrecios(res.data);
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderPrecios(res.data);
+                }
             });
     }
 
@@ -1305,55 +1326,314 @@ function exportarExcel() {
 }
 
 // =============================================================
+// AUXILIARES DE DIBUJO jsPDF (LOGO, CABECERA Y PIE DE PÁGINA)
+// =============================================================
+function drawPECHLogoFallback(doc, x, y) {
+    // Dibujo vectorial simple del logo de PECH (Azul y Verde)
+    doc.setFillColor(0, 77, 153); // Azul Chavimochic
+    doc.rect(x, y, 14, 9, 'F');
+    doc.setFillColor(0, 149, 64); // Verde Chavimochic
+    doc.rect(x + 14, y, 14, 9, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6);
+    doc.text('PECH', x + 14, y + 6.5, { align: 'center' });
+}
+
+function drawPortraitHeaderFooter(doc, page, totalPages, totalCount) {
+    // Logo
+    const imgLogo = document.querySelector('.navbar-brand-image') || document.querySelector('img[alt="PECH"]');
+    if (imgLogo) {
+        try {
+            doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
+        } catch (e) {
+            drawPECHLogoFallback(doc, 14, 8);
+        }
+    } else {
+        drawPECHLogoFallback(doc, 14, 8);
+    }
+    
+    // Título Principal
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Sistema Desarrollo Agricola', 105, 14, { align: 'center' });
+    
+    // Banner Verde de Subtítulo
+    doc.setFillColor(140, 181, 63); // Verde Oliva #8cb53f
+    doc.rect(55, 18, 100, 6.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text('Precios Productos', 105, 22.5, { align: 'center' });
+    
+    // Bloque de información derecha
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-PE') + ' ' + now.toLocaleTimeString('es-PE');
+    doc.text(dateStr, 196, 11, { align: 'right' });
+    doc.text(`Año : ${now.getFullYear()}`, 196, 15, { align: 'right' });
+    doc.text(`Total Productos : ${totalCount}`, 196, 19, { align: 'right' });
+    
+    // Línea divisoria pie de página
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.2);
+    doc.line(14, 268, 196, 268);
+    
+    // Información institucional en columnas
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('UBICANOS', 14, 272);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('Campamento San José Km. 513\nPanamericana Norte\nProvincia de Virú\nRegión La Libertad.', 14, 275.5);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('HORARIO DE ATENCIÓN', 85, 272);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('De lunes a viernes:\n09:00 am a 03:00 pm', 85, 275.5);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('TELEFONOS', 150, 272);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('044-272286\nAnexo 2030 Subgerencia', 150, 275.5);
+    
+    // Paginación
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(`${page}/${totalPages}`, 105, 288, { align: 'center' });
+}
+
+function drawLandscapeHeaderFooter(doc, page, totalPages, totalCount, tituloReporte) {
+    // Logo
+    const imgLogo = document.querySelector('.navbar-brand-image') || document.querySelector('img[alt="PECH"]');
+    if (imgLogo) {
+        try {
+            doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
+        } catch (e) {
+            drawPECHLogoFallback(doc, 14, 8);
+        }
+    } else {
+        drawPECHLogoFallback(doc, 14, 8);
+    }
+    
+    // Título Principal
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Sistema Desarrollo Agricola', 148.5, 14, { align: 'center' });
+    
+    // Banner Verde de Subtítulo
+    doc.setFillColor(140, 181, 63); // Verde Oliva #8cb53f
+    doc.rect(98, 18, 100, 6.5, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(tituloReporte, 148.5, 22.5, { align: 'center' });
+    
+    // Bloque de información derecha
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('es-PE') + ' ' + now.toLocaleTimeString('es-PE');
+    doc.text(dateStr, 283, 11, { align: 'right' });
+    doc.text(`Año : ${now.getFullYear()}`, 283, 15, { align: 'right' });
+    doc.text(`Total Registros : ${totalCount}`, 283, 19, { align: 'right' });
+    
+    // Línea divisoria pie de página
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.2);
+    doc.line(14, 182, 283, 182);
+    
+    // Información institucional en columnas
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('UBICANOS', 14, 186);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('Campamento San José Km. 513\nPanamericana Norte\nProvincia de Virú\nRegión La Libertad.', 14, 189.5);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('HORARIO DE ATENCIÓN', 120, 186);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('De lunes a viernes:\n09:00 am a 03:00 pm', 120, 189.5);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('TELEFONOS', 210, 186);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('044-272286\nAnexo 2030 Subgerencia', 210, 189.5);
+    
+    // Paginación
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(`${page}/${totalPages}`, 148.5, 202, { align: 'center' });
+}
+
+// =============================================================
 // EXPORTADOR PDF (jsPDF + AutoTable)
 // =============================================================
 function exportarPDF() {
     const { jsPDF } = window.jspdf;
-    const doc  = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const config = getTabConfig();
+    const data = window.ultimoReporteData || [];
 
-    // Encabezado institucional
-    doc.setFillColor(0, 77, 153);
-    doc.rect(0, 0, 297, 20, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Proyecto Especial Chavimochic — Producción Agraria', 14, 8);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Reporte: ${config.titulo}`, 14, 14);
+    if (tabActiva === 'precios') {
+        // -------------------------------------------------------------
+        // FORMATO DE PRECIOS: Vertical (A4 Portrait), 2 Columnas
+        // -------------------------------------------------------------
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        
+        let currentY = 32;
+        let currentCol = 0;
+        const colX = [14, 108];
+        const colWidth = 88;
+        const maxY = 258; // Margen antes del footer
+        let globalIndex = 1;
 
-    // Filtros aplicados y fecha
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
-    const f = getFiltros();
-    const periodoStr = (f.fecha_desde && f.fecha_hasta) ? `Período: ${f.fecha_desde} al ${f.fecha_hasta}` : 'Período: Todos';
-    doc.text(periodoStr, 200, 8, { align: 'right' });
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}`, 200, 14, { align: 'right' });
+        // Agrupar por Clase
+        const grouped = {};
+        data.forEach(p => {
+            const clase = p.nombre_clase || 'OTROS';
+            if (!grouped[clase]) grouped[clase] = [];
+            grouped[clase].push(p);
+        });
 
-    // Tabla
-    const rows = getTableRows(config.tableId);
-    doc.autoTable({
-        head:       [config.headers],
-        body:       rows,
-        startY:     24,
-        styles:     { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 248, 252] },
-        didDrawPage: (data) => {
-            // Pie de página con numeración
-            const pageCount = doc.internal.getNumberOfPages();
-            doc.setFontSize(7);
-            doc.setTextColor(130);
-            doc.text(
-                `Página ${data.pageNumber} de ${pageCount}  |  Sistema de Gestión TI — PECH`,
-                148, doc.internal.pageSize.height - 5,
-                { align: 'center' }
-            );
+        // Función auxiliar para control de espacio
+        function checkSpace(neededHeight) {
+            if (currentY + neededHeight > maxY) {
+                if (currentCol === 0) {
+                    currentCol = 1;
+                    currentY = 32;
+                } else {
+                    doc.addPage();
+                    currentCol = 0;
+                    currentY = 32;
+                }
+            }
         }
-    });
 
-    doc.save(`reporte_${tabActiva}_${new Date().toISOString().slice(0,10)}.pdf`);
+        // Iterar sobre las clases
+        for (const [clase, productos] of Object.entries(grouped)) {
+            // Validar espacio para Cabecera Clase (6) + Cabecera Tabla (5) + Primer Fila (5.5) = 16.5mm
+            checkSpace(16.5);
+
+            // 1. Caja de Título de la Clase
+            doc.setFillColor(241, 245, 249); // slate-100
+            doc.setDrawColor(203, 213, 225); // slate-300
+            doc.setLineWidth(0.2);
+            doc.rect(colX[currentCol], currentY, colWidth, 6, 'FD');
+            
+            doc.setTextColor(15, 23, 42); // slate-900
+            doc.setFont('helvetica', 'bolditalic');
+            doc.setFontSize(8.5);
+            doc.text(clase.toUpperCase(), colX[currentCol] + 2, currentY + 4.2);
+
+            // 2. Cabeceras de Columnas de la Tabla
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(148, 163, 184); // slate-400
+            doc.rect(colX[currentCol], currentY + 6, colWidth, 5, 'FD');
+            
+            doc.setTextColor(15, 23, 42);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(7.5);
+            doc.text('Item', colX[currentCol] + 1, currentY + 6 + 3.8);
+            doc.text('Producto', colX[currentCol] + 10, currentY + 6 + 3.8);
+            doc.text('Tipo', colX[currentCol] + 62, currentY + 6 + 3.8);
+            doc.text('Precio', colX[currentCol] + 78, currentY + 6 + 3.8);
+
+            currentY += 11;
+
+            // 3. Filas de Productos
+            productos.forEach(p => {
+                const lines = doc.splitTextToSize(p.nombre_producto, 50);
+                const rowHeight = Math.max(5.5, lines.length * 3.2 + 1);
+
+                checkSpace(rowHeight);
+
+                // Dibujar bordes de celda
+                doc.setDrawColor(203, 213, 225); // slate-300
+                doc.rect(colX[currentCol], currentY, colWidth, rowHeight, 'D');
+                
+                // Líneas divisorias verticales
+                doc.line(colX[currentCol] + 9, currentY, colX[currentCol] + 9, currentY + rowHeight);
+                doc.line(colX[currentCol] + 61, currentY, colX[currentCol] + 61, currentY + rowHeight);
+                doc.line(colX[currentCol] + 77, currentY, colX[currentCol] + 77, currentY + rowHeight);
+
+                // Escribir contenido
+                doc.setTextColor(51, 65, 85); // slate-700
+                doc.setFontSize(7);
+
+                // Centrado vertical matemático
+                const textY = currentY + (rowHeight / 2) + 0.8;
+
+                // Item (globalIndex correlativo)
+                doc.setFont('helvetica', 'normal');
+                doc.text(String(globalIndex++), colX[currentCol] + 4.5, textY, { align: 'center' });
+
+                // Producto (multi-línea)
+                lines.forEach((line, idx) => {
+                    const lineY = currentY + 3.2 + (idx * 3.2);
+                    doc.text(line, colX[currentCol] + 10.5, lineY);
+                });
+
+                // Tipo (Unidad Medida)
+                const tipo = p.unidad_medida || '-';
+                doc.text(tipo, colX[currentCol] + 62.5, textY);
+
+                // Precio (Right aligned)
+                const precio = parseFloat(p.precio_unitario || 0).toFixed(2);
+                doc.text(precio, colX[currentCol] + 86.5, textY, { align: 'right' });
+
+                currentY += rowHeight;
+            });
+        }
+
+        // Estampar cabeceras y pies de página en segunda pasada
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            drawPortraitHeaderFooter(doc, i, totalPages, data.length);
+        }
+
+        doc.save(`reporte_${tabActiva}_${new Date().toISOString().slice(0,10)}.pdf`);
+
+    } else {
+        // -------------------------------------------------------------
+        // FORMATO GENERAL: Horizontal (A4 Landscape), 1 Columna AutoTable
+        // -------------------------------------------------------------
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+        const rows = getTableRows(config.tableId);
+
+        doc.autoTable({
+            head:       [config.headers],
+            body:       rows,
+            startY:     32, // Margen de cabecera
+            margin:     { top: 32, bottom: 25, left: 14, right: 14 },
+            styles:     { fontSize: 7.5, cellPadding: 2.5 },
+            headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold' },
+            alternateRowStyles: { fillColor: [245, 248, 252] },
+        });
+
+        // Estampar cabeceras y pies de página en segunda pasada
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            drawLandscapeHeaderFooter(doc, i, totalPages, rows.length, config.titulo);
+        }
+
+        doc.save(`reporte_${tabActiva}_${new Date().toISOString().slice(0,10)}.pdf`);
+    }
 }
 
 // =============================================================

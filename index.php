@@ -69,15 +69,16 @@ $acciones_ajax = [
     'buscar_producto', 'buscar_clientes', 'guardar_venta', 'crear_cliente_rapido',
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
     'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher',
+    'ver_imagen_producto',
     // Acciones AJAX - REPORTES
     'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
     'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data',
     // Acciones AJAX - VOUCHERS
     'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
-    // Acciones AJAX - CHATBOT
-    'chat_enviar',
-    'tool_stock', 'tool_ventas', 'tool_proformas', 'tool_vouchers',
-    'tool_productos', 'tool_clientes', 'tool_mermas'
+    // Acciones AJAX - DASHBOARD CMS
+    'dash_load', 'dash_save', 'dash_reset', 'dash_widget',
+    // Acciones AJAX - CHATBOT (desde archivo centralizado core/ChatActions.php)
+    ...require 'core/ChatActions.php'
 ];
 $es_ajax = in_array($action, $acciones_ajax);
 

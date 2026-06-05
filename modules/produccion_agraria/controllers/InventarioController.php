@@ -22,7 +22,17 @@ try {
     
     if ($action == 'guardar_producto') {
         header('Content-Type: application/json; charset=utf-8');
-        $data = $_POST;
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        
+        // Procesar imagen base64 si viene
+        if (!empty($data['imagen_base64']) && !empty($data['imagen_nombre'])) {
+            $archivo_binario = base64_decode($data['imagen_base64']);
+            if ($archivo_binario !== false) {
+                $data['imagen_blob'] = $archivo_binario;
+            }
+        }
+        
         $result = $model->guardarProducto($data);
         echo json_encode($result);
         exit;
@@ -93,6 +103,56 @@ try {
         $data = json_decode($json, true);
         $result = $model->guardarPrecio($data);
         echo json_encode($result);
+        exit;
+    }
+    
+    if ($action == 'ver_imagen_producto') {
+        $id = intval($_GET['id'] ?? 0);
+        
+        // Intentar método primario
+        $archivo = $model->obtenerImagenProducto($id);
+        
+        // Fallback: si falla, intentar método alternativo
+        if (empty($archivo) || empty($archivo['imagen_blob'])) {
+            error_log("[ver_imagen_producto] Metodo primario fallo para ID: $id, intentando fallback");
+            $archivo = $model->obtenerImagenProductoBase64($id);
+        }
+        
+        // Limpiar cualquier buffer de salida previo para evitar corrupción de la imagen binaria
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
+        if (empty($archivo) || empty($archivo['imagen_blob'])) {
+            error_log("[ver_imagen_producto] Imagen no encontrada para producto ID: $id");
+            // Devolver imagen transparente 1x1 en vez de JSON para evitar icono roto en <img>
+            header('Content-Type: image/gif');
+            header('Content-Length: 43');
+            header('Cache-Control: no-store');
+            echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+            exit;
+        }
+        
+        $nombreOriginal = $archivo['imagen_nombre'] ?? 'producto_' . $id . '.bin';
+        $extension = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'bmp'  => 'image/bmp',
+            'webp' => 'image/webp'
+        ];
+        $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
+        $size = strlen($archivo['imagen_blob']);
+        error_log("[ver_imagen_producto] Sirviendo imagen '$nombreOriginal' (type: $mimeType, size: $size bytes) para producto ID: $id");
+        
+        header('Content-Type: ' . $mimeType);
+        header('Content-Disposition: inline; filename="' . $nombreOriginal . '"');
+        header('Content-Length: ' . $size);
+        header('Cache-Control: public, max-age=3600');
+        echo $archivo['imagen_blob'];
         exit;
     }
     

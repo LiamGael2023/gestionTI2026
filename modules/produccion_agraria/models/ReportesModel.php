@@ -642,11 +642,31 @@ class ReportesModel {
                     GROUP BY p.id_centro
                 ) i ON cp.id_centro = i.id_centro
                 LEFT JOIN (
-                    SELECT l.id_centro,
-                           SUM(m.cantidad * m.precio_unitario) as valor_mermas
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.merma m
-                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON m.id_lote = l.id_lote
-                    GROUP BY l.id_centro
+                    SELECT p.id_centro,
+                           SUM(k.cantidad *
+                               CASE
+                                   WHEN p2.tipo_precio = 'UIT' AND p2.porcentaje_uit IS NOT NULL AND uit2.valor IS NOT NULL
+                                       THEN uit2.valor * p2.porcentaje_uit
+                                   WHEN p2.tipo_precio = 'Variable' AND hp2.precio_oficial IS NOT NULL
+                                       THEN hp2.precio_oficial
+                                   ELSE 0
+                               END
+                           ) as valor_mermas
+                    FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
+                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l2 ON k.id_lote = l2.id_lote
+                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p2 ON l2.id_producto = p2.id_producto
+                    LEFT JOIN (
+                        SELECT hp3.id_producto, hp3.precio_oficial
+                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp3
+                        WHERE hp3.fecha_registro = (
+                            SELECT MAX(hp4.fecha_registro)
+                            FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp4
+                            WHERE hp4.id_producto = hp3.id_producto
+                        )
+                    ) hp2 ON p2.id_producto = hp2.id_producto
+                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit2 ON uit2.anio = YEAR(GETDATE())
+                    WHERE k.tipo_movimiento = 'MERMA'
+                    GROUP BY p2.id_centro
                 ) m ON cp.id_centro = m.id_centro
                 ORDER BY cp.nombre_centro ASC";
 

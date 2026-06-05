@@ -538,24 +538,35 @@ busquedaInput.addEventListener('input', function() {
     if (resultados.length === 0) {
         dropdownProductos.innerHTML = '<div class="dropdown-item text-muted">No se encontraron productos</div>';
     } else {
-        dropdownProductos.innerHTML = resultados.map(p => `
-            <a class="dropdown-item producto-item" href="#" onclick="agregarProductoDirecto(${p.id_producto}, '${p.nombre.replace(/'/g, "\\'")}', '${p.unidad_medida.replace(/'/g, "\\'")}', ${p.precio_venta}, event)">
-                <div class="producto-row">
-                    <div class="producto-info">
-                        <div class="producto-icono me-3">
-                            <i class="ti ti-package"></i>
+        dropdownProductos.innerHTML = resultados.map(p => {
+            let badgeClass = 'bg-success-lt';
+            let badgeText = `Stock: ${p.stock_total}`;
+            if (p.stock_total <= 0) {
+                badgeClass = 'bg-secondary-lt';
+                badgeText = 'Agotado';
+            } else if (p.stock_total < 10) {
+                badgeClass = 'bg-danger-lt';
+                badgeText = `Crítico: ${p.stock_total}`;
+            }
+            return `
+                <a class="dropdown-item producto-item" href="#" onclick="agregarProductoDirecto(${p.id_producto}, '${p.nombre.replace(/'/g, "\\'")}', '${p.unidad_medida.replace(/'/g, "\\'")}', ${p.precio_venta}, event)">
+                    <div class="producto-row">
+                        <div class="producto-info">
+                            <div class="producto-icono me-3">
+                                <i class="ti ti-package"></i>
+                            </div>
+                            <div class="producto-text">
+                                <div class="producto-nombre">${p.nombre}</div>
+                                <div class="producto-unidad">${p.unidad_medida} <span class="badge ${badgeClass} ms-1">${badgeText}</span></div>
+                            </div>
                         </div>
-                        <div class="producto-text">
-                            <div class="producto-nombre">${p.nombre}</div>
-                            <div class="producto-unidad">${p.unidad_medida}</div>
+                        <div class="producto-precio">
+                            S/. ${p.precio_venta.toFixed(2)}
                         </div>
                     </div>
-                    <div class="producto-precio">
-                        S/. ${p.precio_venta.toFixed(2)}
-                    </div>
-                </div>
-            </a>
-        `).join('');
+                </a>
+            `;
+        }).join('');
     }
     
     dropdownProductos.style.display = 'block';
@@ -565,9 +576,24 @@ busquedaInput.addEventListener('input', function() {
 function agregarProductoDirecto(id, nombre, unidad, precio, event) {
     event.preventDefault();
     
+    // Buscar el producto en la lista local para obtener su stock
+    const prodRef = productosDisponibles.find(p => p.id_producto == id);
+    const stockTotal = prodRef ? prodRef.stock_total : 0;
+    const nombreCentro = prodRef ? prodRef.nombre_centro : '';
+    const imagenNombre = prodRef ? prodRef.imagen_nombre : '';
+    
+    if (stockTotal <= 0) {
+        Swal.fire('Sin stock', 'Este producto no cuenta con stock disponible', 'warning');
+        return;
+    }
+    
     // Verificar si ya existe
-    const existente = items.find(i => i.id_producto === id);
+    const existente = items.find(i => i.id_producto == id);
     if (existente) {
+        if (existente.cantidad + 1 > stockTotal) {
+            Swal.fire('Stock insuficiente', `No puedes agregar más unidades. El stock máximo disponible es ${stockTotal} ${unidad}`, 'warning');
+            return;
+        }
         existente.cantidad += 1;
         existente.subtotal = existente.cantidad * existente.precio;
     } else {
@@ -579,6 +605,9 @@ function agregarProductoDirecto(id, nombre, unidad, precio, event) {
             cantidad: 1,
             precio: parseFloat(precio) || 0,
             subtotal: parseFloat(precio) || 0,
+            stock_max: stockTotal,
+            nombre_centro: nombreCentro,
+            imagen_nombre: imagenNombre,
             _esNuevo: true
         });
     }
@@ -606,44 +635,81 @@ function renderItems() {
         tbody.innerHTML = '';
         mensajeVacio.style.display = 'block';
         document.getElementById('total-venta').textContent = 'S/. 0.00';
+        saveCartToLocalStorage();
         return;
     }
     
     mensajeVacio.style.display = 'none';
     
-    tbody.innerHTML = items.map((item, index) => `
-        <tr class="${item._esNuevo ? 'agregando' : ''}">
-            <td>
-                <div class="font-weight-medium">${item.nombre}</div>
-                <div class="text-muted small">${item.unidad}</div>
-            </td>
-            <td>
-                <input type="number" class="form-control" value="${item.cantidad}" 
-                       min="1" onchange="actualizarCantidad(${index}, this.value)" style="width: 80px;">
-            </td>
-            <td>
-                <input type="number" class="form-control" value="${item.precio.toFixed(2)}" 
-                       step="0.01" onchange="actualizarPrecio(${index}, this.value)" style="width: 100px;">
-            </td>
-            <td class="text-end fw-bold">S/. ${item.subtotal.toFixed(2)}</td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">
-                    <i class="ti ti-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = items.map((item, index) => {
+        const stockRestante = item.stock_max - item.cantidad;
+        let stockBadgeClass = 'text-success';
+        if (stockRestante < 5) {
+            stockBadgeClass = 'text-danger fw-bold';
+        } else if (stockRestante < 10) {
+            stockBadgeClass = 'text-warning fw-bold';
+        }
+        
+        let imgHtml = '';
+        if (item.imagen_nombre) {
+            imgHtml = `<img src="<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=${item.id_producto}" 
+                            alt="${item.nombre}" 
+                            class="avatar avatar-sm me-2 border rounded" 
+                            style="object-fit: cover; width: 38px; height: 38px;">`;
+        } else {
+            imgHtml = `<span class="avatar avatar-sm bg-secondary-lt me-2 rounded" style="width: 38px; height: 38px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center;">📦</span>`;
+        }
+        
+        return `
+            <tr class="${item._esNuevo ? 'agregando' : ''}">
+                <td>
+                    <div class="d-flex align-items-center">
+                        ${imgHtml}
+                        <div>
+                            <div class="font-weight-medium">${item.nombre}</div>
+                            <div class="text-muted small">
+                                ${item.unidad} | <span class="text-info">${item.nombre_centro || 'Sin centro'}</span> | 
+                                Stock restante: <span class="${stockBadgeClass}">${stockRestante}</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="form-control" value="${item.cantidad}" 
+                           min="1" onchange="actualizarCantidad(${index}, this.value)" style="width: 80px;">
+                </td>
+                <td>
+                    <input type="number" class="form-control" value="${item.precio.toFixed(2)}" 
+                           step="0.01" onchange="actualizarPrecio(${index}, this.value)" style="width: 100px;">
+                </td>
+                <td class="text-end fw-bold">S/. ${item.subtotal.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
     
     // Quitar marca de nuevo después de renderizar
     items.forEach(item => delete item._esNuevo);
     
     calcularTotal();
+    saveCartToLocalStorage();
 }
 
-// Actualizar cantidad
+// Actualizar cantidad con validación de stock máximo
 function actualizarCantidad(index, nuevaCantidad) {
-    items[index].cantidad = parseInt(nuevaCantidad) || 1;
-    items[index].subtotal = items[index].cantidad * items[index].precio;
+    const item = items[index];
+    const qty = parseInt(nuevaCantidad) || 1;
+    if (item.stock_max !== undefined && qty > item.stock_max) {
+        Swal.fire('Stock insuficiente', `La cantidad excede el stock máximo disponible (${item.stock_max} ${item.unidad})`, 'warning');
+        renderItems();
+        return;
+    }
+    item.cantidad = qty;
+    item.subtotal = item.cantidad * item.precio;
     renderItems();
 }
 
@@ -681,6 +747,7 @@ document.getElementById('btn-limpiar').addEventListener('click', function() {
         document.getElementById('id_cliente').value = '';
         document.getElementById('busqueda-cliente').value = '';
         document.getElementById('cliente-seleccionado-nombre').value = '';
+        clearCartFromLocalStorage();
         renderItems();
     });
 });
@@ -772,6 +839,8 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
                         lockedProduct.subtotal = lockedProduct.precio;
                         items.push(lockedProduct);
                     }
+                    // Limpiamos el localStorage y guardamos el nuevo estado del carrito masivo bloqueado
+                    clearCartFromLocalStorage();
                     renderItems();
                     
                     // Enfocar automáticamente el input de cantidad
@@ -783,7 +852,8 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
                         }
                     }, 200);
                 } else {
-                    // Flujo estándar: recargar página
+                    // Flujo estándar: limpiar local storage y recargar
+                    clearCartFromLocalStorage();
                     Swal.fire({
                         icon: 'success',
                         title: 'Venta registrada',
@@ -804,6 +874,84 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         Swal.fire('Error', 'Error de conexión', 'error');
     });
 });
+
+// ========================================
+// PERSISTENCIA LOCALSTORAGE - CART UTILS
+// ========================================
+
+function saveCartToLocalStorage() {
+    const cartData = {
+        items: items,
+        id_cliente: document.getElementById('id_cliente').value || '',
+        busqueda_cliente: document.getElementById('busqueda-cliente').value || '',
+        cliente_seleccionado_nombre: document.getElementById('cliente-seleccionado-nombre').value || '',
+        metodo_pago: document.getElementById('metodo_pago').value || ''
+    };
+    localStorage.setItem('pech_pos_cart', JSON.stringify(cartData));
+}
+
+function loadCartFromLocalStorage() {
+    try {
+        const dataStr = localStorage.getItem('pech_pos_cart');
+        if (!dataStr) return;
+        
+        const cartData = JSON.parse(dataStr);
+        if (!cartData) return;
+        
+        if (Array.isArray(cartData.items)) {
+            items = cartData.items;
+            // Restaurar dinámicamente datos de centro, imagen y stock_max si son de una sesión antigua o incompleta
+            items.forEach(item => {
+                const prodRef = productosDisponibles.find(p => p.id_producto == item.id_producto);
+                if (prodRef) {
+                    if (!item.nombre_centro) item.nombre_centro = prodRef.nombre_centro;
+                    if (!item.imagen_nombre) item.imagen_nombre = prodRef.imagen_nombre;
+                    if (item.stock_max === undefined) item.stock_max = prodRef.stock_total;
+                }
+            });
+        }
+        
+        if (cartData.id_cliente) {
+            document.getElementById('id_cliente').value = cartData.id_cliente;
+            document.getElementById('busqueda-cliente').value = cartData.busqueda_cliente || '';
+            document.getElementById('cliente-seleccionado-nombre').value = cartData.cliente_seleccionado_nombre || '';
+        }
+        
+        if (cartData.metodo_pago) {
+            document.getElementById('metodo_pago').value = cartData.metodo_pago;
+        }
+        
+        renderItems();
+    } catch (e) {
+        console.error('Error al restaurar carrito:', e);
+    }
+}
+
+function clearCartFromLocalStorage() {
+    localStorage.removeItem('pech_pos_cart');
+}
+
+// Agregar listeners para persistir cambios en cliente y método de pago
+document.getElementById('metodo_pago').addEventListener('change', saveCartToLocalStorage);
+document.getElementById('busqueda-cliente').addEventListener('change', function() {
+    // Si limpian a mano el campo de cliente
+    if (this.value.trim() === '') {
+        document.getElementById('id_cliente').value = '';
+        document.getElementById('cliente-seleccionado-nombre').value = '';
+    }
+    saveCartToLocalStorage();
+});
+// También guardar si se limpia el cliente por evento input vacío
+document.getElementById('busqueda-cliente').addEventListener('input', function() {
+    if (this.value.trim() === '') {
+        document.getElementById('id_cliente').value = '';
+        document.getElementById('cliente-seleccionado-nombre').value = '';
+        saveCartToLocalStorage();
+    }
+});
+
+// Cargar carrito guardado al iniciar
+document.addEventListener('DOMContentLoaded', loadCartFromLocalStorage);
 
 // Event listeners para el Modo Venta Masiva (Cola)
 const chkVentaMasiva = document.getElementById('chk-venta-masiva');

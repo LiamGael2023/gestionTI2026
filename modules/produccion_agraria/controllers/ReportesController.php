@@ -96,7 +96,7 @@ try {
     if ($action === 'clientes_report_data') {
         header('Content-Type: application/json; charset=utf-8');
         $filtros = [
-            'cliente' => $_GET['cliente'] ?? '',
+            'cliente' => $_GET['id_cliente'] ?? $_GET['cliente'] ?? '',
         ];
         echo json_encode([
             'success' => true,

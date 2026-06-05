@@ -12,7 +12,7 @@ class InventarioModel {
     
     public function listarProductos() {
         $sql = "SELECT p.id_producto, p.nombre, p.nombre_cientifico, p.unidad_medida, p.maneja_stock, 
-                       p.tipo_precio, p.porcentaje_uit, p.id_clase, p.id_centro,
+                       p.tipo_precio, p.porcentaje_uit, p.id_clase, p.id_centro, p.imagen_nombre,
                        c.nombre_clase, cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
@@ -32,7 +32,7 @@ class InventarioModel {
 
     public function obtenerProducto($id) {
         $sql = "SELECT p.id_producto, p.nombre, p.nombre_cientifico, p.unidad_medida, p.maneja_stock, 
-                       p.tipo_precio, p.porcentaje_uit, p.id_clase, p.id_centro,
+                       p.tipo_precio, p.porcentaje_uit, p.id_clase, p.id_centro, p.imagen_nombre,
                        c.nombre_clase, cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
@@ -57,23 +57,76 @@ class InventarioModel {
             $porcentaje_uit = null;
         }
         
+        // Determinar acción sobre imagen
+        $eliminarImagen = !empty($data['eliminar_imagen']);
+        $tieneNuevaImagen = !empty($data['imagen_blob']) && !empty($data['imagen_nombre']);
+        
+        // Preparar parámetro BLOB si aplica
+        $blobParam = null;
+        if ($tieneNuevaImagen) {
+            $blobParam = array(
+                $data['imagen_blob'],
+                SQLSRV_PARAM_IN,
+                SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY),
+                SQLSRV_SQLTYPE_VARBINARY('max')
+            );
+        }
+        
         if (!empty($data['id_producto'])) {
             // UPDATE
-            $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
-                    SET nombre = ?, nombre_cientifico = ?, unidad_medida = ?, maneja_stock = ?, 
-                        tipo_precio = ?, porcentaje_uit = ?, id_clase = ?, id_centro = ?
-                    WHERE id_producto = ?";
-            $params = [
-                $data['nombre'],
-                $data['nombre_cientifico'] ?? null,
-                $data['unidad_medida'], 
-                $data['maneja_stock'] ?? 0,
-                $data['tipo_precio'] ?? 'Fijo',
-                $porcentaje_uit,
-                $data['id_clase'], 
-                $data['id_centro'],
-                $data['id_producto']
-            ];
+            if ($eliminarImagen) {
+                $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
+                        SET nombre = ?, nombre_cientifico = ?, unidad_medida = ?, maneja_stock = ?, 
+                            tipo_precio = ?, porcentaje_uit = ?, id_clase = ?, id_centro = ?,
+                            imagen_nombre = NULL, imagen_blob = NULL
+                        WHERE id_producto = ?";
+                $params = [
+                    $data['nombre'],
+                    $data['nombre_cientifico'] ?? null,
+                    $data['unidad_medida'], 
+                    $data['maneja_stock'] ?? 0,
+                    $data['tipo_precio'] ?? 'Fijo',
+                    $porcentaje_uit,
+                    $data['id_clase'], 
+                    $data['id_centro'],
+                    $data['id_producto']
+                ];
+            } elseif ($tieneNuevaImagen) {
+                $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
+                        SET nombre = ?, nombre_cientifico = ?, unidad_medida = ?, maneja_stock = ?, 
+                            tipo_precio = ?, porcentaje_uit = ?, id_clase = ?, id_centro = ?,
+                            imagen_nombre = ?, imagen_blob = ?
+                        WHERE id_producto = ?";
+                $params = [
+                    $data['nombre'],
+                    $data['nombre_cientifico'] ?? null,
+                    $data['unidad_medida'], 
+                    $data['maneja_stock'] ?? 0,
+                    $data['tipo_precio'] ?? 'Fijo',
+                    $porcentaje_uit,
+                    $data['id_clase'], 
+                    $data['id_centro'],
+                    $data['imagen_nombre'],
+                    $blobParam,
+                    $data['id_producto']
+                ];
+            } else {
+                $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
+                        SET nombre = ?, nombre_cientifico = ?, unidad_medida = ?, maneja_stock = ?, 
+                            tipo_precio = ?, porcentaje_uit = ?, id_clase = ?, id_centro = ?
+                        WHERE id_producto = ?";
+                $params = [
+                    $data['nombre'],
+                    $data['nombre_cientifico'] ?? null,
+                    $data['unidad_medida'], 
+                    $data['maneja_stock'] ?? 0,
+                    $data['tipo_precio'] ?? 'Fijo',
+                    $porcentaje_uit,
+                    $data['id_clase'], 
+                    $data['id_centro'],
+                    $data['id_producto']
+                ];
+            }
             $stmt = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
                 return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
@@ -81,20 +134,39 @@ class InventarioModel {
             return ['success' => true, 'id' => $data['id_producto']];
         } else {
             // INSERT con OUTPUT para obtener el ID directamente
-            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.producto 
-                    (nombre, nombre_cientifico, unidad_medida, maneja_stock, tipo_precio, porcentaje_uit, id_clase, id_centro) 
-                    OUTPUT INSERTED.id_producto
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $params = [
-                $data['nombre'],
-                $data['nombre_cientifico'] ?? null,
-                $data['unidad_medida'], 
-                $data['maneja_stock'] ?? 0,
-                $data['tipo_precio'] ?? 'Fijo',
-                $porcentaje_uit,
-                $data['id_clase'], 
-                $data['id_centro']
-            ];
+            if ($tieneNuevaImagen) {
+                $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.producto 
+                        (nombre, nombre_cientifico, unidad_medida, maneja_stock, tipo_precio, porcentaje_uit, id_clase, id_centro, imagen_nombre, imagen_blob) 
+                        OUTPUT INSERTED.id_producto
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $params = [
+                    $data['nombre'],
+                    $data['nombre_cientifico'] ?? null,
+                    $data['unidad_medida'], 
+                    $data['maneja_stock'] ?? 0,
+                    $data['tipo_precio'] ?? 'Fijo',
+                    $porcentaje_uit,
+                    $data['id_clase'], 
+                    $data['id_centro'],
+                    $data['imagen_nombre'],
+                    $blobParam
+                ];
+            } else {
+                $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.producto 
+                        (nombre, nombre_cientifico, unidad_medida, maneja_stock, tipo_precio, porcentaje_uit, id_clase, id_centro) 
+                        OUTPUT INSERTED.id_producto
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                $params = [
+                    $data['nombre'],
+                    $data['nombre_cientifico'] ?? null,
+                    $data['unidad_medida'], 
+                    $data['maneja_stock'] ?? 0,
+                    $data['tipo_precio'] ?? 'Fijo',
+                    $porcentaje_uit,
+                    $data['id_clase'], 
+                    $data['id_centro']
+                ];
+            }
             $stmt = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
                 return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
@@ -383,6 +455,55 @@ class InventarioModel {
         if ($stmt === false) {
             error_log('SQL Error guardarPrecio: ' . print_r(sqlsrv_errors(), true));
             return ['success' => false, 'message' => 'Error al guardar precio: ' . print_r(sqlsrv_errors(), true)];
+        }
+        return ['success' => true];
+    }
+
+    public function obtenerImagenProducto($id) {
+        $sql = "SELECT imagen_nombre, imagen_blob 
+                FROM BD_PRODUCCIONDESARROLLO.dbo.producto 
+                WHERE id_producto = ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$id]);
+        if ($stmt && sqlsrv_fetch($stmt) !== false) {
+            $nombre = sqlsrv_get_field($stmt, 0);
+            // Obtener blob como string binario explícitamente
+            $blob = sqlsrv_get_field($stmt, 1, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_BINARY));
+            if ($blob !== false && $blob !== null && strlen($blob) > 0) {
+                return ['imagen_nombre' => $nombre, 'imagen_blob' => $blob];
+            }
+        }
+        return null;
+    }
+
+    public function obtenerImagenProductoBase64($id) {
+        $sql = "SELECT imagen_nombre, CONVERT(VARCHAR(MAX), imagen_blob, 1) as imagen_hex 
+                FROM BD_PRODUCCIONDESARROLLO.dbo.producto 
+                WHERE id_producto = ? AND imagen_blob IS NOT NULL";
+        $stmt = sqlsrv_query($this->db, $sql, [$id]);
+        if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            if (!empty($row['imagen_hex'])) {
+                // El valor viene como hexadecimal string "0x89...", convertir a binario
+                $hex = $row['imagen_hex'];
+                if (strpos($hex, '0x') === 0) {
+                    $hex = substr($hex, 2);
+                }
+                $binario = hex2bin($hex);
+                return [
+                    'imagen_nombre' => $row['imagen_nombre'],
+                    'imagen_blob' => $binario
+                ];
+            }
+        }
+        return null;
+    }
+
+    public function eliminarImagenProducto($id) {
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
+                SET imagen_nombre = NULL, imagen_blob = NULL 
+                WHERE id_producto = ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$id]);
+        if ($stmt === false) {
+            return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
         }
         return ['success' => true];
     }

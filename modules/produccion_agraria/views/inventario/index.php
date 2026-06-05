@@ -135,6 +135,7 @@ tbody tr.mostrando {
                     <table class="table table-vcenter card-table" id="tabla-productos">
                         <thead>
                             <tr>
+                                <th class="w-1 text-center">Imagen</th>
                                 <th>Producto</th>
                                 <th>Nombre Científico</th>
                                 <th>Clase</th>
@@ -147,6 +148,20 @@ tbody tr.mostrando {
                         <tbody>
                             <?php foreach ($productos as $producto): ?>
                             <tr data-id="<?php echo $producto['id_producto']; ?>" data-centro="<?php echo $producto['id_centro']; ?>" data-clase="<?php echo $producto['id_clase']; ?>" data-nombre="<?php echo strtolower(htmlspecialchars($producto['nombre'])); ?>">
+                                <td class="text-center">
+                                    <?php if (!empty($producto['imagen_nombre'])): ?>
+                                    <a href="javascript:void(0)" class="d-inline-block position-relative"
+                                       onclick="mostrarPreviewImagen('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars($producto['imagen_nombre'], ENT_QUOTES); ?>')"
+                                       title="<?php echo htmlspecialchars($producto['imagen_nombre']); ?> - Click para ampliar">
+                                        <img src="<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=<?php echo $producto['id_producto']; ?>"
+                                             alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
+                                             class="avatar"
+                                             style="object-fit: cover; width: 48px; height: 48px; border-radius: 8px; border: 2px solid #dee2e6; background: #f8f9fa;">
+                                    </a>
+                                    <?php else: ?>
+                                    <span class="avatar bg-secondary-lt" style="width: 48px; height: 48px; border-radius: 8px; font-size: 20px; display: inline-flex; align-items: center; justify-content: center;">📦</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <span class="avatar avatar-sm bg-success-lt me-2">📦</span>
@@ -184,7 +199,7 @@ tbody tr.mostrando {
                             <?php endforeach; ?>
                             <?php if (empty($productos)): ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">No hay productos registrados</td>
+                                <td colspan="8" class="text-center text-muted py-4">No hay productos registrados</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>
@@ -276,15 +291,58 @@ tbody tr.mostrando {
                             <input type="number" step="0.01" class="form-control" id="nuevo_precio" name="nuevo_precio" placeholder="0.00">
                             <small class="form-hint">Dejar vacío para mantener el precio actual</small>
                         </div>
+                        <!-- Imagen de referencia del producto -->
+                        <div class="col-md-12">
+                            <label class="form-label">Imagen de Referencia</label>
+                            <input type="file" class="form-control" id="imagen_referencia" name="imagen_referencia" accept="image/jpeg,image/png,image/gif,image/webp" onchange="handleImagenChange(this)">
+                            <small class="form-hint text-muted">Formatos: JPG, PNG, GIF, WEBP</small>
+                            
+                            <!-- Preview de imagen actual o nueva -->
+                            <div class="mt-2 p-3 bg-light border rounded text-center" id="preview-imagen-container" style="display: none;">
+                                <div class="d-inline-block position-relative">
+                                    <img id="preview-imagen" src="" alt="Vista previa" class="shadow-sm"
+                                         style="max-height: 150px; max-width: 150px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6; display: block;">
+                                    <span id="preview-badge-nueva" class="badge bg-success position-absolute top-0 end-0 m-1" style="display: none;">NUEVA</span>
+                                    <span id="preview-badge-actual" class="badge bg-info position-absolute top-0 end-0 m-1" style="display: none;">ACTUAL</span>
+                                </div>
+                                <div id="preview-imagen-nombre" class="text-muted small mt-2 fw-semibold"></div>
+                            </div>
+                            
+                            <div class="form-check mt-2" id="check-eliminar-imagen-container" style="display: none;">
+                                <input class="form-check-input" type="checkbox" id="eliminar_imagen" name="eliminar_imagen" value="1" onchange="handleEliminarImagenChange(this)">
+                                <label class="form-check-label text-danger" for="eliminar_imagen">Eliminar imagen actual</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success">
+                    <button type="button" class="btn btn-success" id="btn-guardar-producto" onclick="handleSubmitProducto(event)">
                         <i class="ti ti-check me-1"></i>Guardar
                     </button>
                 </div>
+                <!-- Area de debug visible para diagnosticar problemas -->
+                <div id="debug-area" class="mx-3 mb-2 p-2 small text-muted border-top" style="display: none; font-family: monospace; max-height: 80px; overflow-y: auto;"></div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Previsualizacion Ampliada de Imagen -->
+<div class="modal fade" id="modal-preview-imagen" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ti ti-photo me-2"></i>Imagen de Referencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <img id="preview-imagen-ampliada" src="" alt="Vista previa ampliada" class="img-fluid rounded shadow-sm" style="max-height: 400px; object-fit: contain;">
+                <div id="preview-imagen-ampliada-nombre" class="text-muted mt-3 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -303,8 +361,8 @@ tbody tr.mostrando {
                 <div class="d-flex align-items-center">
                     <i class="ti ti-box fs-3 me-3"></i>
                     <div>
-                        <h5 class="modal-title mb-0" id="modal-producto-titulo">Detalle del Producto</h5>
-                        <small class="opacity-75" id="modal-producto-subtitulo">Código: PRD001 | Clase: Hongos</small>
+                        <h5 class="modal-title mb-0" id="modal-detalle-titulo">Detalle del Producto</h5>
+                        <small class="opacity-75" id="modal-detalle-subtitulo">Código: PRD001 | Clase: Hongos</small>
                     </div>
                 </div>
                 <div class="d-flex gap-2 align-items-center">
@@ -670,8 +728,8 @@ function mostrarLotes(productoId, nombreProducto) {
     const modal = new bootstrap.Modal(document.getElementById('modal-detalle-producto'));
     
     // Actualizar título
-    document.getElementById('modal-producto-titulo').textContent = nombreProducto;
-    document.getElementById('modal-producto-subtitulo').textContent = `ID: ${productoId}`;
+    document.getElementById('modal-detalle-titulo').textContent = nombreProducto;
+    document.getElementById('modal-detalle-subtitulo').textContent = `ID: ${productoId}`;
     
     // Mostrar loading
     document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando lotes...</p></td></tr>';
@@ -997,15 +1055,109 @@ function toggleStockCritico() {
 let modalProducto = null;
 let formProducto = null;
 
+// Helper para convertir archivo a base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+    });
+}
+
+// Debug visible en la página para diagnosticar sin depender de la consola
+function debugLog(msg) {
+    const debugArea = document.getElementById('debug-area');
+    if (debugArea) {
+        debugArea.style.display = 'block';
+        const time = new Date().toLocaleTimeString();
+        debugArea.innerHTML += `<div>[${time}] ${msg}</div>`;
+        debugArea.scrollTop = debugArea.scrollHeight;
+    }
+    console.log(msg);
+}
+
+// Mostrar previsualizacion ampliada de imagen
+function mostrarPreviewImagen(imgUrl, imgNombre) {
+    const imgEl = document.getElementById('preview-imagen-ampliada');
+    const nombreEl = document.getElementById('preview-imagen-ampliada-nombre');
+    
+    if (imgEl) imgEl.src = imgUrl;
+    if (nombreEl) nombreEl.textContent = imgNombre || '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('modal-preview-imagen'));
+    modal.show();
+}
+
+// Manejar cambio de imagen en el input file
+function handleImagenChange(input) {
+    debugLog('handleImagenChange llamado');
+    const file = input.files[0];
+    const previewImg = document.getElementById('preview-imagen');
+    const previewContainer = document.getElementById('preview-imagen-container');
+    const previewNombre = document.getElementById('preview-imagen-nombre');
+    const checkEliminarContainer = document.getElementById('check-eliminar-imagen-container');
+    
+    const badgeNueva = document.getElementById('preview-badge-nueva');
+    const badgeActual = document.getElementById('preview-badge-actual');
+    
+    if (file) {
+        debugLog('Archivo seleccionado: ' + file.name + ' | tipo: ' + file.type + ' | tamaño: ' + file.size + ' bytes');
+        // Usar URL.createObjectURL para preview más rápido y robusto
+        const objectUrl = URL.createObjectURL(file);
+        if (previewImg) {
+            previewImg.src = objectUrl;
+            previewImg.style.display = 'block';
+            previewImg.onload = function() {
+                debugLog('Vista previa cargada correctamente');
+            };
+            previewImg.onerror = function() {
+                debugLog('ERROR: No se pudo mostrar la vista previa');
+                Swal.fire('Error', 'No se pudo mostrar la vista previa de la imagen', 'warning');
+            };
+        }
+        if (previewContainer) {
+            previewContainer.style.display = 'block';
+        }
+        if (previewNombre) {
+            previewNombre.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+        }
+        if (badgeNueva) badgeNueva.style.display = 'inline-block';
+        if (badgeActual) badgeActual.style.display = 'none';
+        // Ocultar checkbox eliminar si se selecciona nueva imagen
+        if (checkEliminarContainer) checkEliminarContainer.style.display = 'none';
+    } else {
+        if (previewImg) previewImg.src = '';
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (previewNombre) previewNombre.textContent = '';
+        if (badgeNueva) badgeNueva.style.display = 'none';
+        if (badgeActual) badgeActual.style.display = 'none';
+        debugLog('No hay archivo seleccionado');
+    }
+}
+
+// Manejar checkbox eliminar imagen
+function handleEliminarImagenChange(checkbox) {
+    const previewContainer = document.getElementById('preview-imagen-container');
+    const previewImg = document.getElementById('preview-imagen');
+    if (checkbox.checked) {
+        if (previewContainer) previewContainer.style.display = 'none';
+    } else {
+        const idProducto = document.getElementById('id_producto').value;
+        if (idProducto && previewImg && previewImg.dataset.hasImage === 'true') {
+            previewImg.src = `<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=${idProducto}`;
+            previewContainer.style.display = 'block';
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     formProducto = document.getElementById('form-producto');
     const modalEl = document.getElementById('modal-producto');
     if (modalEl && typeof bootstrap !== 'undefined') {
         modalProducto = new bootstrap.Modal(modalEl);
     }
-    if (formProducto) {
-        formProducto.addEventListener('submit', handleSubmitProducto);
-    }
+    debugLog('DOM cargado correctamente');
 });
 
 // Toggle visibilidad de campos según tipo de precio
@@ -1069,6 +1221,18 @@ function limpiarFormProducto() {
     document.getElementById('tipo_precio').value = '';
     document.getElementById('porcentaje_uit').value = '';
     document.getElementById('modal-producto-titulo').textContent = 'Nuevo Producto';
+    // Limpiar imagen
+    document.getElementById('imagen_referencia').value = '';
+    document.getElementById('preview-imagen').src = '';
+    document.getElementById('preview-imagen-container').style.display = 'none';
+    const previewNombreClear = document.getElementById('preview-imagen-nombre');
+    if (previewNombreClear) previewNombreClear.textContent = '';
+    const badgeNuevaClear = document.getElementById('preview-badge-nueva');
+    const badgeActualClear = document.getElementById('preview-badge-actual');
+    if (badgeNuevaClear) badgeNuevaClear.style.display = 'none';
+    if (badgeActualClear) badgeActualClear.style.display = 'none';
+    document.getElementById('eliminar_imagen').checked = false;
+    document.getElementById('check-eliminar-imagen-container').style.display = 'none';
     togglePorcentajeUIT();
 }
 
@@ -1097,6 +1261,37 @@ function editarProducto(id) {
                     document.getElementById('porcentaje_uit').value = data.porcentaje_uit || '';
                     document.getElementById('modal-producto-titulo').textContent = 'Editar Producto';
                     togglePorcentajeUIT();
+                    
+                    // Cargar imagen de referencia si existe
+                    const previewImg = document.getElementById('preview-imagen');
+                    const previewContainer = document.getElementById('preview-imagen-container');
+                    const checkEliminarContainer = document.getElementById('check-eliminar-imagen-container');
+                    const inputImagen = document.getElementById('imagen_referencia');
+                    
+                    const previewNombreEdit = document.getElementById('preview-imagen-nombre');
+                    const badgeNuevaEdit = document.getElementById('preview-badge-nueva');
+                    const badgeActualEdit = document.getElementById('preview-badge-actual');
+                    if (data.imagen_nombre) {
+                        previewImg.src = `<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=${data.id_producto}`;
+                        previewImg.dataset.hasImage = 'true';
+                        previewContainer.style.display = 'block';
+                        if (previewNombreEdit) previewNombreEdit.textContent = data.imagen_nombre;
+                        if (badgeNuevaEdit) badgeNuevaEdit.style.display = 'none';
+                        if (badgeActualEdit) badgeActualEdit.style.display = 'inline-block';
+                        checkEliminarContainer.style.display = 'block';
+                        document.getElementById('eliminar_imagen').checked = false;
+                    } else {
+                        previewImg.src = '';
+                        previewImg.dataset.hasImage = 'false';
+                        previewContainer.style.display = 'none';
+                        if (previewNombreEdit) previewNombreEdit.textContent = '';
+                        if (badgeNuevaEdit) badgeNuevaEdit.style.display = 'none';
+                        if (badgeActualEdit) badgeActualEdit.style.display = 'none';
+                        checkEliminarContainer.style.display = 'none';
+                        document.getElementById('eliminar_imagen').checked = false;
+                    }
+                    inputImagen.value = '';
+                    
                     // Si es UIT, recalcular el precio
                     if (data.tipo_precio === 'UIT') {
                         calcularPrecioUIT();
@@ -1192,78 +1387,111 @@ function eliminarProducto(id) {
     });
 }
 
-function handleSubmitProducto(e) {
-    e.preventDefault();
-    const formData = new FormData(formProducto);
+async function handleSubmitProducto(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     
-    // Asegurar que maneja_stock se envíe correctamente
-    if (!document.getElementById('maneja_stock').checked) {
-        formData.delete('maneja_stock');
-    }
+    debugLog('=== INICIANDO GUARDADO ===');
     
-    // Guardar producto primero
-    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_producto', {
-        method: 'POST',
-        body: formData
-    })
-    .then(r => r.text())
-    .then(text => {
+    try {
+        // Construir payload JSON desde los campos del formulario
+        const payload = {
+            id_producto: document.getElementById('id_producto').value || null,
+            nombre: document.getElementById('nombre').value,
+            nombre_cientifico: document.getElementById('nombre_cientifico').value,
+            unidad_medida: document.getElementById('unidad_medida').value,
+            maneja_stock: document.getElementById('maneja_stock').checked ? 1 : 0,
+            id_clase: document.getElementById('id_clase').value,
+            id_centro: document.getElementById('id_centro').value,
+            tipo_precio: document.getElementById('tipo_precio').value,
+            porcentaje_uit: document.getElementById('porcentaje_uit').value
+        };
+        debugLog('Payload base construido');
+        
+        // Procesar imagen
+        const inputImagen = document.getElementById('imagen_referencia');
+        const checkEliminar = document.getElementById('eliminar_imagen');
+        
+        if (checkEliminar && checkEliminar.checked) {
+            debugLog('Opcion: eliminar imagen actual');
+            payload.eliminar_imagen = true;
+        } else if (inputImagen && inputImagen.files && inputImagen.files[0]) {
+            debugLog('Procesando imagen seleccionada...');
+            try {
+                payload.imagen_base64 = await fileToBase64(inputImagen.files[0]);
+                payload.imagen_nombre = inputImagen.files[0].name;
+                debugLog('Imagen convertida a base64 exitosamente');
+            } catch (err) {
+                debugLog('ERROR al leer imagen: ' + err.message);
+                Swal.fire('Error', 'No se pudo leer la imagen seleccionada', 'error');
+                return;
+            }
+        } else {
+            debugLog('Sin imagen nueva ni eliminacion');
+        }
+        
+        debugLog('Enviando peticion AJAX...');
+        
+        // Guardar producto
+        const response = await fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_producto', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const text = await response.text();
+        debugLog('Respuesta recibida (' + text.length + ' chars)');
+        
         const trimmed = text.trim();
         const jsonStart = trimmed.indexOf('{');
         const jsonEnd = trimmed.lastIndexOf('}');
         if (jsonStart === -1 || jsonEnd === -1) {
-            Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+            debugLog('ERROR: Respuesta no contiene JSON valido');
+            Swal.fire('Error', 'Respuesta invalida del servidor', 'error');
             return;
         }
-        try {
-            const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
-            if (data.success) {
-                // Si es Variable y se ingresó un nuevo precio, guardarlo en historial
-                const tipoPrecio = document.getElementById('tipo_precio').value;
-                const nuevoPrecio = document.getElementById('nuevo_precio').value;
-                
-                if (tipoPrecio === 'Variable' && nuevoPrecio && nuevoPrecio.trim() !== '') {
-                    const precioData = {
-                        id_producto: data.id || document.getElementById('id_producto').value,
-                        precio_oficial: parseFloat(nuevoPrecio)
-                    };
-                    
-                    return fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_precio', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(precioData)
-                    }).then(r => r.json());
-                }
-                
-                return Promise.resolve({ success: true });
-            } else {
-                Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
-                return Promise.reject(data.message);
-            }
-        } catch (e) {
-            Swal.fire('Error', 'Error al procesar respuesta', 'error');
-            return Promise.reject(e);
+        
+        const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        debugLog('Respuesta JSON: success=' + data.success);
+        
+        if (!data.success) {
+            debugLog('ERROR del servidor: ' + (data.message || 'Sin mensaje'));
+            Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
+            return;
         }
-    })
-    .then(result => {
-        if (result.success) {
-            if (modalProducto) modalProducto.hide();
-            Swal.fire({
-                icon: 'success',
-                title: 'Guardado',
-                text: 'El producto se guardó correctamente',
-                timer: 1500,
-                showConfirmButton: false
-            }).then(() => location.reload());
-        } else {
-            Swal.fire('Error', 'No se pudo guardar el precio', 'error');
+        
+        // Si es Variable y se ingreso un nuevo precio, guardarlo en historial
+        const tipoPrecio = document.getElementById('tipo_precio').value;
+        const nuevoPrecio = document.getElementById('nuevo_precio').value;
+        
+        if (tipoPrecio === 'Variable' && nuevoPrecio && nuevoPrecio.trim() !== '') {
+            debugLog('Guardando precio variable...');
+            const precioData = {
+                id_producto: data.id || document.getElementById('id_producto').value,
+                precio_oficial: parseFloat(nuevoPrecio)
+            };
+            await fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_precio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(precioData)
+            });
         }
-    })
-    .catch(err => {
-        if (err !== 'No se pudo guardar') {
-            Swal.fire('Error', 'Error de conexión', 'error');
-        }
-    });
+        
+        debugLog('Guardado exitoso! Recargando pagina...');
+        if (modalProducto) modalProducto.hide();
+        Swal.fire({
+            icon: 'success',
+            title: 'Guardado',
+            text: 'El producto se guardo correctamente',
+            timer: 1500,
+            showConfirmButton: false
+        }).then(() => location.reload());
+        
+    } catch (err) {
+        debugLog('ERROR inesperado: ' + err.message);
+        console.error(err);
+        Swal.fire('Error', 'Error de conexion o ejecucion: ' + err.message, 'error');
+    }
 }
 
 // Función para aplicar filtros con animación

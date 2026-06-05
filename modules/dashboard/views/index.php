@@ -2,20 +2,11 @@
   <div class="container-xl">
     <div class="row g-2 align-items-center">
       <div class="col">
-        <div class="page-pretitle">
-          Resumen General
-        </div>
-        <h2 class="page-title">
-          Dashboard
-        </h2>
+        <div class="page-pretitle">Resumen General</div>
+        <h2 class="page-title">Dashboard</h2>
       </div>
       <div class="col-auto ms-auto d-print-none">
-        <div class="btn-list">
-          <a href="#" class="btn btn-primary d-none d-sm-inline-block">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
-            Nuevo Ticket
-          </a>
-        </div>
+        <span class="text-muted" style="font-size:0.85rem;"><?php echo date('d/m/Y'); ?></span>
       </div>
     </div>
   </div>
@@ -24,95 +15,70 @@
 <div class="page-body">
   <div class="container-xl">
     
-    <div class="row row-deck row-cards">
-        
-        <div class="col-sm-6 col-lg-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader">Gestión de Salas</div>
-                        <div class="ms-auto lh-1">
-                            <span class="text-green d-inline-flex align-items-center lh-1">
-                                80% Ocupación
-                            </span>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline">
-                        <div class="h1 mb-0 me-2">2</div>
-                        <div class="me-auto">
-                            <span class="text-green d-inline-flex align-items-center lh-1">
-                                Reservas Hoy
-                            </span>
-                        </div>
-                    </div>
-                </div>
-                <div class="progress progress-sm card-progress">
-                    <div class="progress-bar bg-green" style="width: 80%" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"></div>
-                </div>
+    <!-- KPI Cards — Datos reales desde el sistema -->
+    <?php
+    if (!isset($conn) || !$conn) {
+        $conn = Conexion::conectar();
+    }
+    require_once __DIR__ . '/../../modules/produccion_agraria/models/DashboardModel.php';
+    $dashModel = new DashboardModel($conn);
+    $resumen = $dashModel->getWidgetData('resumen_ejecutivo', []);
+    $kpiRows = $resumen['rows'] ?? [];
+    $kpiCards = [
+        ['label' => 'Ventas Hoy',       'cls' => 'bg-azure-lt',   'icon' => 'ti ti-cash text-azure',           'color' => 'text-azure'],
+        ['label' => 'Proformas Pend.',  'cls' => 'bg-orange-lt',  'icon' => 'ti ti-file-invoice text-orange',   'color' => 'text-orange'],
+        ['label' => 'Stock Crítico',    'cls' => 'bg-red-lt',     'icon' => 'ti ti-alert-triangle text-red',    'color' => 'text-red'],
+        ['label' => 'Vouchers Sin Asig.','cls' => 'bg-purple-lt', 'icon' => 'ti ti-credit-card text-purple',    'color' => 'text-purple'],
+        ['label' => 'Mermas Hoy',       'cls' => 'bg-pink-lt',    'icon' => 'ti ti-trash text-pink',            'color' => 'text-pink'],
+        ['label' => 'Valor Inventario', 'cls' => 'bg-green-lt',   'icon' => 'ti ti-coin text-green',            'color' => 'text-green'],
+    ];
+    ?>
+    <div class="row row-deck row-cards mb-4">
+      <?php foreach ($kpiRows as $i => $kpi): ?>
+      <?php $card = $kpiCards[$i] ?? $kpiCards[0]; ?>
+      <div class="col-sm-6 col-lg-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="subheader"><?php echo htmlspecialchars((string)($kpi['indicador'] ?? $card['label'])); ?></div>
             </div>
-        </div>
-
-        <div class="col-sm-6 col-lg-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader">Mesa de Ayuda</div>
-                        <div class="ms-auto lh-1">
-                            <span class="text-yellow d-inline-flex align-items-center lh-1">
-                                Pendientes
-                            </span>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-baseline">
-                        <div class="h1 mb-3 me-2">12</div>
-                        <div class="me-auto">
-                            <span class="text-yellow d-inline-flex align-items-center lh-1">
-                                Tickets Abiertos
-                            </span>
-                        </div>
-                    </div>
-                    <div id="chart-support" class="chart-sm"></div>
-                </div>
+            <div class="d-flex align-items-baseline">
+              <div class="h1 mb-0 me-2"><?php echo htmlspecialchars((string)($kpi['valor'] ?? '-')); ?></div>
+              <div class="me-auto">
+                <span class="<?php echo $card['color']; ?> d-inline-flex align-items-center lh-1">
+                  <?php echo htmlspecialchars((string)($kpi['detalle'] ?? '')); ?>
+                </span>
+              </div>
             </div>
+          </div>
         </div>
-        
-        <div class="col-sm-6 col-lg-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader">Certificados Digitales</div>
-                    </div>
-                    <div class="d-flex align-items-baseline">
-                        <div class="h1 mb-3 me-2">1</div>
-                        <div class="me-auto">
-                            <span class="text-danger d-inline-flex align-items-center lh-1">
-                                Vence en 5 días
-                                <svg xmlns="http://www.w3.org/2000/svg" class="icon ms-1" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 9v4" /><path d="M12 16v.01" /></svg>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-sm-6 col-lg-3">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="subheader">Adquisiciones TI</div>
-                    </div>
-                    <div class="d-flex align-items-baseline">
-                        <div class="h1 mb-3 me-2">3</div>
-                        <div class="me-auto">
-                            <span class="text-secondary d-inline-flex align-items-center lh-1">
-                                Requerimientos
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
+      </div>
+      <?php endforeach; ?>
     </div>
+
+    <!-- Link al Dashboard CMS -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div>
+                <i class="ti ti-layout-dashboard text-primary me-2" style="font-size:1.5rem;"></i>
+              </div>
+              <div>
+                <h4 class="mb-1">Dashboard Personalizable</h4>
+                <p class="text-muted mb-0">Arma tu propio panel con KPIs, gráficos y tablas personalizados.</p>
+              </div>
+              <div class="ms-auto">
+                <a href="<?php echo BASE_URL; ?>/produccion_agraria/dashboard" class="btn btn-primary">
+                  <i class="ti ti-arrow-right me-1"></i>Ir al Dashboard CMS
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>

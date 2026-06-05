@@ -6,9 +6,7 @@ $acciones_ajax_bandeja = [
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
     'listar_vouchers', 'guardar_voucher', 'descargar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas',
     'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
-    'chat_enviar',
-    'tool_stock', 'tool_ventas', 'tool_proformas', 'tool_vouchers',
-    'tool_productos', 'tool_clientes', 'tool_mermas'
+    ...require 'core/ChatActions.php'
 ];
 if (!in_array($action, $acciones_ajax_bandeja)) {
     require_once 'modules/produccion_agraria/models/Produccion_agrariaModel.php';
@@ -56,6 +54,7 @@ switch($action) {
     case 'guardar_merma':
     case 'obtener_precio_actual':
     case 'guardar_precio':
+    case 'ver_imagen_producto':
         include 'modules/produccion_agraria/controllers/InventarioController.php';
         break;
     // Acciones AJAX - PUNTO DE VENTA
@@ -87,10 +86,18 @@ switch($action) {
     case 'ventas_data':
     case 'inventario_data':
     case 'mermas_data':
+    case 'vouchers_report_data':
+    case 'clientes_report_data':
+    case 'consolidado_report_data':
+    case 'precios_report_data':
     case 'dashboard_data':
         include 'modules/produccion_agraria/controllers/ReportesController.php';
         break;
     case 'dashboard':
+    case 'dash_load':
+    case 'dash_save':
+    case 'dash_reset':
+    case 'dash_widget':
         include 'modules/produccion_agraria/controllers/DashboardController.php';
         break;
     case 'consultas':
@@ -102,6 +109,16 @@ switch($action) {
     case 'tool_productos':
     case 'tool_clientes':
     case 'tool_mermas':
+    case 'tool_kardex':
+    case 'tool_top_productos':
+    case 'tool_valorizacion':
+    case 'tool_ventas_mes':
+    case 'tool_vouchers_saldo':
+    case 'tool_grafico':
+    case 'tool_resumen':
+    case 'tool_comparativa':
+    case 'tool_buscar':
+    case 'tool_recomendaciones':
         include 'modules/consultas/controllers/ConsultasController.php';
         break;
     case 'guardar':

@@ -48,10 +48,13 @@ class PuntoVentaModel {
     // ========================================
     
     public function listarProductosVenta() {
-        $sql = "SELECT p.id_producto, p.nombre, p.unidad_medida, p.tipo_precio, p.porcentaje_uit,
+        $sql = "SELECT p.id_producto, p.nombre, p.unidad_medida, p.imagen_nombre, p.tipo_precio, p.porcentaje_uit,
                        p.id_clase, p.id_centro, c.nombre_clase, cp.nombre_centro,
                        u.valor as valor_uit,
-                       hp.precio_oficial as precio_variable
+                       hp.precio_oficial as precio_variable,
+                       (SELECT ISNULL(SUM(l.stock_actual), 0) 
+                        FROM BD_PRODUCCIONDESARROLLO.dbo.lote l 
+                        WHERE l.id_producto = p.id_producto AND l.stock_actual > 0) as stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
@@ -76,16 +79,21 @@ class PuntoVentaModel {
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             // Calcular precio según tipo
             $row['precio_venta'] = $this->calcularPrecio($row);
+            // Asegurar que stock_total sea entero
+            $row['stock_total'] = intval($row['stock_total'] ?? 0);
             $result[] = $row;
         }
         return $result;
     }
 
     public function buscarProducto($id) {
-        $sql = "SELECT p.id_producto, p.nombre, p.unidad_medida, p.tipo_precio, p.porcentaje_uit,
+        $sql = "SELECT p.id_producto, p.nombre, p.unidad_medida, p.imagen_nombre, p.tipo_precio, p.porcentaje_uit,
                        p.id_clase, p.id_centro, c.nombre_clase, cp.nombre_centro,
                        u.valor as valor_uit,
-                       hp.precio_oficial as precio_variable
+                       hp.precio_oficial as precio_variable,
+                       (SELECT ISNULL(SUM(l.stock_actual), 0) 
+                        FROM BD_PRODUCCIONDESARROLLO.dbo.lote l 
+                        WHERE l.id_producto = p.id_producto AND l.stock_actual > 0) as stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
@@ -103,6 +111,7 @@ class PuntoVentaModel {
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             $row['precio_venta'] = $this->calcularPrecio($row);
+            $row['stock_total'] = intval($row['stock_total'] ?? 0);
             return $row;
         }
         return null;
