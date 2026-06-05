@@ -11,7 +11,100 @@ $vistas = [
 ];
 
 $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['requerimientos'];
+
+$itemsMenuAdquisiciones = [
+	[
+		'action' => 'dashboard',
+		'icon' => 'ti ti-layout-dashboard',
+		'label' => 'Dashboard',
+		'group' => ['dashboard'],
+	],
+	[
+		'action' => 'requerimientos',
+		'icon' => 'ti ti-clipboard-list',
+		'label' => 'Requerimientos',
+		'group' => ['requerimientos', 'detalle'],
+	],
+	[
+		'action' => 'tecnologias',
+		'icon' => 'ti ti-devices',
+		'label' => 'Tecnologias',
+		'group' => ['tecnologias', 'tecnologia'],
+	],
+	[
+		'action' => 'consolidado',
+		'icon' => 'ti ti-file-spreadsheet',
+		'label' => 'Consolidado',
+		'group' => ['consolidado'],
+	],
+];
 ?>
+
+<style>
+	.adq-submenu {
+		background: #fff;
+		border-bottom: 1px solid var(--tblr-border-color, #e6ebf1);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+		position: sticky;
+		top: 0;
+		z-index: 1020;
+	}
+
+	.adq-submenu .navbar-nav {
+		flex-wrap: nowrap;
+		padding-left: 1rem;
+		scrollbar-width: none;
+	}
+
+	.adq-submenu .navbar-nav::-webkit-scrollbar {
+		display: none;
+	}
+
+	.adq-submenu .nav-link {
+		align-items: center;
+		border-radius: .4rem;
+		color: #475569;
+		display: flex;
+		font-size: .85rem;
+		font-weight: 600;
+		gap: .5rem;
+		height: 2.75rem;
+		line-height: 1;
+		padding: 0 1.1rem;
+		transition: all .15s ease;
+		white-space: nowrap;
+	}
+
+	.adq-submenu .nav-link i {
+		font-size: .95rem;
+	}
+
+	.adq-submenu .nav-link:hover {
+		background: var(--tblr-bg-surface-secondary, #f8fafc);
+		color: var(--tblr-primary, #0054a6);
+	}
+
+	.adq-submenu .nav-link.active {
+		background: transparent;
+		color: var(--tblr-primary, #0054a6);
+	}
+</style>
+
+<div class="navbar-expand-md adq-submenu d-print-none" id="adquisiciones-nav-container">
+	<div class="container-xl">
+		<ul class="navbar-nav d-flex flex-row gap-3 py-2 overflow-auto">
+			<?php foreach ($itemsMenuAdquisiciones as $item): ?>
+				<?php $activo = in_array($vistaActual, $item['group'], true); ?>
+				<li class="nav-item">
+					<a class="nav-link js-adq-nav <?php echo $activo ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=<?php echo $item['action']; ?>">
+						<i class="<?php echo $item['icon']; ?>"></i>
+						<?php echo $item['label']; ?>
+					</a>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+	</div>
+</div>
 
 <div class="page-header d-print-none">
 	<div class="container-xl">
@@ -26,35 +119,11 @@ $vistaPath = isset($vistas[$vistaActual]) ? $vistas[$vistaActual] : $vistas['req
 
 <div class="page-body">
 	<div class="container-xl">
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 		<?php include __DIR__ . '/alerts/alertas.php'; ?>
 		<?php include __DIR__ . '/alerts/confirmacion.php'; ?>
 
 		<div class="card">
-			<div class="card-header" id="adquisiciones-nav-container">
-				<ul class="nav nav-pills card-header-pills">
-					<li class="nav-item">
-						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'dashboard' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=dashboard">
-							Dashboard
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'requerimientos' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=requerimientos">
-							Requerimientos
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'tecnologias' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=tecnologias">
-							Tecnologias
-						</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link js-adq-nav <?php echo $vistaActual === 'consolidado' ? 'active' : ''; ?>" href="index.php?module=adquisiciones&action=consolidado">
-							Consolidado
-						</a>
-					</li>
-				</ul>
-			</div>
-
 			<div class="card-body" id="adquisiciones-contenido">
 				<?php if (file_exists($vistaPath)): ?>
 					<?php include $vistaPath; ?>

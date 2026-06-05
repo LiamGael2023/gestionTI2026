@@ -24,7 +24,7 @@
 										<button type="button"
 											class="btn btn-icon btn-lg"
 											title="Ver PDF"
-											onclick="abrirPdfEnModal('modules/adquisiciones/pdf.php?tipo=especificacion&id=<?= (int)$especificacionTecnica['Id'] ?>')">
+											onclick="abrirPdfEnModal('modules/adquisiciones/views/tecnologias/partials/pdf.php?tipo=especificacion&id=<?= (int)$especificacionTecnica['Id'] ?>')">
 											<i class="ti ti-file-text fs-2"></i>
 										</button>
 									<?php endif; ?>

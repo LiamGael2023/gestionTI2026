@@ -470,10 +470,7 @@ function descargarConsolidadoOficialXlsx($model, $anioSolicitado)
 		foreach ($metas as $meta) {
 			$codeLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colMeta);
 			$nameLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colMeta + 1);
-			$sheet->getStyle($nameLetter . '2')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-			$sheet->getStyle($nameLetter . '2')->getFill()->getStartColor()->setARGB('FFD9D9D9');
-			$sheet->getStyle($codeLetter . '2')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-			$sheet->getStyle($codeLetter . '2')->getFill()->getStartColor()->setARGB('FFFFFFFF');
+			$sheet->getStyle($codeLetter . '2:' . $nameLetter . '2')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_NONE);
 			$colMeta += 2;
 		}
 	}
@@ -520,6 +517,10 @@ function descargarConsolidadoOficialXlsx($model, $anioSolicitado)
 	$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
 	$writer->save('php://output');
 	exit;
+}
+
+if (defined('ADQ_CONTROLLER_FUNCTIONS_ONLY') && ADQ_CONTROLLER_FUNCTIONS_ONLY) {
+	return;
 }
 
 // Garantiza una conexion activa cuando el controlador se ejecuta de forma directa.
@@ -614,7 +615,6 @@ switch ($action) {
 		$aniosDisponibles = $model->obtenerAniosDisponibles();
 		$anioFiltro = resolverAnioFiltro($anioFiltro, $aniosDisponibles);
 		$consolidado = $model->obtenerConsolidado($anioFiltro);
-		$consolidadoCabeceraExportacion = $model->obtenerCabeceraConsolidadoCompleta();
 		break;
 
 	// Obtiene datos del consolidado en formato oficial con metas SIAF vía JSON

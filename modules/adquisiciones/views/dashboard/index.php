@@ -825,7 +825,7 @@ function formatearFechaEntregaDashboard($fecha)
 				window.adqNotifySafe(tipo, titulo, mensaje);
 				return;
 			}
-			alert(mensaje || titulo);
+			window.appNotifySafe(tipo, titulo, mensaje);
 		}
 
 		// Escapa texto dinamico antes de insertarlo como HTML.

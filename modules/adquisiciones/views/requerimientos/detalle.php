@@ -944,7 +944,7 @@
 		if (typeof window.adqAlertSafe === 'function') {
 			window.adqAlertSafe('info', 'Detalles del Ítem', mensaje);
 		} else {
-			alert(codigoSiga + '\n' + descripcionDetallada + '\nCantidad: ' + cantidad + ' ' + unidadMedida);
+			console.warn(codigoSiga + '\n' + descripcionDetallada + '\nCantidad: ' + cantidad + ' ' + unidadMedida);
 		}
 	}
 
@@ -981,6 +981,11 @@
 						setValue('detalle-IdCatalogoTecnologico', '');
 						setValue('detalle-Clasificador', '');
 					}
+					window.adqNotifySafe(
+						'success',
+						modoEdicion ? 'Item actualizado' : 'Item creado',
+						response.message || (modoEdicion ? 'Item actualizado correctamente.' : 'Item registrado correctamente.')
+					);
 				} else {
 					window.adqNotifySafe('danger', 'No se pudo guardar', response.message || 'No se pudo guardar el item.');
 				}
@@ -1018,6 +1023,7 @@
 					if (tablaBody && tablaBody.querySelectorAll('tr[data-id]').length === 0) {
 						tablaBody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary">No hay ítems registrados.</td></tr>';
 					}
+					window.adqNotifySafe('success', 'Item eliminado', response.message || 'Item eliminado correctamente.');
 				} else {
 					window.adqNotifySafe('danger', 'No se pudo eliminar', response.message || 'No se pudo eliminar el item.');
 				}
