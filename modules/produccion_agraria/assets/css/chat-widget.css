@@ -379,7 +379,7 @@
     z-index: 9997;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.35s ease;
+    transition: opacity 0.55s ease;
 }
 .cw-overlay.visible {
     opacity: 1;
@@ -388,11 +388,9 @@
 
 /* --- Panel expandido (morph al centro) --- */
 #chat-widget-panel.cw-expanded {
-    top: 50% !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: translate(-50%, -50%) !important;
+    right: 50% !important;
+    bottom: 50% !important;
+    transform: translate(50%, 50%) !important;
     width: min(900px, 95vw) !important;
     max-height: min(700px, 88vh) !important;
     border-radius: 16px !important;
@@ -407,14 +405,14 @@
 
 /* Transicion suave al expandir/colapsar */
 #chat-widget-panel {
-    transition: width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                max-height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                top 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                right 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
-                border-radius 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: width 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                max-height 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                top 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                left 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                right 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                bottom 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                transform 0.55s cubic-bezier(0.25, 0.8, 0.25, 1),
+                border-radius 0.55s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 /* --- Responsive --- */
@@ -422,8 +420,8 @@
     #chat-widget-panel.cw-expanded {
         width: 100vw !important;
         max-height: 100vh !important;
-        top: 0 !important;
-        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
         transform: none !important;
         border-radius: 0 !important;
     }
