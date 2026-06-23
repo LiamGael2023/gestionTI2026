@@ -106,6 +106,14 @@ try {
         exit;
     }
     
+    if ($action == 'agregar_stock_masivo') {
+        while (ob_get_level()) { ob_end_clean(); }
+        header('Content-Type: application/json; charset=utf-8');
+        $result = $model->agregarStockMasivo();
+        echo json_encode($result);
+        exit;
+    }
+    
     if ($action == 'ver_imagen_producto') {
         $id = intval($_GET['id'] ?? 0);
         
@@ -164,6 +172,21 @@ try {
     $clases = $model->listarClasesSelect();
     $centros = $model->listarCentrosSelect();
     $uitActual = $model->obtenerUITActual();
+    
+    // Cargar vinculaciones clase-centro para filtro en formulario
+    $vinculaciones = [];
+    $sqlV = "SELECT id_clase, id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro ORDER BY id_clase, id_centro";
+    $stmtV = sqlsrv_query($conn, $sqlV);
+    if ($stmtV) {
+        while ($rowV = sqlsrv_fetch_array($stmtV, SQLSRV_FETCH_ASSOC)) {
+            $idCentro = (int)$rowV['id_centro'];
+            $idClase = (int)$rowV['id_clase'];
+            if (!isset($vinculaciones[$idCentro])) {
+                $vinculaciones[$idCentro] = [];
+            }
+            $vinculaciones[$idCentro][] = $idClase;
+        }
+    }
     
     include __DIR__ . '/../views/inventario/index.php';
     

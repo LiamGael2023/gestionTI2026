@@ -36,32 +36,7 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
 <!-- Estilos del módulo -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
-
-<style>
-.reporte-header { background: linear-gradient(135deg, #004d99 0%, #0070cc 100%); }
-.tab-btn-reporte { border-radius: 8px 8px 0 0; font-weight: 600; }
-.kpi-card { border-left: 4px solid; transition: transform .2s; }
-.kpi-card:hover { transform: translateY(-2px); }
-.kpi-ventas  { border-color: #2fb344; }
-.kpi-count   { border-color: #4299e1; }
-.kpi-ticket  { border-color: #f59e0b; }
-.kpi-stock   { border-color: #7c3aed; }
-.kpi-mermas  { border-color: #ef4444; }
-.export-bar  { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 0; }
-.badge-PROCESADO  { background: #d1fae5; color: #065f46; }
-.badge-PENDIENTE  { background: #fef3c7; color: #92400e; }
-.badge-RECHAZADO  { background: #fee2e2; color: #991b1b; }
-#spinner-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,.35); z-index: 9999;
-    align-items: center; justify-content: center;
-}
-    /* Mejora de contraste para textos y tablas */
-    .form-label { color: #1e293b !important; font-weight: 600 !important; }
-    .table td { color: #334155 !important; font-weight: 500; }
-    .table th { color: #0f172a !important; font-weight: 700 !important; }
-    .text-muted { color: #475569 !important; }
-</style>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/reportes.css">
 
 <!-- Spinner overlay -->
 <div id="spinner-overlay">
@@ -91,6 +66,10 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
         <div class="card-body py-4">
             <div class="row align-items-center">
                 <div class="col">
+                    <div class="text-uppercase fw-bold fs-5 mb-1" style="color: rgba(255,255,255,0.85);">
+                        <i class="ti ti-leaf me-2" style="color: rgba(255,255,255,0.7);"></i>
+                        Sistema de Seguimiento y control de Productos Agricolas
+                    </div>
                     <h3 class="mb-1 fw-bold"><i class="ti ti-chart-bar me-2"></i>Reportes de Producción Agraria</h3>
                     <p class="mb-0 opacity-75">Análisis de ventas, valorización de inventario y control de mermas — PECH</p>
                 </div>
@@ -103,61 +82,6 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
             </div>
         </div>
     </div>
-<style>
-    .report-card {
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        border: 1px solid rgba(0, 77, 153, 0.08);
-        border-radius: 16px;
-        background: #ffffff;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        overflow: hidden;
-        border-bottom: 4px solid transparent;
-        height: 100%;
-    }
-    .report-card-ventas:hover { border-bottom-color: #206bc4; }
-    .report-card-inventario:hover { border-bottom-color: #2fb344; }
-    .report-card-mermas:hover { border-bottom-color: #d63939; }
-    .report-card-vouchers:hover { border-bottom-color: #f59f00; }
-    .report-card-clientes:hover { border-bottom-color: #7c3aed; }
-    .report-card-consolidado:hover { border-bottom-color: #0ca678; }
-    .report-card-precios:hover { border-bottom-color: #3f51b5; }
-
-    .report-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 16px 28px rgba(0, 77, 153, 0.1);
-        border-color: rgba(0, 77, 153, 0.15);
-    }
-    .report-card:hover .btn-abrir-rep {
-        background: #004d99 !important;
-        border-color: #004d99 !important;
-        color: #ffffff !important;
-        transform: scale(1.02);
-    }
-    .btn-abrir-rep {
-        transition: all 0.2s ease-in-out;
-        font-weight: 600;
-        border-radius: 20px;
-    }
-    .cursor-pointer {
-        cursor: pointer;
-    }
-    .avatar-md {
-        width: 3.8rem;
-        height: 3.8rem;
-        line-height: 3.8rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        transition: transform 0.3s ease;
-    }
-    .report-card:hover .avatar-md {
-        transform: scale(1.1);
-    }
-    </style>
 
     <!-- =========================================================
          MENÚ PRINCIPAL DE REPORTES

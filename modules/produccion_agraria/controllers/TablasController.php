@@ -76,6 +76,26 @@ try {
         exit;
     }
     
+    // --- VINCULACION CLASE-CENTRO ---
+    if ($action == 'obtener_vinculacion') {
+        header('Content-Type: application/json; charset=utf-8');
+        $idClase = intval($_GET['id_clase'] ?? 0);
+        $ids = $model->obtenerVinculacion($idClase);
+        echo json_encode($ids);
+        exit;
+    }
+    
+    if ($action == 'guardar_vinculaciones') {
+        header('Content-Type: application/json; charset=utf-8');
+        $json = file_get_contents('php://input');
+        $data = json_decode($json, true);
+        $idClase = intval($data['id_clase'] ?? 0);
+        $centrosIds = $data['centros'] ?? [];
+        $result = $model->guardarVinculaciones($idClase, $centrosIds);
+        echo json_encode($result);
+        exit;
+    }
+    
     // --- UIT ---
     if ($action == 'guardar_uit') {
         header('Content-Type: application/json; charset=utf-8');
@@ -141,10 +161,11 @@ try {
     $uits = [];
     $clientes = [];
     
+    $centros = $model->listarCentros();
+
     if ($tabla == 'clase') {
         $clases = $model->listarClases();
     } elseif ($tabla == 'centro') {
-        $centros = $model->listarCentros();
     } elseif ($tabla == 'uit') {
         $uits = $model->listarUits();
     } elseif ($tabla == 'cliente') {

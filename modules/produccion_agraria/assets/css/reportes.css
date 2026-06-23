@@ -1,0 +1,136 @@
+/* ============================================================
+   Reportes — Estilos de cards, KPIs y exportacion
+   ============================================================ */
+
+/* Header de reporte */
+.reporte-header {
+    background: linear-gradient(135deg, var(--pa-blue) 0%, var(--pa-blue-light) 100%);
+    border-radius: var(--pa-border-radius-xl);
+    padding: var(--pa-spacer-lg) var(--pa-spacer-xl);
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+.reporte-header::after {
+    content: '';
+    position: absolute;
+    top: -30px;
+    right: -30px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* KPI cards en reportes */
+.reporte-header .kpi-card {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--pa-border-radius-lg);
+    padding: var(--pa-spacer);
+    text-align: center;
+    border-left: 3px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+.reporte-header .kpi-card .kpi-valor { color: white; }
+.reporte-header .kpi-card .kpi-label { color: rgba(255, 255, 255, 0.7); font-size: var(--pa-font-size-xs); }
+
+/* Badges de estado */
+.badge-PROCESADO { background: #d1fae5; color: #065f46; }
+.badge-PENDIENTE { background: #fef3c7; color: #92400e; }
+.badge-RECHAZADO { background: #fee2e2; color: #991b1b; }
+
+/* Barra de exportacion */
+.export-bar {
+    display: none;
+    padding: 0.5rem var(--pa-spacer-lg);
+    background: var(--pa-gray-100);
+    border-radius: var(--pa-border-radius);
+    margin-bottom: var(--pa-spacer);
+}
+.export-bar.visible { display: flex; align-items: center; gap: var(--pa-spacer-sm); }
+
+/* Overlay spinner */
+#spinner-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: var(--pa-border-radius-lg);
+}
+
+/* Cards de seleccion de reporte */
+.report-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 1px solid rgba(0, 77, 153, 0.08);
+    border-radius: 16px;
+    background: var(--pa-bg-card);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+    border-bottom: 4px solid transparent;
+    height: 100%;
+}
+.report-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 28px rgba(0, 77, 153, 0.1);
+    border-color: rgba(0, 77, 153, 0.15);
+}
+.report-card-ventas:hover { border-bottom-color: var(--pa-blue); }
+.report-card-inventario:hover { border-bottom-color: var(--pa-success); }
+.report-card-mermas:hover { border-bottom-color: #d63939; }
+.report-card-vouchers:hover { border-bottom-color: var(--pa-kpi-vouchers); }
+.report-card-clientes:hover { border-bottom-color: #7c3aed; }
+.report-card-consolidado:hover { border-bottom-color: #0ca678; }
+.report-card-precios:hover { border-bottom-color: var(--pa-blue); }
+
+.report-card:hover .btn-abrir-rep {
+    background: var(--pa-blue) !important;
+    border-color: var(--pa-blue) !important;
+    color: #ffffff !important;
+    transform: scale(1.02);
+}
+.report-card:hover .avatar-md {
+    transform: scale(1.1);
+}
+
+.btn-abrir-rep {
+    border-radius: var(--pa-border-radius-xl);
+    padding: 0.5rem 1.75rem;
+    font-weight: 600;
+    font-size: var(--pa-font-size-sm);
+    transition: all 0.2s;
+}
+.btn-abrir-rep:hover { transform: translateY(-2px); }
+
+.avatar-md {
+    width: 3.8rem;
+    height: 3.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.3s ease;
+}
+
+/* Ajustes de tabla en reportes */
+#tabla-ventas td, #tabla-inventario td, #tabla-mermas td,
+#tabla-vouchers td, #tabla-clientes td, #tabla-consolidado td,
+#tabla-precios td {
+    font-size: var(--pa-font-size-sm);
+}
+#tabla-ventas th, #tabla-inventario th, #tabla-mermas th,
+#tabla-vouchers th, #tabla-clientes th, #tabla-consolidado th,
+#tabla-precios th {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-size: 0.75rem;
+}

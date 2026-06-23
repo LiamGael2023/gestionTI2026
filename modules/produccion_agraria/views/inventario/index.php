@@ -1,56 +1,3 @@
-<style>
-/* Animaciones para filtrado de tabla */
-tbody tr {
-    transition: all 0.3s ease-in-out;
-    opacity: 1;
-}
-
-tbody tr.filtrando {
-    opacity: 0;
-    transform: translateY(-10px);
-}
-
-tbody tr.mostrando {
-    animation: fadeInUp 0.4s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(15px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Spinner de carga */
-.filtro-loading {
-    position: relative;
-    pointer-events: none;
-}
-
-.filtro-loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 20px;
-    height: 20px;
-    margin: -10px 0 0 -10px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #3498db;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-
 <div class="breadcrumb">
     <div class="container-xl">
         <ol class="breadcrumb">
@@ -67,6 +14,14 @@ tbody tr.mostrando {
         <!-- Header con título -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
+                <div class="card mb-3 border-0 shadow-sm">
+                    <div class="card-body py-2 px-3">
+                        <div class="text-uppercase text-muted fw-bold fs-4">
+                            <i class="ti ti-leaf me-2 text-primary"></i>
+                            Sistema de Seguimiento y control de Productos Agricolas
+                        </div>
+                    </div>
+                </div>
                 <h3 class="fw-bold mb-1">Gestión de Inventario</h3>
                 <p class="text-muted mb-0">Control de stock por lotes y trazabilidad PEPS</p>
             </div>
@@ -107,13 +62,6 @@ tbody tr.mostrando {
                         </div>
                     </div>
                     
-                    <!-- Toggle Stock Crítico -->
-                    <div class="col-md-2">
-                        <button class="btn btn-outline-danger w-100" id="btn-stock-critico" onclick="toggleStockCritico()">
-                            <i class="ti ti-alert-triangle me-1"></i>
-                            Stock Crítico
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -125,6 +73,9 @@ tbody tr.mostrando {
                 <h4 class="card-title mb-0">Productos en Inventario</h4>
                 <div>
                     <span class="text-muted me-3"><?php echo count($productos); ?> productos registrados</span>
+                    <button class="btn btn-warning me-2" onclick="agregarStockMasivo()">
+                        <i class="ti ti-package-import me-1"></i>Agregar Stock (+10)
+                    </button>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-producto" onclick="limpiarFormProducto()">
                         <i class="ti ti-plus me-1"></i>Nuevo Producto
                     </button>
@@ -142,16 +93,15 @@ tbody tr.mostrando {
                                 <th>Centro</th>
                                 <th class="w-1 text-center">Unidad</th>
                                 <th class="w-1 text-center">Maneja Stock</th>
-                                <th class="w-1 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($productos as $producto): ?>
-                            <tr data-id="<?php echo $producto['id_producto']; ?>" data-centro="<?php echo $producto['id_centro']; ?>" data-clase="<?php echo $producto['id_clase']; ?>" data-nombre="<?php echo strtolower(htmlspecialchars($producto['nombre'])); ?>">
+                            <tr data-id="<?php echo $producto['id_producto']; ?>" data-centro="<?php echo $producto['id_centro']; ?>" data-clase="<?php echo $producto['id_clase']; ?>" data-nombre="<?php echo strtolower(htmlspecialchars($producto['nombre'])); ?>" style="cursor: pointer;" onclick="mostrarLotes(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars($producto['nombre'], ENT_QUOTES); ?>')">
                                 <td class="text-center">
                                     <?php if (!empty($producto['imagen_nombre'])): ?>
                                     <a href="javascript:void(0)" class="d-inline-block position-relative"
-                                       onclick="mostrarPreviewImagen('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars($producto['imagen_nombre'], ENT_QUOTES); ?>')"
+                                       onclick="event.stopPropagation(); mostrarPreviewImagen('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=<?php echo $producto['id_producto']; ?>', '<?php echo htmlspecialchars($producto['imagen_nombre'], ENT_QUOTES); ?>')"
                                        title="<?php echo htmlspecialchars($producto['imagen_nombre']); ?> - Click para ampliar">
                                         <img src="<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=<?php echo $producto['id_producto']; ?>"
                                              alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
@@ -164,7 +114,6 @@ tbody tr.mostrando {
                                 </td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <span class="avatar avatar-sm bg-success-lt me-2">📦</span>
                                         <div>
                                             <div class="font-weight-medium"><?php echo htmlspecialchars($producto['nombre']); ?></div>
                                             <div class="text-muted small">Código: PRD<?php echo str_pad($producto['id_producto'], 3, '0', STR_PAD_LEFT); ?></div>
@@ -173,7 +122,7 @@ tbody tr.mostrando {
                                 </td>
                                 <td class="fst-italic text-muted"><?php echo htmlspecialchars($producto['nombre_cientifico'] ?? '-'); ?></td>
                                 <td><?php echo htmlspecialchars($producto['nombre_clase'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($producto['nombre_centro'] ?? '-'); ?></td>
+                                <td><?php echo htmlspecialchars($producto['centros'] ?? $producto['nombre_centro'] ?? '-'); ?></td>
                                 <td class="text-center"><?php echo htmlspecialchars($producto['unidad_medida']); ?></td>
                                 <td class="text-center">
                                     <?php if ($producto['maneja_stock']): ?>
@@ -182,32 +131,23 @@ tbody tr.mostrando {
                                     <span class="badge bg-secondary">No</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-center">
-                                    <?php if ($producto['maneja_stock']): ?>
-                                    <button class="btn btn-sm btn-info me-1" onclick="mostrarLotes(<?php echo $producto['id_producto']; ?>, '<?php echo htmlspecialchars($producto['nombre'], ENT_QUOTES); ?>')" title="Ver Lotes y Stock">
-                                        <i class="ti ti-box"></i>
-                                    </button>
-                                    <?php endif; ?>
-                                    <button class="btn btn-sm btn-primary me-1" onclick="editarProducto(<?php echo $producto['id_producto']; ?>)" title="Editar">
-                                        <i class="ti ti-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="eliminarProducto(<?php echo $producto['id_producto']; ?>)" title="Eliminar">
-                                        <i class="ti ti-trash"></i>
-                                    </button>
-                                </td>
                             </tr>
                             <?php endforeach; ?>
                             <?php if (empty($productos)): ?>
                             <tr>
-                                <td colspan="8" class="text-center text-muted py-4">No hay productos registrados</td>
+                                <td colspan="7" class="text-center text-muted py-4">No hay productos registrados</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="card-footer d-flex align-items-center">
-                <p class="m-0 text-muted">Mostrando <?php echo count($productos); ?> productos</p>
+            <div class="card-footer">
+                <div class="pagination-wrapper">
+                    <div class="pagination-info" id="paginacion-info">Mostrando <span id="paginacion-inicio">1</span>-<span id="paginacion-fin">15</span> de <span id="paginacion-total"><?php echo count($productos); ?></span> productos</div>
+                    <div class="pagination-controls" id="paginacion-controles">
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -216,7 +156,7 @@ tbody tr.mostrando {
 
 <!-- Modal: Formulario Producto -->
 <div class="modal fade" id="modal-producto" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal-producto-titulo">Nuevo Producto</h5>
@@ -255,13 +195,17 @@ tbody tr.mostrando {
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label required">Centro de Producción</label>
-                            <select class="form-select" id="id_centro" name="id_centro" required>
-                                <option value="">Seleccione...</option>
+                            <label class="form-label required">Centros de Produccion</label>
+                            <div class="border rounded p-2" style="max-height: 140px; overflow-y: auto;" id="contenedor-centros-checkboxes">
                                 <?php foreach ($centros as $centro): ?>
-                                <option value="<?php echo $centro['id_centro']; ?>"><?php echo htmlspecialchars($centro['nombre_centro']); ?></option>
+                                <div class="form-check">
+                                    <input class="form-check-input centro-checkbox" type="checkbox" value="<?php echo $centro['id_centro']; ?>" id="chk-centro-<?php echo $centro['id_centro']; ?>" onchange="actualizarCentroPrincipal()">
+                                    <label class="form-check-label small" for="chk-centro-<?php echo $centro['id_centro']; ?>"><?php echo htmlspecialchars($centro['nombre_centro']); ?></label>
+                                </div>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
+                            <input type="hidden" id="id_centro" name="id_centro">
+                            <small class="form-hint text-muted">El primer centro marcado sera el centro principal</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Tipo de Precio</label>
@@ -352,10 +296,11 @@ tbody tr.mostrando {
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/inventario.css">
 
 <!-- 5. MODAL DETALLE DE PRODUCTO - LOTES + KARDEX -->
 <div class="modal fade" id="modal-detalle-producto" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-gradient-primary text-white">
                 <div class="d-flex align-items-center">
@@ -366,6 +311,13 @@ tbody tr.mostrando {
                     </div>
                 </div>
                 <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-primary btn-sm" onclick="accionEditarDesdeDetalle()" title="Editar Producto">
+                        <i class="ti ti-edit me-1"></i>Editar
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="accionEliminarDesdeDetalle()" title="Eliminar Producto">
+                        <i class="ti ti-trash me-1"></i>Eliminar
+                    </button>
+                    <div class="vr mx-2 opacity-50"></div>
                     <!-- Acción de Producto -->
                     <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#modal-reajuste-stock" data-bs-dismiss="modal">
                         <i class="ti ti-adjustments me-1"></i>Reajuste Stock
@@ -433,9 +385,10 @@ tbody tr.mostrando {
                             <table class="table table-vcenter card-table">
                                 <thead>
                                     <tr>
-                                        <th>Lote (Fecha Creación)</th>
+                                        <th>Lote (Fecha Creacion)</th>
+                                <th>Centros</th>
                                         <th class="text-center">Stock</th>
-                                        <th>Antigüedad</th>
+                                        <th>Antiguedad</th>
                                         <th class="text-center">Estado PEPS</th>
                                         <th class="text-center">Acciones</th>
                                     </tr>
@@ -462,7 +415,7 @@ tbody tr.mostrando {
                                     <tr>
                                         <th>Fecha</th>
                                         <th>Tipo</th>
-                                        <th>Motivo/Documento</th>
+                                        <th>Observación</th>
                                         <th>Lote Afectado</th>
                                         <th class="text-end">Entrada</th>
                                         <th class="text-end">Salida</th>
@@ -496,8 +449,8 @@ tbody tr.mostrando {
                 <div class="modal-body">
                     <input type="hidden" id="lote-id-producto" name="id_producto">
                     <div class="mb-3">
-                        <label class="form-label required">Código de Lote</label>
-                        <input type="text" class="form-control" id="lote-codigo" name="codigo_lote" required placeholder="Ej: LOT-2025-001">
+                        <label class="form-label required">Codigo de Lote</label>
+                        <input type="text" class="form-control bg-light" id="lote-codigo" name="codigo_lote" readonly required placeholder="Auto-generado">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Stock Inicial</label>
@@ -541,9 +494,8 @@ tbody tr.mostrando {
                     <div class="row g-3">
                         <div class="col-md-12">
                             <label class="form-label">Lote</label>
-                            <select class="form-select" id="merma-id-lote" name="id_lote" required>
-                                <option value="">Seleccione lote...</option>
-                            </select>
+                            <input type="text" class="form-control bg-light" id="merma-lote-texto" readonly>
+                            <input type="hidden" id="merma-id-lote" name="id_lote">
                         </div>
                         
                         <div class="col-md-12">
@@ -561,16 +513,6 @@ tbody tr.mostrando {
                             </div>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label">Tipo de Merma</label>
-                            <select class="form-select" id="merma-tipo" name="tipo_merma" required>
-                                <option value="Vencimiento">Vencimiento / Caducidad</option>
-                                <option value="Deterioro">Deterioro / Daño físico</option>
-                                <option value="Plaga">Plaga / Enfermedad</option>
-                                <option value="Proceso">Errores de proceso</option>
-                                <option value="Otro">Otros</option>
-                            </select>
-                        </div>
                         
                         <!-- Contenedor Cantidad Exacta -->
                         <div class="col-md-6" id="container-cantidad-exacta">
@@ -719,6 +661,8 @@ tbody tr.mostrando {
 </div>
 
 <script>
+// Datos de vinculacion clase-centro para filtro en formulario
+const VINCULACIONES = <?php echo json_encode($vinculaciones); ?>;
 // Mostrar detalle de producto (lotes + kardex) - Carga desde BD vía AJAX
 function mostrarLotes(productoId, nombreProducto) {
     // Guardar producto actual para crear lotes
@@ -732,7 +676,7 @@ function mostrarLotes(productoId, nombreProducto) {
     document.getElementById('modal-detalle-subtitulo').textContent = `ID: ${productoId}`;
     
     // Mostrar loading
-    document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando lotes...</p></td></tr>';
+    document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="6" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando lotes...</p></td></tr>';
     document.getElementById('modal-tbody-kardex').innerHTML = '<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Cargando movimientos...</p></td></tr>';
     
     modal.show();
@@ -759,7 +703,7 @@ function mostrarLotes(productoId, nombreProducto) {
             // Generar HTML de lotes
             const tbodyLotes = document.getElementById('modal-tbody-lotes');
             if (lotes.length === 0) {
-                tbodyLotes.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No hay lotes activos</td></tr>';
+                tbodyLotes.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No hay lotes activos</td></tr>';
             } else {
                 tbodyLotes.innerHTML = lotes.map((lote) => {
                     const estadoClass = lote.estado_texto === 'Agotado' ? 'bg-secondary' : 
@@ -769,6 +713,7 @@ function mostrarLotes(productoId, nombreProducto) {
                     return `
                         <tr class="${rowClass}">
                             <td><code>${lote.codigo_lote}</code></td>
+                            <td><span class="text-muted small">${lote.nombre_centro || '-'}</span></td>
                             <td class="text-center">
                                 <span class="badge ${lote.stock_actual < 50 ? 'bg-warning' : 'bg-success'} fs-6">${parseInt(lote.stock_actual).toLocaleString()}</span>
                             </td>
@@ -791,7 +736,7 @@ function mostrarLotes(productoId, nombreProducto) {
             }
         })
         .catch(err => {
-            document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Error al cargar lotes</td></tr>';
+            document.getElementById('modal-tbody-lotes').innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al cargar lotes</td></tr>';
         });
     
     // Cargar kardex
@@ -844,6 +789,20 @@ function mostrarLotes(productoId, nombreProducto) {
         });
 }
 
+function accionEditarDesdeDetalle() {
+    if (!productoActualId) return;
+    const modalDetalle = bootstrap.Modal.getInstance(document.getElementById('modal-detalle-producto'));
+    if (modalDetalle) modalDetalle.hide();
+    editarProducto(productoActualId);
+}
+
+function accionEliminarDesdeDetalle() {
+    if (!productoActualId) return;
+    const modalDetalle = bootstrap.Modal.getInstance(document.getElementById('modal-detalle-producto'));
+    if (modalDetalle) modalDetalle.hide();
+    eliminarProducto(productoActualId);
+}
+
 // Variables globales para el producto actual en el modal
 let productoActualId = null;
 let productoActualNombre = null;
@@ -865,9 +824,8 @@ function mostrarModalMerma(idLote, codigoLote, stockActual) {
     
     // Configurar el formulario
     document.getElementById('merma-id-producto').value = productoActualId;
-    const selectLote = document.getElementById('merma-id-lote');
-    selectLote.innerHTML = `<option value="${idLote}">${codigoLote} (Stock: ${stockActual})</option>`;
-    selectLote.value = idLote;
+    document.getElementById('merma-id-lote').value = idLote;
+    document.getElementById('merma-lote-texto').value = codigoLote + ' (Stock: ' + stockActual + ')';
     document.getElementById('merma-cantidad').value = '';
     document.getElementById('merma-motivo').value = '';
     
@@ -915,7 +873,6 @@ function guardarMerma(e) {
     const data = {
         id_lote: parseInt(formData.get('id_lote')),
         id_producto: parseInt(formData.get('id_producto')),
-        tipo_merma: formData.get('tipo_merma'),
         cantidad: cantidad,
         motivo: formData.get('motivo')
     };
@@ -964,9 +921,55 @@ function mostrarModalNuevoLote() {
     
     // Configurar el formulario
     document.getElementById('lote-id-producto').value = productoActualId;
-    document.getElementById('lote-codigo').value = '';
+    // Generar codigo automatico: LOT-YYYYMMDD-PRD{id}
+    var ahora = new Date();
+    var fechaCod = ahora.getFullYear() +
+        String(ahora.getMonth() + 1).padStart(2, '0') +
+        String(ahora.getDate()).padStart(2, '0');
+    document.getElementById('lote-codigo').value = 'LOT-' + fechaCod + '-PRD' + productoActualId;
     document.getElementById('lote-stock').value = '0';
     document.getElementById('lote-centro').value = '';
+    
+    // Filtrar centros: solo los vinculados al producto
+    var selectCentro = document.getElementById('lote-centro');
+    var options = selectCentro.options;
+    for (var i = 1; i < options.length; i++) {
+        options[i].style.display = 'none';
+    }
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_producto&id=' + productoActualId)
+        .then(function(r) { return r.text(); })
+        .then(function(text) {
+            var trimmed = text.trim();
+            var jsonStart = trimmed.indexOf('{');
+            var jsonEnd = trimmed.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) return;
+            var prod = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+            
+            if (prod && prod.centros) {
+                var centrosIds = prod.centros.map(function(c) { return parseInt(c.id_centro); });
+                for (var i = 1; i < options.length; i++) {
+                    if (centrosIds.includes(parseInt(options[i].value))) {
+                        options[i].style.display = '';
+                    }
+                }
+                // Seleccionar primer centro disponible
+                if (centrosIds.length > 0) {
+                    selectCentro.value = centrosIds[0];
+                }
+            } else {
+                // Fallback: mostrar todos
+                for (var i = 1; i < options.length; i++) {
+                    options[i].style.display = '';
+                }
+            }
+        })
+        .catch(function() {
+            // Fallback en error
+            for (var i = 1; i < options.length; i++) {
+                options[i].style.display = '';
+            }
+        });
     
     // Mostrar modal nuevo lote
     const modalLote = new bootstrap.Modal(document.getElementById('modal-nuevo-lote'));
@@ -1197,6 +1200,55 @@ function togglePorcentajeUIT() {
     }
 }
 
+function actualizarCentroPrincipal() {
+    var checked = document.querySelectorAll('.centro-checkbox:checked');
+    document.getElementById('id_centro').value = checked.length > 0 ? checked[0].value : '';
+    filtrarClasesPorCentro();
+}
+
+function filtrarClasesPorCentro() {
+    // Clases permitidas: union de todos los centros marcados
+    var clasesPermitidas = [];
+    var checked = document.querySelectorAll('.centro-checkbox:checked');
+    
+    if (checked.length > 0) {
+        var unidas = {};
+        checked.forEach(function(cb) {
+            var vinc = VINCULACIONES[parseInt(cb.value)] || [];
+            vinc.forEach(function(idClase) { unidas[idClase] = true; });
+        });
+        clasesPermitidas = Object.keys(unidas).map(Number);
+    }
+    
+    var selectClase = document.getElementById('id_clase');
+    var hayVinculaciones = clasesPermitidas.length > 0;
+    
+    var options = selectClase.options;
+    for (var i = 1; i < options.length; i++) {
+        var idClase = parseInt(options[i].value);
+        if (hayVinculaciones) {
+            options[i].style.display = clasesPermitidas.includes(idClase) ? '' : 'none';
+        } else {
+            options[i].style.display = '';
+        }
+    }
+}
+
+function obtenerCentrosSeleccionados() {
+    var ids = [];
+    document.querySelectorAll('.centro-checkbox:checked').forEach(function(cb) {
+        ids.push(parseInt(cb.value));
+    });
+    return ids;
+}
+
+function marcarCentros(ids) {
+    document.querySelectorAll('.centro-checkbox').forEach(function(cb) {
+        cb.checked = ids.includes(parseInt(cb.value));
+    });
+    actualizarCentroPrincipal();
+}
+
 // Calcular precio basado en porcentaje de UIT
 function calcularPrecioUIT() {
     const porcentaje = parseFloat(document.getElementById('porcentaje_uit').value) || 0;
@@ -1218,6 +1270,8 @@ function limpiarFormProducto() {
     document.getElementById('maneja_stock').checked = true;
     document.getElementById('id_clase').value = '';
     document.getElementById('id_centro').value = '';
+    marcarCentros([]);
+    filtrarClasesPorCentro();
     document.getElementById('tipo_precio').value = '';
     document.getElementById('porcentaje_uit').value = '';
     document.getElementById('modal-producto-titulo').textContent = 'Nuevo Producto';
@@ -1255,8 +1309,15 @@ function editarProducto(id) {
                     document.getElementById('nombre_cientifico').value = data.nombre_cientifico || '';
                     document.getElementById('unidad_medida').value = data.unidad_medida;
                     document.getElementById('maneja_stock').checked = data.maneja_stock == 1;
-                    document.getElementById('id_clase').value = data.id_clase;
                     document.getElementById('id_centro').value = data.id_centro;
+                    // Marcar checkboxes de centros
+                    if (data.centros && data.centros.length > 0) {
+                        marcarCentros(data.centros.map(function(c) { return parseInt(c.id_centro); }));
+                    } else {
+                        marcarCentros([]);
+                    }
+                    filtrarClasesPorCentro();
+                    document.getElementById('id_clase').value = data.id_clase;
                     document.getElementById('tipo_precio').value = data.tipo_precio || '';
                     document.getElementById('porcentaje_uit').value = data.porcentaje_uit || '';
                     document.getElementById('modal-producto-titulo').textContent = 'Editar Producto';
@@ -1403,6 +1464,7 @@ async function handleSubmitProducto(e) {
             maneja_stock: document.getElementById('maneja_stock').checked ? 1 : 0,
             id_clase: document.getElementById('id_clase').value,
             id_centro: document.getElementById('id_centro').value,
+            centros: obtenerCentrosSeleccionados(),
             tipo_precio: document.getElementById('tipo_precio').value,
             porcentaje_uit: document.getElementById('porcentaje_uit').value
         };
@@ -1526,11 +1588,13 @@ function aplicarFiltros() {
             const coincideBusqueda = !busqueda || nombre.includes(busqueda);
             
             if (coincideCentro && coincideClase && coincideBusqueda) {
+                fila.classList.add('filtro-pasa');
                 fila.style.display = '';
                 fila.classList.remove('filtrando');
                 fila.classList.add('mostrando');
                 visibles++;
             } else {
+                fila.classList.remove('filtro-pasa');
                 fila.style.display = 'none';
                 fila.classList.remove('filtrando', 'mostrando');
             }
@@ -1554,7 +1618,136 @@ function aplicarFiltros() {
             });
         }, 400);
         
+        irAPagina(1);
+        
     }, 300); // Esperar 300ms para la animación de desvanecimiento
+}
+
+// =================================================================================
+// AGREGAR STOCK MASIVO (+10 a cada producto)
+// =================================================================================
+function agregarStockMasivo() {
+    Swal.fire({
+        title: 'Agregar Stock Masivo',
+        text: 'Se creara un nuevo lote con 10 unidades para cada producto que maneja stock. ¿Continuar?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Si, agregar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#f59f00',
+        cancelButtonColor: '#6c757d'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        
+        Swal.fire({
+            title: 'Procesando...',
+            text: 'Creando lotes para todos los productos. Esto puede tomar unos segundos.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=agregar_stock_masivo', {
+            method: 'POST'
+        })
+        .then(r => r.text())
+        .then(text => {
+            const trimmed = text.trim();
+            const jsonStart = trimmed.indexOf('{');
+            const jsonEnd = trimmed.lastIndexOf('}');
+            const result = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+            
+            if (result.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Stock agregado',
+                    text: 'Productos procesados: ' + result.productos_procesados + ' | Lotes creados: ' + result.lotes_creados + (result.omitidos > 0 ? ' | Omitidos (ya existian): ' + result.omitidos : ''),
+                    timer: 3000,
+                    showConfirmButton: true
+                }).then(() => location.reload());
+            } else {
+                Swal.fire('Error', result.message || 'Error al procesar', 'error');
+            }
+        })
+        .catch(err => {
+            Swal.fire('Error', 'Error de conexion: ' + err.message, 'error');
+        });
+    });
+}
+
+// =================================================================================
+// PAGINACION - 15 registros por pagina
+// =================================================================================
+const FILAS_POR_PAGINA = 15;
+let paginaActual = 1;
+
+function obtenerFilasVisibles() {
+    return Array.from(document.querySelectorAll('tbody tr[data-id].filtro-pasa'));
+}
+
+function irAPagina(pagina) {
+    paginaActual = pagina;
+    aplicarPaginacion();
+}
+
+function aplicarPaginacion() {
+    var filasVisibles = obtenerFilasVisibles();
+    var totalFilas = filasVisibles.length;
+    var totalPaginas = Math.ceil(totalFilas / FILAS_POR_PAGINA) || 1;
+    
+    if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+    if (paginaActual < 1) paginaActual = 1;
+    
+    var inicio = (paginaActual - 1) * FILAS_POR_PAGINA;
+    var fin = Math.min(inicio + FILAS_POR_PAGINA, totalFilas);
+    
+    filasVisibles.forEach(function(fila, index) {
+        if (index >= inicio && index < fin) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+    
+    renderizarPaginacion(totalFilas, totalPaginas);
+}
+
+function renderizarPaginacion(totalFilas, totalPaginas) {
+    document.getElementById('paginacion-inicio').textContent = totalFilas === 0 ? 0 : (paginaActual - 1) * FILAS_POR_PAGINA + 1;
+    document.getElementById('paginacion-fin').textContent = Math.min(paginaActual * FILAS_POR_PAGINA, totalFilas);
+    document.getElementById('paginacion-total').textContent = totalFilas;
+    
+    var contenedor = document.getElementById('paginacion-controles');
+    if (totalPaginas <= 1) {
+        contenedor.innerHTML = '';
+        return;
+    }
+    
+    var html = '<button class="page-btn ' + (paginaActual === 1 ? 'disabled' : '') + '" onclick="irAPagina(' + (paginaActual - 1) + ')"><i class="ti ti-chevron-left"></i></button>';
+    
+    var paginas = [];
+    if (totalPaginas <= 7) {
+        for (var i = 1; i <= totalPaginas; i++) paginas.push(i);
+    } else {
+        paginas.push(1);
+        if (paginaActual > 3) paginas.push('...');
+        var desde = Math.max(2, paginaActual - 1);
+        var hasta = Math.min(totalPaginas - 1, paginaActual + 1);
+        for (var i = desde; i <= hasta; i++) paginas.push(i);
+        if (paginaActual < totalPaginas - 2) paginas.push('...');
+        paginas.push(totalPaginas);
+    }
+    
+    paginas.forEach(function(p) {
+        if (p === '...') {
+            html += '<span class="page-ellipsis">...</span>';
+        } else {
+            html += '<button class="page-btn ' + (paginaActual === p ? 'active' : '') + '" onclick="irAPagina(' + p + ')">' + p + '</button>';
+        }
+    });
+    
+    html += '<button class="page-btn ' + (paginaActual === totalPaginas ? 'disabled' : '') + '" onclick="irAPagina(' + (paginaActual + 1) + ')"><i class="ti ti-chevron-right"></i></button>';
+    
+    contenedor.innerHTML = html;
 }
 
 // Inicializar event listeners para formularios
@@ -1643,12 +1836,61 @@ document.addEventListener('DOMContentLoaded', function() {
     const buscarGlobal = document.getElementById('buscar-global');
     let timeoutBusqueda = null;
     
+    function filtrarClasesSegunCentro() {
+        var idCentro = parseInt(filtroCentro.value) || 0;
+        var clasesPermitidas = VINCULACIONES[idCentro] || [];
+        var hayVinculaciones = clasesPermitidas.length > 0;
+        
+        var options = filtroClase.options;
+        for (var i = 1; i < options.length; i++) {
+            var idClase = parseInt(options[i].value);
+            if (hayVinculaciones) {
+                options[i].style.display = clasesPermitidas.includes(idClase) ? '' : 'none';
+            } else {
+                options[i].style.display = '';
+            }
+        }
+        if (filtroClase.value && hayVinculaciones && !clasesPermitidas.includes(parseInt(filtroClase.value))) {
+            filtroClase.value = '';
+        }
+    }
+    
+    function filtrarCentrosSegunClase() {
+        var idClase = parseInt(filtroClase.value) || 0;
+        var centrosPermitidos = [];
+        for (var c in VINCULACIONES) {
+            if (VINCULACIONES[c].includes(idClase)) {
+                centrosPermitidos.push(parseInt(c));
+            }
+        }
+        var hayVinculaciones = centrosPermitidos.length > 0;
+        
+        var options = filtroCentro.options;
+        for (var i = 1; i < options.length; i++) {
+            var idCentro = parseInt(options[i].value);
+            if (hayVinculaciones) {
+                options[i].style.display = centrosPermitidos.includes(idCentro) ? '' : 'none';
+            } else {
+                options[i].style.display = '';
+            }
+        }
+        if (filtroCentro.value && hayVinculaciones && !centrosPermitidos.includes(parseInt(filtroCentro.value))) {
+            filtroCentro.value = '';
+        }
+    }
+    
     if (filtroCentro) {
-        filtroCentro.addEventListener('change', aplicarFiltros);
+        filtroCentro.addEventListener('change', function() {
+            filtrarClasesSegunCentro();
+            aplicarFiltros();
+        });
     }
     
     if (filtroClase) {
-        filtroClase.addEventListener('change', aplicarFiltros);
+        filtroClase.addEventListener('change', function() {
+            filtrarCentrosSegunClase();
+            aplicarFiltros();
+        });
     }
     
     if (buscarGlobal) {
@@ -1658,6 +1900,13 @@ document.addEventListener('DOMContentLoaded', function() {
             timeoutBusqueda = setTimeout(aplicarFiltros, 300);
         });
     }
+    
+    // Inicializar paginacion: marcar todas las filas visibles y paginar
+    var filasIniciales = document.querySelectorAll('tbody tr[data-id]');
+    filasIniciales.forEach(function(fila) {
+        fila.classList.add('filtro-pasa');
+    });
+    aplicarPaginacion();
 });
 
 // =================================================================================

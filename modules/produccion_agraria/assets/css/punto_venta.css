@@ -1,0 +1,129 @@
+/* ============================================================
+   Punto de Venta — Estilos de tabla, dropdowns y switch
+   ============================================================ */
+
+/* Tabla con scroll y header fijo */
+.table-container {
+    height: 250px !important;
+    max-height: 250px !important;
+    overflow-y: auto;
+    position: relative;
+}
+#tabla-items {
+    margin-bottom: 0;
+    width: 100%;
+}
+#tabla-items thead th {
+    position: sticky;
+    top: 0;
+    background: var(--pa-gray-100);
+    z-index: 2;
+    box-shadow: 0 1px 0 var(--pa-gray-300);
+    font-size: var(--pa-font-size-sm);
+}
+#tabla-items tbody td {
+    vertical-align: middle;
+}
+
+/* Dropdown de productos y clientes */
+#dropdown-productos,
+#dropdown-clientes {
+    max-height: 300px;
+    overflow-y: auto;
+    width: 100%;
+    border: 1px solid var(--pa-gray-300);
+    border-radius: 0 0 var(--pa-border-radius-lg) var(--pa-border-radius-lg);
+    box-shadow: var(--pa-shadow);
+}
+#dropdown-productos .dropdown-item,
+#dropdown-clientes .dropdown-item {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--pa-gray-100);
+    transition: background 0.15s;
+}
+#dropdown-productos.show,
+#dropdown-clientes.show {
+    animation: fadeInDown 0.2s ease-out;
+}
+
+/* Mensaje vacio en tabla de items */
+#mensaje-vacio {
+    padding: 2rem 0;
+}
+#mensaje-vacio i {
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0.4;
+}
+
+/* Item de producto en dropdown */
+.producto-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+.producto-info {
+    flex: 1;
+    min-width: 0;
+}
+.producto-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.producto-icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--pa-border-radius-lg);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+.producto-icono img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+}
+.producto-nombre {
+    font-weight: 500;
+    font-size: var(--pa-font-size-sm);
+    line-height: 1.3;
+    color: var(--pa-text-primary);
+}
+.producto-unidad {
+    font-size: 0.72rem;
+    color: var(--pa-text-muted);
+}
+.producto-stock {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+.producto-stock.ok { background: #e6fffa; color: #065f46; }
+.producto-stock.critico { background: #fff5f5; color: #dc2626; }
+.producto-stock.agotado { background: var(--pa-gray-100); color: var(--pa-gray-600); }
+.producto-precio {
+    font-weight: 600;
+    font-size: var(--pa-font-size-sm);
+    color: var(--pa-text-primary);
+    white-space: nowrap;
+}
+.producto-text .producto-nombre {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Switch de venta masiva */
+#chk-venta-masiva {
+    background-color: var(--pa-danger) !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+}
+#chk-venta-masiva:checked {
+    background-color: var(--pa-success) !important;
+    background-position: right center !important;
+}

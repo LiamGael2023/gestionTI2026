@@ -27,4 +27,6 @@ return [
     'tool_comparativa',
     'tool_buscar',
     'tool_recomendaciones',
+    'tool_metricas',
+    'tool_detalle_producto',
 ];

@@ -34,6 +34,9 @@ switch($action) {
     case 'obtener_centro':
     case 'guardar_centro':
     case 'eliminar_centro':
+    // Acciones AJAX - VINCULACION
+    case 'obtener_vinculacion':
+    case 'guardar_vinculaciones':
     // Acciones AJAX - UIT
     case 'obtener_uit':
     case 'guardar_uit':
@@ -52,6 +55,7 @@ switch($action) {
     case 'obtener_kardex':
     case 'guardar_lote':
     case 'guardar_merma':
+    case 'agregar_stock_masivo':
     case 'obtener_precio_actual':
     case 'guardar_precio':
     case 'ver_imagen_producto':
@@ -119,6 +123,8 @@ switch($action) {
     case 'tool_comparativa':
     case 'tool_buscar':
     case 'tool_recomendaciones':
+    case 'tool_metricas':
+    case 'tool_detalle_producto':
         include 'modules/consultas/controllers/ConsultasController.php';
         break;
     case 'guardar':

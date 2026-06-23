@@ -182,12 +182,12 @@ class PuntoVentaModel {
                 $cantidadPendiente = $item['cantidad'];
                 $idProducto = $item['id_producto'];
                 
-                // Buscar lotes del producto ordenados por fecha de creación (FIFO)
+                // Buscar lotes del producto ordenados por fecha de creacion (FIFO), filtrados por centro
                 $sqlLotes = "SELECT id_lote, stock_actual, codigo_lote 
                             FROM BD_PRODUCCIONDESARROLLO.dbo.lote 
-                            WHERE id_producto = ? AND stock_actual > 0
+                            WHERE id_producto = ? AND stock_actual > 0 AND id_centro = ?
                             ORDER BY fecha_creacion ASC, id_lote ASC";
-                $stmtLotes = sqlsrv_query($this->db, $sqlLotes, [$idProducto]);
+                $stmtLotes = sqlsrv_query($this->db, $sqlLotes, [$idProducto, $idCentro ?? 1]);
                 if ($stmtLotes === false) {
                     throw new Exception('Error al buscar lotes: ' . print_r(sqlsrv_errors(), true));
                 }

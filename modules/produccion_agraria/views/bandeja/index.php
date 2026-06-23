@@ -10,6 +10,14 @@
 </div>
 
 <div class="container-xl">
+    <div class="card mb-3 border-0 shadow-sm">
+        <div class="card-body py-2 px-3">
+            <div class="text-uppercase text-muted fw-bold fs-4">
+                <i class="ti ti-leaf me-2 text-primary"></i>
+                Sistema de Seguimiento y control de Productos Agricolas
+            </div>
+        </div>
+    </div>
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2><i class="ti ti-inbox me-2"></i>Bandeja de Proformas</h2>
         <div class="btn-group">

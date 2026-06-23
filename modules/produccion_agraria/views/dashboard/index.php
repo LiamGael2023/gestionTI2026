@@ -14,6 +14,15 @@
 <div class="page-body">
 <div class="container-xl">
 
+    <div class="card mb-3 border-0 shadow-sm">
+        <div class="card-body py-2 px-3">
+            <div class="text-uppercase text-muted fw-bold fs-4">
+                <i class="ti ti-leaf me-2 text-primary"></i>
+                Sistema de Seguimiento y control de Productos Agricolas
+            </div>
+        </div>
+    </div>
+
     <!-- TOOLBAR -->
     <div class="dash-toolbar">
         <button class="btn btn-primary" onclick="abrirPaleta()">

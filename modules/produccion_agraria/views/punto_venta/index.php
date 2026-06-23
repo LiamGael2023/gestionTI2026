@@ -11,36 +11,20 @@
 
 <div class="page-body">
     <div class="container-xl">
-        <!-- Título y Switch de Modo Venta Masiva -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h3 class="mb-0 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
-            <div class="form-check form-switch m-0 py-2 px-3 bg-success-lt rounded-pill border border-success border-opacity-25 shadow-sm">
-                <input class="form-check-input bg-success border-success" type="checkbox" id="chk-venta-masiva" style="cursor: pointer;">
-                <label class="form-check-label fw-bold text-success" for="chk-venta-masiva" style="cursor: pointer; font-size: 0.9rem;">
-                    <i class="ti ti-users me-1 fs-3 align-middle"></i> Modo Venta Masiva (Cola)
-                </label>
-            </div>
-        </div>
-
-        <!-- Alerta de Modo Venta Masiva -->
-        <div class="alert alert-success d-none mb-3 shadow-sm border-0 bg-success-lt" id="alert-modo-masivo">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <div class="me-3 text-success fs-1">
-                        <i class="ti ti-info-circle-filled"></i>
-                    </div>
-                    <div>
-                        <strong class="text-success d-block h4 mb-0">Modo Venta Masiva Activo</strong>
-                        <span class="text-muted small">Los datos de Cliente, Producto y Método de Pago permanecerán fijos para registrar consecutivamente a la fila sin recargar la página.</span>
-                    </div>
+        <div class="card mb-3 border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="text-uppercase text-muted fw-bold fs-4">
+                    <i class="ti ti-leaf me-2 text-primary"></i>
+                    Sistema de Seguimiento y control de Productos Agricolas
                 </div>
-                <span class="badge bg-success text-white py-1 px-2 rounded">Alta Velocidad</span>
             </div>
         </div>
-        
+        <!-- Título -->
+        <h3 class="mb-4 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
+
         <!-- Formulario de Encabezado -->
         <div class="row g-2 mb-2">
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <div class="position-relative">
                     <input type="text" class="form-control" id="busqueda-cliente" 
                            placeholder="Buscar cliente..." autocomplete="off">
@@ -51,23 +35,34 @@
                     <input type="hidden" id="cliente-seleccionado-nombre">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <select class="form-select" id="metodo_pago">
                     <option value="">Método de pago</option>
                     <option value="VENTA">Venta</option>
                     <option value="DONACION">Donación</option>
                 </select>
             </div>
+            <div class="col-md-3 d-flex align-items-center">
+                <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
+                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
+                        <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
+                    </label>
+                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
+                </div>
+            </div>
         </div>
         
-        <!-- Área de Items (Tabla) -->
-        <div class="card mb-2">
-            <div class="card-body p-0">
-                <div class="table-container" style="height: 250px; max-height: 250px; overflow-y: auto; position: relative; display: block;">
-                    <table class="table table-vcenter card-table mb-0" id="tabla-items">
+        <div class="row">
+            <!-- Columna principal -->
+            <div class="col-md-12">
+                <!-- Área de Items (Tabla) -->
+                <div class="card mb-2">
+                    <div class="card-body p-0">
+                        <div class="table-container" style="height: 250px; max-height: 250px; overflow-y: auto; position: relative; display: block;">
+                            <table class="table table-vcenter card-table mb-0" id="tabla-items">
                         <thead>
                             <tr>
                                 <th>Producto</th>
@@ -124,16 +119,18 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Panel de Historial de Venta Masiva (Oculto por defecto) -->
-        <div class="card d-none mt-3 border-0 shadow-sm" id="card-historial-cola">
+    </div>
+</div>
+
+<!-- Panel de Historial -->
+<div class="card border-0 shadow-sm mt-3" id="card-historial-cola">
             <div class="card-header bg-success-lt py-2 px-3 border-0">
                 <h4 class="card-title text-success mb-0 d-flex align-items-center fw-bold">
-                    <i class="ti ti-history me-2 fs-3"></i> Últimas Ventas Procesadas en Cola
+                    <i class="ti ti-history me-2 fs-3"></i> Últimas Ventas Procesadas
                 </h4>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
                     <table class="table table-vcenter card-table mb-0" id="tabla-historial-cola">
                         <thead>
                             <tr class="text-muted small">
@@ -148,15 +145,15 @@
                         <tbody id="tbody-historial-cola">
                             <tr>
                                 <td colspan="6" class="text-center py-3 text-muted small">
-                                    <i class="ti ti-inbox me-1"></i>Ninguna venta registrada en esta sesión de cola
+                                    <i class="ti ti-inbox me-1"></i>Ninguna venta registrada en esta sesión
                                 </td>
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
         </div>
     </div>
+</div>
+</div>
 </div>
 
 <!-- Estilos compartidos del módulo -->
@@ -164,210 +161,8 @@
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/punto_venta.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<style>
-    /* Estilos específicos para Punto de Venta */
-    
-    /* Tabla con scroll y header fijo */
-    .table-container {
-        height: 250px !important;
-        max-height: 250px !important;
-        overflow-y: auto;
-        position: relative;
-    }
-    
-    #tabla-items {
-        margin-bottom: 0;
-        width: 100%;
-    }
-    
-    #tabla-items thead {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: #f8fafc;
-    }
-    
-    #tabla-items thead th {
-        border-top: none;
-        background: #f8fafc;
-        box-shadow: 0 1px 0 #dee2e6;
-    }
-    
-    #tabla-items tbody tr:last-child td {
-        border-bottom: none;
-    }
-    
-    /* Animaciones para items de la tabla */
-    #tabla-items tbody tr {
-        transition: all 0.3s ease-in-out;
-        opacity: 1;
-    }
-    
-    #tabla-items tbody tr.agregando {
-        animation: fadeInUp 0.4s ease-out;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(15px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Animaciones para dropdown de búsqueda */
-    .dropdown-menu {
-        animation: fadeInDown 0.2s ease-out;
-    }
-    
-    @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    /* Mensaje vacío centrado */
-    #mensaje-vacio {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        width: 100%;
-    }
-    
-    /* Dropdown de búsqueda de clientes */
-    #dropdown-clientes {
-        z-index: 1050;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    #dropdown-clientes .dropdown-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-    
-    #dropdown-clientes .dropdown-item:hover {
-        background-color: #f8f9fa;
-        transform: translateX(3px);
-    }
-    
-    /* Estilos mejorados para items de productos */
-    #dropdown-productos {
-        width: 100% !important;
-        min-width: 100% !important;
-    }
-    
-    #dropdown-productos .dropdown-item {
-        padding: 12px 16px;
-        border-bottom: 1px solid #f0f0f0;
-        transition: all 0.2s ease;
-        width: 100%;
-        display: block;
-    }
-    
-    #dropdown-productos .dropdown-item:last-child {
-        border-bottom: none;
-    }
-    
-    #dropdown-productos .dropdown-item:hover {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        transform: translateX(5px);
-    }
-    
-    #dropdown-productos .dropdown-item:hover .producto-unidad,
-    #dropdown-productos .dropdown-item:hover .producto-precio {
-        color: rgba(255, 255, 255, 0.9);
-    }
-    
-    .producto-icono {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.2rem;
-    }
-    
-    #dropdown-productos .dropdown-item:hover .producto-icono {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    
-    .producto-nombre {
-        font-weight: 600;
-        font-size: 0.95rem;
-        color: #2d3748;
-    }
-    
-    #dropdown-productos .dropdown-item:hover .producto-nombre {
-        color: white;
-    }
-    
-    .producto-unidad {
-        font-size: 0.8rem;
-        color: #718096;
-        margin-top: 2px;
-    }
-    
-    .producto-precio {
-        font-weight: 700;
-        font-size: 1rem;
-        color: #38a169;
-        background: #f0fff4;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin-left: auto;
-        flex-shrink: 0;
-        white-space: nowrap;
-    }
-    
-    #dropdown-productos .dropdown-item:hover .producto-precio {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-    }
-    
-    /* Layout de producto en el dropdown - grid fijo */
-    .producto-row {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        width: 100%;
-        gap: 16px;
-    }
-    
-    .producto-info {
-        display: flex;
-        align-items: center;
-        min-width: 0;
-        overflow: hidden;
-    }
-    
-    .producto-text {
-        min-width: 0;
-        overflow: hidden;
-    }
-    
-    .producto-text .producto-nombre {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-</style>
 
 <script>
 // ========================================
@@ -808,16 +603,14 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         try {
             const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
             if (data.success) {
-                // Si el modo de venta masiva está activo
+                // Agregar al historial de ultimas ventas (siempre)
+                const nombreCliente = document.getElementById('cliente-seleccionado-nombre').value || document.getElementById('busqueda-cliente').value;
+                const primerItem = items[0] || { nombre: 'Producto', cantidad: 0 };
+                agregarHistorialCola(nombreCliente, primerItem.nombre, primerItem.cantidad, total);
+                
                 const esMasivo = document.getElementById('chk-venta-masiva')?.checked;
                 
                 if (esMasivo) {
-                    const nombreCliente = document.getElementById('cliente-seleccionado-nombre').value || document.getElementById('busqueda-cliente').value;
-                    const primerItem = items[0] || { nombre: 'Producto', cantidad: 0 };
-                    
-                    // Agregar al historial de cola
-                    agregarHistorialCola(nombreCliente, primerItem.nombre, primerItem.cantidad, total);
-                    
                     // Mostrar toast rápido y no bloqueante
                     const Toast = Swal.mixin({
                         toast: true,
@@ -952,23 +745,6 @@ document.getElementById('busqueda-cliente').addEventListener('input', function()
 
 // Cargar carrito guardado al iniciar
 document.addEventListener('DOMContentLoaded', loadCartFromLocalStorage);
-
-// Event listeners para el Modo Venta Masiva (Cola)
-const chkVentaMasiva = document.getElementById('chk-venta-masiva');
-const alertModoMasivo = document.getElementById('alert-modo-masivo');
-const cardHistorialCola = document.getElementById('card-historial-cola');
-
-if (chkVentaMasiva) {
-    chkVentaMasiva.addEventListener('change', function() {
-        if (this.checked) {
-            if (alertModoMasivo) alertModoMasivo.classList.remove('d-none');
-            if (cardHistorialCola) cardHistorialCola.classList.remove('d-none');
-        } else {
-            if (alertModoMasivo) alertModoMasivo.classList.add('d-none');
-            if (cardHistorialCola) cardHistorialCola.classList.add('d-none');
-        }
-    });
-}
 
 // Función para agregar registros al historial de venta masiva
 function agregarHistorialCola(cliente, producto, cantidad, total) {

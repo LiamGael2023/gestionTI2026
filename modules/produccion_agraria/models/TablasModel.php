@@ -127,6 +127,79 @@ class TablasModel {
     }
 
     // ========================================
+    // VINCULACION: CLASE <-> CENTRO DE PRODUCCION
+    // ========================================
+
+    public function listarCentrosPorClase($idClase) {
+        $sql = "SELECT cc.id_centro, cp.nombre_centro
+                FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro cc
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON cc.id_centro = cp.id_centro
+                WHERE cc.id_clase = ?
+                ORDER BY cp.nombre_centro";
+        $stmt = sqlsrv_query($this->db, $sql, [$idClase]);
+        $result = [];
+        if ($stmt) {
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $result[] = $row;
+            }
+        }
+        return $result;
+    }
+
+    public function obtenerVinculacion($idClase) {
+        $sql = "SELECT id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro WHERE id_clase = ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$idClase]);
+        $ids = [];
+        if ($stmt) {
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $ids[] = (int)$row['id_centro'];
+            }
+        }
+        return $ids;
+    }
+
+    public function guardarVinculacion($idClase, $idCentro) {
+        $sql = "IF NOT EXISTS (SELECT 1 FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro WHERE id_clase = ? AND id_centro = ?)
+                INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.clase_centro (id_clase, id_centro) VALUES (?, ?)";
+        $stmt = sqlsrv_query($this->db, $sql, [$idClase, $idCentro, $idClase, $idCentro]);
+        if ($stmt === false) {
+            return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+        }
+        return ['success' => true];
+    }
+
+    public function eliminarVinculacion($idClase, $idCentro) {
+        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro WHERE id_clase = ? AND id_centro = ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$idClase, $idCentro]);
+        if ($stmt === false) {
+            return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+        }
+        return ['success' => true];
+    }
+
+    public function guardarVinculaciones($idClase, $centrosIds) {
+        try {
+            sqlsrv_begin_transaction($this->db);
+
+            $sqlDel = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro WHERE id_clase = ?";
+            $stmtDel = sqlsrv_query($this->db, $sqlDel, [$idClase]);
+            if ($stmtDel === false) throw new Exception('Error al limpiar vinculaciones: ' . print_r(sqlsrv_errors(), true));
+
+            foreach ($centrosIds as $idCentro) {
+                $sqlIns = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.clase_centro (id_clase, id_centro) VALUES (?, ?)";
+                $stmtIns = sqlsrv_query($this->db, $sqlIns, [$idClase, $idCentro]);
+                if ($stmtIns === false) throw new Exception('Error al insertar vinculacion: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            sqlsrv_commit($this->db);
+            return ['success' => true];
+        } catch (Exception $e) {
+            sqlsrv_rollback($this->db);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    // ========================================
     // CRUD TABLA: UIT
     // ========================================
     

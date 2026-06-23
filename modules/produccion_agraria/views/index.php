@@ -18,6 +18,14 @@
         $kpiLabels = ['Ventas Hoy', 'Proformas Pendientes', 'Stock Crítico', 'Vouchers Sin Asignar', 'Mermas Hoy', 'Valor Inventario'];
         $kpiTipos  = ['kpi_ventas_hoy','kpi_proformas_pendientes','kpi_stock_critico','kpi_vouchers_sin_asignar','kpi_mermas_hoy','kpi_valor_inventario'];
         ?>
+        <div class="card mb-3 border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="text-uppercase text-muted fw-bold fs-4">
+                    <i class="ti ti-leaf me-2 text-primary"></i>
+                    Sistema de Seguimiento y control de Productos Agricolas
+                </div>
+            </div>
+        </div>
         <div class="d-flex align-items-center mb-3">
             <h2 class="card-title mb-0">Indicadores</h2>
             <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="abrirPersonalizarHome()">
@@ -103,17 +111,6 @@
                         <i class='ti ti-dashboard icon-lg mb-3'></i>
                         <h5 class='card-title'>Dashboard</h5>
                         <p class='card-text font-small'>Panel principal</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <div class='col-md-4 col-sm-6'>
-            <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=consultas' class='card-link'>
-                <div class='card-link bg-gradient-primary h-100 text-white'>
-                    <div class='card-body text-center'>
-                        <i class='ti ti-message-circle icon-lg mb-3'></i>
-                        <h5 class='card-title'>Consultas IA</h5>
-                        <p class='card-text font-small'>Asistente virtual del sistema</p>
                     </div>
                 </div>
             </a>

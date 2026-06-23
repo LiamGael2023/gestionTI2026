@@ -229,6 +229,10 @@
         <div class="card-body py-4">
             <div class="row align-items-center">
                 <div class="col">
+                    <div class="text-uppercase fw-bold fs-5 mb-1" style="color: rgba(255,255,255,0.85);">
+                        <i class="ti ti-leaf me-2" style="color: rgba(255,255,255,0.7);"></i>
+                        Sistema de Seguimiento y control de Productos Agricolas
+                    </div>
                     <h3 class="mb-1 fw-bold text-white"><i class="ti ti-robot me-2"></i>Asistente Virtual PECH</h3>
                     <p class="mb-0 opacity-75 text-white">Consulta dudas sobre el Sistema de Gestión TI, Producción Agraria, Inventario, Vouchers y más.</p>
                 </div>

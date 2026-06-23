@@ -12,6 +12,40 @@
 <div class="page-body">
     <div class="container-xl">
         
+        <div class="card mb-3 border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="text-uppercase text-muted fw-bold fs-4">
+                    <i class="ti ti-leaf me-2 text-primary"></i>
+                    Sistema de Seguimiento y control de Productos Agricolas
+</div>
+</div>
+
+<!-- Modal: Vincular Centros a Clase -->
+<div class="modal fade" id="modal-vinculacion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="ti ti-link me-2"></i>Vincular Centros a: <span id="vinculacion-clase-nombre" class="text-primary"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Selecciona los centros de produccion donde esta clase puede estar disponible.</p>
+                <div id="vinculacion-checkboxes" class="row g-2">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarVinculaciones()">
+                    <i class="ti ti-check me-1"></i>Guardar Vinculaciones
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+        </div>
+        
         <!-- Pestañas de navegación -->
         <div class="card mb-3">
             <div class="card-header">
@@ -64,6 +98,9 @@
                                 <td><?php echo $clase['id_clase']; ?></td>
                                 <td><?php echo htmlspecialchars($clase['nombre_clase']); ?></td>
                                 <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-info me-1" onclick="abrirVinculacion(<?php echo $clase['id_clase']; ?>, '<?php echo htmlspecialchars($clase['nombre_clase'], ENT_QUOTES); ?>')" title="Vincular Centros">
+                                        <i class="ti ti-link"></i>
+                                    </button>
                                     <button class="btn btn-sm btn-primary me-1" onclick="editarClase(<?php echo $clase['id_clase']; ?>)" title="Editar">
                                         <i class="ti ti-edit"></i>
                                     </button>
@@ -383,6 +420,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Datos de centros para vinculacion (cargados desde PHP)
+const CENTROS_DISPONIBLES = <?php echo json_encode($centros); ?>;
 // ========================================
 // GESTIÓN DE CLASES
 // ========================================
@@ -565,6 +604,84 @@ function handleSubmitClase(e) {
     .catch(err => {
         console.error('Fetch error:', err);
         Swal.fire('Error', 'Error de conexión', 'error');
+    });
+}
+
+// ========================================
+// VINCULACION CLASE <-> CENTROS DE PRODUCCION
+// ========================================
+
+let vinculacionClaseId = null;
+let vinculacionClaseNombre = '';
+let modalVinculacion = null;
+
+function abrirVinculacion(idClase, nombreClase) {
+    vinculacionClaseId = idClase;
+    vinculacionClaseNombre = nombreClase;
+    
+    document.getElementById('vinculacion-clase-nombre').textContent = nombreClase;
+    document.getElementById('vinculacion-checkboxes').innerHTML = '<div class="col-12 text-center py-3"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando...</div>';
+    
+    if (!modalVinculacion) {
+        modalVinculacion = new bootstrap.Modal(document.getElementById('modal-vinculacion'));
+    }
+    modalVinculacion.show();
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=obtener_vinculacion&id_clase=' + idClase)
+        .then(r => r.text())
+        .then(function(text) {
+            var vincTrimmed = text.trim();
+            var vincStart = vincTrimmed.indexOf('[');
+            var vincEnd = vincTrimmed.lastIndexOf(']');
+            var vinculados = [];
+            if (vincStart !== -1 && vincEnd !== -1) {
+                vinculados = JSON.parse(vincTrimmed.substring(vincStart, vincEnd + 1));
+            }
+            
+            var htmlCheck = '';
+            CENTROS_DISPONIBLES.forEach(function(c) {
+                var checked = vinculados.includes(parseInt(c.id_centro)) ? 'checked' : '';
+                htmlCheck += '<div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" value="' + c.id_centro + '" id="vc-' + c.id_centro + '" ' + checked + '><label class="form-check-label" for="vc-' + c.id_centro + '">' + c.nombre_centro + '</label></div></div>';
+            });
+            
+            if (CENTROS_DISPONIBLES.length === 0) {
+                htmlCheck = '<div class="col-12 text-center text-muted py-3">No hay centros registrados</div>';
+            }
+            
+            document.getElementById('vinculacion-checkboxes').innerHTML = htmlCheck;
+        })
+        .catch(function(err) {
+            document.getElementById('vinculacion-checkboxes').innerHTML = '<div class="col-12 text-center text-danger py-3">Error al cargar vinculaciones</div>';
+        });
+}
+
+function guardarVinculaciones() {
+    var checks = document.querySelectorAll('#vinculacion-checkboxes input[type="checkbox"]:checked');
+    var centrosIds = [];
+    checks.forEach(function(c) { centrosIds.push(parseInt(c.value)); });
+    
+    var data = { id_clase: vinculacionClaseId, centros: centrosIds };
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_vinculaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.text())
+    .then(function(text) {
+        var trimmed = text.trim();
+        var jsonStart = trimmed.indexOf('{');
+        var jsonEnd = trimmed.lastIndexOf('}');
+        var result = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        if (result.success) {
+            Swal.fire({ icon: 'success', title: 'Vinculaciones guardadas', text: vinculacionClaseNombre + ' ahora tiene ' + centrosIds.length + ' centros vinculados', timer: 2000, showConfirmButton: false });
+            modalVinculacion.hide();
+        } else {
+            Swal.fire('Error', result.message || 'Error al guardar', 'error');
+        }
+    })
+    .catch(function(err) {
+        Swal.fire('Error', 'Error de conexion', 'error');
     });
 }
 

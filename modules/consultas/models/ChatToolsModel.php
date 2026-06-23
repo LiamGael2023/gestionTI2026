@@ -43,7 +43,7 @@ class ChatToolsModel {
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 ORDER BY cp.nombre_centro, p.nombre, l.fecha_creacion ASC";
 
@@ -233,7 +233,9 @@ class ChatToolsModel {
             $sqlParams[] = '%' . $params['clase'] . '%';
         }
         if (!empty($params['centro'])) {
-            $where[] = "cp.nombre_centro LIKE ?";
+            $where[] = "EXISTS (SELECT 1 FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro pc_f 
+                        JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp_f ON pc_f.id_centro = cp_f.id_centro
+                        WHERE pc_f.id_producto = p.id_producto AND cp_f.nombre_centro LIKE ?)";
             $sqlParams[] = '%' . $params['centro'] . '%';
         }
         if (!empty($params['tipo_precio'])) {
@@ -255,7 +257,12 @@ class ChatToolsModel {
                     p.tipo_precio,
                     p.porcentaje_uit,
                     c.nombre_clase AS clase,
-                    cp.nombre_centro AS centro,
+                    STUFF((SELECT ', ' + cp3.nombre_centro 
+                           FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro pc3
+                           JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp3 ON pc3.id_centro = cp3.id_centro
+                           WHERE pc3.id_producto = p.id_producto
+                           ORDER BY cp3.nombre_centro
+                           FOR XML PATH('')), 1, 2, '') AS centro,
                     hp_last.precio_oficial AS precio_variable,
                     uit_actual.valor AS valor_uit,
                     CASE
@@ -267,7 +274,6 @@ class ChatToolsModel {
                     END AS precio_vigente
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -275,7 +281,7 @@ class ChatToolsModel {
                 ) hp_last ON p.id_producto = hp_last.id_producto
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual ON uit_actual.anio = YEAR(GETDATE())
                 WHERE " . implode(" AND ", $where) . "
-                ORDER BY cp.nombre_centro, c.nombre_clase, p.nombre";
+                ORDER BY c.nombre_clase, p.nombre";
 
         $stmt = sqlsrv_query($this->db, $sql, $sqlParams);
         if ($stmt === false) {
@@ -374,7 +380,7 @@ class ChatToolsModel {
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -521,7 +527,7 @@ class ChatToolsModel {
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 ORDER BY k.fecha DESC, k.id_kardex DESC";
 
@@ -579,7 +585,7 @@ class ChatToolsModel {
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON td.id_transaccion = t.id_transaccion
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 GROUP BY p.id_producto, p.nombre, p.unidad_medida, c.nombre_clase, cp.nombre_centro
                 ORDER BY $orderBy";
@@ -643,7 +649,7 @@ class ChatToolsModel {
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -936,7 +942,7 @@ class ChatToolsModel {
                     SUM(l.stock_actual) AS stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 GROUP BY cp.nombre_centro
                 ORDER BY stock_total DESC";
@@ -1113,7 +1119,7 @@ class ChatToolsModel {
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -1459,7 +1465,7 @@ class ChatToolsModel {
         $sql = "SELECT TOP 5 p.nombre AS producto, SUM(l.stock_actual) AS stock, cp.nombre_centro AS centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE l.stock_actual > 0 AND l.stock_actual < 10 AND p.maneja_stock = 1
                 GROUP BY p.nombre, cp.nombre_centro
                 ORDER BY stock ASC";
@@ -1518,6 +1524,163 @@ class ChatToolsModel {
                 ['key' => 'motivo', 'label' => 'Motivo']
             ],
             'rows' => $recomendaciones
+        ];
+    }
+
+    // ============================================================
+    // TOOL 18: Metricas consolidadas (KPIs rapidos)
+    // ============================================================
+    public function consultarMetricas($params = []) {
+        $resultado = [];
+        
+        // Total productos
+        $sql = "SELECT COUNT(*) as total FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE maneja_stock = 1";
+        $stmt = sqlsrv_query($this->db, $sql);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['total_productos'] = (int)($r['total'] ?? 0);
+        
+        // Stock total
+        $sql = "SELECT ISNULL(SUM(stock_actual), 0) as total FROM BD_PRODUCCIONDESARROLLO.dbo.lote WHERE stock_actual > 0";
+        $stmt = sqlsrv_query($this->db, $sql);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['stock_total'] = (int)($r['total'] ?? 0);
+        
+        // Ventas del mes
+        $mesInicio = date('Y-m-01');
+        $sql = "SELECT ISNULL(SUM(total), 0) as total, COUNT(*) as cant FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion WHERE metodo_pago = 'VENTA' AND fecha_creacion >= ? AND fecha_creacion < DATEADD(month, 1, ?)";
+        $stmt = sqlsrv_query($this->db, $sql, [$mesInicio, $mesInicio]);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['ventas_mes'] = (float)($r['total'] ?? 0);
+        $resultado['ventas_mes_cantidad'] = (int)($r['cant'] ?? 0);
+        
+        // Donaciones del mes  
+        $sql = "SELECT ISNULL(SUM(total), 0) as total, COUNT(*) as cant FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion WHERE metodo_pago = 'DONACION' AND fecha_creacion >= ? AND fecha_creacion < DATEADD(month, 1, ?)";
+        $stmt = sqlsrv_query($this->db, $sql, [$mesInicio, $mesInicio]);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['donaciones_mes'] = (float)($r['total'] ?? 0);
+        $resultado['donaciones_mes_cantidad'] = (int)($r['cant'] ?? 0);
+        
+        // Proformas pendientes
+        $sql = "SELECT COUNT(*) as cant FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion WHERE estado = 'PENDIENTE'";
+        $stmt = sqlsrv_query($this->db, $sql);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['proformas_pendientes'] = (int)($r['cant'] ?? 0);
+        
+        // Mermas del mes
+        $sql = "SELECT ISNULL(SUM(k.cantidad), 0) as total FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k WHERE k.tipo_movimiento = 'MERMA' AND k.fecha >= ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$mesInicio]);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['mermas_mes'] = (int)($r['total'] ?? 0);
+        
+        // Valor inventario
+        $sql = "SELECT ISNULL(SUM(
+                    CASE 
+                        WHEN p.tipo_precio = 'UIT' AND p.porcentaje_uit IS NOT NULL AND u.valor IS NOT NULL THEN p.porcentaje_uit * u.valor * l.stock_actual
+                        WHEN p.tipo_precio = 'Variable' THEN ISNULL(hp.precio_oficial, 0) * l.stock_actual
+                        ELSE 0
+                    END
+                ), 0) as total
+                FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit u ON u.anio = YEAR(GETDATE())
+                LEFT JOIN (SELECT hp1.id_producto, hp1.precio_oficial FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1 WHERE hp1.fecha_registro = (SELECT MAX(hp2.fecha_registro) FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2 WHERE hp2.id_producto = hp1.id_producto)) hp ON p.id_producto = hp.id_producto
+                WHERE l.stock_actual > 0 AND p.maneja_stock = 1";
+        $stmt = sqlsrv_query($this->db, $sql);
+        $r = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        $resultado['valor_inventario'] = round((float)($r['total'] ?? 0), 2);
+        
+        return [
+            'columns' => [
+                ['key' => 'metrica', 'label' => 'Indicador'],
+                ['key' => 'valor', 'label' => 'Valor'],
+            ],
+            'rows' => [
+                ['metrica' => 'Productos activos', 'valor' => $resultado['total_productos']],
+                ['metrica' => 'Stock total (unidades)', 'valor' => number_format($resultado['stock_total'], 0)],
+                ['metrica' => 'Valor inventario', 'valor' => 'S/ ' . number_format($resultado['valor_inventario'], 2)],
+                ['metrica' => 'Ventas del mes', 'valor' => 'S/ ' . number_format($resultado['ventas_mes'], 2) . ' (' . $resultado['ventas_mes_cantidad'] . ' transacc.)'],
+                ['metrica' => 'Donaciones del mes', 'valor' => 'S/ ' . number_format($resultado['donaciones_mes'], 2) . ' (' . $resultado['donaciones_mes_cantidad'] . ' transacc.)'],
+                ['metrica' => 'Proformas pendientes', 'valor' => $resultado['proformas_pendientes']],
+                ['metrica' => 'Mermas del mes (unid.)', 'valor' => $resultado['mermas_mes']],
+            ]
+        ];
+    }
+
+    // ============================================================
+    // TOOL 19: Detalle completo de un producto
+    // ============================================================
+    public function consultarDetalleProducto($params = []) {
+        $nombre = $params['producto'] ?? '';
+        if (empty($nombre)) {
+            return ['error' => 'Debe especificar el nombre o ID del producto'];
+        }
+        
+        $idProducto = is_numeric($nombre) ? intval($nombre) : null;
+        
+        // Buscar el producto
+        if ($idProducto) {
+            $sql = "SELECT TOP 1 p.id_producto, p.nombre, p.nombre_cientifico, p.unidad_medida, p.tipo_precio, p.porcentaje_uit, p.maneja_stock, c.nombre_clase
+                    FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
+                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
+                    WHERE p.id_producto = ?";
+            $stmt = sqlsrv_query($this->db, $sql, [$idProducto]);
+        } else {
+            $sql = "SELECT TOP 1 p.id_producto, p.nombre, p.nombre_cientifico, p.unidad_medida, p.tipo_precio, p.porcentaje_uit, p.maneja_stock, c.nombre_clase
+                    FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
+                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
+                    WHERE p.nombre LIKE ?";
+            $stmt = sqlsrv_query($this->db, $sql, ['%' . $nombre . '%']);
+        }
+        
+        $prod = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+        if (!$prod) return ['error' => 'Producto no encontrado'];
+        
+        $idProd = $prod['id_producto'];
+        
+        // Centros vinculados
+        $sqlCentros = "SELECT cp.nombre_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro pc JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON pc.id_centro = cp.id_centro WHERE pc.id_producto = ?";
+        $stmtCentros = sqlsrv_query($this->db, $sqlCentros, [$idProd]);
+        $centros = [];
+        while ($c = sqlsrv_fetch_array($stmtCentros, SQLSRV_FETCH_ASSOC)) { $centros[] = $c['nombre_centro']; }
+        
+        // Stock por centro
+        $sqlStock = "SELECT cp.nombre_centro, SUM(l.stock_actual) as stock FROM BD_PRODUCCIONDESARROLLO.dbo.lote l LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro WHERE l.id_producto = ? AND l.stock_actual > 0 GROUP BY cp.nombre_centro";
+        $stmtStock = sqlsrv_query($this->db, $sqlStock, [$idProd]);
+        $stockPorCentro = [];
+        while ($s = sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC)) { $stockPorCentro[] = $s; }
+        
+        // Precio vigente
+        $sqlPrecio = "SELECT hp.precio_oficial FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp WHERE hp.id_producto = ? ORDER BY hp.fecha_registro DESC";
+        $stmtPrecio = sqlsrv_query($this->db, $sqlPrecio, [$idProd]);
+        $ultimoPrecio = sqlsrv_fetch_array($stmtPrecio, SQLSRV_FETCH_ASSOC);
+        
+        // Lotes activos
+        $sqlLotes = "SELECT codigo_lote, stock_actual, DATEDIFF(day, fecha_creacion, GETDATE()) as dias FROM BD_PRODUCCIONDESARROLLO.dbo.lote WHERE id_producto = ? AND stock_actual > 0 ORDER BY fecha_creacion";
+        $stmtLotes = sqlsrv_query($this->db, $sqlLotes, [$idProd]);
+        $lotes = [];
+        while ($l = sqlsrv_fetch_array($stmtLotes, SQLSRV_FETCH_ASSOC)) { $lotes[] = $l; }
+        
+        // Ultimos movimientos
+        $sqlKdx = "SELECT TOP 5 k.tipo_movimiento, k.cantidad, k.fecha, k.observacion FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote WHERE l.id_producto = ? ORDER BY k.fecha DESC, k.id_kardex DESC";
+        $stmtKdx = sqlsrv_query($this->db, $sqlKdx, [$idProd]);
+        $movimientos = [];
+        while ($m = sqlsrv_fetch_array($stmtKdx, SQLSRV_FETCH_ASSOC)) { $movimientos[] = $m; }
+        
+        return [
+            'columns' => [['key' => 'campo', 'label' => 'Campo'], ['key' => 'valor', 'label' => 'Valor']],
+            'rows' => [
+                ['campo' => 'Producto', 'valor' => $prod['nombre']],
+                ['campo' => 'Nombre Cientifico', 'valor' => $prod['nombre_cientifico'] ?: '-'],
+                ['campo' => 'Clase', 'valor' => $prod['nombre_clase'] ?: '-'],
+                ['campo' => 'Unidad', 'valor' => $prod['unidad_medida']],
+                ['campo' => 'Centros', 'valor' => implode(', ', $centros) ?: '-'],
+                ['campo' => 'Tipo Precio', 'valor' => $prod['tipo_precio'] ?: 'Fijo'],
+                ['campo' => 'Maneja Stock', 'valor' => $prod['maneja_stock'] ? 'Si' : 'No'],
+                ['campo' => 'Precio Vigente', 'valor' => $ultimoPrecio ? 'S/ ' . number_format($ultimoPrecio['precio_oficial'], 4) : 'No registrado'],
+                ['campo' => 'Stock Total', 'valor' => array_sum(array_column($stockPorCentro, 'stock')) . ' ' . $prod['unidad_medida']],
+                ['campo' => 'Lotes Activos', 'valor' => count($lotes)],
+                ['campo' => 'Stock por Centro', 'valor' => implode(' | ', array_map(function($s) { return $s['nombre_centro'] . ': ' . $s['stock']; }, $stockPorCentro)) ?: '-'],
+            ]
         ];
     }
 

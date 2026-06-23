@@ -13,7 +13,13 @@ class InventarioModel {
     public function listarProductos() {
         $sql = "SELECT p.id_producto, p.nombre, p.nombre_cientifico, p.unidad_medida, p.maneja_stock, 
                        p.tipo_precio, p.porcentaje_uit, p.id_clase, p.id_centro, p.imagen_nombre,
-                       c.nombre_clase, cp.nombre_centro
+                       c.nombre_clase, cp.nombre_centro,
+                       STUFF((SELECT ', ' + cp2.nombre_centro 
+                              FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro pc2
+                              JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp2 ON pc2.id_centro = cp2.id_centro
+                              WHERE pc2.id_producto = p.id_producto
+                              ORDER BY cp2.nombre_centro
+                              FOR XML PATH('')), 1, 2, '') as centros
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
@@ -40,16 +46,33 @@ class InventarioModel {
                 WHERE p.id_producto = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && sqlsrv_has_rows($stmt)) {
-            return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            $producto = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            // Cargar todos los centros vinculados
+            $sqlCentros = "SELECT pc.id_centro, cp.nombre_centro
+                          FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro pc
+                          JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON pc.id_centro = cp.id_centro
+                          WHERE pc.id_producto = ? ORDER BY cp.nombre_centro";
+            $stmtCentros = sqlsrv_query($this->db, $sqlCentros, [$id]);
+            $centros = [];
+            if ($stmtCentros) {
+                while ($c = sqlsrv_fetch_array($stmtCentros, SQLSRV_FETCH_ASSOC)) {
+                    $centros[] = $c;
+                }
+            }
+            $producto['centros'] = $centros;
+            return $producto;
         }
         return null;
     }
 
     public function guardarProducto($data) {
-        // Convertir valores vacíos a null para campos numéricos
+        // Convertir valores vacios a null para campos numericos
         $porcentaje_uit = (!empty($data['porcentaje_uit']) && $data['porcentaje_uit'] !== '') 
             ? floatval($data['porcentaje_uit']) 
             : null;
+        
+        $id_clase = (!empty($id_clase) && $id_clase !== '') ? intval($id_clase) : null;
+        $id_centro = (!empty($data['id_centro']) && $data['id_centro'] !== '') ? intval($data['id_centro']) : null;
         
         // Si tipo_precio no es UIT, forzar porcentaje_uit a null
         $tipo_precio = $data['tipo_precio'] ?? null;
@@ -73,6 +96,22 @@ class InventarioModel {
         }
         
         if (!empty($data['id_producto'])) {
+            // UPDATE: preservar id_clase e id_centro si vienen vacios
+            if (empty($id_clase)) {
+                $sqlGet = "SELECT id_clase FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
+                $stmtGet = sqlsrv_query($this->db, $sqlGet, [$data['id_producto']]);
+                if ($stmtGet && $row = sqlsrv_fetch_array($stmtGet, SQLSRV_FETCH_ASSOC)) {
+                    $id_clase = $row['id_clase'];
+                }
+            }
+            if (empty($id_centro)) {
+                $sqlGet = "SELECT id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
+                $stmtGet = sqlsrv_query($this->db, $sqlGet, [$data['id_producto']]);
+                if ($stmtGet && $row = sqlsrv_fetch_array($stmtGet, SQLSRV_FETCH_ASSOC)) {
+                    $id_centro = $row['id_centro'];
+                }
+            }
+            
             // UPDATE
             if ($eliminarImagen) {
                 $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
@@ -87,8 +126,8 @@ class InventarioModel {
                     $data['maneja_stock'] ?? 0,
                     $data['tipo_precio'] ?? 'Fijo',
                     $porcentaje_uit,
-                    $data['id_clase'], 
-                    $data['id_centro'],
+                    $id_clase, 
+                    $id_centro,
                     $data['id_producto']
                 ];
             } elseif ($tieneNuevaImagen) {
@@ -104,8 +143,8 @@ class InventarioModel {
                     $data['maneja_stock'] ?? 0,
                     $data['tipo_precio'] ?? 'Fijo',
                     $porcentaje_uit,
-                    $data['id_clase'], 
-                    $data['id_centro'],
+                    $id_clase, 
+                    $id_centro,
                     $data['imagen_nombre'],
                     $blobParam,
                     $data['id_producto']
@@ -122,14 +161,17 @@ class InventarioModel {
                     $data['maneja_stock'] ?? 0,
                     $data['tipo_precio'] ?? 'Fijo',
                     $porcentaje_uit,
-                    $data['id_clase'], 
-                    $data['id_centro'],
+                    $id_clase, 
+                    $id_centro,
                     $data['id_producto']
                 ];
             }
             $stmt = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
                 return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+            }
+            if (!empty($data['centros']) && is_array($data['centros'])) {
+                $this->syncProductoCentros($data['id_producto'], $data['centros']);
             }
             return ['success' => true, 'id' => $data['id_producto']];
         } else {
@@ -146,8 +188,8 @@ class InventarioModel {
                     $data['maneja_stock'] ?? 0,
                     $data['tipo_precio'] ?? 'Fijo',
                     $porcentaje_uit,
-                    $data['id_clase'], 
-                    $data['id_centro'],
+                    $id_clase, 
+                    $id_centro,
                     $data['imagen_nombre'],
                     $blobParam
                 ];
@@ -163,17 +205,42 @@ class InventarioModel {
                     $data['maneja_stock'] ?? 0,
                     $data['tipo_precio'] ?? 'Fijo',
                     $porcentaje_uit,
-                    $data['id_clase'], 
-                    $data['id_centro']
+                    $id_clase, 
+                    $id_centro
                 ];
             }
-            $stmt = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
                 return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
             }
             $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
             $newId = $row['id_producto'] ?? null;
+            // Guardar centros vinculados
+            if (!empty($data['centros']) && is_array($data['centros'])) {
+                $this->syncProductoCentros($newId, $data['centros']);
+            }
             return ['success' => true, 'id' => $newId];
+        }
+    }
+
+    public function syncProductoCentros($idProducto, $centrosIds) {
+        try {
+            sqlsrv_begin_transaction($this->db);
+            
+            $sqlDel = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.producto_centro WHERE id_producto = ?";
+            sqlsrv_query($this->db, $sqlDel, [$idProducto]);
+            
+            foreach ($centrosIds as $idCentro) {
+                $idCentro = intval($idCentro);
+                if ($idCentro <= 0) continue;
+                $sqlIns = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.producto_centro (id_producto, id_centro) VALUES (?, ?)";
+                sqlsrv_query($this->db, $sqlIns, [$idProducto, $idCentro]);
+            }
+            
+            sqlsrv_commit($this->db);
+            return true;
+        } catch (Exception $e) {
+            sqlsrv_rollback($this->db);
+            return false;
         }
     }
 
@@ -227,16 +294,18 @@ class InventarioModel {
     
     public function listarLotesPorProducto($idProducto) {
         $sql = "SELECT l.id_lote, l.codigo_lote, l.fecha_creacion,
-                       l.stock_actual,
+                       l.stock_actual, l.id_centro,
+                       cp.nombre_centro,
                        DATEDIFF(day, l.fecha_creacion, GETDATE()) as antiguedad_dias,
                        CASE 
                            WHEN l.stock_actual <= 0 THEN 'Agotado'
-                           WHEN l.stock_actual < 10 THEN 'Stock Crítico'
+                           WHEN l.stock_actual < 10 THEN 'Stock Critico'
                            ELSE 'Activo'
                        END as estado_texto
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE l.id_producto = ? AND l.stock_actual > 0
-                ORDER BY l.fecha_creacion ASC"; // PEPS: primero en entrar, primero en salir
+                ORDER BY l.fecha_creacion ASC";
         $stmt = sqlsrv_query($this->db, $sql, [$idProducto]);
         if ($stmt === false) {
             error_log('SQL Error listarLotes: ' . print_r(sqlsrv_errors(), true));
@@ -251,7 +320,8 @@ class InventarioModel {
 
     public function listarMovimientosKardex($idProducto) {
         $sql = "SELECT k.id_kardex, k.fecha, k.tipo_movimiento,
-                       l.codigo_lote, k.cantidad, k.saldo_final, k.id_lote
+                       l.codigo_lote, k.cantidad, k.saldo_final, k.id_lote, 
+                       k.id_transaccion, k.observacion
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
                 WHERE l.id_producto = ?
@@ -267,11 +337,15 @@ class InventarioModel {
             if (isset($row['fecha']) && $row['fecha'] instanceof DateTime) {
                 $row['fecha'] = $row['fecha']->format('Y-m-d H:i:s');
             }
-            // Generar documento solo si hay id_transaccion (venta)
-            if (!empty($row['id_transaccion'])) {
+            // Generar documento segun tipo de movimiento
+            if ($row['tipo_movimiento'] === 'MERMA') {
+                $row['documento'] = !empty($row['observacion']) ? $row['observacion'] : 'Merma registrada';
+            } elseif (!empty($row['id_transaccion'])) {
                 $row['documento'] = 'Venta #' . $row['id_transaccion'];
+            } elseif ($row['tipo_movimiento'] === 'INGRESO') {
+                $row['documento'] = 'Ingreso de lote';
             } else {
-                $row['documento'] = '-'; // Producción/ingreso directo
+                $row['documento'] = '-';
             }
             $result[] = $row;
         }
@@ -295,12 +369,13 @@ class InventarioModel {
             
             // Insertar el lote
             $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.lote 
-                    (id_producto, codigo_lote, fecha_creacion, stock_actual) 
-                    VALUES (?, ?, GETDATE(), ?)";
+                    (id_producto, codigo_lote, fecha_creacion, stock_actual, id_centro) 
+                    VALUES (?, ?, GETDATE(), ?, ?)";
             $params = [
                 $data['id_producto'],
                 $data['codigo_lote'],
-                $data['stock_inicial']
+                $data['stock_inicial'],
+                $data['id_centro'] ?? null
             ];
             $stmt = sqlsrv_query($this->db, $sql, $params);
             
@@ -325,8 +400,8 @@ class InventarioModel {
             // Si hay stock inicial, registrar movimiento de entrada
             if ($data['stock_inicial'] > 0) {
                 $sqlMov = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.kardex 
-                          (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha) 
-                          VALUES (?, NULL, 'INGRESO', ?, ?, GETDATE())";
+                          (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha, observacion) 
+                          VALUES (?, NULL, 'INGRESO', ?, ?, GETDATE(), 'Creacion de lote')";
                 $paramsMov = [$idLote, $data['stock_inicial'], $data['stock_inicial']];
                 $stmtMov = sqlsrv_query($this->db, $sqlMov, $paramsMov);
                 
@@ -372,9 +447,9 @@ class InventarioModel {
             
             // Registrar movimiento de merma en kardex
             $sqlKardex = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.kardex 
-                         (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha) 
-                         VALUES (?, NULL, 'MERMA', ?, ?, GETDATE())";
-            $paramsKardex = [$data['id_lote'], $data['cantidad'], $nuevoStock];
+                         (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha, observacion) 
+                         VALUES (?, NULL, 'MERMA', ?, ?, GETDATE(), ?)";
+            $paramsKardex = [$data['id_lote'], $data['cantidad'], $nuevoStock, $data['motivo'] ?? null];
             $stmtKardex = sqlsrv_query($this->db, $sqlKardex, $paramsKardex);
             if ($stmtKardex === false) {
                 throw new Exception('Error al registrar movimiento de merma: ' . print_r(sqlsrv_errors(), true));
@@ -506,6 +581,82 @@ class InventarioModel {
             return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
         }
         return ['success' => true];
+    }
+
+    public function agregarStockMasivo() {
+        try {
+            sqlsrv_begin_transaction($this->db);
+
+            $sqlProd = "SELECT id_producto, id_clase, id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE maneja_stock = 1";
+            $stmtProd = sqlsrv_query($this->db, $sqlProd);
+            if ($stmtProd === false) {
+                throw new Exception('Error al obtener productos: ' . print_r(sqlsrv_errors(), true));
+            }
+
+            $productos = [];
+            while ($row = sqlsrv_fetch_array($stmtProd, SQLSRV_FETCH_ASSOC)) {
+                $productos[] = ['id' => $row['id_producto'], 'id_clase' => $row['id_clase'], 'id_centro' => $row['id_centro']];
+            }
+
+            if (empty($productos)) {
+                throw new Exception('No hay productos con maneja_stock activo');
+            }
+
+            $creados = 0;
+            $omitidos = 0;
+
+            foreach ($productos as $prod) {
+                $idProducto = $prod['id'];
+                $codigoLote = 'INI-' . $idProducto;
+
+                $sqlCheck = "SELECT id_lote FROM BD_PRODUCCIONDESARROLLO.dbo.lote WHERE id_producto = ? AND codigo_lote = ?";
+                $stmtCheck = sqlsrv_query($this->db, $sqlCheck, [$idProducto, $codigoLote]);
+                if ($stmtCheck && sqlsrv_fetch_array($stmtCheck, SQLSRV_FETCH_ASSOC)) {
+                    $omitidos++;
+                    continue;
+                }
+
+                $idCentro = $prod['id_centro'] ?? null;
+                if (!$idCentro && $prod['id_clase']) {
+                    // Obtener primer centro vinculado a la clase
+                    $sqlCentro = "SELECT TOP 1 id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro WHERE id_clase = ?";
+                    $stmtCentro = sqlsrv_query($this->db, $sqlCentro, [$prod['id_clase']]);
+                    if ($stmtCentro && $c = sqlsrv_fetch_array($stmtCentro, SQLSRV_FETCH_ASSOC)) {
+                        $idCentro = $c['id_centro'];
+                    }
+                }
+
+                $sqlInsert = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.lote (id_producto, codigo_lote, fecha_creacion, stock_actual, id_centro) VALUES (?, ?, GETDATE(), 10, ?)";
+                $stmtInsert = sqlsrv_query($this->db, $sqlInsert, [$idProducto, $codigoLote, $idCentro]);
+                if ($stmtInsert === false) {
+                    throw new Exception('Error al crear lote para producto ' . $idProducto . ': ' . print_r(sqlsrv_errors(), true));
+                }
+
+                $sqlGetId = "SELECT id_lote FROM BD_PRODUCCIONDESARROLLO.dbo.lote WHERE id_producto = ? AND codigo_lote = ? ORDER BY fecha_creacion DESC";
+                $stmtGetId = sqlsrv_query($this->db, $sqlGetId, [$idProducto, $codigoLote]);
+                $idLote = null;
+                if ($stmtGetId && $rowLote = sqlsrv_fetch_array($stmtGetId, SQLSRV_FETCH_ASSOC)) {
+                    $idLote = $rowLote['id_lote'];
+                }
+
+                if ($idLote) {
+                    $sqlKardex = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.kardex (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha, observacion) VALUES (?, NULL, 'INGRESO', 10, 10, GETDATE(), 'Ingreso masivo +10')";
+                    $stmtKardex = sqlsrv_query($this->db, $sqlKardex, [$idLote]);
+                    if ($stmtKardex === false) {
+                        throw new Exception('Error al registrar kardex para lote ' . $idLote . ': ' . print_r(sqlsrv_errors(), true));
+                    }
+                }
+
+                $creados++;
+            }
+
+            sqlsrv_commit($this->db);
+            return ['success' => true, 'productos_procesados' => count($productos), 'lotes_creados' => $creados, 'omitidos' => $omitidos];
+
+        } catch (Exception $e) {
+            sqlsrv_rollback($this->db);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }
 ?>
