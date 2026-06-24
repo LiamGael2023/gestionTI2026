@@ -51,22 +51,22 @@
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs">
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $tabla == 'clase' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>/produccion_agraria?action=tablas&tabla=clase">
+                        <a class="nav-link <?php echo $tabla == 'clase' ? 'active' : ''; ?>" id="tab-btn-clase" href="javascript:void(0)" onclick="cambiarTab('clase')">
                             <i class="ti ti-category me-1"></i>Clases
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $tabla == 'centro' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>/produccion_agraria?action=tablas&tabla=centro">
+                        <a class="nav-link <?php echo $tabla == 'centro' ? 'active' : ''; ?>" id="tab-btn-centro" href="javascript:void(0)" onclick="cambiarTab('centro')">
                             <i class="ti ti-building me-1"></i>Centros
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $tabla == 'uit' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>/produccion_agraria?action=tablas&tabla=uit">
+                        <a class="nav-link <?php echo $tabla == 'uit' ? 'active' : ''; ?>" id="tab-btn-uit" href="javascript:void(0)" onclick="cambiarTab('uit')">
                             <i class="ti ti-coin me-1"></i>UIT
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link <?php echo $tabla == 'cliente' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>/produccion_agraria?action=tablas&tabla=cliente">
+                        <a class="nav-link <?php echo $tabla == 'cliente' ? 'active' : ''; ?>" id="tab-btn-cliente" href="javascript:void(0)" onclick="cambiarTab('cliente')">
                             <i class="ti ti-users me-1"></i>Clientes
                         </a>
                     </li>
@@ -75,7 +75,7 @@
             <div class="card-body">
                 
                 <!-- SECCIÓN: CLASES -->
-                <?php if ($tabla == 'clase'): ?>
+                <div id="panel-clase" style="display:<?php echo $tabla == 'clase' ? 'block' : 'none' ?>">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="card-title">Clases de Producto</h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-clase" onclick="limpiarFormClase()">
@@ -118,10 +118,10 @@
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                </div>
                 
                 <!-- SECCIÓN: CENTROS DE PRODUCCIÓN -->
-                <?php if ($tabla == 'centro'): ?>
+                <div id="panel-centro" style="display:<?php echo $tabla == 'centro' ? 'block' : 'none' ?>">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="card-title">Centros de Producción</h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-centro" onclick="limpiarFormCentro()">
@@ -165,10 +165,10 @@
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                </div>
                 
                 <!-- SECCIÓN: UIT -->
-                <?php if ($tabla == 'uit'): ?>
+                <div id="panel-uit" style="display:<?php echo $tabla == 'uit' ? 'block' : 'none' ?>">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="card-title">Valores UIT</h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-uit" onclick="limpiarFormUit()">
@@ -208,10 +208,10 @@
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                </div>
                 
                 <!-- SECCIÓN: CLIENTES -->
-                <?php if ($tabla == 'cliente'): ?>
+                <div id="panel-cliente" style="display:<?php echo $tabla == 'cliente' ? 'block' : 'none' ?>">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="card-title">Clientes</h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-cliente" onclick="limpiarFormCliente()">
@@ -261,7 +261,7 @@
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                </div>
                 
             </div>
         </div>
@@ -420,6 +420,22 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// ========================================
+// CAMBIO DE PESTAÑAS SIN RECARGAR
+// ========================================
+function cambiarTab(tab) {
+    document.querySelectorAll('.nav-tabs .nav-link').forEach(function(b) { b.classList.remove('active'); });
+    var btn = document.getElementById('tab-btn-' + tab);
+    if (btn) btn.classList.add('active');
+    
+    document.querySelectorAll('[id^="panel-"]').forEach(function(p) { p.style.display = 'none'; });
+    var panel = document.getElementById('panel-' + tab);
+    if (panel) panel.style.display = 'block';
+    
+    if (history.pushState) {
+        history.pushState(null, '', '<?php echo BASE_URL; ?>/produccion_agraria?action=tablas&tabla=' + tab);
+    }
+}
 // Datos de centros para vinculacion (cargados desde PHP)
 const CENTROS_DISPONIBLES = <?php echo json_encode($centros); ?>;
 // ========================================

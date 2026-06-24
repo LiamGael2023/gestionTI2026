@@ -4,9 +4,9 @@
 
 /* Header de reporte */
 .reporte-header {
-    background: linear-gradient(135deg, var(--pa-blue) 0%, var(--pa-blue-light) 100%);
-    border-radius: var(--pa-border-radius-xl);
-    padding: var(--pa-spacer-lg) var(--pa-spacer-xl);
+    background: linear-gradient(135deg, var(--pa-blue, #004d99) 0%, var(--pa-blue-light, #0070cc) 100%);
+    border-radius: var(--pa-border-radius-xl, 10px);
+    padding: var(--pa-spacer-lg, 1.5rem) var(--pa-spacer-xl, 2rem);
     color: white;
     position: relative;
     overflow: hidden;
@@ -26,14 +26,14 @@
 .reporte-header .kpi-card {
     background: rgba(255, 255, 255, 0.12);
     border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: var(--pa-border-radius-lg);
-    padding: var(--pa-spacer);
+    border-radius: var(--pa-border-radius-lg, 8px);
+    padding: var(--pa-spacer, 1rem);
     text-align: center;
     border-left: 3px solid rgba(255, 255, 255, 0.3);
     color: white;
 }
 .reporte-header .kpi-card .kpi-valor { color: white; }
-.reporte-header .kpi-card .kpi-label { color: rgba(255, 255, 255, 0.7); font-size: var(--pa-font-size-xs); }
+.reporte-header .kpi-card .kpi-label { color: rgba(255, 255, 255, 0.7); font-size: var(--pa-font-size-xs, 0.75rem); }
 
 /* Badges de estado */
 .badge-PROCESADO { background: #d1fae5; color: #065f46; }
@@ -43,23 +43,25 @@
 /* Barra de exportacion */
 .export-bar {
     display: none;
-    padding: 0.5rem var(--pa-spacer-lg);
-    background: var(--pa-gray-100);
-    border-radius: var(--pa-border-radius);
-    margin-bottom: var(--pa-spacer);
+    padding: 0.5rem var(--pa-spacer-lg, 1.5rem);
+    background: var(--pa-gray-100, #f8f9fa);
+    border-radius: var(--pa-border-radius, 4px);
+    margin-bottom: var(--pa-spacer, 1rem);
 }
-.export-bar.visible { display: flex; align-items: center; gap: var(--pa-spacer-sm); }
+.export-bar.visible { display: flex; align-items: center; gap: var(--pa-spacer-sm, 0.5rem); }
 
 /* Overlay spinner */
 #spinner-overlay {
-    position: absolute;
+    display: none !important;
+    position: fixed;
     inset: 0;
-    background: rgba(255, 255, 255, 0.7);
-    display: flex;
+    background: rgba(0, 0, 0, 0.35);
     align-items: center;
     justify-content: center;
-    z-index: 10;
-    border-radius: var(--pa-border-radius-lg);
+    z-index: 9999;
+}
+#spinner-overlay.visible {
+    display: flex !important;
 }
 
 /* Cards de seleccion de reporte */
@@ -67,7 +69,7 @@
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     border: 1px solid rgba(0, 77, 153, 0.08);
     border-radius: 16px;
-    background: var(--pa-bg-card);
+    background: var(--pa-bg-card, #ffffff);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
     display: flex;
     flex-direction: column;
@@ -81,17 +83,17 @@
     box-shadow: 0 16px 28px rgba(0, 77, 153, 0.1);
     border-color: rgba(0, 77, 153, 0.15);
 }
-.report-card-ventas:hover { border-bottom-color: var(--pa-blue); }
-.report-card-inventario:hover { border-bottom-color: var(--pa-success); }
+.report-card-ventas:hover { border-bottom-color: var(--pa-blue, #004d99); }
+.report-card-inventario:hover { border-bottom-color: var(--pa-success, #28a745); }
 .report-card-mermas:hover { border-bottom-color: #d63939; }
-.report-card-vouchers:hover { border-bottom-color: var(--pa-kpi-vouchers); }
+.report-card-vouchers:hover { border-bottom-color: var(--pa-kpi-vouchers, #9b59b6); }
 .report-card-clientes:hover { border-bottom-color: #7c3aed; }
 .report-card-consolidado:hover { border-bottom-color: #0ca678; }
-.report-card-precios:hover { border-bottom-color: var(--pa-blue); }
+.report-card-precios:hover { border-bottom-color: var(--pa-blue, #004d99); }
 
 .report-card:hover .btn-abrir-rep {
-    background: var(--pa-blue) !important;
-    border-color: var(--pa-blue) !important;
+    background: var(--pa-blue, #004d99) !important;
+    border-color: var(--pa-blue, #004d99) !important;
     color: #ffffff !important;
     transform: scale(1.02);
 }
@@ -100,10 +102,10 @@
 }
 
 .btn-abrir-rep {
-    border-radius: var(--pa-border-radius-xl);
+    border-radius: var(--pa-border-radius-xl, 10px);
     padding: 0.5rem 1.75rem;
     font-weight: 600;
-    font-size: var(--pa-font-size-sm);
+    font-size: var(--pa-font-size-sm, 0.875rem);
     transition: all 0.2s;
 }
 .btn-abrir-rep:hover { transform: translateY(-2px); }
@@ -124,7 +126,7 @@
 #tabla-ventas td, #tabla-inventario td, #tabla-mermas td,
 #tabla-vouchers td, #tabla-clientes td, #tabla-consolidado td,
 #tabla-precios td {
-    font-size: var(--pa-font-size-sm);
+    font-size: var(--pa-font-size-sm, 0.875rem);
 }
 #tabla-ventas th, #tabla-inventario th, #tabla-mermas th,
 #tabla-vouchers th, #tabla-clientes th, #tabla-consolidado th,
@@ -133,4 +135,18 @@
     text-transform: uppercase;
     letter-spacing: 0.3px;
     font-size: 0.75rem;
+}
+
+/* Panel de filtros */
+#panel-filtros-reportes {
+    border-left: 4px solid var(--pa-blue, #004d99);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+#panel-filtros-reportes .card-header {
+    background: var(--pa-slate-50, #f8fafc);
+    border-bottom: 1px solid var(--pa-slate-200, #e2e8f0);
+}
+#panel-filtros-reportes .card-title {
+    color: var(--pa-slate-800, #1e293b);
+    font-weight: 700;
 }

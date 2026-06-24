@@ -156,21 +156,11 @@ try {
     // VISTAS (action=listar u otras)
     // ========================================
     
-    $clases = [];
-    $centros = [];
-    $uits = [];
-    $clientes = [];
-    
+    // Cargar todos los datos para tabs client-side
+    $clases = $model->listarClases();
     $centros = $model->listarCentros();
-
-    if ($tabla == 'clase') {
-        $clases = $model->listarClases();
-    } elseif ($tabla == 'centro') {
-    } elseif ($tabla == 'uit') {
-        $uits = $model->listarUits();
-    } elseif ($tabla == 'cliente') {
-        $clientes = $model->listarClientes();
-    }
+    $uits = $model->listarUits();
+    $clientes = $model->listarClientes();
     
     include __DIR__ . '/../views/tablas/index.php';
     
