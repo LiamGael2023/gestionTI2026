@@ -44,18 +44,18 @@ try {
         $stmtCheck = sqlsrv_query($conn, $sqlCheck);
         $tieneTipoVista = $stmtCheck && sqlsrv_fetch_array($stmtCheck, SQLSRV_FETCH_ASSOC) !== null;
 
-        $sql = "SELECT Id_Servicio, Nombre, Tipo_Vista FROM laboratorio.Servicio_Tecnico WHERE Activo = 1";
+        $sql = "SELECT Id_Servicio, Nombre" . ($tieneTipoVista ? ", Tipo_Vista" : "") . " FROM laboratorio.Servicio_Tecnico WHERE Activo = 1";
         $params = [];
 
         if ($tieneTipoVista) {
             if ($scope === 'GENERAL' || $scope === 'EXTERNO') {
-                $sql .= " AND Tipo_Vista = ?";
+                $sql .= " AND (Tipo_Vista = ? OR Tipo_Vista IS NULL)";
                 $params[] = 'GENERAL';
             } elseif ($scope === 'INTERNO') {
                 $sql .= " AND Tipo_Vista = ?";
                 $params[] = 'INTERNO';
             } else {
-                $sql .= " AND Tipo_Vista IN (?, ?)";
+                $sql .= " AND (Tipo_Vista IN (?, ?) OR Tipo_Vista IS NULL)";
                 $params[] = 'INTERNO';
                 $params[] = 'GENERAL';
             }
@@ -297,6 +297,13 @@ try {
         
         $limites = $limite_model->obtenerPorParametro($id);
         die(json_encode(['success' => true, 'data' => $limites]));
+    }
+    
+    // ==================== UNIDADES DE MEDIDA (para dropdown de parametros) ====================
+    
+    if ($action === 'listar_unidades') {
+        $unidades = $parametro_model->obtenerUnidades();
+        die(json_encode(['success' => true, 'data' => $unidades]));
     }
     
     http_response_code(400);

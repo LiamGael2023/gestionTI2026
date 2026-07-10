@@ -79,18 +79,16 @@ if (empty($muestras)) {
     die('El proyecto no tiene muestras para exportar');
 }
 
-$sqlParametros = "SELECT DISTINCT pa.Id_Parametro,
-                         pa.Nombre,
-                         pa.Unidad_Medida,
-                         pa.Categoria
+$sqlParametros = "SELECT DISTINCT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida, pa.Categoria, CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat
                   FROM laboratorio.Parametro_Analisis pa
+                  LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
                   INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Servicio = pa.Id_Servicio
                   INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
                   WHERE ml.Id_Proyecto = ?
                     AND ml.Activo = 1
                     AND sa.Activo = 1
                     AND pa.Activo = 1
-                  ORDER BY pa.Categoria, pa.Nombre";
+                  ORDER BY OrderCat, pa.Nombre";
 $stmtParametros = sqlsrv_query($conn, $sqlParametros, [$id_proyecto]);
 if ($stmtParametros === false) {
     http_response_code(500);
@@ -553,6 +551,7 @@ if (!empty($idsParaEdicion)) {
 }
 
 $titulo = 'RESULTADOS ANALISIS DE ' . strtoupper((string)($proyecto['Nombre_Proyecto'] ?? 'PROYECTO'));
+$fechaFinal = new DateTime();
 $subtitulo = strtoupper((string)($proyecto['Temporada'] ?? '')) . ' - ' . strtoupper((string)($proyecto['Valle'] ?? ''));
 $sheet->setCellValue('B4', $titulo . "\n" . $subtitulo);
 

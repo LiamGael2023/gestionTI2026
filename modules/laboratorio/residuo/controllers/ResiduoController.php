@@ -45,9 +45,7 @@ switch ($action) {
     
     default:
         // Cargar la vista según parámetro
-        if ($view === 'informe_residuos') {
-            include __DIR__ . '/../views/informe_residuos.php';
-        } elseif ($view === 'ver_informe') {
+        if ($view === 'ver_informe') {
             include __DIR__ . '/../views/ver_informe.php';
         } else {
             include __DIR__ . '/../views/index.php';

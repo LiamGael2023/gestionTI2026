@@ -19,9 +19,9 @@ if (!$conn) {
     exit;
 }
 
-// Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
+// Solo el Analista Jefe (Id_Rol=1), Jefe de todo (Id_Rol=2) o admin pueden finalizar
 $puede_finalizar = false;
-$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($_SESSION['usuario_id']));
+$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol IN (1,2)", array($_SESSION['usuario_id']));
 if ($stmtPF && sqlsrv_fetch_array($stmtPF, SQLSRV_FETCH_ASSOC)) {
     $puede_finalizar = true;
 }
@@ -131,10 +131,12 @@ if ($cliente['Agricultor'] === '' || $cliente['Agricultor'] === '-') {
 
 // Mostrar TODAS las columnas de parámetros del sistema.
 // Solo se habilitan celdas cuando existe Resultado_Analisis para la muestra/parámetro.
-$sql_parametros = "SELECT pa.Id_Parametro, pa.Nombre, pa.Unidad_Medida, pa.Categoria
+$sql_parametros = "SELECT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida, pa.Categoria,
+                   CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat
                    FROM laboratorio.Parametro_Analisis pa
+                   LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
                    WHERE pa.Activo = 1
-                   ORDER BY pa.Categoria, pa.Nombre";
+                   ORDER BY OrderCat, pa.Nombre";
 $stmt_parametros = sqlsrv_query($conn, $sql_parametros);
 if (!$stmt_parametros) {
     $error_msg = print_r(sqlsrv_errors(), true);

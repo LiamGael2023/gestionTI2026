@@ -53,6 +53,7 @@
                 <option value="">Seleccione el tipo de proyecto...</option>
                 <option value="monitoreo">Monitoreo</option>
                 <option value="calidad_agua">Calidad de Agua</option>
+                <option value="drenes">Calidad de Drenes</option>
               </select>
             </div>
 
@@ -68,6 +69,14 @@
             <div id="bloque-proyecto-calidad" class="mb-3 d-none">
               <label class="form-label fw-semibold">Proyecto de Calidad de Agua</label>
               <select id="proyecto-calidad" class="form-select">
+                <option value="">Seleccione un proyecto...</option>
+              </select>
+            </div>
+
+                        <!-- PASO 4c: Proyecto de Drenes -->
+            <div id="bloque-proyecto-drenes" class="mb-3 d-none">
+              <label class="form-label fw-semibold">Proyecto de Drenes</label>
+              <select id="proyecto-drenes" class="form-select">
                 <option value="">Seleccione un proyecto...</option>
               </select>
             </div>
@@ -221,6 +230,8 @@
     const proyectoMonitoreo     = document.getElementById('proyecto-monitoreo');
     const bloqueProyectoCalidad = document.getElementById('bloque-proyecto-calidad');
     const proyectoCalidad       = document.getElementById('proyecto-calidad');
+    const bloqueProyectoDrenes  = document.getElementById('bloque-proyecto-drenes');
+    const proyectoDrenes        = document.getElementById('proyecto-drenes');
     const bloqueMuestraCliente  = document.getElementById('bloque-muestra-cliente');
     const clienteMuestra        = document.getElementById('cliente-muestra');
     const muestraCliente        = document.getElementById('muestra-cliente');
@@ -266,6 +277,7 @@
       bloqueTipoProyecto.classList.add('d-none');
       bloqueProyectoMonitoreo.classList.add('d-none');
       bloqueProyectoCalidad.classList.add('d-none');
+      bloqueProyectoDrenes.classList.add('d-none');
       bloqueMuestraCliente.classList.add('d-none');
       filtroRegistroResiduo.classList.add('d-none');
       filtrosKardex.classList.add('d-none');
@@ -293,6 +305,7 @@
         if (origen === 'proyecto') {
           if (tproy === 'monitoreo')    ok = !!proyectoMonitoreo.value;
           if (tproy === 'calidad_agua') ok = !!proyectoCalidad.value;
+          if (tproy === 'drenes')       ok = !!proyectoDrenes.value;
         }
       }
 
@@ -328,6 +341,9 @@
           if (tproy === 'calidad_agua') {
             return 'modules/laboratorio/muestra/controllers/ExportarCalidadAgua.php?id_proyecto=' + encodeURIComponent(proyectoCalidad.value);
           }
+          if (tproy === 'drenes') {
+            return 'modules/laboratorio/muestra/controllers/ExportarDrenes.php?id_proyecto=' + encodeURIComponent(proyectoDrenes.value);
+          }
         }
       }
       return '';
@@ -359,6 +375,7 @@
       bloqueTipoProyecto.classList.add('d-none');
       bloqueProyectoMonitoreo.classList.add('d-none');
       bloqueProyectoCalidad.classList.add('d-none');
+      bloqueProyectoDrenes.classList.add('d-none');
       bloqueMuestraCliente.classList.add('d-none');
       tipoProyecto.value = '';
       btnPrevisualizar.disabled = true;
@@ -385,6 +402,7 @@
     tipoProyecto.addEventListener('change', function () {
       bloqueProyectoMonitoreo.classList.add('d-none');
       bloqueProyectoCalidad.classList.add('d-none');
+      bloqueProyectoDrenes.classList.add('d-none');
       btnPrevisualizar.disabled = true;
       btnDescargarExcel.disabled = true;
 
@@ -400,6 +418,12 @@
           .then(function (d) { popularSelect(proyectoCalidad, d.data || [], 'Seleccione un proyecto...'); })
           .catch(function ()  { popularSelect(proyectoCalidad, [], 'Sin proyectos disponibles'); });
       }
+      if (this.value === 'drenes') {
+        bloqueProyectoDrenes.classList.remove('d-none');
+        getJson(apiBase + '?action=listar_proyectos_drenes')
+          .then(function (d) { popularSelect(proyectoDrenes, d.data || [], 'Seleccione un proyecto...'); })
+          .catch(function ()  { popularSelect(proyectoDrenes, [], 'Sin proyectos disponibles'); });
+      }
     });
 
     // ── eventos: selectores terminales ───────────────────────────────────────
@@ -408,6 +432,7 @@
     anioKardex.addEventListener('input', actualizarBotones);
     proyectoMonitoreo.addEventListener('change', actualizarBotones);
     proyectoCalidad.addEventListener('change', actualizarBotones);
+    proyectoDrenes.addEventListener('change', actualizarBotones);
     muestraCliente.addEventListener('change', actualizarBotones);
     clienteMuestra.addEventListener('change', function () {
       popularSelect(muestraCliente, [], 'Seleccione una muestra...');

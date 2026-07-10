@@ -92,7 +92,7 @@ try {
             FROM laboratorio.Parametro_Analisis pa
             WHERE pa.Id_Servicio = ?
             AND pa.Activo = 1
-            ORDER BY pa.Categoria, pa.Nombre
+            ORDER BY CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END, pa.Nombre
         ";
         
         $stmt = sqlsrv_query($conn, $sql, array($id_servicio));
@@ -672,7 +672,7 @@ try {
                 }
             }
             $es_analista_jefe_gr = false;
-            $stmtAJGR = sqlsrv_query($conn, "SELECT TOP 1 1 AS existe FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($usuario_id));
+            $stmtAJGR = sqlsrv_query($conn, "SELECT TOP 1 1 AS existe FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol IN (1,2)", array($usuario_id));
             if ($stmtAJGR && sqlsrv_fetch_array($stmtAJGR, SQLSRV_FETCH_ASSOC)) {
                 $es_analista_jefe_gr = true;
             }
@@ -766,6 +766,95 @@ try {
                     $marca_inicio_residuo,
                     $marca_fin_residuo
                 );
+                
+                // CONSUMO DINÁMICO: verificar y consumir reactivos para ESTE resultado específico
+                // Solo si tiene valor y aún no se consumió (idempotente con guardar_avance)
+                if ($valor_hallado !== null) {
+                    $stmtCheckConsumoGR = sqlsrv_query($conn, 
+                        "SELECT COUNT(*) AS ya_consumido FROM laboratorio.Consumo_Resultado WHERE Id_Resultado = ? AND Activo = 1", 
+                        [$id_resultado]);
+                    $yaConsumidoGR = 0;
+                    if ($stmtCheckConsumoGR !== false) {
+                        $rowCheckGR = sqlsrv_fetch_array($stmtCheckConsumoGR, SQLSRV_FETCH_ASSOC);
+                        $yaConsumidoGR = intval($rowCheckGR['ya_consumido'] ?? 0);
+                    }
+
+                    if ($yaConsumidoGR === 0) {
+                        $sql_serv = "SELECT Id_Servicio, Id_Muestra FROM laboratorio.Solicitud_Analisis WHERE Id_Solicitud_Analisis = ?";
+                        $stmt_serv = sqlsrv_query($conn, $sql_serv, [$id_solicitud]);
+                        if ($row_serv = sqlsrv_fetch_array($stmt_serv, SQLSRV_FETCH_ASSOC)) {
+                            $id_servicio_sol = intval($row_serv['Id_Servicio']);
+                            $id_muestra_sol = intval($row_serv['Id_Muestra']);
+
+                            $sql_mp = "SELECT TOP 1 Id_Muestra_Producto, Id_Producto_Venta FROM laboratorio.Muestra_Producto WHERE Id_Muestra = ? AND Activo = 1 ORDER BY Id_Muestra_Producto DESC";
+                            $stmt_mp = sqlsrv_query($conn, $sql_mp, [$id_muestra_sol]);
+                            $row_mp = sqlsrv_fetch_array($stmt_mp, SQLSRV_FETCH_ASSOC);
+                            $id_muestra_producto = $row_mp ? intval($row_mp['Id_Muestra_Producto']) : 0;
+
+                            // Descuento de reserva solo si hay proyecto
+                            $sql_proy = "SELECT ISNULL(Id_Proyecto, 0) AS Id_Proyecto FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ?";
+                            $stmt_proy = sqlsrv_query($conn, $sql_proy, [$id_muestra_sol]);
+                            $row_proy = sqlsrv_fetch_array($stmt_proy, SQLSRV_FETCH_ASSOC);
+                            $aplicarDescuentoReserva = ($row_proy && intval($row_proy['Id_Proyecto']) > 0);
+
+                            // Contar parámetros del servicio para prorrateo
+                            $stmtCntP = sqlsrv_query($conn,
+                                "SELECT COUNT(*) AS total_params FROM laboratorio.Parametro_Analisis WHERE Id_Servicio = ? AND Activo = 1",
+                                [$id_servicio_sol]);
+                            $totalParamsGR = 1;
+                            if ($stmtCntP !== false) {
+                                $rowCntP = sqlsrv_fetch_array($stmtCntP, SQLSRV_FETCH_ASSOC);
+                                $totalParamsGR = max(1, intval($rowCntP['total_params'] ?? 1));
+                            }
+
+                            $sqlReceta = "SELECT Id_Reactivo, MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) AS Cantidad_Necesaria
+                                          FROM laboratorio.Receta_Servicio
+                                          WHERE Id_Servicio = ? AND Activo = 1
+                                          GROUP BY Id_Reactivo HAVING MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) > 0";
+                            $stmtReceta = sqlsrv_query($conn, $sqlReceta, [$id_servicio_sol]);
+
+                            while ($stmtReceta !== false && ($rowReactivo = sqlsrv_fetch_array($stmtReceta, SQLSRV_FETCH_ASSOC))) {
+                                $idReactivo = intval($rowReactivo['Id_Reactivo'] ?? 0);
+                                $cantidadTotal = round(floatval($rowReactivo['Cantidad_Necesaria'] ?? 0), 6);
+                                $cantidad = round($cantidadTotal / $totalParamsGR, 6);
+
+                                if ($idReactivo <= 0 || $cantidad <= 0) continue;
+
+                                $stmtStock = sqlsrv_query($conn, "SELECT Nombre, ISNULL(Cantidad_Stock, 0) AS Stock FROM laboratorio.Reactivo_Lab WHERE Id_Reactivo = ? AND Activo = 1", [$idReactivo]);
+                                $rowStock = sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC);
+                                if (!$rowStock) continue;
+
+                                $stockActual = floatval($rowStock['Stock'] ?? 0);
+                                if ($stockActual < $cantidad) {
+                                    $cantidad = $stockActual; // Consumir lo disponible
+                                }
+                                if ($cantidad <= 0) continue;
+
+                                $saldoNuevo = round($stockActual - $cantidad, 4);
+                                $concepto = 'Consumo dinámico por resultado #' . $id_resultado . ' (Finalizar, Solicitud #' . $id_solicitud . ')';
+
+                                $stmtMov = sqlsrv_query($conn, "SET NOCOUNT ON; INSERT INTO laboratorio.Movimiento_Kardex (Id_Reactivo, Fecha_Registro, Tipo_Movimiento, Cantidad, Concepto, Saldo_Resultante, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, GETDATE(), 'S', ?, ?, ?, 1, GETDATE(), ?); SELECT CAST(SCOPE_IDENTITY() AS INT) AS id;", [$idReactivo, $cantidad, $concepto, $saldoNuevo, $usuario_id]);
+                                
+                                $rowMov = ($stmtMov !== false) ? sqlsrv_fetch_array($stmtMov, SQLSRV_FETCH_ASSOC) : null;
+                                $idMovimiento = intval($rowMov['id'] ?? 0);
+
+                                if ($idMovimiento > 0) {
+                                    sqlsrv_query($conn, "INSERT INTO laboratorio.Consumo_Resultado (Id_Resultado, Id_Movimiento, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", [$id_resultado, $idMovimiento, $usuario_id]);
+
+                                    if ($id_muestra_producto > 0) {
+                                        sqlsrv_query($conn, "INSERT INTO laboratorio.Consumo_Reaccion (Id_Movimiento, Id_Muestra_Producto, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", [$idMovimiento, $id_muestra_producto, $usuario_id]);
+                                    }
+
+                                    if ($aplicarDescuentoReserva) {
+                                        sqlsrv_query($conn, "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Cantidad_Reservada = CASE WHEN ISNULL(Cantidad_Reservada, 0) >= ? THEN ISNULL(Cantidad_Reservada, 0) - ? ELSE 0 END, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", [$cantidad, $cantidad, $cantidad, $idReactivo]);
+                                    } else {
+                                        sqlsrv_query($conn, "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", [$cantidad, $idReactivo]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             
             // Verificar si TODAS las solicitudes de la muestra están finalizadas
@@ -1048,6 +1137,127 @@ try {
                     $marca_fin_residuo
                 );
                 file_put_contents($log_file, "✓ Usuario asignado en residuos automáticos del trigger: " . intval($afectadosUsuarioRes) . "\n", FILE_APPEND);
+            }
+
+            // ===== CONSUMO DINÁMICO DE REACTIVOS (just-in-time) =====
+            // Solo consumir si el resultado tiene un valor y aún no se registró consumo para este resultado
+            if ($valor_hallado !== null) {
+                $stmtCheckConsumo = sqlsrv_query($conn, 
+                    "SELECT COUNT(*) AS ya_consumido FROM laboratorio.Consumo_Resultado WHERE Id_Resultado = ? AND Activo = 1", 
+                    [$id_resultado]);
+                $yaConsumido = 0;
+                if ($stmtCheckConsumo !== false) {
+                    $rowCheck = sqlsrv_fetch_array($stmtCheckConsumo, SQLSRV_FETCH_ASSOC);
+                    $yaConsumido = intval($rowCheck['ya_consumido'] ?? 0);
+                }
+
+                if ($yaConsumido === 0) {
+                    // Obtener Id_Servicio de la solicitud y Id_Muestra
+                    $stmtServMuestra = sqlsrv_query($conn, 
+                        "SELECT sa.Id_Servicio, sa.Id_Muestra 
+                         FROM laboratorio.Solicitud_Analisis sa 
+                         WHERE sa.Id_Solicitud_Analisis = ?", [$id_solicitud]);
+                    $rowServMuestra = ($stmtServMuestra !== false) ? sqlsrv_fetch_array($stmtServMuestra, SQLSRV_FETCH_ASSOC) : null;
+
+                    if ($rowServMuestra) {
+                        $id_servicio_consumo = intval($rowServMuestra['Id_Servicio']);
+                        $id_muestra_consumo = intval($rowServMuestra['Id_Muestra']);
+
+                        // Obtener Muestra_Producto
+                        $stmtMP = sqlsrv_query($conn, 
+                            "SELECT TOP 1 Id_Muestra_Producto FROM laboratorio.Muestra_Producto WHERE Id_Muestra = ? AND Activo = 1 ORDER BY Id_Muestra_Producto DESC", 
+                            [$id_muestra_consumo]);
+                        $rowMP = ($stmtMP !== false) ? sqlsrv_fetch_array($stmtMP, SQLSRV_FETCH_ASSOC) : null;
+                        $id_muestra_producto_consumo = $rowMP ? intval($rowMP['Id_Muestra_Producto']) : 0;
+
+                        // Verificar si pertenece a un proyecto (para descuento de reserva)
+                        $stmtProy = sqlsrv_query($conn, 
+                            "SELECT ISNULL(Id_Proyecto, 0) AS Id_Proyecto FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ?", 
+                            [$id_muestra_consumo]);
+                        $rowProy = ($stmtProy !== false) ? sqlsrv_fetch_array($stmtProy, SQLSRV_FETCH_ASSOC) : null;
+                        $aplicarDescuentoReserva = ($rowProy && intval($rowProy['Id_Proyecto']) > 0);
+
+                        // Contar cuántos parámetros tiene este servicio para dividir la receta proporcionalmente
+                        $stmtCountParams = sqlsrv_query($conn,
+                            "SELECT COUNT(*) AS total_params FROM laboratorio.Parametro_Analisis WHERE Id_Servicio = ? AND Activo = 1",
+                            [$id_servicio_consumo]);
+                        $totalParams = 1;
+                        if ($stmtCountParams !== false) {
+                            $rowCnt = sqlsrv_fetch_array($stmtCountParams, SQLSRV_FETCH_ASSOC);
+                            $totalParams = max(1, intval($rowCnt['total_params'] ?? 1));
+                        }
+
+                        // Obtener receta del servicio
+                        $stmtReceta = sqlsrv_query($conn, 
+                            "SELECT Id_Reactivo, MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) AS Cantidad_Necesaria
+                             FROM laboratorio.Receta_Servicio
+                             WHERE Id_Servicio = ? AND Activo = 1
+                             GROUP BY Id_Reactivo HAVING MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) > 0", 
+                            [$id_servicio_consumo]);
+
+                        while ($stmtReceta !== false && ($rowReactivo = sqlsrv_fetch_array($stmtReceta, SQLSRV_FETCH_ASSOC))) {
+                            $idReactivo = intval($rowReactivo['Id_Reactivo'] ?? 0);
+                            // Dividir la cantidad de reactivo entre el total de parámetros del servicio
+                            $cantidadTotal = round(floatval($rowReactivo['Cantidad_Necesaria'] ?? 0), 6);
+                            $cantidad = round($cantidadTotal / $totalParams, 6);
+
+                            if ($idReactivo <= 0 || $cantidad <= 0) continue;
+
+                            // Verificar stock
+                            $stmtStock = sqlsrv_query($conn, 
+                                "SELECT Nombre, ISNULL(Cantidad_Stock, 0) AS Stock FROM laboratorio.Reactivo_Lab WHERE Id_Reactivo = ? AND Activo = 1", 
+                                [$idReactivo]);
+                            $rowStock = ($stmtStock !== false) ? sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC) : null;
+                            if (!$rowStock) continue;
+
+                            $stockActual = floatval($rowStock['Stock'] ?? 0);
+                            if ($stockActual < $cantidad) {
+                                file_put_contents($log_file, "⚠ Stock insuficiente para reactivo " . trim((string)$rowStock['Nombre']) . " (disponible: $stockActual, requerido: $cantidad). Se registra consumo parcial.\n", FILE_APPEND);
+                                $cantidad = $stockActual; // Consumir lo que quede
+                            }
+
+                            if ($cantidad <= 0) continue;
+
+                            $saldoNuevo = round($stockActual - $cantidad, 4);
+                            $concepto = 'Consumo dinámico por resultado #' . $id_resultado . ' (Avance, Solicitud #' . $id_solicitud . ')';
+
+                            // Insertar movimiento Kardex
+                            $stmtMov = sqlsrv_query($conn, 
+                                "SET NOCOUNT ON; INSERT INTO laboratorio.Movimiento_Kardex (Id_Reactivo, Fecha_Registro, Tipo_Movimiento, Cantidad, Concepto, Saldo_Resultante, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, GETDATE(), 'S', ?, ?, ?, 1, GETDATE(), ?); SELECT CAST(SCOPE_IDENTITY() AS INT) AS id;", 
+                                [$idReactivo, $cantidad, $concepto, $saldoNuevo, $usuario_id]);
+                            
+                            $rowMov = ($stmtMov !== false) ? sqlsrv_fetch_array($stmtMov, SQLSRV_FETCH_ASSOC) : null;
+                            $idMovimiento = intval($rowMov['id'] ?? 0);
+
+                            if ($idMovimiento > 0) {
+                                // Trazabilidad: vincular movimiento al resultado específico
+                                sqlsrv_query($conn, 
+                                    "INSERT INTO laboratorio.Consumo_Resultado (Id_Resultado, Id_Movimiento, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", 
+                                    [$id_resultado, $idMovimiento, $usuario_id]);
+
+                                // Trazabilidad legacy: vincular a Muestra_Producto
+                                if ($id_muestra_producto_consumo > 0) {
+                                    sqlsrv_query($conn, 
+                                        "INSERT INTO laboratorio.Consumo_Reaccion (Id_Movimiento, Id_Muestra_Producto, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", 
+                                        [$idMovimiento, $id_muestra_producto_consumo, $usuario_id]);
+                                }
+
+                                // Actualizar stock (y reserva si aplica)
+                                if ($aplicarDescuentoReserva) {
+                                    sqlsrv_query($conn, 
+                                        "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Cantidad_Reservada = CASE WHEN ISNULL(Cantidad_Reservada, 0) >= ? THEN ISNULL(Cantidad_Reservada, 0) - ? ELSE 0 END, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", 
+                                        [$cantidad, $cantidad, $cantidad, $idReactivo]);
+                                } else {
+                                    sqlsrv_query($conn, 
+                                        "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", 
+                                        [$cantidad, $idReactivo]);
+                                }
+                            }
+                        }
+
+                        file_put_contents($log_file, "✓ Consumo dinámico registrado para resultado #$id_resultado\n", FILE_APPEND);
+                    }
+                }
             }
             
             file_put_contents($log_file, "✓ AVANCE GUARDADO EXITOSAMENTE\n", FILE_APPEND);
@@ -1493,6 +1703,31 @@ try {
             if ($txStarted) {
                 try { sqlsrv_rollback($conn); } catch (Exception $re) {}
             }
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== REABRIR PROYECTO ====================
+    if ($action === 'reabrir_proyecto') {
+        try {
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $id_proyecto = intval($datos['Id_Proyecto'] ?? 0);
+            if ($id_proyecto <= 0) {
+                throw new Exception('ID de proyecto requerido');
+            }
+            
+            $stmt = sqlsrv_query($conn, 
+                "UPDATE laboratorio.Proyecto_Monitoreo SET Estado = 'En Progreso', Fecha_Modificacion = GETDATE() WHERE Id_Proyecto = ?",
+                [$id_proyecto]
+            );
+            if ($stmt === false) {
+                throw new Exception('Error al actualizar: ' . print_r(sqlsrv_errors(), true));
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Proyecto reabierto en estado En Progreso']);
+        } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }

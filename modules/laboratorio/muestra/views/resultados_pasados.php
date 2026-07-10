@@ -48,10 +48,12 @@ if ($agricultor === '' || $agricultor === '-') {
     $agricultor = $agricultor_query !== '' ? $agricultor_query : 'Cliente no identificado';
 }
 
-$sql_parametros = "SELECT pa.Id_Parametro, pa.Nombre, pa.Unidad_Medida, pa.Categoria
+$sql_parametros = "SELECT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida, pa.Categoria,
+                   CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat
                    FROM laboratorio.Parametro_Analisis pa
+                   LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
                    WHERE pa.Activo = 1
-                   ORDER BY pa.Categoria, pa.Nombre";
+                   ORDER BY OrderCat, pa.Nombre";
 $stmt_parametros = sqlsrv_query($conn, $sql_parametros);
 if (!$stmt_parametros) {
     echo '<div class="alert alert-danger">Error al cargar parametros.</div>';

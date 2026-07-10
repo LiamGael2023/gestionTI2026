@@ -16,7 +16,8 @@ $subaction = $_GET['subaction'] ?? 'index';
 // Cargar vista según subaction
 switch($subaction) {
     case 'creacion_masiva':
-        include 'modules/laboratorio/muestra/views/creacion_masiva.php';
+        header('Location: ?module=laboratorio&action=muestra&tab=masiva');
+        exit;
         break;
     
     case 'por_defecto':

@@ -55,8 +55,22 @@ try {
         }
         $estado_badge .= '">' . htmlspecialchars($estado) . '</span>';
         
-        $accion = '<a href="javascript:editarMuestra(' . $id . ')" class="btn btn-sm btn-primary me-1"><i class="ti ti-edit"></i></a> ';
-        $accion .= '<a href="javascript:eliminarMuestra(' . $id . ')" class="btn btn-sm btn-danger"><i class="ti ti-trash"></i></a>';
+        $accion = '<div class="dropdown">'
+            . '<a class="btn btn-ghost-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false">'
+            . '<i class="ti ti-dots-vertical"></i>'
+            . '</a>'
+            . '<div class="dropdown-menu dropdown-menu-end">'
+            . '<a class="dropdown-item" href="javascript:verDetalleMuestra(' . $id . ')">'
+            . '<i class="ti ti-eye me-2"></i> Ver Detalle'
+            . '</a>'
+            . '<a class="dropdown-item" href="javascript:editarMuestra(' . $id . ')">'
+            . '<i class="ti ti-edit me-2"></i> Editar'
+            . '</a>'
+            . '<a class="dropdown-item text-danger" href="javascript:eliminarMuestra(' . $id . ')">'
+            . '<i class="ti ti-trash me-2"></i> Eliminar'
+            . '</a>'
+            . '</div>'
+            . '</div>';
         
         $data[] = [$contador++, $agricultor, $ubicacion, $valle, $fecha, $servicio, $estado_badge, $tipo, $accion];
     }

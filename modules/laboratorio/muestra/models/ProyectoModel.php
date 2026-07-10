@@ -115,8 +115,8 @@ class ProyectoModel {
         if (empty($datos['Id_Proyecto'])) {
             // INSERT - Nuevo proyecto
             $sql = "INSERT INTO laboratorio.Proyecto_Monitoreo 
-                    (Nombre_Proyecto, Valle, Temporada, Fecha_Inicio, Tipo_Muestra, Uso_Agua, Fuente_Agua, Nivel_Agua, Es_Control_Calidad, Es_Drene, Id_Responsable, Estado, Usuario_Creacion, Activo, Fecha_Creacion)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); 
+                    (Nombre_Proyecto, Valle, Temporada, Fecha_Inicio, Tipo_Muestra, Uso_Agua, Fuente_Agua, Nivel_Agua, Es_Control_Calidad, Es_Drene, Es_Pozos, Id_Responsable, Estado, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); 
                     SELECT SCOPE_IDENTITY() AS id;";
             
             $params = array(
@@ -130,8 +130,9 @@ class ProyectoModel {
                 $datos['Nivel_Agua'] ?? null,
                 intval($datos['Es_Control_Calidad'] ?? 0),
                 intval($datos['Es_Drene'] ?? 0),
+                intval($datos['Es_Pozos'] ?? 0),
                 $datos['Id_Responsable'] ?? $usuario_id,
-                'Planificado', // Estado inicial SIEMPRE Planificado
+                'Planificado',
                 $usuario_id
             );
 
@@ -177,7 +178,7 @@ class ProyectoModel {
                 // Actualizar múltiples campos
                 $sql = "UPDATE laboratorio.Proyecto_Monitoreo 
                         SET Nombre_Proyecto = ?, Valle = ?, Temporada = ?, Fecha_Inicio = ?, Tipo_Muestra = ?, 
-                            Uso_Agua = ?, Fuente_Agua = ?, Nivel_Agua = ?, Es_Control_Calidad = ?, Es_Drene = ?,
+                            Uso_Agua = ?, Fuente_Agua = ?, Nivel_Agua = ?, Es_Control_Calidad = ?, Es_Drene = ?, Es_Pozos = ?,
                             Id_Responsable = ?, Estado = ?, Fecha_Modificacion = GETDATE()
                         WHERE Id_Proyecto = ?";
                 
@@ -192,6 +193,7 @@ class ProyectoModel {
                     $datos['Nivel_Agua'] ?? null,
                     intval($datos['Es_Control_Calidad'] ?? 0),
                     intval($datos['Es_Drene'] ?? 0),
+                    intval($datos['Es_Pozos'] ?? 0),
                     $datos['Id_Responsable'] ?? null,
                     $estado_nuevo ?? null,
                     $datos['Id_Proyecto']
@@ -231,6 +233,7 @@ class ProyectoModel {
         $usuario_id = $_SESSION['usuario_id'] ?? 1;
         $es_control_calidad_proyecto = intval($proyecto['Es_Control_Calidad'] ?? 0) === 1;
         $es_drene_proyecto = intval($proyecto['Es_Drene'] ?? 0) === 1;
+        $es_pozos_proyecto = intval($proyecto['Es_Pozos'] ?? 0) === 1;
 
         $total_muestras_planificadas = 0;
         foreach ($detalles as $detalleTmp) {
@@ -266,6 +269,12 @@ class ProyectoModel {
         if ($id_cliente <= 0) {
             file_put_contents($log_file, "✗ ERROR: Id_Cliente inválido\n", FILE_APPEND);
             throw new Exception('No se pudo obtener Id_Cliente válido');
+        }
+
+        // BRANCH: Proyectos de Pozos — crear muestras desde Monitoreo_Pozo_Asignacion
+        if ($es_pozos_proyecto) {
+            $this->crearMuestrasPozos($id_proyecto, $proyecto, $id_cliente, $usuario_id, $log_file);
+            return;
         }
 
         try {
@@ -464,10 +473,7 @@ class ProyectoModel {
                                 }
                             }
                             
-                            // Registrar consumo de reactivos de forma interna e idempotente.
-                            if ($id_muestra_producto > 0) {
-                                $this->registrarConsumoReactivosInterno($id_muestra_producto, $usuario_id);
-                            }
+                            // El consumo de reactivos se registra al guardar los resultados, ya no aquí.
                         }
 
                         // Si es tipo Agua, crear registro en Detalle_Agua
@@ -761,9 +767,7 @@ class ProyectoModel {
                         }
                     }
 
-                    if ($id_muestra_producto > 0) {
-                        $this->registrarConsumoReactivosInterno($id_muestra_producto, $usuario_id);
-                    }
+                    // El consumo de reactivos se registra al guardar los resultados, ya no aquí.
                 }
 
                 if ($proyecto['Tipo_Muestra'] === 'Agua' && !empty($proyecto['Uso_Agua'])) {
@@ -1355,6 +1359,182 @@ class ProyectoModel {
             throw new Exception('Error al eliminar proyecto: ' . print_r(sqlsrv_errors(), true));
         }
         return true;
+    }
+
+    private function crearMuestrasPozos($id_proyecto, $proyecto, $id_cliente, $usuario_id, $log_file) {
+        file_put_contents($log_file, "\n[" . date('Y-m-d H:i:s') . "] === INICIANDO crearMuestrasPozos($id_proyecto) ===\n", FILE_APPEND);
+
+        $sqlAsig = "SELECT mpa.Numero_Muestra, mpa.Id_Pozo, mpa.Orden, mpa.Es_Analisis_Laboratorio,
+                           cp.coord_este, cp.coord_norte, cp.cota
+                    FROM laboratorio.Monitoreo_Pozo_Asignacion mpa
+                    INNER JOIN laboratorio.Catastro_Pozo cp ON mpa.Id_Pozo = cp.Id_Pozo
+                    WHERE mpa.Id_Proyecto = ? AND mpa.Activo = 1
+                    ORDER BY ISNULL(mpa.Orden, 0), mpa.Numero_Muestra";
+        $stmtAsig = sqlsrv_query($this->db, $sqlAsig, [$id_proyecto]);
+        if ($stmtAsig === false) {
+            throw new Exception('Error al obtener asignaciones de pozos: ' . print_r(sqlsrv_errors(), true));
+        }
+
+        $asignaciones = [];
+        while ($row = sqlsrv_fetch_array($stmtAsig, SQLSRV_FETCH_ASSOC)) {
+            $asignaciones[] = $row;
+        }
+
+        if (empty($asignaciones)) {
+            throw new Exception('No hay pozos asignados a este proyecto. Asigne pozos antes de iniciar.');
+        }
+
+        $sqlFechaAnalisis = "SELECT GETDATE() AS Fecha_Analisis";
+        $stmtFecha = sqlsrv_query($this->db, $sqlFechaAnalisis);
+        $rowFecha = sqlsrv_fetch_array($stmtFecha, SQLSRV_FETCH_ASSOC);
+        $fecha_analisis_proyecto = $rowFecha['Fecha_Analisis'] ?? null;
+
+        $muestra_count = 0;
+        $solicitud_count = 0;
+        $resultado_count = 0;
+
+        foreach ($asignaciones as $asig) {
+            $num_muestra = intval($asig['Numero_Muestra'] ?? 0);
+            $id_pozo     = strtoupper(trim((string)($asig['Id_Pozo'] ?? '')));
+            $es_lab      = intval($asig['Es_Analisis_Laboratorio'] ?? 0);
+
+            // INSERT Muestra_Lab con Id_Pozo
+            $sqlMuestra = "INSERT INTO laboratorio.Muestra_Lab
+                (Id_Cliente, Id_Receptor, Id_Especialista, Id_Proyecto, Id_Pozo, Valle, Eje_X, Eje_Y,
+                 Fecha_Recepcion, Fecha_Toma, Estado, Tipo_Servicio, Observacion_Muestra,
+                 Es_Control_Calidad, Es_Drene, Fecha_Analisis, Usuario_Creacion, Activo, Fecha_Creacion)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+                        GETDATE(), GETDATE(), 'En Analisis', ?, 'Muestra de Proyecto: ' + ?,
+                        0, 0, ?, ?, 1, GETDATE());
+                SELECT SCOPE_IDENTITY() AS id;";
+
+            $paramsM = [
+                $id_cliente, $usuario_id, $usuario_id, $id_proyecto,
+                $id_pozo,
+                $proyecto['Valle'] ?? null,
+                trim((string)($asig['coord_este'] ?? '')),
+                trim((string)($asig['coord_norte'] ?? '')),
+                'In-Situ Pozos',
+                $proyecto['Nombre_Proyecto'] ?? 'Monitoreo Pozos',
+                $fecha_analisis_proyecto,
+                $usuario_id
+            ];
+
+            $stmt = sqlsrv_query($this->db, $sqlMuestra, $paramsM);
+            if ($stmt === false) {
+                throw new Exception('Error al insertar muestra de pozo: ' . print_r(sqlsrv_errors(), true));
+            }
+            sqlsrv_next_result($stmt);
+            $rowId = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            $id_muestra = intval($rowId['id'] ?? 0);
+
+            if ($id_muestra <= 0) {
+                throw new Exception('No se obtuvo Id_Muestra al crear muestra de pozo.');
+            }
+            $muestra_count++;
+
+            // Obtener producto "In-Situ Pozos" (primer producto activo configurado en Proyecto_Detalle_Analisis)
+            $detalles = $this->obtenerDetalles($id_proyecto);
+            $id_producto_insitu = 0;
+            if (!empty($detalles)) {
+                $id_producto_insitu = intval($detalles[0]['Id_Producto_Venta'] ?? 0);
+            }
+
+            if ($id_producto_insitu > 0) {
+                $sqlProducto = "INSERT INTO laboratorio.Muestra_Producto
+                    (Id_Muestra, Id_Producto_Venta, Id_Cliente, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, ?, 1, GETDATE());
+                    SELECT SCOPE_IDENTITY() AS id;";
+                $stmtP = sqlsrv_query($this->db, $sqlProducto, [$id_muestra, $id_producto_insitu, $id_cliente, $usuario_id]);
+                if ($stmtP === false) {
+                    throw new Exception('Error al insertar muestra_producto de pozo: ' . print_r(sqlsrv_errors(), true));
+                }
+                sqlsrv_next_result($stmtP);
+                $rowP = sqlsrv_fetch_array($stmtP, SQLSRV_FETCH_ASSOC);
+                $id_muestra_producto = intval($rowP['id'] ?? 0);
+
+                // Crear solicitudes y resultados para cada servicio del producto in-situ
+                $sqlServicios = "SELECT DISTINCT ps.Id_Servicio
+                                 FROM laboratorio.Producto_Servicio ps
+                                 WHERE ps.Id_Producto = ? AND ps.Activo = 1";
+                $stmtServ = sqlsrv_query($this->db, $sqlServicios, [$id_producto_insitu]);
+                if ($stmtServ === false) {
+                    throw new Exception('Error al obtener servicios del producto in-situ: ' . print_r(sqlsrv_errors(), true));
+                }
+
+                while ($rowServ = sqlsrv_fetch_array($stmtServ, SQLSRV_FETCH_ASSOC)) {
+                    $id_servicio = intval($rowServ['Id_Servicio'] ?? 0);
+                    if ($id_servicio <= 0) continue;
+
+                    $sqlSol = "INSERT INTO laboratorio.Solicitud_Analisis
+                        (Id_Muestra, Id_Servicio, Estado, Fecha_Asignacion, Usuario_Creacion, Activo, Fecha_Creacion)
+                        VALUES (?, ?, 'En Analisis', GETDATE(), ?, 1, GETDATE());
+                        SELECT SCOPE_IDENTITY() AS id;";
+                    $stmtSol = sqlsrv_query($this->db, $sqlSol, [$id_muestra, $id_servicio, $usuario_id]);
+                    if ($stmtSol === false) {
+                        throw new Exception('Error al crear solicitud de pozo: ' . print_r(sqlsrv_errors(), true));
+                    }
+                    sqlsrv_next_result($stmtSol);
+                    $rowSolId = sqlsrv_fetch_array($stmtSol, SQLSRV_FETCH_ASSOC);
+                    $id_solicitud = intval($rowSolId['id'] ?? 0);
+                    $solicitud_count++;
+
+                    // Crear resultados en blanco para cada parametro del servicio
+                    $sqlParams = "SELECT Id_Parametro FROM laboratorio.Parametro_Analisis
+                                  WHERE Id_Servicio = ? AND Activo = 1";
+                    $stmtParams = sqlsrv_query($this->db, $sqlParams, [$id_servicio]);
+                    if ($stmtParams === false) {
+                        throw new Exception('Error al obtener parametros: ' . print_r(sqlsrv_errors(), true));
+                    }
+
+                    while ($rowParam = sqlsrv_fetch_array($stmtParams, SQLSRV_FETCH_ASSOC)) {
+                        $id_parametro = intval($rowParam['Id_Parametro'] ?? 0);
+                        if ($id_parametro <= 0) continue;
+
+                        $sqlRes = "INSERT INTO laboratorio.Resultado_Analisis
+                            (Id_Solicitud_Analisis, Id_Parametro, Valor_Hallado, Usuario_Creacion, Activo, Fecha_Creacion)
+                            VALUES (?, ?, NULL, ?, 1, GETDATE())";
+                        $stmtRes = sqlsrv_query($this->db, $sqlRes, [$id_solicitud, $id_parametro, $usuario_id]);
+                        if ($stmtRes === false) {
+                            throw new Exception('Error al crear resultado: ' . print_r(sqlsrv_errors(), true));
+                        }
+                        $resultado_count++;
+                    }
+                }
+
+                // NO se consume reactivo aqui — se hara al finalizar la Solicitud_Analisis
+            }
+
+            // Actualizar Lab_Habilitado = 0 para las muestras
+            $sqlLabHab = "UPDATE laboratorio.Muestra_Lab SET Lab_Habilitado = 0 WHERE Id_Muestra = ?";
+            sqlsrv_query($this->db, $sqlLabHab, [$id_muestra]);
+
+            // Insertar Detalle_Agua si Tipo_Muestra='Agua'
+            if (($proyecto['Tipo_Muestra'] ?? '') === 'Agua') {
+                $sqlDetAgua = "INSERT INTO laboratorio.Detalle_Agua
+                    (Id_Muestra, Uso_Agua, Fuente_Agua, Cantidad_Muestra, Nivel_Agua, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, '1 Litro', ?, ?, 1, GETDATE())";
+                $paramsAgua = [
+                    $id_muestra,
+                    $proyecto['Uso_Agua'] ?? 'Riego',
+                    'Pozo',
+                    $id_pozo,
+                    $usuario_id
+                ];
+                $stmtAgua = sqlsrv_query($this->db, $sqlDetAgua, $paramsAgua);
+                if ($stmtAgua === false) {
+                    throw new Exception('Error al insertar detalle_agua de pozo: ' . print_r(sqlsrv_errors(), true));
+                }
+            }
+
+            file_put_contents($log_file, "  ✓ Muestra #$num_muestra: Id_Muestra=$id_muestra, Pozo=$id_pozo, Lab=$es_lab\n", FILE_APPEND);
+        }
+
+        file_put_contents($log_file, "\n=== RESUMEN crearMuestrasPozos($id_proyecto) ===\n", FILE_APPEND);
+        file_put_contents($log_file, "Muestras creadas: $muestra_count\n", FILE_APPEND);
+        file_put_contents($log_file, "Solicitudes creadas: $solicitud_count\n", FILE_APPEND);
+        file_put_contents($log_file, "Resultados creados: $resultado_count\n", FILE_APPEND);
+        file_put_contents($log_file, "=== FIN crearMuestrasPozos ===\n\n", FILE_APPEND);
     }
 }
 ?>

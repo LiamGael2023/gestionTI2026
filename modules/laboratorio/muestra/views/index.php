@@ -1,4 +1,4 @@
-﻿<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 
 <style>
@@ -15,7 +15,7 @@
 #main-nav-muestras .nav-link.active { color: #004d99; border-bottom-color: #004d99; }
 .main-tab-wrapper { border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 8px 8px; background: #fff; padding: 20px; }
 
-/* ── Estado tabs coloring ── */
+/* -- Estado tabs coloring -- */
 #tabs-estados-muestras .nav-link[data-bs-target="#pane-recepcionar"]        { color: #e67700; }
 #tabs-estados-muestras .nav-link[data-bs-target="#pane-recepcionar"].active { background: #fff3cd; color: #e67700; border-bottom-color: #e67700; font-weight: 700; }
 #tabs-estados-muestras .nav-link[data-bs-target="#pane-pendiente"]          { color: #206bc4; }
@@ -29,7 +29,7 @@
 #tabs-estados-muestras .nav-link[data-bs-target="#pane-rechazadas"]         { color: #d63939; }
 #tabs-estados-muestras .nav-link[data-bs-target="#pane-rechazadas"].active  { background: #ffe0e0; color: #d63939; border-bottom-color: #d63939; font-weight: 700; }
 
-/* ── Service type pills coloring ── */
+/* -- Service type pills coloring -- */
 #tabs-tipo-servicio .nav-link                                   { border: 1px solid #ced4da; border-radius: 20px; }
 #tabs-tipo-servicio .nav-link[data-tipo-servicio="todos"]       { color: #495057; }
 #tabs-tipo-servicio .nav-link[data-tipo-servicio="todos"].active { background: #6c757d; color: #fff; border-color: #6c757d; }
@@ -759,10 +759,12 @@ $(document).ready(function () {
     document.body.appendChild(modal);
   });
 
-  // Tab 1 activo por defecto: inicializar inmediatamente
-  try { initTabGestion(); } catch(e) { console.error('initTabGestion:', e); }
+  var urlTabParam = new URLSearchParams(window.location.search).get('tab');
 
-  // Tab 2 y 3: lazy
+  // Registrar listeners PRIMERO (antes de activar cualquier tab)
+  $('[data-bs-target="#main-tab-gestion"]').on('shown.bs.tab', function () {
+    if (!tablasGestionInit) initTabGestion();
+  });
   $('[data-bs-target="#main-tab-masiva"]').on('shown.bs.tab', function () {
     if (!tablasMasivaInit) initTabMasiva();
   });
@@ -774,6 +776,15 @@ $(document).ready(function () {
   $('[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
     $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
   });
+
+  // Inicializar el tab correcto según parámetro URL
+  if (urlTabParam === 'masiva') {
+    var btnMasiva = document.querySelector('[data-bs-target="#main-tab-masiva"]');
+    if (btnMasiva) { bootstrap.Tab.getOrCreateInstance(btnMasiva).show(); }
+    try { initTabMasiva(); } catch(e) { console.error('initTabMasiva:', e); }
+  } else {
+    try { initTabGestion(); } catch(e) { console.error('initTabGestion:', e); }
+  }
 
   try { setupGestionEvents(); } catch(e) { console.error('setupGestionEvents:', e); }
   try { setupMasivaEvents(); } catch(e) { console.error('setupMasivaEvents:', e); }
@@ -1517,6 +1528,80 @@ function exportarProyectoMonitoreo(id) {
     cats.forEach(function(c,i){ const d=String(c&&c.descripcion?c.descripcion:'').trim(); if(!d) return; html+='<div class="form-check mb-2"><input class="form-check-input chk-cat-lim" type="checkbox" id="cl'+i+'" value="'+escapeHtml(d)+'" checked><label class="form-check-label" for="cl'+i+'">'+escapeHtml(d)+'</label></div>'; });
     html+='</div>';
     Swal.fire({title:'Seleccionar límites',html:'<p class="text-muted" style="text-align:left;">Selecciona las categorías para marcar resultados en rojo.</p>'+html,icon:'question',showCancelButton:true,confirmButtonText:'Exportar',cancelButtonText:'Cancelar',focusConfirm:false,preConfirm:function(){ const s=[]; $('.swal2-container .chk-cat-lim:checked').each(function(){ const v=String($(this).val()||'').trim(); if(v) s.push(v); }); if(!s.length){ Swal.showValidationMessage('Selecciona al menos una categoría.'); return false; } return s; }}).then(function(r){ if(!r.isConfirmed||!Array.isArray(r.value)) return; const p=new URLSearchParams(); p.set('id_proyecto',String(id)); r.value.forEach(function(c){ p.append('categorias[]',c); }); window.location.href='modules/laboratorio/muestra/controllers/ExportarProyectoMonitoreo.php?'+p.toString(); });
+  });
+}
+function exportarDrenes(id) {
+  $.getJSON(API_MASIVA + '?action=obtenerNormativasConLimites&id_proyecto=' + id, function(resp) {
+    if (!resp || !resp.success || !resp.normativas || !resp.normativas.length) {
+      Swal.fire('Aviso', 'No hay normativas con límites configurados para este proyecto.', 'warning');
+      return;
+    }
+    const normativas = resp.normativas;
+    function buildCatsHtml(cats) {
+      let h = '';
+      cats.forEach(function(c, i) {
+        h += '<div class="form-check"><input class="form-check-input chk-dren-lim" type="checkbox" id="swal-dren-c' + i + '" value="' + escapeHtml(c.descripcion) + '" checked>' +
+          '<label class="form-check-label" for="swal-dren-c' + i + '">' + escapeHtml(c.descripcion) + '</label></div>';
+      });
+      return h;
+    }
+    let htmlNorm = '<div class="mb-3"><label class="form-label fw-semibold">Normativa a mostrar en el informe:</label>';
+    if (normativas.length === 1) {
+      htmlNorm += '<div class="alert alert-info py-2 mb-0">' + escapeHtml(normativas[0].nombre) + '</div>';
+    } else {
+      normativas.forEach(function(n, i) {
+        htmlNorm += '<div class="form-check"><input class="form-check-input" type="radio" name="swal-dren-norm" id="swal-dren-n' + i + '" value="' + i + '"' + (i === 0 ? ' checked' : '') + '>' +
+          '<label class="form-check-label" for="swal-dren-n' + i + '">' + escapeHtml(n.nombre) + '</label></div>';
+      });
+    }
+    htmlNorm += '</div>';
+    const htmlCats = '<div class="mb-2"><label class="form-label fw-semibold">Límites para marcar en rojo:</label><div id="swal-dren-cats">' + buildCatsHtml(normativas[0].categorias) + '</div></div>';
+    Swal.fire({
+      title: 'Exportar Análisis de Drenes',
+      html: '<div style="text-align:left;">' + htmlNorm + htmlCats + '</div>',
+      showCancelButton: true,
+      confirmButtonText: 'Exportar Excel',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#198754',
+      width: 540,
+      focusConfirm: false,
+      didOpen: function() {
+        if (normativas.length > 1) {
+          document.querySelectorAll('.swal2-container input[name="swal-dren-norm"]').forEach(function(r) {
+            r.addEventListener('change', function() {
+              const el = document.getElementById('swal-dren-cats');
+              if (el) el.innerHTML = buildCatsHtml(normativas[parseInt(this.value)].categorias);
+            });
+          });
+        }
+      },
+      preConfirm: function() {
+        let normIdx = 0;
+        if (normativas.length > 1) {
+          const r = document.querySelector('.swal2-container input[name="swal-dren-norm"]:checked');
+          if (!r) { Swal.showValidationMessage('Selecciona una normativa'); return false; }
+          normIdx = parseInt(r.value);
+        }
+        const cats = [];
+        document.querySelectorAll('.swal2-container .chk-dren-lim:checked').forEach(function(cb) {
+          const v = String(cb.value || '').trim();
+          if (v) cats.push(v);
+        });
+        if (!cats.length) { Swal.showValidationMessage('Selecciona al menos un límite'); return false; }
+        return { normativa_nombre: normativas[normIdx].nombre, categorias: cats };
+      }
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
+      const p = new URLSearchParams();
+      p.set('id_proyecto', String(id));
+      p.set('normativa_nombre', result.value.normativa_nombre);
+      result.value.categorias.forEach(function(c) { p.append('categorias[]', c); });
+      window.location.href = 'modules/laboratorio/muestra/controllers/ExportarDrenes.php?' + p.toString();
+    });
+  }).fail(function(jqXHR) {
+    var msg = 'No se pudieron cargar las normativas del proyecto.';
+    try { var d = JSON.parse(jqXHR.responseText); if (d && d.error) msg = d.error; } catch(e) {}
+    Swal.fire('Error', msg, 'error');
   });
 }
 function editarProyecto(id) {

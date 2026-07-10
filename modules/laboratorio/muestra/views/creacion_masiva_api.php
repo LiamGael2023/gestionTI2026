@@ -160,6 +160,51 @@ try {
         exit;
     }
 
+    // ===== NORMATIVAS CON LÍMITES (para exportación de drenes) =====
+    if ($action === 'obtenerNormativasConLimites') {
+        $id_proyecto = intval($_GET['id_proyecto'] ?? 0);
+        if ($id_proyecto <= 0) { throw new Exception('ID de proyecto inválido'); }
+
+        $sql = "SELECT DISTINCT
+                    ISNULL(n.Id_Normativa, 0) AS Id_Normativa,
+                    ISNULL(n.Nombre, 'Normativa') AS NormativaNombre,
+                    LTRIM(RTRIM(l.Descripcion)) AS Descripcion
+                FROM laboratorio.Limite_Legal l
+                LEFT JOIN laboratorio.Normativa_Legal n ON n.Id_Normativa = l.Id_Normativa
+                INNER JOIN laboratorio.Parametro_Analisis pa ON pa.Id_Parametro = l.Id_Parametro
+                INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Servicio = pa.Id_Servicio
+                INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
+                WHERE ml.Id_Proyecto = ?
+                  AND ml.Activo = 1 AND sa.Activo = 1 AND pa.Activo = 1 AND l.Activo = 1
+                  AND LTRIM(RTRIM(ISNULL(l.Descripcion, ''))) <> ''
+                ORDER BY ISNULL(n.Id_Normativa, 0), LTRIM(RTRIM(l.Descripcion))";
+
+        $stmt = sqlsrv_query($conn, $sql, [$id_proyecto]);
+        if ($stmt === false) { throw new Exception('Error al obtener normativas con límites'); }
+
+        $normMap = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $nid   = intval($row['Id_Normativa'] ?? 0);
+            $nombre = trim((string)($row['NormativaNombre'] ?? 'Normativa'));
+            $desc   = trim((string)($row['Descripcion'] ?? ''));
+            if (!isset($normMap[$nid])) {
+                $normMap[$nid] = ['id' => $nid, 'nombre' => $nombre, 'categorias' => []];
+            }
+            if ($desc !== '') {
+                $existe = false;
+                foreach ($normMap[$nid]['categorias'] as $c) {
+                    if ($c['descripcion'] === $desc) { $existe = true; break; }
+                }
+                if (!$existe) {
+                    $normMap[$nid]['categorias'][] = ['descripcion' => $desc];
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'normativas' => array_values($normMap)], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // ===== GUARDAR NUEVO PROYECTO =====
     if ($action === 'guardarProyecto') {
         $proyectoModel = new ProyectoModel($conn);

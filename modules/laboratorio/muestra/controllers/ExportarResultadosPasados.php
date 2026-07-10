@@ -309,11 +309,14 @@ $sqlParametros = "SELECT
                     pa.Id_Parametro,
                     pa.Categoria,
                     pa.Nombre AS Parametro,
-                    pa.Unidad_Medida AS UnidadParametro,
-                    pa.Metodo_Utilizado
+                    ISNULL(um.Abreviatura, pa.Unidad_Medida) AS UnidadParametro,
+                    pa.Metodo_Utilizado,
+                    pa.Tipo_Parametro,
+                    CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat
                   FROM laboratorio.Parametro_Analisis pa
+                  LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
                   WHERE pa.Activo = 1
-                  ORDER BY pa.Categoria, pa.Nombre";
+                  ORDER BY OrderCat, pa.Nombre";
 $stmtParametros = sqlsrv_query($conn, $sqlParametros);
 if (!$stmtParametros) {
     http_response_code(500);
@@ -432,6 +435,12 @@ $normalizar = function ($txt) {
 
 $sheetData = [];
 foreach ($parametros as $p) {
+    // Filtrar parámetros según tipo de muestra (Agua/Suelo/Ambos)
+    // $esSuelo se determina más abajo; guardamos todos y filtramos al agrupar
+    $tipo = trim((string)($p['Tipo_Parametro'] ?? 'Ambos'));
+    if ($tipo === '') $tipo = 'Ambos';
+    $p['_Tipo'] = $tipo;
+    
     $idp = intval($p['Id_Parametro']);
     $limites = $limitesPorParametro[$idp] ?? [];
 
@@ -457,7 +466,8 @@ foreach ($parametros as $p) {
         'parametro' => trim((string)($p['Parametro'] ?? '-')),
         'metodo' => trim((string)($p['Metodo_Utilizado'] ?? '-')),
         'normativas' => $normCols,
-        'resultado' => $resultado
+        'resultado' => $resultado,
+        '_Tipo' => $tipo
     ];
 }
 
@@ -721,6 +731,11 @@ $grupos = [
 ];
 
 foreach ($sheetData as $item) {
+    // Filtrar por tipo: solo parámetros que aplican a este reporte
+    $tipo = $item['_Tipo'] ?? 'Ambos';
+    if ($tipo !== 'Ambos' && $tipo !== ($esSuelo ? 'Suelo' : 'Agua')) {
+        continue;
+    }
     $catNorm = $normalizar($item['categoria']);
     $dest = 'quimicos';
     foreach ($categoriasMap as $needle => $mapTo) {
@@ -902,11 +917,16 @@ $paintBlueHeaders = function ($sheet, $isSuelo) use ($normalizeStyleText) {
 };
 
 if ($esSuelo) {
-    // ===== REPORTE SUELO =====
+    // ===== REPORTE SUELO: posiciones fijas R-1 =====
+    // 27=header fis, 28=blank, 29-34=data (6 filas)
+    // 35=header quim, 36=blank, 37-41=data (5 filas)
+    $DATA_FIS_START  = 29;  $DATA_FIS_END  = 34;
+    $DATA_QUIM_START = 37;  $DATA_QUIM_END = 41;
+    
     $sheet->setCellValue('D12', strtoupper($agricultor));
     $sheet->setCellValue('D20', $fechaToma);
     $sheet->setCellValue('J20', $fechaEmision);
-    $desfaseFilasSuelo = 0;
+    $sheet->setCellValue('J65', $fechaFirmaMesAnio);
 
     $textoValle = $normalizar($valle);
     $isChao = strpos($textoValle, 'CHAO') !== false;
@@ -914,7 +934,6 @@ if ($esSuelo) {
     $isMoche = strpos($textoValle, 'MOCHE') !== false;
     $isChicama = strpos($textoValle, 'CHICAMA') !== false;
     $isOtroValle = !$isChao && !$isViru && !$isMoche && !$isChicama && $textoValle !== '-' && $textoValle !== '';
-
     $setCheckMark('E10', $isChao);
     $setCheckMark('G10', $isViru);
     $setCheckMark('I10', $isMoche);
@@ -925,237 +944,116 @@ if ($esSuelo) {
     $setCheckMark('F14', strpos($textoProf, '30') !== false);
     $setCheckMark('I14', strpos($textoProf, '60') !== false);
     $setCheckMark('K14', strpos($textoProf, '90') !== false);
-
     $sheet->setCellValue('D16', ($numeroSubmuestras !== '' ? $numeroSubmuestras : '-'));
-
     $sheet->setCellValue('E18', $cultivoAnterior);
     $sheet->setCellValue('H18', $cultivoImplementado);
     $sheet->setCellValue('K18', $cultivoPorImplementar);
-
     $setCheckMark('E22', $esInterno);
     $setCheckMark('I22', $esExterno);
 
-    // Detección dinámica de filas en plantilla de suelo
-    $toAsciiUpper = function ($text) {
-        $text = strtoupper(trim((string)$text));
-        return strtr($text, [
-            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
-            'Ä' => 'A', 'Ë' => 'E', 'Ï' => 'I', 'Ö' => 'O', 'Ü' => 'U',
-            'Ñ' => 'N'
-        ]);
+    // ─── Escribir grupo SUELO ───
+    $escribirGrupoSuelo = function ($grupo, $dataStart, $dataEnd) use ($sheet, &$shiftAcum) {
+        $count = count($grupo);
+        if ($count === 0) return;
+        
+        $available = $dataEnd - $dataStart + 1;
+        
+        // Insertar filas extra si no caben
+        if ($count > $available) {
+            $extra = $count - $available;
+            $sheet->insertNewRowBefore($dataEnd + 1, $extra);
+            $shiftAcum += $extra;
+        }
+        
+        for ($i = 0; $i < $count; $i++) {
+            $r = $dataStart + $i;
+            $item = $grupo[$i];
+            
+            // Combinar columnas
+            $sheet->mergeCells('B' . $r . ':C' . $r);
+            $sheet->mergeCells('D' . $r . ':F' . $r);
+            $sheet->mergeCells('H' . $r . ':I' . $r);
+            $sheet->mergeCells('J' . $r . ':K' . $r);
+            
+            $sheet->setCellValue('B' . $r, $item['parametro']);
+            $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
+            $sheet->setCellValue('G' . $r, $item['normativas'][0]['unidad'] ?? '-');
+            $sheet->setCellValue('H' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
+            $sheet->setCellValue('J' . $r, '');
+            
+            // Estilo: B:K (sin columna A)
+            $sR = $sheet->getStyle('B' . $r . ':K' . $r);
+            $sR->getFill()->setFillType(Fill::FILL_SOLID);
+            $sR->getFill()->getStartColor()->setARGB(Color::COLOR_WHITE);
+            $sR->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+            $sR->getFont()->setBold(false);
+            $sR->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sR->getBorders()->getAllBorders()->getColor()->setARGB('FF999999');
+            $sR->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            $sheet->getRowDimension($r)->setRowHeight(25);
+        }
+        
+        // Insertar fila separadora DESPUES del grupo
+        $sepRow = $dataStart + $count;
+        $sheet->insertNewRowBefore($sepRow, 1);
+        $ss = $sheet->getStyle('A' . $sepRow . ':K' . $sepRow);
+        $ss->getFill()->setFillType(Fill::FILL_SOLID);
+        $ss->getFill()->getStartColor()->setARGB(Color::COLOR_WHITE);
+        $ss->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+        $ss->getFont()->setBold(false);
+        $ss->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $sheet->getRowDimension($sepRow)->setRowHeight(4);
+        $shiftAcum++;
     };
 
-    $findRowByText = function ($needle) use ($sheet, $toAsciiUpper) {
-        $needleNorm = $toAsciiUpper($needle);
-        $maxRow = max(120, $sheet->getHighestRow());
-        for ($r = 1; $r <= $maxRow; $r++) {
-            $txt = trim((string)$sheet->getCell('A' . $r)->getValue());
-            if ($txt === '') {
-                continue;
-            }
-            if (strpos($toAsciiUpper($txt), $needleNorm) !== false) {
-                return $r;
-            }
-        }
-        return null;
+    // Estilo cabeceras SUELO (merge + estilo, sin tocar el texto de la plantilla)
+    $estiloHeaderSuelo = function ($row) use ($sheet) {
+        $sh = $sheet->getStyle('B' . $row . ':K' . $row);
+        $sh->getFill()->setFillType(Fill::FILL_SOLID);
+        $sh->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sh->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sh->getFont()->setBold(true);
+        $sh->getFont()->setSize(11);
+        $sh->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $sh->getAlignment()->setIndent(2);
+        $sh->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sh->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $sheet->getRowDimension($row)->setRowHeight(22);
     };
 
-    $filaHeaderFis = $findRowByText('1. PARAMETROS FISICOS');
-    if ($filaHeaderFis === null) {
-        $filaHeaderFis = $findRowByText('PARAMETROS FISICOS');
-    }
+    $shiftAcum = 0;
+    $escribirGrupoSuelo($grupos['fisicos'],  $DATA_FIS_START,  $DATA_FIS_END);
+    $shiftFisicos = $shiftAcum; // solo inserciones de físicos
+    $escribirGrupoSuelo($grupos['quimicos'], $DATA_QUIM_START + $shiftAcum, $DATA_QUIM_END + $shiftAcum);
+    // $shiftAcum ahora incluye todo
 
-    $filaHeaderQuim = $findRowByText('2. PARAMETROS QUIMICOS');
-    if ($filaHeaderQuim === null) {
-        $filaHeaderQuim = $findRowByText('PARAMETROS QUIMICOS');
-    }
+    // Cabeceras: la de físicos no se mueve, la de químicos solo por físicos
+    $estiloHeaderSuelo(27);
+    $estiloHeaderSuelo(35 + $shiftFisicos);
+    $desfaseFilasSuelo = $shiftAcum;
 
-    $filaObs = $findRowByText('OBSERVACIONES');
-
-    // Fallback seguro si la plantilla cambia demasiado
-    if ($filaHeaderFis === null) { $filaHeaderFis = 28; }
-    if ($filaHeaderQuim === null) { $filaHeaderQuim = 36; }
-    if ($filaObs === null) { $filaObs = 42; }
-
-    $normalizeCellText = function ($value) use ($toAsciiUpper) {
-        $txt = $toAsciiUpper((string)$value);
-        return preg_replace('/\s+/', ' ', trim($txt));
-    };
-
-    $findColumnByHeaderText = function (array $needles, $fromRow, $toRow) use ($sheet, $normalizeCellText) {
-        $fromRow = max(1, (int)$fromRow);
-        $toRow = max($fromRow, (int)$toRow);
-        $maxCol = Coordinate::columnIndexFromString('K');
-
-        $needlesNorm = array_map(function ($n) use ($normalizeCellText) {
-            return $normalizeCellText($n);
-        }, $needles);
-
-        for ($r = $fromRow; $r <= $toRow; $r++) {
-            for ($c = 1; $c <= $maxCol; $c++) {
-                $col = Coordinate::stringFromColumnIndex($c);
-                $txt = trim((string)$sheet->getCell($col . $r)->getValue());
-                if ($txt === '') {
-                    continue;
-                }
-                $txtNorm = $normalizeCellText($txt);
-                foreach ($needlesNorm as $n) {
-                    if ($n !== '' && strpos($txtNorm, $n) !== false) {
-                        return $col;
-                    }
-                }
-            }
-        }
-        return null;
-    };
-
-    $headerTableRow = null;
-    for ($r = max(1, $filaHeaderFis - 8); $r <= max(1, $filaHeaderFis - 1); $r++) {
-        $rowHasParametro = false;
-        for ($c = 1; $c <= Coordinate::columnIndexFromString('K'); $c++) {
-            $col = Coordinate::stringFromColumnIndex($c);
-            $txtNorm = $normalizeCellText($sheet->getCell($col . $r)->getValue());
-            if ($txtNorm !== '' && strpos($txtNorm, 'PARAMETRO A EVALUAR') !== false) {
-                $rowHasParametro = true;
-                break;
-            }
-        }
-        if ($rowHasParametro) {
-            $headerTableRow = $r;
-        }
-    }
-
-    $findColumnInRowByHeader = function ($row, array $needles) use ($sheet, $normalizeCellText) {
-        if (!$row || $row < 1) {
-            return null;
-        }
-        $needlesNorm = array_map(function ($n) use ($normalizeCellText) {
-            return $normalizeCellText($n);
-        }, $needles);
-
-        for ($c = 1; $c <= Coordinate::columnIndexFromString('K'); $c++) {
-            $col = Coordinate::stringFromColumnIndex($c);
-            $txtNorm = $normalizeCellText($sheet->getCell($col . $row)->getValue());
-            if ($txtNorm === '') {
-                continue;
-            }
-            foreach ($needlesNorm as $n) {
-                if ($n !== '' && strpos($txtNorm, $n) !== false) {
-                    return $col;
-                }
-            }
-        }
-        return null;
-    };
-
-    $headerScanFrom = max(1, $filaHeaderFis - 3);
-    $headerScanTo = max(1, $filaHeaderFis - 1);
-
-    $colParam = $findColumnInRowByHeader($headerTableRow, ['PARAMETRO A EVALUAR', 'PARAMETRO'])
-        ?: $findColumnByHeaderText(['PARAMETRO A EVALUAR', 'PARAMETRO'], $headerScanFrom, $headerScanTo)
-        ?: 'B';
-
-    $colMetodo = $findColumnInRowByHeader($headerTableRow, ['METODO UTILIZADO', 'METODO'])
-        ?: $findColumnByHeaderText(['METODO UTILIZADO', 'METODO'], $headerScanFrom, $headerScanTo)
-        ?: 'D';
-
-    $colUnidad = $findColumnInRowByHeader($headerTableRow, ['UNIDAD DE MEDIDA', 'UNIDAD'])
-        ?: $findColumnByHeaderText(['UNIDAD DE MEDIDA', 'UNIDAD'], $headerScanFrom, $headerScanTo)
-        ?: 'F';
-
-    $colResultado = $findColumnInRowByHeader($headerTableRow, ['RESULTADOS', 'RESULTADO'])
-        ?: $findColumnByHeaderText(['RESULTADOS', 'RESULTADO'], $headerScanFrom, $headerScanTo)
-        ?: 'H';
-
-    $colClasificacion = $findColumnInRowByHeader($headerTableRow, ['CLASIFICACION'])
-        ?: $findColumnByHeaderText(['CLASIFICACION'], $headerScanFrom, $headerScanTo)
-        ?: 'J';
-
-    $startFis = $filaHeaderFis + 1;
-    $capFis = max(0, $filaHeaderQuim - $startFis);
-    $fisCount = count($grupos['fisicos']);
-
-    if ($fisCount > $capFis) {
-        $extraFis = $fisCount - $capFis;
-        $sheet->insertNewRowBefore($filaHeaderQuim, $extraFis);
-        // Copiar estilo de la ultima fila de fisicos original
-        $templateRow = $filaHeaderQuim - 1;
-        for ($k = 0; $k < $extraFis; $k++) {
-            $newRow = $templateRow + 1 + $k;
-            $sheet->duplicateStyle(
-                $sheet->getStyle('A' . $templateRow . ':K' . $templateRow),
-                'A' . $newRow . ':K' . $newRow
-            );
-        }
-        $filaHeaderQuim += $extraFis;
-        $filaObs += $extraFis;
-        $desfaseFilasSuelo += $extraFis;
-        $capFis = $fisCount;
-    }
-
-    for ($i = 0; $i < $fisCount; $i++) {
-        $r = $startFis + $i;
-        $item = $grupos['fisicos'][$i];
-        $sheet->setCellValue($colParam . $r, $item['parametro']);
-        $sheet->setCellValue($colMetodo . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
-        $sheet->setCellValue($colUnidad . $r, trim((string)($item['normativas'][0]['unidad'] ?? '')));
-        $sheet->setCellValue($colResultado . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
-        $sheet->setCellValue($colClasificacion . $r, '');
-        $sR = $sheet->getStyle('B' . $r . ':K' . $r);
-        $sR->getFill()->setFillType(Fill::FILL_SOLID);
-        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
-        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
-        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
-    }
-
-    $startQuim = $filaHeaderQuim + 1;
-    $capQuim = max(0, $filaObs - $startQuim);
-    $quimCount = count($grupos['quimicos']);
-
-    if ($quimCount > $capQuim) {
-        $extraQuim = $quimCount - $capQuim;
-        $sheet->insertNewRowBefore($filaObs, $extraQuim);
-        $templateRow = $filaObs - 1;
-        for ($k = 0; $k < $extraQuim; $k++) {
-            $newRow = $templateRow + 1 + $k;
-            $sheet->duplicateStyle(
-                $sheet->getStyle('A' . $templateRow . ':K' . $templateRow),
-                'A' . $newRow . ':K' . $newRow
-            );
-        }
-        $filaObs += $extraQuim;
-        $desfaseFilasSuelo += $extraQuim;
-        $capQuim = $quimCount;
-    }
-
-    for ($i = 0; $i < $quimCount; $i++) {
-        $r = $startQuim + $i;
-        $item = $grupos['quimicos'][$i];
-        $sheet->setCellValue($colParam . $r, $item['parametro']);
-        $sheet->setCellValue($colMetodo . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
-        $sheet->setCellValue($colUnidad . $r, trim((string)($item['normativas'][0]['unidad'] ?? '')));
-        $sheet->setCellValue($colResultado . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
-        $sheet->setCellValue($colClasificacion . $r, '');
-        $sR = $sheet->getStyle('B' . $r . ':K' . $r);
-        $sR->getFill()->setFillType(Fill::FILL_SOLID);
-        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
-        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
-        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
-    }
-
-    $sheet->setCellValue('B' . ($filaObs + 1), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
-    $sheet->setCellValue('J' . (65 + $desfaseFilasSuelo), $fechaFirmaMesAnio);
+    // Observación y firma
+    $sheet->setCellValue('B' . (43 + $shiftAcum), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
+    $sheet->setCellValue('J' . (65 + $shiftAcum), $fechaFirmaMesAnio);
 } else {
-    // ===== REPORTE AGUA =====
+    // ===== REPORTE AGUA: colocar datos respetando estructura de la plantilla =====
+    // Posiciones fijas de la plantilla CSJ-DRDYCS-LAYS – R - 2
+    // 28=header fis, 29=blank, 30-35=data (6 filas)
+    // 36=header quim, 37=blank, 38-48=data (11 filas)
+    // 49=header micro, 50=blank, 51-54=data (4 filas)
+    $DATA_FIS_START  = 30;  $DATA_FIS_END  = 35;
+    $DATA_QUIM_START = 38;  $DATA_QUIM_END = 48;
+    $DATA_MICRO_START= 51;  $DATA_MICRO_END = 54;
+    
     $normativasLayout = $normativas;
     if (count($normativasLayout) < 2) {
         $normativasLayout[] = ['id' => 0, 'descripcion' => '-', 'nombre' => '-'];
     }
 
     $sheet->setCellValue('D12', strtoupper($agricultor));
-    $sheet->setCellValue('D18', 'ANALISIS DE CALIDAD DE AGUA');
+    $sheet->setCellValue('D18', ($nivelAgua !== '' && $nivelAgua !== '-' ? strtoupper($nivelAgua) : '-'));
     $sheet->setCellValue('D20', $fechaToma);
     $sheet->setCellValue('J20', $fechaEmision);
     $sheet->setCellValue('J79', $fechaFirmaMesAnio);
@@ -1166,21 +1064,16 @@ if ($esSuelo) {
     $isMoche = strpos($textoValle, 'MOCHE') !== false;
     $isChicama = strpos($textoValle, 'CHICAMA') !== false;
     $isOtroValle = !$isChao && !$isViru && !$isMoche && !$isChicama && $textoValle !== '-' && $textoValle !== '';
-
     $setCheckMark('E10', $isChao);
     $setCheckMark('G10', $isViru);
     $setCheckMark('I10', $isMoche);
     $setCheckMark('K10', $isChicama);
     $sheet->setCellValue('E11', ($isOtroValle ? strtoupper(trim((string)$valle)) : ''));
 
-    // TIPO DE FUENTE: usa Fuente_Agua (subterránea/superficial)
     $textoFuente = $normalizar($fuente);
     $setCheckMark('F14', strpos($textoFuente, 'SUBTERR') !== false);
     $setCheckMark('I14', strpos($textoFuente, 'SUPERF') !== false);
     $setCheckMark('K14', (strpos($textoFuente, 'OTRO') !== false || ($textoFuente !== 'SUBTERRANEA' && $textoFuente !== 'SUBTERRANEO' && $textoFuente !== 'SUPERFICIAL' && $textoFuente !== '-' && $textoFuente !== '')));
-
-    // NIVEL DE AGUA: escribe el valor como texto (ej. "Pozo", "Río")
-    $sheet->setCellValue('D18', ($nivelAgua !== '' && $nivelAgua !== '-' ? strtoupper($nivelAgua) : '-'));
 
     $textoUso = $normalizar($uso);
     $setCheckMark('F16', strpos($textoUso, 'CONSUMO') !== false);
@@ -1190,11 +1083,11 @@ if ($esSuelo) {
     $setCheckMark('E22', $esInterno);
     $setCheckMark('I22', $esExterno);
 
+    // Cabecera de normativas (filas 24-26)
     $sheet->setCellValue('E24', strtoupper(trim((string)($normativasLayout[0]['descripcion'] ?? '-'))));
     $sheet->setCellValue('E25', strtoupper(trim((string)($normativasLayout[0]['nombre'] ?? '-'))));
     $sheet->setCellValue('G24', strtoupper(trim((string)($normativasLayout[1]['descripcion'] ?? '-'))));
     $sheet->setCellValue('G25', strtoupper(trim((string)($normativasLayout[1]['nombre'] ?? '-'))));
-    // Pintar celdas de normativa azul explícitamente
     $sNorm = $sheet->getStyle('E24:H25');
     $sNorm->getFill()->setFillType(Fill::FILL_SOLID);
     $sNorm->getFill()->getStartColor()->setARGB('FF2F5597');
@@ -1202,177 +1095,120 @@ if ($esSuelo) {
     $sNorm->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
     $sNorm->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
 
-    // Detección dinámica de filas en plantilla de agua
-    $toAsciiUpper = function ($text) {
-        $text = strtoupper(trim((string)$text));
-        return strtr($text, [
-            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U',
-            'Ä' => 'A', 'Ë' => 'E', 'Ï' => 'I', 'Ö' => 'O', 'Ü' => 'U',
-            'Ñ' => 'N'
-        ]);
+    // ─── Escribir grupo de parámetros ───
+    $escribirGrupo = function ($grupo, $dataStart, $dataEnd) use ($sheet, &$shiftAcum) {
+        $count = count($grupo);
+        if ($count === 0) return;
+        
+        $sheet->getColumnDimension('D')->setWidth(29);
+        $available = $dataEnd - $dataStart + 1;
+        
+        if ($count > $available) {
+            $extra = $count - $available;
+            $sheet->insertNewRowBefore($dataEnd + 1, $extra);
+            $shiftAcum += $extra;
+        }
+        
+        for ($i = 0; $i < $count; $i++) {
+            $r = $dataStart + $i;
+            $item = $grupo[$i];
+            
+            $sheet->mergeCells('B' . $r . ':C' . $r);
+            $sheet->mergeCells('I' . $r . ':K' . $r);
+            
+            $sheet->setCellValue('B' . $r, $item['parametro']);
+            $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
+            $sheet->setCellValue('E' . $r, $item['normativas'][0]['unidad'] ?? '-');
+            $sheet->setCellValue('F' . $r, $item['normativas'][0]['limite'] ?? '-');
+            $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
+            $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
+            $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
+            
+            $sR = $sheet->getStyle('B' . $r . ':K' . $r);
+            $sR->getFill()->setFillType(Fill::FILL_SOLID);
+            $sR->getFill()->getStartColor()->setARGB(Color::COLOR_WHITE);
+            $sR->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+            $sR->getFont()->setBold(false);
+            $sR->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+            $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sR->getBorders()->getAllBorders()->getColor()->setARGB('FF999999');
+            
+            $sheet->getStyle('B' . $r . ':C' . $r)->getFont()->setSize(11);
+            $sheet->getStyle('B' . $r . ':C' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            $sheet->getStyle('D' . $r)->getFont()->setSize(9);
+            $sheet->getStyle('D' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('D' . $r)->getAlignment()->setWrapText(true);
+            
+            $sheet->getStyle('E' . $r . ':H' . $r)->getFont()->setSize(9);
+            $sheet->getStyle('E' . $r . ':H' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            $sheet->getStyle('I' . $r . ':K' . $r)->getFont()->setSize(9);
+            $sheet->getStyle('I' . $r . ':K' . $r)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            $sheet->getRowDimension($r)->setRowHeight(36);
+        }
     };
 
-    $findRowByText = function ($needle) use ($sheet, $toAsciiUpper) {
-        $needleNorm = $toAsciiUpper($needle);
-        $maxRow = max(140, $sheet->getHighestRow());
-        for ($r = 1; $r <= $maxRow; $r++) {
-            $txt = trim((string)$sheet->getCell('A' . $r)->getValue());
-            if ($txt === '') {
-                continue;
-            }
-            if (strpos($toAsciiUpper($txt), $needleNorm) !== false) {
-                return $r;
-            }
-        }
-        return null;
+    // ─── Estilo cabeceras de categoría ───
+    $estiloHeader = function ($row) use ($sheet) {
+        $sheet->mergeCells('B' . $row . ':K' . $row);
+        $sh = $sheet->getStyle('B' . $row . ':K' . $row);
+        $sh->getFill()->setFillType(Fill::FILL_SOLID);
+        $sh->getFill()->getStartColor()->setARGB('FF2F5597');
+        $sh->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+        $sh->getFont()->setBold(true);
+        $sh->getFont()->setSize(11);
+        $sh->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        $sh->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sh->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $sheet->getRowDimension($row)->setRowHeight(22);
     };
+    $shiftAcum = 0;
+    $escribirGrupo($grupos['fisicos'],         $DATA_FIS_START,  $DATA_FIS_END);
+    $escribirGrupo($grupos['quimicos'],        $DATA_QUIM_START + $shiftAcum, $DATA_QUIM_END + $shiftAcum);
+    $escribirGrupo($grupos['microbiologicos'], $DATA_MICRO_START + $shiftAcum, $DATA_MICRO_END + $shiftAcum);
 
-    $filaHeaderFis = $findRowByText('1. PARAMETROS FISICOS');
-    if ($filaHeaderFis === null) {
-        $filaHeaderFis = $findRowByText('PARAMETROS FISICOS');
-    }
+    // Aplicar estilo a cabeceras después de inserciones (posiciones ya ajustadas)
+    $estiloHeader(28);
+    $estiloHeader(36 + $shiftAcum);
+    $estiloHeader(49 + $shiftAcum);
 
-    $filaHeaderQuim = $findRowByText('2. PARAMETROS QUIMICOS');
-    if ($filaHeaderQuim === null) {
-        $filaHeaderQuim = $findRowByText('PARAMETROS QUIMICOS');
-    }
+    $sheet->setCellValue('B' . (56 + $shiftAcum), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
 
-    $filaHeaderMicro = $findRowByText('3. PARAMETROS MICROBIOLOGICOS');
-    if ($filaHeaderMicro === null) {
-        $filaHeaderMicro = $findRowByText('PARAMETROS MICROBIOLOGICOS');
-    }
-
-    $filaObs = $findRowByText('OBSERVACIONES');
-
-    // Fallbacks base para plantilla actual
-    if ($filaHeaderFis === null) { $filaHeaderFis = 29; }
-    if ($filaHeaderQuim === null) { $filaHeaderQuim = 37; }
-    if ($filaHeaderMicro === null) { $filaHeaderMicro = 50; }
-    if ($filaObs === null) { $filaObs = 55; }
-
-    $desfaseFilasAgua = 0;
-    $startFis = $filaHeaderFis + 1;
-    $capFis = max(0, $filaHeaderQuim - $startFis);
-    $fisCount = count($grupos['fisicos']);
-
-    if ($fisCount > $capFis) {
-        $extraFis = $fisCount - $capFis;
-        $sheet->insertNewRowBefore($filaHeaderQuim, $extraFis);
-        $templateRow = $filaHeaderQuim - 1;
-        for ($k = 0; $k < $extraFis; $k++) {
-            $newRow = $templateRow + 1 + $k;
-            $sheet->duplicateStyle(
-                $sheet->getStyle('A' . $templateRow . ':K' . $templateRow),
-                'A' . $newRow . ':K' . $newRow
-            );
-        }
-        $filaHeaderQuim += $extraFis;
-        $filaHeaderMicro += $extraFis;
-        $filaObs += $extraFis;
-        $desfaseFilasAgua += $extraFis;
-        $capFis = $fisCount;
-    }
-
-    for ($i = 0; $i < $fisCount; $i++) {
-        $r = $startFis + $i;
-        $item = $grupos['fisicos'][$i];
-        $sheet->setCellValue('B' . $r, $item['parametro']);
-        $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
-        $sheet->setCellValue('E' . $r, $item['normativas'][0]['unidad'] ?? '-');
-        $sheet->setCellValue('F' . $r, $item['normativas'][0]['limite'] ?? '-');
-        $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
-        $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
-        $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
-        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
-        $sR->getFill()->setFillType(Fill::FILL_SOLID);
-        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
-        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
-        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
-    }
-
-    $startQuim = $filaHeaderQuim + 1;
-    $capQuim = max(0, $filaHeaderMicro - $startQuim);
-    $quimCount = count($grupos['quimicos']);
-
-    if ($quimCount > $capQuim) {
-        $extraQuim = $quimCount - $capQuim;
-        $sheet->insertNewRowBefore($filaHeaderMicro, $extraQuim);
-        $templateRow = $filaHeaderMicro - 1;
-        for ($k = 0; $k < $extraQuim; $k++) {
-            $newRow = $templateRow + 1 + $k;
-            $sheet->duplicateStyle(
-                $sheet->getStyle('A' . $templateRow . ':K' . $templateRow),
-                'A' . $newRow . ':K' . $newRow
-            );
-        }
-        $filaHeaderMicro += $extraQuim;
-        $filaObs += $extraQuim;
-        $desfaseFilasAgua += $extraQuim;
-        $capQuim = $quimCount;
-    }
-
-    for ($i = 0; $i < $quimCount; $i++) {
-        $r = $startQuim + $i;
-        $item = $grupos['quimicos'][$i];
-        $sheet->setCellValue('B' . $r, $item['parametro']);
-        $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
-        $sheet->setCellValue('E' . $r, $item['normativas'][0]['unidad'] ?? '-');
-        $sheet->setCellValue('F' . $r, $item['normativas'][0]['limite'] ?? '-');
-        $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
-        $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
-        $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
-        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
-        $sR->getFill()->setFillType(Fill::FILL_SOLID);
-        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
-        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
-        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
-    }
-
-    $startMicro = $filaHeaderMicro + 1;
-    $capMicro = max(0, $filaObs - $startMicro);
-    $microCount = count($grupos['microbiologicos']);
-
-    if ($microCount > $capMicro) {
-        $extraMicro = $microCount - $capMicro;
-        $sheet->insertNewRowBefore($filaObs, $extraMicro);
-        $templateRow = $filaObs - 1;
-        for ($k = 0; $k < $extraMicro; $k++) {
-            $newRow = $templateRow + 1 + $k;
-            $sheet->duplicateStyle(
-                $sheet->getStyle('A' . $templateRow . ':K' . $templateRow),
-                'A' . $newRow . ':K' . $newRow
-            );
-        }
-        $filaObs += $extraMicro;
-        $desfaseFilasAgua += $extraMicro;
-        $capMicro = $microCount;
-    }
-
-    for ($i = 0; $i < $microCount; $i++) {
-        $r = $startMicro + $i;
-        $item = $grupos['microbiologicos'][$i];
-        $sheet->setCellValue('B' . $r, $item['parametro']);
-        $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
-        $sheet->setCellValue('E' . $r, $item['normativas'][0]['unidad'] ?? '-');
-        $sheet->setCellValue('F' . $r, $item['normativas'][0]['limite'] ?? '-');
-        $sheet->setCellValue('G' . $r, $item['normativas'][1]['unidad'] ?? '-');
-        $sheet->setCellValue('H' . $r, $item['normativas'][1]['limite'] ?? '-');
-        $sheet->setCellValue('I' . $r, ($item['resultado'] !== '' ? $item['resultado'] : '-'));
-        $sR = $sheet->getStyle('B' . $r . ':I' . $r);
-        $sR->getFill()->setFillType(Fill::FILL_SOLID);
-        $sR->getFill()->getStartColor()->setARGB('FF2F5597');
-        $sR->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
-        $sR->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        $sR->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
-    }
-
-    $sheet->setCellValue('B' . ($filaObs + 1), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
 }
 
 // Fallback visual: reponer encabezados azules y bordes blancos, sin tocar el pie final.
 $paintBlueHeaders($sheet, $esSuelo);
+
+// Barrido final: forzar colores correctos después de paintBlueHeaders
+if ($esSuelo) {
+    $hFis = 27;
+    $hQuim = 35 + $shiftFisicos;
+    for ($rr = 27; $rr <= 65 + $shiftAcum; $rr++) {
+        $sr = $sheet->getStyle('B' . $rr . ':K' . $rr);
+        if ($rr == $hFis || $rr == $hQuim) {
+            $sr->getFill()->setFillType(Fill::FILL_SOLID);
+            $sr->getFill()->getStartColor()->setARGB('FF2F5597');
+            $sr->getFont()->getColor()->setARGB(Color::COLOR_WHITE);
+            $sr->getFont()->setBold(true);
+            $sr->getFont()->setSize(11);
+            $sr->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            $sr->getAlignment()->setIndent(2);
+            $sr->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+            $sheet->getRowDimension($rr)->setRowHeight(22);
+        } else {
+            $sr->getFill()->setFillType(Fill::FILL_SOLID);
+            $sr->getFill()->getStartColor()->setARGB(Color::COLOR_WHITE);
+            $sr->getFont()->getColor()->setARGB(Color::COLOR_BLACK);
+            $sr->getFont()->setBold(false);
+        }
+    }
+} else {
+    $estiloHeader(28);
+    $estiloHeader(36 + $shiftAcum);
+    $estiloHeader(49 + $shiftAcum);
+}
 
 $nombreArchivo = ($esSuelo ? 'Analisis_Suelo_Muestra_' : 'Analisis_Agua_Muestra_') . $id_muestra . '.xlsx';
 

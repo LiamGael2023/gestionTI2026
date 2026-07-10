@@ -23,9 +23,9 @@ if (!$conn) {
     exit;
 }
 
-// Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
+// Solo el Analista Jefe (Id_Rol=1), Jefe de todo (Id_Rol=2) o admin pueden finalizar
 $puede_finalizar = false;
-$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol = 2", array($_SESSION['usuario_id']));
+$stmtPF = sqlsrv_query($conn, "SELECT TOP 1 1 FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol IN (1,2)", array($_SESSION['usuario_id']));
 if ($stmtPF && sqlsrv_fetch_array($stmtPF, SQLSRV_FETCH_ASSOC)) {
     $puede_finalizar = true;
 }
@@ -59,7 +59,7 @@ $mostrar_fuente    = $es_cc_proyecto || $es_drene_proyecto;
 
 // Obtener muestras del proyecto con su número de orden
 $sql_muestras = "SELECT m.Id_Muestra, ROW_NUMBER() OVER (ORDER BY m.Id_Muestra) AS NumeroOrden,
-                 m.Tipo_Servicio,
+                 m.Tipo_Servicio, m.Lab_Habilitado,
                  da.Nivel_Agua
                  FROM laboratorio.Muestra_Lab m
                  LEFT JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = m.Id_Muestra AND da.Activo = 1
@@ -94,13 +94,14 @@ foreach ($ids_muestras as $id_muestra_tmp) {
 }
 file_put_contents($log_file, "Blancos autocreados en carga: {$blancos_creados}\n", FILE_APPEND);
 
-// Obtener TODOS los parámetros del sistema (del proyecto actual)
-$sql_parametros = "SELECT DISTINCT pa.Id_Parametro, pa.Nombre, pa.Unidad_Medida, pa.Categoria 
+// Obtener parámetros del proyecto (solo los que pertenecen a servicios asignados)
+$sql_parametros = "SELECT DISTINCT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida, pa.Categoria, CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat 
                    FROM laboratorio.Parametro_Analisis pa
-                   INNER JOIN laboratorio.Solicitud_Analisis sa ON pa.Id_Servicio = sa.Id_Servicio OR pa.Id_Servicio IS NULL
+                   LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                   INNER JOIN laboratorio.Solicitud_Analisis sa ON pa.Id_Servicio = sa.Id_Servicio
                    INNER JOIN laboratorio.Muestra_Lab ml ON sa.Id_Muestra = ml.Id_Muestra
-                   WHERE ml.Id_Proyecto = ? AND pa.Activo = 1
-                   ORDER BY pa.Categoria, pa.Nombre";
+                   WHERE ml.Id_Proyecto = ? AND pa.Activo = 1 AND sa.Activo = 1
+                   ORDER BY OrderCat, pa.Nombre";
 $stmt_parametros = sqlsrv_query($conn, $sql_parametros, array($id_proyecto));
 if (!$stmt_parametros) {
     $error_msg = print_r(sqlsrv_errors(), true);
@@ -446,9 +447,22 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
           Valle <?php echo htmlspecialchars($proyecto['Valle']); ?>
         </span>
       </div>
+      <div class="col-auto ms-auto">
+        <?php 
+        $estado_proyecto_actual = $proyecto['Estado'] ?? '';
+        if ($estado_proyecto_actual === 'Terminado' || $estado_proyecto_actual === 'Finalizado'): 
+        ?>
+          <button type="button" class="btn btn-warning" onclick="reabrirProyecto(<?php echo intval($id_proyecto); ?>)">
+            <i class="ti ti-lock-open me-1"></i> Reabrir Proyecto
+          </button>
+        <?php endif; ?>
+        <span class="badge ms-2" style="background-color: <?php echo ($estado_proyecto_actual === 'Terminado' || $estado_proyecto_actual === 'Finalizado') ? '#dc3545' : '#28a745'; ?>; color: white;">
+          <?php echo htmlspecialchars($estado_proyecto_actual ?: 'Activo'); ?>
+        </span>
+      </div>
     </div>
-  </div>
-</div>
+
+    <div class="row g-2 mb-3">
 
 <div class="page-body">
   <div class="container-fluid px-2 px-md-3">
@@ -518,7 +532,7 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                       <?php if (!$es_finalizado): ?>
                         <button type="button" class="btn btn-sm btn-ghost-secondary btn-ac-row"
                                 title="Acciones"
-                          onclick="abrirMenuAccion(<?php echo intval($muestra['Id_Muestra']); ?>, <?php echo intval($muestra['NumeroOrden']); ?>, '<?php echo addslashes($tipo_servicio_val); ?>'); return false;">
+                          onclick="abrirMenuAccion(<?php echo intval($muestra['Id_Muestra']); ?>, <?php echo intval($muestra['NumeroOrden']); ?>, '<?php echo addslashes($tipo_servicio_val); ?>', <?php echo intval($proyecto['Es_Pozos'] ?? 0); ?>, <?php echo intval($muestra['Lab_Habilitado'] ?? 0); ?>); return false;">
                           <?php if ($es_consumo_humano): ?>
                             <i class="ti ti-user-check" style="color:#1565C0;" title="Consumo Humano"></i>
                           <?php elseif ($es_consumo_agua): ?>
@@ -579,10 +593,18 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
           </button>
         </div>
         <div class="col-auto ms-auto" style="display: flex; gap: 10px;">
+          <button type="button" class="btn btn-outline-dark" onclick="exportarResultadosPG()" style="font-size: 0.95em; padding: 8px 14px;">
+            <i class="ti ti-database-export me-2"></i> EXPORTAR A PG
+          </button>
           <button type="button" class="btn btn-outline-success" onclick="exportarProyectoMonitoreo(idProyecto)" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-file-spreadsheet me-2"></i> DESCARGAR EXCEL
           </button>
           <?php if (!$es_finalizado): ?>
+          <?php if (isset($proyecto['Es_Pozos']) && intval($proyecto['Es_Pozos']) === 1): ?>
+          <button type="button" class="btn btn-outline-warning" id="btn-sincronizar-insitu" onclick="sincronizarInSitu()" style="font-size: 0.95em; padding: 8px 14px;">
+            <i class="ti ti-refresh me-2"></i> Sincronizar In-Situ
+          </button>
+          <?php endif; ?>
           <button type="button" class="btn btn-outline-primary" onclick="agregarMuestrasProyectoAnalisis()" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-plus me-2"></i> AGREGAR MUESTRAS
           </button>
@@ -781,7 +803,7 @@ function escapeHtml(text) {
 }
 
 // ── Menú de acciones (reemplaza Bootstrap dropdown — evita overflow:auto) ────
-function abrirMenuAccion(idMuestra, numMuestra, tipoServicio) {
+function abrirMenuAccion(idMuestra, numMuestra, tipoServicio, esPozos, labHabilitado) {
   var yaConsumoHumano = (tipoServicio === 'Consumo Humano');
   var tieneTipo = (tipoServicio !== '');
   var textoEstado = tieneTipo ? escapeHtml(tipoServicio) : 'Sin designación';
@@ -794,13 +816,26 @@ function abrirMenuAccion(idMuestra, numMuestra, tipoServicio) {
 
   var html =
     '<div style="text-align:left; font-size:0.95em;">' +
+      '<button type="button" class="btn btn-outline-primary w-100 mb-3" onclick="Swal.close(); verDetallePozoDesdeMuestra(' + idMuestra + ')" style="font-weight:500;">' +
+        '<i class="ti ti-building-factory me-1"></i> Ver Historial Completo del Pozo' +
+      '</button>' +
       '<div style="border:1px solid #e9ecef;background:#f8f9fa;border-radius:8px;padding:10px 12px;margin-bottom:12px;">' +
         '<div style="font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;color:#6c757d;margin-bottom:6px;">Estado actual</div>' +
         '<span style="display:inline-block;padding:6px 10px;border-radius:999px;font-weight:600;font-size:0.9em;' + estiloEstado + '">' + textoEstado + '</span>' +
-      '</div>' +
+      '</div>';
 
+  // Opción de paquete de laboratorio: disponible para TODAS las muestras
+  html += '<div class="form-check mb-2">' +
+    '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_habilitar_lab" value="habilitar_lab" checked>' +
+    '<label class="form-check-label text-success" for="accion_habilitar_lab">' +
+      '<strong>Seleccionar Paquete de Laboratorio</strong><br>' +
+      '<span class="text-muted">Asigna los servicios de laboratorio a esta muestra.</span>' +
+    '</label>' +
+  '</div>';
+
+  html +=
       '<div class="form-check mb-2">' +
-        '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_consumo_humano" value="consumo_humano" checked>' +
+        '<input class="form-check-input" type="radio" name="accion_muestra" id="accion_consumo_humano" value="consumo_humano" ' + (esPozos !== 1 ? 'checked' : '') + '>' +
         '<label class="form-check-label" for="accion_consumo_humano">' +
           '<strong>' + labelCH + '</strong><br>' +
           '<span class="text-muted">Abre el flujo obligatorio para seleccionar servicio extra.</span>' +
@@ -849,6 +884,11 @@ function abrirMenuAccion(idMuestra, numMuestra, tipoServicio) {
 
     if (result.value === 'consumo_humano') {
       configurarConsumoHumano(idMuestra, numMuestra);
+      return;
+    }
+
+    if (result.value === 'habilitar_lab') {
+      configurarPaqueteLaboratorio(idMuestra, numMuestra);
       return;
     }
 
@@ -1031,6 +1071,161 @@ function toggleConsumoAgua(idMuestra, marcar) {
 }
 
 // ── Análisis Extra (standalone) ─────────────────────────────────────────────
+// ── Habilitar Laboratorio: Seleccionar Paquete (Producto) ─────────────────
+function configurarPaqueteLaboratorio(idMuestra, numMuestra) {
+  mostrarCargaAnalisis('Cargando paquetes...', 'Obteniendo productos disponibles.');
+  $.ajax({
+    url: apiCreacionMasivaUrl + '?action=obtenerServicios', // Retorna Producto_Venta
+    method: 'GET',
+    dataType: 'json',
+    success: function(resp) {
+      cerrarCargaAnalisis();
+      const disponibles = (resp && resp.success) ? (resp.servicios || resp.data || []) : [];
+
+      if (!disponibles.length) {
+        Swal.fire('Sin paquetes disponibles', 'No hay paquetes de laboratorio configurados en el sistema.', 'warning');
+        return;
+      }
+
+      let optsProducto = '<option value="">-- Seleccione el paquete de laboratorio --</option>';
+      disponibles.forEach(function(p) {
+        optsProducto += '<option value="' + (p.id || p.Id_Producto) + '">' + escapeHtml(p.nombre || p.Nombre_Comercial) + '</option>';
+      });
+
+      const html =
+        '<div style="text-align:left; font-size:0.95em;">' +
+          '<div class="alert alert-success py-2 mb-3" style="font-size:0.88em;">' +
+            '<i class="ti ti-flask me-1"></i> Muestra #' + numMuestra +
+            ' está habilitada para laboratorio.' +
+          '</div>' +
+          '<div class="mb-2">' +
+            '<label class="form-label fw-semibold">Paquete de Laboratorio a asignar <span class="text-danger">*</span></label>' +
+            '<select id="swal-pl-producto" class="form-select form-select-sm">' + optsProducto + '</select>' +
+          '</div>' +
+        '</div>';
+
+      Swal.fire({
+        title: '<i class="ti ti-flask me-1"></i> Asignar Laboratorio',
+        html: html,
+        width: 580,
+        showCancelButton: true,
+        confirmButtonText: '<i class="ti ti-check me-1"></i>Asignar',
+        cancelButtonText: 'Cancelar',
+        focusConfirm: false,
+        preConfirm: function() {
+          var sel = document.getElementById('swal-pl-producto');
+          if (!sel || !sel.value) {
+            Swal.showValidationMessage('Debe seleccionar un paquete.');
+            return false;
+          }
+          return sel.value;
+        }
+      }).then(function(r) {
+        if (!r.isConfirmed) return;
+        mostrarCargaAnalisis('Asignando paquete...', 'Configurando servicios y resultados. Esto recargará la página.');
+        $.ajax({
+          url: '/gestionTI/modules/laboratorio/pozos/controllers/PozoAPI.php?action=asignar_producto_laboratorio',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ id_muestra: idMuestra, id_producto: r.value }),
+          dataType: 'json',
+          success: function(r2) {
+            if (r2 && r2.success) window.location.reload();
+            else Swal.fire('Error', (r2 && r2.message) || 'No se pudo asignar el paquete', 'error');
+          },
+          error: function(xhr) {
+            Swal.fire('Error', xhr.responseJSON?.message || 'Error de comunicación', 'error');
+          }
+        });
+      });
+    },
+    error: function() {
+      cerrarCargaAnalisis();
+      Swal.fire('Error', 'No se pudieron cargar los paquetes', 'error');
+    }
+  });
+}
+
+// ── Sincronizar In-Situ ──────────────────────────────────────────────────────
+function sincronizarInSitu() {
+    Swal.fire({
+        title: 'Sincronizar resultados In-Situ',
+        text: 'Se actualizarán los valores in-situ desde PostgreSQL y se habilitarán las muestras completas.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sincronizar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#009540'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            const btn = document.getElementById('btn-sincronizar-insitu');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sincronizando...';
+
+            $.ajax({
+                url: '/gestionTI/modules/laboratorio/pozos/controllers/PozoAPI.php?action=sincronizar_insitu',
+                type: 'POST',
+                data: { id_proyecto: idProyecto },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        let msj = `Resultados actualizados: ${res.stats.resultados_actualizados}<br>Muestras habilitadas para Lab: ${res.stats.muestras_habilitadas}`;
+                        Swal.fire('Completado', msj, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ti ti-refresh me-2"></i> Sincronizar In-Situ';
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ti ti-refresh me-2"></i> Sincronizar In-Situ';
+                    Swal.fire('Error', xhr.responseJSON?.message || 'Ocurrió un error en la sincronización', 'error');
+                }
+            });
+        }
+    });
+}
+
+// ── Exportar a PostgreSQL ───────────────────────────────────────────────────
+function exportarResultadosPG() {
+    Swal.fire({
+        title: 'Exportar a BD (PostgreSQL)',
+        text: 'Se enviarán los resultados de laboratorio a la base de datos externa (calidad_agua_laboratorio).',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Exportar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#009540'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            mostrarCargaAnalisis('Exportando...', 'Enviando resultados a PostgreSQL.');
+            $.ajax({
+                url: '/gestionTI/modules/laboratorio/pozos/controllers/PozoAPI.php?action=exportar_resultados_pg',
+                type: 'POST',
+                data: { id_proyecto: idProyecto },
+                dataType: 'json',
+                success: function(res) {
+                    cerrarCargaAnalisis();
+                    if (res.success) {
+                        let msj = `Registros actualizados en PG: ${res.stats.actualizados}`;
+                        if (res.nota) msj += `<br><small class="text-muted">${res.nota}</small>`;
+                        Swal.fire('Exportación Exitosa', msj, 'success');
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function(xhr) {
+                    cerrarCargaAnalisis();
+                    Swal.fire('Error', xhr.responseJSON?.message || 'Ocurrió un error en la exportación', 'error');
+                }
+            });
+        }
+    });
+}
+
 function abrirExtraAnalisis(idMuestra, numMuestra) {
   mostrarCargaAnalisis('Cargando servicios...', 'Obteniendo servicios disponibles.');
   $.ajax({
@@ -1635,7 +1830,7 @@ function guardarResultados(event) {
           html: mensaje,
           icon: 'success'
         }).then(() => {
-          window.location.href = '?module=laboratorio&action=muestra&subaction=creacion_masiva';
+          window.location.href = '?module=laboratorio&action=muestra&tab=masiva';
         });
       });
         return;
@@ -1682,8 +1877,8 @@ function guardarResultados(event) {
 function guardarAvance() {
     let resultados = [];
     
-    // Recopilar todos los valores ingresados
-    $('.param-input').each(function() {
+    // Solo recopilar valores que fueron modificados (tienen clase 'changed')
+    $('.param-input.changed').each(function() {
         let valor = $(this).val();
         let idResultado = $(this).data('resultado');
         
@@ -1696,7 +1891,7 @@ function guardarAvance() {
     });
 
     if (resultados.length === 0) {
-        Swal.fire('Advertencia', 'No hay resultados para guardar', 'warning');
+        Swal.fire('Advertencia', 'No hay cambios para guardar', 'warning');
         return;
     }
 
@@ -1765,7 +1960,278 @@ function guardarAvanceAPI(resultados, index) {
     });
 }
 
-</script>
+// ─── MODAL DETALLE POZO DESDE MUESTRA ──────────────────────────
+window.verDetallePozoDesdeMuestra = function(idMuestra) {
+    // 1. Obtener Id_Pozo de la muestra
+    fetch('modules/laboratorio/pozos/controllers/PozoAPI.php?action=detalle_muestra&id_muestra=' + idMuestra)
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) {
+                Swal.fire('Error', resp.message || 'Error al cargar', 'error');
+                return;
+            }
+            if (!resp.pozo) {
+                // Mostrar si la muestra tiene Id_Pozo pero no se encontró en Catastro
+                var m = resp.muestra || {};
+                var idPozoMuestra = m.Id_Pozo || '';
+                if (idPozoMuestra) {
+                    Swal.fire('Pozo no encontrado', 'La muestra pertenece al pozo <b>' + idPozoMuestra + '</b> pero no existe en el Catastro. Sincronice los pozos primero.', 'warning');
+                } else {
+                    Swal.fire('Sin Pozo', 'Esta muestra no está asociada a ningún pozo.', 'info');
+                }
+                return;
+            }
+            var p = resp.pozo;
+            var idPozo = p.Id_Pozo;
+            
+            // 2. Crear modal con info del pozo + monitoreos + resultados
+            var modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'modal-detalle-pozo';
+            modal.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-scrollable">'
+                + '<div class="modal-content">'
+                + '<div class="modal-header bg-primary text-white">'
+                + '<h5 class="modal-title"><i class="ti ti-building-factory me-2"></i>Pozo: ' + idPozo + '</h5>'
+                + '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>'
+                + '</div>'
+                + '<div class="modal-body" id="detalle-pozo-body">'
+                + '<div class="text-center py-5"><span class="spinner-border"></span> Cargando historial...</div>'
+                + '</div></div></div>';
+            document.body.appendChild(modal);
+            var bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            modal.addEventListener('hidden.bs.modal', function(){ modal.remove(); });
+            
+            // 3. Cargar info completa del pozo (usando API de historial)
+            Promise.all([
+                fetch('modules/laboratorio/pozos/controllers/PozoAPI.php?action=historial_pozo&id_pozo=' + encodeURIComponent(idPozo)).then(r => r.json()),
+                fetch('modules/laboratorio/pozos/controllers/PozoAPI.php?action=monitoreos_pozo&id_pozo=' + encodeURIComponent(idPozo)).then(r => r.json())
+            ]).then(function(arr) {
+                var hist = arr[0];
+                var mon = arr[1];
+                var body = document.getElementById('detalle-pozo-body');
+                var html = '';
+                
+                // Datos del pozo (desde la respuesta de detalle_muestra que ya tenemos)
+                html += '<h5><i class="ti ti-info-circle me-2"></i>Datos del Pozo</h5>';
+                html += '<div class="row mb-3">';
+                html += '<div class="col-md-3"><b>Codigo:</b> ' + (p.codigo || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Cod. PECH:</b> ' + (p.codigopech || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Valle:</b> ' + (p.valle || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Propietario:</b> ' + (p.propietario || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Ubicacion:</b> ' + (p.ubicacion || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Tipo:</b> ' + (p.tipopozo || '-') + '</div>';
+                html += '<div class="col-md-3"><b>PR:</b> ' + (p.pr || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Coord Este:</b> ' + (p.coord_este || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Coord Norte:</b> ' + (p.coord_norte || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Cota:</b> ' + (p.cota || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Zona:</b> ' + (p.zona || '-') + '</div>';
+                html += '<div class="col-md-3"><b>AAA:</b> ' + (p.aaa || '-') + '</div>';
+                html += '<div class="col-md-3"><b>ALA:</b> ' + (p.ala || '-') + '</div>';
+                html += '<div class="col-md-3"><b>UH:</b> ' + (p.uh || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Depto:</b> ' + (p.departamento || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Prov:</b> ' + (p.provincia || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Dist:</b> ' + (p.distrito || '-') + '</div>';
+                html += '</div>';
+                
+                // Monitoreos (proyectos)
+                html += '<hr><h5><i class="ti ti-calendar-event me-2"></i>Historial de Monitoreos</h5>';
+                if (mon.success && mon.monitoreos && mon.monitoreos.length > 0) {
+                    html += '<div class="table-responsive"><table class="table table-sm table-striped">';
+                    html += '<thead><tr><th>Proyecto</th><th>Fecha Toma</th><th>Orden</th><th>#Muestra</th><th>Estado</th><th>Params</th></tr></thead><tbody>';
+                    mon.monitoreos.forEach(function(m, idx){
+                        var f = m.Fecha_Toma || '';
+                        if (typeof f === 'object' && f.date) f = f.date.substring(0,10);
+                        else if (f.length > 10) f = f.substring(0,10);
+                        html += '<tr class="monitoreo-row" style="cursor:pointer;" data-idmuestra="' + (m.Id_Muestra||0) + '" data-idx="' + idx + '" onclick="cargarResultadosMuestra(this)">';
+                        html += '<td>' + (m.Proyecto||'-') + '</td><td>' + (f||'-') + '</td><td>' + (m.Orden||'-') + '</td>';
+                        html += '<td>#' + (m.Numero_Muestra||'-') + '</td>';
+                        html += '<td><span class="badge bg-' + (m.Estado==='Finalizado'?'success':'secondary') + '">' + (m.Estado||'-') + '</span></td>';
+                        html += '<td>' + (m.Total_Parametros||0) + '</td></tr>';
+                    });
+                    html += '</tbody></table></div>';
+                } else {
+                    html += '<p class="text-muted">Sin monitoreos registrados.</p>';
+                }
+                
+                // Resultados (dinámicos: se actualizan al hacer clic en un monitoreo)
+                html += '<hr><h5><i class="ti ti-table me-2"></i>Resultados de Parametros <small class="text-muted" id="resultados-titulo"></small></h5>';
+                html += '<div id="resultados-container"><p class="text-muted">Haga clic en un monitoreo para ver sus resultados.</p></div>';
+                
+                body.innerHTML = html;
+                
+                // Marcar primera fila y cargar sus resultados si hay
+                if (mon.success && mon.monitoreos && mon.monitoreos.length > 0) {
+                    setTimeout(function(){
+                        var firstRow = document.querySelector('#detalle-pozo-body .monitoreo-row');
+                        if (firstRow) cargarResultadosMuestra(firstRow);
+                    }, 100);
+                }
+            }).catch(function(e){
+                document.getElementById('detalle-pozo-body').innerHTML = '<div class="alert alert-danger">Error: ' + e.message + '</div>';
+            });
+        });
+};
+
+// ─── Cargar resultados de una muestra (click en monitoreo) ───
+window.cargarResultadosMuestra = function(row) {
+    var idMuestra = parseInt(row.getAttribute('data-idmuestra') || '0');
+    if (!idMuestra) return;
+    
+    document.querySelectorAll('#detalle-pozo-body .monitoreo-row').forEach(function(r){ r.style.background = ''; });
+    row.style.background = '#e8f1ff';
+    
+    var container = document.getElementById('resultados-container');
+    var titulo = document.getElementById('resultados-titulo');
+    if (!container) return;
+    
+    container.innerHTML = '<div class=\"text-center py-3\"><span class=\"spinner-border spinner-border-sm\"></span> Cargando resultados...</div>';
+    
+    fetch('modules/laboratorio/pozos/controllers/PozoAPI.php?action=detalle_muestra&id_muestra=' + idMuestra)
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) { container.innerHTML = '<p class=\"text-danger\">Error al cargar resultados.</p>'; return; }
+            var resultados = resp.resultados || [];
+            var muestra = resp.muestra || {};
+            var fecha = muestra.Fecha_Toma || '';
+            if (typeof fecha === 'object' && fecha.date) fecha = fecha.date.substring(0,10);
+            else if (fecha.length > 10) fecha = fecha.substring(0,10);
+            if (titulo) titulo.textContent = '(Muestra #' + idMuestra + ' - ' + (fecha || 'sin fecha') + ')';
+            
+            if (resultados.length > 0) {
+                var html = '<div class=\"table-responsive\"><table class=\"table table-sm table-striped\">';
+                html += '<thead><tr><th>Parametro</th><th>Categoria</th><th>Unidad</th><th>Valor</th></tr></thead><tbody>';
+                resultados.forEach(function(r){
+                    html += '<tr><td><b>' + (r.Parametro||r.Nombre||'-') + '</b></td>';
+                    html += '<td>' + (r.Categoria||'-') + '</td><td>' + (r.Unidad_Medida||'-') + '</td>';
+                    html += '<td>' + (r.Valor_Hallado !== null ? r.Valor_Hallado : '-') + '</td></tr>';
+                });
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class=\"text-muted\">Sin resultados para esta muestra.</p>';
+            }
+        })
+        .catch(function(e){ container.innerHTML = '<p class=\"text-danger\">Error: ' + e.message + '</p>'; });
+};
+
+// ─── MODAL DETALLE MUESTRA ────────────────────────────────────
+window.verDetalleMuestra = function(idMuestra) {
+    var modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'modal-detalle-muestra';
+    modal.innerHTML = '<div class="modal-dialog modal-xl modal-dialog-scrollable">'
+        + '<div class="modal-content">'
+        + '<div class="modal-header bg-primary text-white">'
+        + '<h5 class="modal-title"><i class="ti ti-eye me-2"></i>Detalle de Muestra #' + idMuestra + '</h5>'
+        + '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>'
+        + '</div>'
+        + '<div class="modal-body" id="detalle-muestra-body">'
+        + '<div class="text-center py-5"><span class="spinner-border"></span> Cargando...</div>'
+        + '</div></div></div>';
+    document.body.appendChild(modal);
+    var bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    modal.addEventListener('hidden.bs.modal', function(){ modal.remove(); });
+
+    fetch('modules/laboratorio/pozos/controllers/PozoAPI.php?action=detalle_muestra&id_muestra=' + idMuestra)
+        .then(r => r.json())
+        .then(resp => {
+            var body = document.getElementById('detalle-muestra-body');
+            if (!resp.success) {
+                body.innerHTML = '<div class="alert alert-danger">' + (resp.message || 'Error') + '</div>';
+                return;
+            }
+            var m = resp.muestra || {};
+            var p = resp.pozo || null;
+            var resultados = resp.resultados || [];
+            var html = '';
+
+            html += '<h5><i class="ti ti-vial me-2"></i>Datos de la Muestra</h5>';
+            html += '<div class="row mb-3">';
+            html += '<div class="col-md-3"><b>ID:</b> ' + (m.Id_Muestra || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Agricultor:</b> ' + (m.Agricultor || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Valle:</b> ' + (m.Valle || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Estado:</b> ' + (m.Estado || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Tipo Servicio:</b> ' + (m.Tipo_Servicio || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Fecha Toma:</b> ' + (m.Fecha_Toma || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Fecha Recepcion:</b> ' + (m.Fecha_Recepcion || '-') + '</div>';
+            html += '<div class="col-md-3"><b>Tipo Muestra:</b> ' + (m.TipoMuestra || '-') + '</div>';
+            html += '<div class="col-12"><b>Observacion:</b> ' + (m.Observacion_Muestra || '-') + '</div>';
+            html += '</div>';
+
+            if (p) {
+                html += '<hr><h5><i class="ti ti-building-factory me-2"></i>Datos del Pozo: ' + (p.Id_Pozo || '-') + '</h5>';
+                html += '<div class="row mb-3">';
+                html += '<div class="col-md-3"><b>Codigo:</b> ' + (p.codigo || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Cod. PECH:</b> ' + (p.codigopech || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Valle:</b> ' + (p.valle || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Propietario:</b> ' + (p.propietario || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Ubicacion:</b> ' + (p.ubicacion || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Tipo:</b> ' + (p.tipopozo || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Coord Este:</b> ' + (p.coord_este || '-') + '</div>';
+                html += '<div class="col-md-3"><b>Coord Norte:</b> ' + (p.coord_norte || '-') + '</div>';
+                html += '<div class="col-md-3"><b>AAA:</b> ' + (p.aaa || '-') + '</div>';
+                html += '<div class="col-md-3"><b>ALA:</b> ' + (p.ala || '-') + '</div>';
+                html += '<div class="col-md-3"><b>UH:</b> ' + (p.uh || '-') + '</div>';
+                html += '</div>';
+            }
+
+            html += '<hr><h5><i class="ti ti-table me-2"></i>Resultados (' + resultados.length + ')</h5>';
+            if (resultados.length > 0) {
+                html += '<div class="table-responsive"><table class="table table-sm table-striped">';
+                html += '<thead><tr><th>Parametro</th><th>Categoria</th><th>Unidad</th><th>Valor</th></tr></thead><tbody>';
+                resultados.forEach(function(r){
+                    html += '<tr><td><b>' + (r.Parametro || r.Nombre || '-') + '</b></td>';
+                    html += '<td>' + (r.Categoria || '-') + '</td>';
+                    html += '<td>' + (r.Unidad_Medida || '-') + '</td>';
+                    html += '<td>' + (r.Valor_Hallado !== null ? r.Valor_Hallado : '-') + '</td></tr>';
+                });
+                html += '</tbody></table></div>';
+            } else {
+                html += '<p class="text-muted">Sin resultados registrados.</p>';
+            }
+            body.innerHTML = html;
+        })
+        .catch(function(e){
+            document.getElementById('detalle-muestra-body').innerHTML = '<div class="alert alert-danger">Error: ' + e.message + '</div>';
+        });
+        };
+
+        // ─── Reabrir proyecto ───
+        function reabrirProyecto(idProyecto) {
+        Swal.fire({
+            title: 'Reabrir Proyecto',
+            html: 'Esto cambiara el estado a <b>En Progreso</b> para editar resultados.<br><i>Casilleros vacios no generan consumo.</i>',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Si, reabrir',
+            cancelButtonText: 'Cancelar'
+        }).then(function(r) {
+            if (!r.isConfirmed) return;
+            $.ajax({
+                url: 'modules/laboratorio/muestra/controllers/AnalisisAPI.php?action=reabrir_proyecto',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ Id_Proyecto: idProyecto }),
+                success: function(resp) {
+                    if (resp.success) {
+                        Swal.fire('Reabierto', 'Proyecto en En Progreso.', 'success').then(function(){ location.reload(); });
+                    } else {
+                        Swal.fire('Error', resp.message || 'Error', 'error');
+                    }
+                },
+                error: function() { Swal.fire('Error', 'Error de conexion', 'error'); }
+            });
+        });
+        }
+
+        // Marcar inputs como modificados cuando el usuario cambia el valor
+        $(document).on('input change', '.param-input', function() {
+            $(this).addClass('changed');
+        });
+
+        </script>
 
 </body>
 </html>

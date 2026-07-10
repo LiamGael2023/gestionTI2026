@@ -770,6 +770,155 @@ try {
         exit;
     }
 
+    // ==================== RESUMEN MENSUAL CONSOLIDADO ====================
+    
+    if ($action === 'obtener_resumen_mensual') {
+        try {
+            $mes  = intval($_GET['mes']  ?? date('m'));
+            $anio = intval($_GET['anio'] ?? date('Y'));
+            if ($mes < 1 || $mes > 12)       $mes  = intval(date('m'));
+            if ($anio < 2000 || $anio > 2100) $anio = intval(date('Y'));
+
+            $fecha_inicio = sprintf('%04d-%02d-01', $anio, $mes);
+            
+            // Resumen por reactivo: entradas, salidas, stock
+            $sql_resumen = "
+                SELECT 
+                    r.Id_Reactivo, r.Nombre AS Reactivo,
+                    ISNULL(um.Abreviatura, '') AS UM,
+                    ISNULL(r.Cantidad_Stock, 0) AS Stock_Actual,
+                    ISNULL(r.Cantidad_Reservada, 0) AS Reservado,
+                    ISNULL((
+                        SELECT SUM(mk.Cantidad) FROM laboratorio.Movimiento_Kardex mk 
+                        WHERE mk.Id_Reactivo = r.Id_Reactivo AND mk.Tipo_Movimiento = 'E'
+                        AND mk.Fecha_Registro >= ? AND mk.Fecha_Registro < DATEADD(MONTH, 1, ?) AND mk.Activo = 1
+                    ), 0) AS Total_Entradas,
+                    ISNULL((
+                        SELECT SUM(mk.Cantidad) FROM laboratorio.Movimiento_Kardex mk 
+                        WHERE mk.Id_Reactivo = r.Id_Reactivo AND mk.Tipo_Movimiento = 'S'
+                        AND mk.Fecha_Registro >= ? AND mk.Fecha_Registro < DATEADD(MONTH, 1, ?) AND mk.Activo = 1
+                    ), 0) AS Total_Salidas
+                FROM laboratorio.Reactivo_Lab r
+                LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                WHERE r.Activo = 1
+                ORDER BY Total_Salidas DESC, r.Nombre
+            ";
+            $stmt = sqlsrv_query($conn, $sql_resumen, [$fecha_inicio, $fecha_inicio, $fecha_inicio, $fecha_inicio]);
+            $resumen = [];
+            $totales = ['entradas' => 0, 'salidas' => 0];
+            if ($stmt) {
+                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                    $totales['entradas'] += floatval($row['Total_Entradas']);
+                    $totales['salidas']  += floatval($row['Total_Salidas']);
+                    $resumen[] = $row;
+                }
+            }
+
+            // Conteo de movimientos
+            $sql_count = "SELECT COUNT(*) AS total FROM laboratorio.Movimiento_Kardex mk INNER JOIN laboratorio.Reactivo_Lab r ON mk.Id_Reactivo = r.Id_Reactivo AND r.Activo = 1 WHERE mk.Activo = 1 AND mk.Fecha_Registro >= ? AND mk.Fecha_Registro < DATEADD(MONTH, 1, ?)";
+            $stmt_count = sqlsrv_query($conn, $sql_count, [$fecha_inicio, $fecha_inicio]);
+            $total_movimientos = 0;
+            if ($stmt_count) {
+                $row_c = sqlsrv_fetch_array($stmt_count, SQLSRV_FETCH_ASSOC);
+                $total_movimientos = intval($row_c['total'] ?? 0);
+            }
+
+            echo json_encode([
+                'success' => true,
+                'mes' => $mes,
+                'anio' => $anio,
+                'totales' => $totales,
+                'total_movimientos' => $total_movimientos,
+                'total_reactivos' => count($resumen),
+                'resumen' => $resumen
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    // ==================== DETALLE COMPLETO DE SALIDAS CON TRAZABILIDAD ====================
+
+    if ($action === 'obtener_detalle_salidas_completo') {
+        try {
+            $mes  = intval($_GET['mes']  ?? date('m'));
+            $anio = intval($_GET['anio'] ?? date('Y'));
+            if ($mes < 1 || $mes > 12)       $mes  = intval(date('m'));
+            if ($anio < 2000 || $anio > 2100) $anio = intval(date('Y'));
+
+            $fecha_inicio = sprintf('%04d-%02d-01', $anio, $mes);
+
+            $sql = "
+                SELECT 
+                    mk.Id_Movimiento, mk.Id_Reactivo, rl.Nombre AS Reactivo_Nombre,
+                    ISNULL(um.Abreviatura, '') AS U_M,
+                    mk.Tipo_Movimiento, mk.Cantidad, mk.Concepto, mk.Saldo_Resultante,
+                    CONVERT(VARCHAR(19), mk.Fecha_Registro, 120) AS Fecha_Hora,
+                    -- Trazabilidad completa
+                    CASE 
+                        WHEN mk.Concepto LIKE '%Consumo extra manual%' THEN 'Consumo extra manual'
+                        WHEN mk.Concepto LIKE '%Consumo extra por repeticion%' THEN 'Consumo extra analisis'
+                        WHEN mk.Concepto LIKE '%Consumo interno por muestra producto%' THEN
+                            CASE WHEN ml.Id_Proyecto IS NOT NULL THEN 'Consumo proyecto'
+                                 WHEN ml.Id_Cliente IS NOT NULL THEN 'Consumo muestra individual'
+                                 ELSE 'Consumo interno' END
+                        WHEN cr.Id_Movimiento IS NOT NULL THEN 'Consumo tecnico'
+                        ELSE 'Salida manual'
+                    END AS Tipo_Detalle,
+                    COALESCE(
+                        CASE WHEN ml.Id_Proyecto IS NOT NULL THEN
+                            ISNULL(pm.Nombre_Proyecto, 'Proyecto #' + CAST(ml.Id_Proyecto AS VARCHAR))
+                            + ISNULL(' | Muestra #' + CAST(ml.Id_Muestra AS VARCHAR), '')
+                        END,
+                        CASE WHEN ml2.Id_Cliente IS NOT NULL THEN
+                            'Cliente: ' + LTRIM(RTRIM(CONCAT(ISNULL(c.Nombres,''),' ',ISNULL(c.Apellido_Paterno,''))))
+                            + ' | Muestra #' + CAST(ISNULL(ml2.Id_Muestra,0) AS VARCHAR)
+                        END,
+                        'Manual'
+                    ) AS Segmento_Principal,
+                    ISNULL(pv.Nombre_Comercial, '-') AS Producto
+                FROM laboratorio.Movimiento_Kardex mk
+                INNER JOIN laboratorio.Reactivo_Lab rl ON mk.Id_Reactivo = rl.Id_Reactivo AND rl.Activo = 1
+                LEFT JOIN laboratorio.Unidad_Medida um ON rl.Id_Unidad_Medida = um.Id_Unidad_Medida
+                LEFT JOIN laboratorio.Consumo_Reaccion cr ON cr.Id_Movimiento = mk.Id_Movimiento AND cr.Activo = 1
+                LEFT JOIN laboratorio.Muestra_Producto mp ON mp.Id_Muestra_Producto = cr.Id_Muestra_Producto AND mp.Activo = 1
+                LEFT JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = mp.Id_Muestra AND ml.Activo = 1 AND ml.Id_Proyecto IS NOT NULL
+                LEFT JOIN laboratorio.Muestra_Lab ml2 ON ml2.Id_Muestra = mp.Id_Muestra AND ml2.Activo = 1
+                LEFT JOIN laboratorio.Cliente c ON c.Id_Cliente = ml2.Id_Cliente
+                LEFT JOIN laboratorio.Producto_Venta pv ON pv.Id_Producto = mp.Id_Producto_Venta
+                LEFT JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto AND pm.Activo = 1
+                WHERE mk.Activo = 1 AND mk.Tipo_Movimiento = 'S'
+                  AND rl.Activo = 1
+                  AND mk.Fecha_Registro >= ? AND mk.Fecha_Registro < DATEADD(MONTH, 1, ?)
+                ORDER BY mk.Fecha_Registro DESC, mk.Id_Movimiento DESC
+            ";
+            $stmt = sqlsrv_query($conn, $sql, [$fecha_inicio, $fecha_inicio]);
+            $salidas = [];
+            $total_cantidad = 0;
+            if ($stmt) {
+                while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                    $total_cantidad += floatval($row['Cantidad']);
+                    $salidas[] = $row;
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'mes' => $mes,
+                'anio' => $anio,
+                'total' => count($salidas),
+                'total_cantidad' => $total_cantidad,
+                'salidas' => $salidas
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
     http_response_code(404);
     echo json_encode(['success' => false, 'message' => "Acción no encontrada: {$action}"]);
     

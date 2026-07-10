@@ -370,7 +370,7 @@ class MuestraModel {
             throw new Exception('Error en iniciarAnalisis (solicitudes): ' . print_r(sqlsrv_errors(), true));
         }
 
-        $this->registrarConsumoInternoPorMuestra($id, $usuario_id);
+        // $this->registrarConsumoInternoPorMuestra($id, $usuario_id);
 
         return true;
     }
@@ -458,9 +458,8 @@ class MuestraModel {
             $solicitudesCreadas += intval($creacion['solicitudes']);
             $resultadosCreados += intval($creacion['resultados']);
 
-            // Descuenta reactivos de forma idempotente para muestras normales,
-            // incluyendo creación individual.
-            $this->registrarConsumoInternoPorMuestra($idObjetivo, $usuario_id);
+            // El consumo se realiza ahora al finalizar el análisis
+            // $this->registrarConsumoInternoPorMuestra($idObjetivo, $usuario_id);
         }
 
         return [
@@ -2149,7 +2148,8 @@ class MuestraModel {
                     throw new Exception('No se pudo obtener Id_Muestra_Producto para muestra duplicada ' . $idMuestraDuplicada . '.');
                 }
 
-                $this->registrarConsumoReactivosInterno($idMuestraProducto, $usuarioId);
+                // El consumo se realiza ahora dinámicamente al ingresar resultados
+                // $this->registrarConsumoReactivosInterno($idMuestraProducto, $usuarioId);
             }
 
             if (!sqlsrv_commit($this->db)) {

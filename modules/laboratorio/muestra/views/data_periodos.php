@@ -71,7 +71,7 @@ try {
         $esDrene = intval($row['Es_Drene'] ?? 0) === 1;
         $fnExportar = $esCalidadAgua
             ? 'exportarCalidadAgua(' . $id . ')'
-            : ($esDrene ? 'exportarCalidadAgua(' . $id . ')' : 'exportarProyectoMonitoreo(' . $id . ')');
+            : ($esDrene ? 'exportarDrenes(' . $id . ')' : 'exportarProyectoMonitoreo(' . $id . ')');  
 
         $accion = '';
         if ($estado === 'Planificado') {
@@ -79,7 +79,7 @@ try {
         } else if ($estado === 'En Progreso') {
             $accion = '<button type="button" class="btn btn-sm btn-info me-1" onclick="abrirAnalisis(' . $id . ')" title="Registrar Análisis"><i class="ti ti-microscope"></i> Análisis</button> ';
             $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="' . $fnExportar . '" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
-        } else if ($estado === 'Finalizado') {
+        } else if ($estado === 'Finalizado' || $estado === 'Terminado') {
             $accion = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="verResultados(' . $id . ')" title="Ver Resultados"><i class="ti ti-eye"></i> Resultados</button> ';
             $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="' . $fnExportar . '" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
         }

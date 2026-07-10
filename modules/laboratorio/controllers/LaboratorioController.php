@@ -40,6 +40,7 @@ $_mapaUrlSubmodulo = [
     'residuo'   => '?module=laboratorio&action=residuo',
     'proveedor' => '?module=laboratorio&action=proveedor',
     'reportes'  => '?module=laboratorio&action=reportes',
+    'pozos'     => '?module=laboratorio&action=pozos',
 ];
 
 if (isset($_mapaUrlSubmodulo[$action])) {
@@ -113,5 +114,10 @@ switch($action) {
 
     case 'reportes':
         include 'modules/laboratorio/views/reportes.php';
+        break;
+
+    case 'pozos':
+        if (!$permisos['ver']) { include 'modules/laboratorio/views/sin_acceso.php'; break; }
+        include 'modules/laboratorio/pozos/controllers/PozoController.php';
         break;
 }

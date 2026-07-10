@@ -292,6 +292,7 @@ try {
                     FROM laboratorio.Proyecto_Monitoreo
                     WHERE Activo = 1
                       AND (Es_Control_Calidad = 0 OR Es_Control_Calidad IS NULL)
+                      AND (Es_Drene = 0 OR Es_Drene IS NULL)
                     ORDER BY Id_Proyecto DESC";
             $stmt = sqlsrv_query($conn, $sql);
             if ($stmt === false) {
@@ -339,6 +340,31 @@ try {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Acción no válida']);
             break;
+
+        case 'listar_proyectos_drenes':
+            $sql = "SELECT Id_Proyecto, Nombre_Proyecto, Temporada, Valle
+                    FROM laboratorio.Proyecto_Monitoreo
+                    WHERE Activo = 1
+                      AND Es_Drene = 1
+                    ORDER BY Id_Proyecto DESC";
+            $stmt = sqlsrv_query($conn, $sql);
+            if ($stmt === false) {
+                throw new Exception('Error al obtener proyectos de drenes');
+            }
+
+            $data = [];
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $data[] = [
+                    'id' => intval($row['Id_Proyecto']),
+                    'label' => trim((string)$row['Nombre_Proyecto'])
+                        . ' — ' . trim((string)($row['Temporada'] ?? '-'))
+                        . ' — Valle ' . trim((string)($row['Valle'] ?? '-'))
+                ];
+            }
+
+            echo json_encode(['success' => true, 'data' => $data]);
+            break;
+
     }
 } catch (Exception $e) {
     http_response_code(400);

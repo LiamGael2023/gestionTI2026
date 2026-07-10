@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 ob_start();
 error_reporting(0);
 ini_set('display_errors', '0');
@@ -83,7 +83,7 @@ if (!$conn) { http_response_code(500); die('Error de conexion'); }
 
 // 1. Proyecto
 $stmtP = sqlsrv_query($conn,
-    "SELECT TOP 1 Id_Proyecto, Nombre_Proyecto, Valle, Temporada
+    "SELECT TOP 1 Id_Proyecto, Nombre_Proyecto, Valle, Temporada, Fecha_Inicio
      FROM laboratorio.Proyecto_Monitoreo
      WHERE Id_Proyecto = ? AND Activo = 1 AND Es_Control_Calidad = 1",
     [$id_proyecto]);
@@ -112,9 +112,10 @@ if (empty($fuentes)) { http_response_code(409); die('Sin fuentes de agua definid
 $stmtPa = sqlsrv_query($conn,
     "SELECT sub.Id_Parametro, sub.Nombre, sub.Unidad_Medida, sub.Categoria
      FROM (
-         SELECT DISTINCT pa.Id_Parametro, pa.Nombre, pa.Unidad_Medida,
+         SELECT DISTINCT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida,
                 ISNULL(pa.Categoria, 'Otros') AS Categoria
          FROM laboratorio.Parametro_Analisis pa
+         LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
          INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Servicio = pa.Id_Servicio
          INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
          WHERE ml.Id_Proyecto = ? AND ml.Activo = 1 AND sa.Activo = 1 AND pa.Activo = 1
@@ -228,12 +229,13 @@ $spreadsheet = new Spreadsheet();
 $sheet       = $spreadsheet->getActiveSheet();
 $sheet->setTitle('Resultados');
 
-$C_AZUL_OSC = 'FF1F3864';
-$C_AZUL_MED = 'FF2E75B6';
-$C_BLANCO   = 'FFFFFFFF';
-$C_NEGRO    = 'FF000000';
-$C_ROJO     = 'FFFF0000';
-$C_CELESTE  = 'FFBDD7EE'; // Azul celeste claro para celdas de resultados de muestras
+$C_AZUL_OSC    = 'FF3483CC';  // Azul oscuro: título, cabeceras principales
+$C_AZUL_MED    = 'FF6CB0F0';  // Azul medio: secciones, normativa, MAX/MIN
+$C_CELESTE     = 'FFC4DFF7';  // Celeste: nombres de nivel (F7+) y celdas de resultados
+$C_PARAM_LIGHT = 'FFDCE6F1';  // Celeste muy claro: nombres de parámetros
+$C_BLANCO      = 'FFFFFFFF';  // Blanco: bordes y fondo de límites/unidades
+$C_NEGRO       = 'FF000000';
+$C_ROJO        = 'FFFF0000';
 
 $applyStyle = function (string $rango, array $arr) use ($sheet) {
     $sheet->getStyle($rango)->applyFromArray($arr);
@@ -282,7 +284,15 @@ $sheet->getRowDimension(4)->setRowHeight(34);
 // FILA 5: TEMPORADA
 // ============================================================
 $sheet->mergeCells('B5:' . $letFin . '5');
-$sheet->getCell('B5')->setValue(strtoupper(trim((string)($proyecto['Temporada'] ?? ''))));
+
+$fecha_inicio = '';
+if ($proyecto['Fecha_Inicio']) {
+    $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    $mes = intval($proyecto['Fecha_Inicio']->format('n')) - 1;
+    $año = $proyecto['Fecha_Inicio']->format('Y');
+    $fecha_inicio = strtoupper($meses[$mes]) . ' ' . $año;
+}
+$sheet->getCell('B5')->setValue($fecha_inicio);
 $applyStyle('B5:' . $letFin . '5', $mkEncabezado($C_AZUL_OSC, 10));
 $sheet->getRowDimension(5)->setRowHeight(20);
 

@@ -18,14 +18,51 @@ if ($anio < 2000 || $anio > 2100) $anio = intval(date('Y'));
 
 $mes_str = str_pad($mes, 2, '0', STR_PAD_LEFT);
 $fecha_inicio = "$anio-$mes_str-01";
+$fecha_fin = date('Y-m-d', strtotime("$fecha_inicio +1 month"));
 $dias_mes = cal_days_in_month(CAL_GREGORIAN, $mes, $anio);
 
-// Obtener todos los reactivos activos
-$sql_reactivos = "SELECT r.Id_Reactivo, r.Nombre, ISNULL(um.Abreviatura, '') AS Unidad_Medida, r.Cantidad_Stock, ISNULL(r.Cantidad_Inicial, 0) AS Cantidad_Inicial FROM laboratorio.Reactivo_Lab r LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1 WHERE r.Activo = 1 ORDER BY r.Nombre";
-$stmt_react = sqlsrv_query($conn, $sql_reactivos);
+// Obtener todos los reactivos activos con calculos mensuales de inventario
+$sql_reactivos = "
+SELECT 
+    r.Id_Reactivo, 
+    r.Nombre, 
+    ISNULL(um.Abreviatura, '') AS Unidad_Medida, 
+    
+    -- Saldo con el que inicio el mes (ultimo saldo ANTES de fecha_inicio)
+    ISNULL((
+        SELECT TOP 1 Saldo_Resultante 
+        FROM laboratorio.Movimiento_Kardex mk2 
+        WHERE mk2.Id_Reactivo = r.Id_Reactivo AND mk2.Fecha_Registro < ? AND mk2.Activo = 1 
+        ORDER BY mk2.Fecha_Registro DESC, mk2.Id_Movimiento DESC
+    ), 0) AS Saldo_Inicial_Mes,
+
+    -- Total de entradas en el mes
+    ISNULL((
+        SELECT SUM(Cantidad) 
+        FROM laboratorio.Movimiento_Kardex mk3 
+        WHERE mk3.Id_Reactivo = r.Id_Reactivo AND mk3.Tipo_Movimiento = 'E' 
+        AND mk3.Fecha_Registro >= ? AND mk3.Fecha_Registro < ? AND mk3.Activo = 1
+    ), 0) AS Entradas_Mes,
+
+    -- Total de salidas en el mes
+    ISNULL((
+        SELECT SUM(Cantidad) 
+        FROM laboratorio.Movimiento_Kardex mk4 
+        WHERE mk4.Id_Reactivo = r.Id_Reactivo AND mk4.Tipo_Movimiento = 'S' 
+        AND mk4.Fecha_Registro >= ? AND mk4.Fecha_Registro < ? AND mk4.Activo = 1
+    ), 0) AS Salidas_Mes
+
+FROM laboratorio.Reactivo_Lab r 
+LEFT JOIN laboratorio.Unidad_Medida um ON r.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1 
+WHERE r.Activo = 1 
+ORDER BY r.Nombre
+";
+$stmt_react = sqlsrv_query($conn, $sql_reactivos, [$fecha_inicio, $fecha_inicio, $fecha_fin, $fecha_inicio, $fecha_fin]);
 $reactivos = [];
 if ($stmt_react) {
     while ($row = sqlsrv_fetch_array($stmt_react, SQLSRV_FETCH_ASSOC)) {
+        // Calcular el saldo final matematicamente
+        $row['Saldo_Final_Mes'] = floatval($row['Saldo_Inicial_Mes']) + floatval($row['Entradas_Mes']) - floatval($row['Salidas_Mes']);
         $reactivos[] = $row;
     }
 }
@@ -288,8 +325,10 @@ echo "<!-- Mes: $mes, Año: $anio -->";
     .kardex-table th:nth-child(1) { width: 45px; }
     .kardex-table th:nth-child(2) { width: 160px; text-align: left; }
     .kardex-table th:nth-child(3) { width: 55px; }
-    .kardex-table th:nth-child(4) { width: 55px; }
-    .kardex-table th:nth-child(5) { width: 65px; }
+    .kardex-table th:nth-child(4) { width: 65px; }
+    .kardex-table th:nth-child(5) { width: 65px; color: #31ce36; }
+    .kardex-table th:nth-child(6) { width: 65px; color: #f97316; }
+    .kardex-table th:nth-child(7) { width: 65px; font-weight: bold; }
     
     .kardex-table td {
         padding: 10px 8px;
@@ -584,7 +623,9 @@ echo "<!-- Mes: $mes, Año: $anio -->";
                                 <th>Nombre</th>
                                 <th>U.M.</th>
                                 <th>Inicial</th>
-                                <th>Actual</th>
+                                <th>Tot. Entradas</th>
+                                <th>Tot. Salidas</th>
+                                <th>Final</th>
                                 <?php for ($dia = 1; $dia <= $dias_mes; $dia++): ?>
                                     <th title="Día <?php echo $dia; ?>">
                                         <div><?php echo str_pad($dia, 2, '0', STR_PAD_LEFT); ?></div>
@@ -600,15 +641,19 @@ echo "<!-- Mes: $mes, Año: $anio -->";
                                     $id_react = $reactivo['Id_Reactivo'];
                                     $nombre = $reactivo['Nombre'];
                                     $unidad = $reactivo['Unidad_Medida'];
-                                    $stock_actual = floatval($reactivo['Cantidad_Stock']);
-                                    $stock_inicial = floatval($reactivo['Cantidad_Inicial']);
+                                    $stock_inicial = floatval($reactivo['Saldo_Inicial_Mes']);
+                                    $tot_entradas = floatval($reactivo['Entradas_Mes']);
+                                    $tot_salidas = floatval($reactivo['Salidas_Mes']);
+                                    $stock_final = floatval($reactivo['Saldo_Final_Mes']);
                                 ?>
                                 <tr>
                                     <td><?php echo $no; ?></td>
                                     <td><?php echo htmlspecialchars($nombre); ?></td>
                                     <td><?php echo htmlspecialchars($unidad); ?></td>
                                     <td><?php echo number_format($stock_inicial, 2, '.', ''); ?></td>
-                                    <td><strong><?php echo number_format($stock_actual, 2, '.', ''); ?></strong></td>
+                                    <td class="entrada"><?php echo number_format($tot_entradas, 2, '.', ''); ?></td>
+                                    <td class="salida"><?php echo number_format($tot_salidas, 2, '.', ''); ?></td>
+                                    <td><strong><?php echo number_format($stock_final, 2, '.', ''); ?></strong></td>
                                     
                                     <?php for ($dia = 1; $dia <= $dias_mes; $dia++): ?>
                                         <td>

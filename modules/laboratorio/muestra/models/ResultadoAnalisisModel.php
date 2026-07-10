@@ -141,77 +141,37 @@ class ResultadoAnalisisModel {
     public function crearBlancosPorMuestra($id_muestra) {
         $usuario_id = $_SESSION['usuario_id'] ?? 1;
         
-        // Obtener todas las solicitudes activas de análisis para la muestra
-        $sql_solicitudes = "
-            SELECT sa.Id_Solicitud_Analisis, sa.Id_Servicio
+        // Crear resultados en blanco en bloque (Bulk Insert) para mejorar drásticamente el rendimiento
+        $sql_bulk = "
+            INSERT INTO laboratorio.Resultado_Analisis 
+            (Id_Solicitud_Analisis, Id_Parametro, Valor_Hallado, Usuario_Creacion, Activo, Fecha_Creacion)
+            SELECT 
+                sa.Id_Solicitud_Analisis, 
+                pa.Id_Parametro, 
+                NULL AS Valor_Hallado, 
+                ? AS Usuario_Creacion, 
+                1 AS Activo, 
+                GETDATE() AS Fecha_Creacion
             FROM laboratorio.Solicitud_Analisis sa
+            INNER JOIN laboratorio.Parametro_Analisis pa ON sa.Id_Servicio = pa.Id_Servicio
             WHERE sa.Id_Muestra = ? 
-            AND sa.Activo = 1
+            AND sa.Activo = 1 
+            AND pa.Activo = 1
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM laboratorio.Resultado_Analisis ra 
+                WHERE ra.Id_Solicitud_Analisis = sa.Id_Solicitud_Analisis 
+                AND ra.Id_Parametro = pa.Id_Parametro
+                AND ra.Activo = 1
+            );
         ";
         
-        $stmt_solicitudes = sqlsrv_query($this->db, $sql_solicitudes, array($id_muestra));
-        if ($stmt_solicitudes === false) {
-            throw new Exception('Error al obtener solicitudes: ' . print_r(sqlsrv_errors(), true));
+        $stmt = sqlsrv_query($this->db, $sql_bulk, array($usuario_id, $id_muestra));
+        if ($stmt === false) {
+            throw new Exception('Error al crear resultados en blanco masivamente: ' . print_r(sqlsrv_errors(), true));
         }
         
-        $ids_creados = [];
-        
-        while ($solicitud = sqlsrv_fetch_array($stmt_solicitudes, SQLSRV_FETCH_ASSOC)) {
-            $id_solicitud = $solicitud['Id_Solicitud_Analisis'];
-            $id_servicio = $solicitud['Id_Servicio'];
-            
-            // Obtener los parámetros del servicio
-            $sql_params = "
-                SELECT Id_Parametro 
-                FROM laboratorio.Parametro_Analisis 
-                WHERE Id_Servicio = ?
-                AND Activo = 1
-                ORDER BY Id_Parametro
-            ";
-            
-            $stmt_params = sqlsrv_query($this->db, $sql_params, array($id_servicio));
-            if ($stmt_params === false) {
-                throw new Exception('Error al obtener parámetros: ' . print_r(sqlsrv_errors(), true));
-            }
-            
-            // Crear un Resultado_Analisis vacío para cada parámetro
-            while ($param = sqlsrv_fetch_array($stmt_params, SQLSRV_FETCH_ASSOC)) {
-                $id_parametro = $param['Id_Parametro'];
-                
-                // Verificar que no exista ya
-                $sql_check = "
-                    SELECT COUNT(*) as total 
-                    FROM laboratorio.Resultado_Analisis 
-                    WHERE Id_Solicitud_Analisis = ? 
-                    AND Id_Parametro = ? 
-                    AND Activo = 1
-                ";
-                
-                $stmt_check = sqlsrv_query($this->db, $sql_check, array($id_solicitud, $id_parametro));
-                $row_check = sqlsrv_fetch_array($stmt_check, SQLSRV_FETCH_ASSOC);
-                
-                if (intval($row_check['total']) === 0) {
-                    // Crear nuevo resultado en blanco
-                    $sql_insert = "
-                        INSERT INTO laboratorio.Resultado_Analisis 
-                        (Id_Solicitud_Analisis, Id_Parametro, Valor_Hallado, Usuario_Creacion, Activo, Fecha_Creacion)
-                        VALUES (?, ?, NULL, ?, 1, GETDATE());
-                        SELECT SCOPE_IDENTITY() AS id;
-                    ";
-                    
-                    $stmt_insert = sqlsrv_query($this->db, $sql_insert, array($id_solicitud, $id_parametro, $usuario_id));
-                    if ($stmt_insert === false) {
-                        throw new Exception('Error al crear resultado en blanco: ' . print_r(sqlsrv_errors(), true));
-                    }
-                    
-                    sqlsrv_next_result($stmt_insert);
-                    $row = sqlsrv_fetch_array($stmt_insert, SQLSRV_FETCH_ASSOC);
-                    $ids_creados[] = intval($row['id']);
-                }
-            }
-        }
-        
-        return $ids_creados;
+        return []; // Ya no es necesario retornar los IDs porque se consultan directamente en la vista
     }
 
     // ===== OBTENER RESULTADOS EDITABLES POR MUESTRA =====

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 session_start();
 require_once '../../../../config/db.php';
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
@@ -14,10 +14,11 @@ $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 $columns = array(
     0 => 'p.Id_Parametro',
     1 => 'p.Nombre',
-    2 => 'p.Unidad_Medida',
+    2 => 'ISNULL(um.Abreviatura, p.Unidad_Medida)',
     3 => 'p.Categoria',
     4 => 'p.Metodo_Utilizado',
-    5 => 'p.Id_Parametro'
+    5 => 'p.Posgre_Nombre',
+    6 => 'p.Id_Parametro'
 );
 
 $draw = isset($_POST['draw']) ? intval($_POST['draw']) : 0;
@@ -31,13 +32,15 @@ if ($colIndex < 0 || $colIndex >= count($columns)) {
     $colIndex = 0;
 }
 
-$sqlBase = "FROM laboratorio.Parametro_Analisis p LEFT JOIN laboratorio.Servicio_Tecnico s ON p.Id_Servicio = s.Id_Servicio";
+$sqlBase = "FROM laboratorio.Parametro_Analisis p 
+            LEFT JOIN laboratorio.Servicio_Tecnico s ON p.Id_Servicio = s.Id_Servicio
+            LEFT JOIN laboratorio.Unidad_Medida um ON p.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1";
 $sqlWhere = " WHERE p.Activo = 1";
 $params = array();
 
 if (!empty($search)) {
-    $sqlWhere .= " AND (p.Nombre LIKE ? OR p.Categoria LIKE ? OR s.Nombre LIKE ?)";
-    $params = array("%$search%", "%$search%", "%$search%");
+    $sqlWhere .= " AND (p.Nombre LIKE ? OR p.Categoria LIKE ? OR s.Nombre LIKE ? OR ISNULL(um.Abreviatura, p.Unidad_Medida) LIKE ?)";
+    $params = array("%$search%", "%$search%", "%$search%", "%$search%");
 }
 
 $stmtTotal = sqlsrv_query($conn, "SELECT COUNT(*) as total FROM laboratorio.Parametro_Analisis WHERE Activo = 1");
@@ -46,7 +49,7 @@ $totalRecords = sqlsrv_fetch_array($stmtTotal, SQLSRV_FETCH_ASSOC)['total'];
 $stmtFiltrados = sqlsrv_query($conn, "SELECT COUNT(*) as total " . $sqlBase . $sqlWhere, $params);
 $totalFiltered = sqlsrv_fetch_array($stmtFiltrados, SQLSRV_FETCH_ASSOC)['total'];
 
-$sqlData = "SELECT p.*, s.Nombre as Servicio_Nombre " . $sqlBase . $sqlWhere .
+$sqlData = "SELECT p.*, s.Nombre as Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura " . $sqlBase . $sqlWhere .
            " ORDER BY " . $columns[$colIndex] . " " . $colDir .
            " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
 array_push($params, $start, $length);
@@ -67,13 +70,18 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
     
     $servicio = $row['Servicio_Nombre'] ? htmlspecialchars($row['Servicio_Nombre']) : '<span class="text-muted">Sin servicio</span>';
     
+    $mapeo = ($row['Posgre_Tabla'] && $row['Posgre_Nombre']) 
+             ? htmlspecialchars($row['Posgre_Tabla'] . '.' . $row['Posgre_Nombre'])
+             : '<span class="text-muted">Ninguno</span>';
+    
     $data[] = array(
         $contador++,
         htmlspecialchars($row['Nombre']),
         $servicio,
-        htmlspecialchars($row['Unidad_Medida'] ?: '-'),
+        htmlspecialchars($row['Unidad_Abreviatura'] ?: '-'),
         htmlspecialchars($row['Categoria'] ?: '-'),
         htmlspecialchars($row['Metodo_Utilizado'] ?: '-'),
+        $mapeo,
         $acciones
     );
 }

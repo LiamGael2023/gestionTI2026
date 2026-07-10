@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 // ===== DATOS PARA EL KARDEX =====
 require_once 'config/db.php';
 
@@ -180,8 +180,11 @@ if ($tab === 'kardex') {
                 <i class="ti ti-printer me-1"></i> Vista Previa
               </button>
               <?php if (!empty($permisos['exportar'])): ?>
-              <a id="btn-exportar-kardex" href="modules/laboratorio/reactivo/controllers/ExportarKardex.php?mes=<?php echo $mes; ?>&anio=<?php echo $anio; ?>" class="btn btn-sm btn-warning" target="_blank">
-                <i class="ti ti-file-spreadsheet me-1"></i> Exportar Excel
+              <a id="btn-exportar-kardex" href="modules/laboratorio/reactivo/controllers/ExportarKardex.php?mes=<?php echo $mes; ?>&anio=<?php echo $anio; ?>" class="btn btn-sm btn-outline-success" target="_blank">
+                <i class="ti ti-file-spreadsheet me-1"></i> Excel
+              </a>
+              <a id="btn-exportar-pdf" href="modules/laboratorio/reactivo/controllers/ExportarKardexPDF.php?mes=<?php echo $mes; ?>&anio=<?php echo $anio; ?>" class="btn btn-sm btn-outline-danger" target="_blank">
+                <i class="ti ti-file-type-pdf me-1"></i> PDF
               </a>
               <?php endif; ?>
               <div class="ms-auto d-flex gap-2">
@@ -678,9 +681,11 @@ function eliminarUnidad(id) {
 function actualizarKardex() {
     var mes  = document.getElementById('kardex-mes').value;
     var anio = document.getElementById('kardex-anio').value;
-    // Update export link
-    var link = document.getElementById('btn-exportar-kardex');
-    if (link) link.href = 'modules/laboratorio/reactivo/controllers/ExportarKardex.php?mes=' + mes + '&anio=' + anio;
+    // Update export links
+    var linkExcel = document.getElementById('btn-exportar-kardex');
+    if (linkExcel) linkExcel.href = 'modules/laboratorio/reactivo/controllers/ExportarKardex.php?mes=' + mes + '&anio=' + anio;
+    var linkPDF = document.getElementById('btn-exportar-pdf');
+    if (linkPDF) linkPDF.href = 'modules/laboratorio/reactivo/controllers/ExportarKardexPDF.php?mes=' + mes + '&anio=' + anio;
     window.location.href = '?module=laboratorio&action=reactivo&tab=kardex&mes=' + mes + '&anio=' + anio;
 }
 

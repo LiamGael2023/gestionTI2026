@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 class ParametroModel {
     private $db;
 
@@ -7,7 +7,11 @@ class ParametroModel {
     }
 
     public function obtenerTodos() {
-        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre FROM laboratorio.Parametro_Analisis p LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio WHERE p.Activo = 1 ORDER BY p.Nombre";
+        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
+                FROM laboratorio.Parametro_Analisis p 
+                LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio 
+                LEFT JOIN laboratorio.Unidad_Medida um ON p.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                WHERE p.Activo = 1 ORDER BY p.Nombre";
         $stmt = sqlsrv_query($this->db, $sql);
         
         if ($stmt === false) {
@@ -23,7 +27,11 @@ class ParametroModel {
     }
 
     public function obtenerPorId($id) {
-        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre FROM laboratorio.Parametro_Analisis p LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio WHERE p.Id_Parametro = ?";
+        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
+                FROM laboratorio.Parametro_Analisis p 
+                LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio 
+                LEFT JOIN laboratorio.Unidad_Medida um ON p.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
+                WHERE p.Id_Parametro = ?";
         $stmt = sqlsrv_query($this->db, $sql, array($id));
         
         if ($stmt === false) {
@@ -35,16 +43,24 @@ class ParametroModel {
     }
 
     public function guardar($datos) {
+        $idUnidad = !empty($datos['Id_Unidad_Medida']) ? intval($datos['Id_Unidad_Medida']) : null;
+        $unidadTexto = $datos['Unidad_Medida'] ?? null;
+        
         if (empty($datos['Id_Parametro'])) {
             // INSERT
-            $sql = "INSERT INTO laboratorio.Parametro_Analisis (Id_Servicio, Nombre, Unidad_Medida, Categoria, Metodo_Utilizado, Usuario_Creacion, Activo, Fecha_Creacion)
-                    VALUES (?, ?, ?, ?, ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
+            $sql = "INSERT INTO laboratorio.Parametro_Analisis 
+                    (Id_Servicio, Nombre, Unidad_Medida, Id_Unidad_Medida, Tipo_Parametro, Categoria, Metodo_Utilizado, Posgre_Nombre, Posgre_Tabla, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
             $params = array(
                 $datos['Id_Servicio'] ?? null,
                 $datos['Nombre'],
-                $datos['Unidad_Medida'] ?? null,
+                $unidadTexto,
+                $idUnidad,
+                $datos['Tipo_Parametro'] ?? 'Ambos',
                 $datos['Categoria'] ?? null,
                 $datos['Metodo_Utilizado'] ?? null,
+                $datos['Posgre_Nombre'] ?? null,
+                $datos['Posgre_Tabla'] ?? null,
                 $_SESSION['usuario_id'] ?? 1
             );
             $stmt = sqlsrv_query($this->db, $sql, $params);
@@ -57,13 +73,19 @@ class ParametroModel {
             return $row['id'];
         } else {
             // UPDATE
-            $sql = "UPDATE laboratorio.Parametro_Analisis SET Id_Servicio=?, Nombre=?, Unidad_Medida=?, Categoria=?, Metodo_Utilizado=?, Fecha_Modificacion=GETDATE() WHERE Id_Parametro=?";
+            $sql = "UPDATE laboratorio.Parametro_Analisis 
+                    SET Id_Servicio=?, Nombre=?, Unidad_Medida=?, Id_Unidad_Medida=?, Tipo_Parametro=?, Categoria=?, Metodo_Utilizado=?, Posgre_Nombre=?, Posgre_Tabla=?, Fecha_Modificacion=GETDATE() 
+                    WHERE Id_Parametro=?";
             $params = array(
                 $datos['Id_Servicio'] ?? null,
                 $datos['Nombre'],
-                $datos['Unidad_Medida'] ?? null,
+                $unidadTexto,
+                $idUnidad,
+                $datos['Tipo_Parametro'] ?? 'Ambos',
                 $datos['Categoria'] ?? null,
                 $datos['Metodo_Utilizado'] ?? null,
+                $datos['Posgre_Nombre'] ?? null,
+                $datos['Posgre_Tabla'] ?? null,
                 $datos['Id_Parametro']
             );
             
@@ -104,6 +126,21 @@ class ParametroModel {
     public function reactivar($id) {
         $sql = "UPDATE laboratorio.Parametro_Analisis SET Activo = 1, Fecha_Modificacion = GETDATE() WHERE Id_Parametro = ?";
         sqlsrv_query($this->db, $sql, array($id));
+    }
+    
+    /**
+     * Obtiene todas las unidades de medida activas para el dropdown
+     */
+    public function obtenerUnidades() {
+        $sql = "SELECT Id_Unidad_Medida, Nombre, Abreviatura FROM laboratorio.Unidad_Medida WHERE Activo = 1 ORDER BY Nombre";
+        $stmt = sqlsrv_query($this->db, $sql);
+        $result = [];
+        if ($stmt) {
+            while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+                $result[] = $row;
+            }
+        }
+        return $result;
     }
 }
 ?>

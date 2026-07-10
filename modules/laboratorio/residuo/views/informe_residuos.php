@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
@@ -363,7 +363,7 @@ function simularCierreDiario() {
                 dataType: 'json',
                 success: function(response) {
                     Swal.fire({
-                        title: '✅ Cierre Simulado',
+                        title: '? Cierre Simulado',
                         html: `
                             <div style="text-align: left; padding: 10px;">
                                 <p><strong>Solicitud:</strong> #${response.datos.solicitud_id}</p>
@@ -371,9 +371,9 @@ function simularCierreDiario() {
                                 <p><strong>Estado:</strong> ${response.datos.estado_nuevo}</p>
                                 <p><strong>Residuos registrados hoy:</strong> ${response.datos.residuos_registrados_hoy}</p>
                                 <p style="color: #666; font-size: 0.9em; margin-top: 15px;">
-                                    ✓ El TRIGGER fue ejecutado automáticamente<br>
-                                    ✓ Se creó/reutilizó la cabecera del mes<br>
-                                    ✓ Se insertaron detalles de residuos
+                                    ? El TRIGGER fue ejecutado automáticamente<br>
+                                    ? Se creó/reutilizó la cabecera del mes<br>
+                                    ? Se insertaron detalles de residuos
                                 </p>
                             </div>
                         `,
