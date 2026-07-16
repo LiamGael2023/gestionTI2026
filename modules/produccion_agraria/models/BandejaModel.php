@@ -12,15 +12,15 @@ class BandejaModel {
     public function listarProformas($filtros = []) {
         $sql = "SELECT t.id_transaccion, t.id_cliente, t.fecha_creacion, t.total, 
                        t.estado, t.metodo_pago, t.serie_comprobante, t.correlativo_comprobante,
-                       t.responsable_venta,
+                       t.responsable_venta, t.num_grupo,
                        c.nombre_rs as nombre_cliente, c.dni_ruc as documento_cliente, 
                        CASE WHEN LEN(c.dni_ruc) = 8 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
                        cp.nombre_centro
-                FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
+                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE t.tipo_op = 'VENTA'";
-        
+
         $params = [];
         
         // Filtro por estado - por defecto mostrar todas las proformas no completadas
@@ -82,8 +82,8 @@ class BandejaModel {
                        CASE WHEN LEN(c.dni_ruc) = 8 THEN 'DNI' ELSE 'RUC' END as tipo_documento,
                        cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE t.id_transaccion = ?";
         
         $stmt = sqlsrv_query($this->db, $sql, [$idTransaccion]);
@@ -109,7 +109,7 @@ class BandejaModel {
                           p.nombre as nombre_producto, p.unidad_medida,
                           l.codigo_lote
                    FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle td
-                   LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto
+                   LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto AND p.activo = 1
                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON td.id_lote = l.id_lote
                    WHERE td.id_transaccion = ?";
         

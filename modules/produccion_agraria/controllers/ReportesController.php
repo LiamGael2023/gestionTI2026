@@ -128,6 +128,20 @@ try {
         exit;
     }
 
+    if ($action === 'planilla_data') {
+        header('Content-Type: application/json; charset=utf-8');
+        $filtros = [
+            'fecha_desde' => $_GET['fecha_desde'] ?? date('Y-m-01'),
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? date('Y-m-t'),
+            'id_centro'   => $_GET['id_centro']   ?? '',
+        ];
+        echo json_encode([
+            'success' => true,
+            'data'    => $model->getReportePlanilla($filtros),
+        ]);
+        exit;
+    }
+
     // ============================================================
     // CARGA INICIAL DE VISTA
     // ============================================================
@@ -156,6 +170,7 @@ try {
     $clientes_init    = [];
     $consolidado_init = [];
     $precios_init     = [];
+    $planilla_init    = [];
 
     // Dashboard (removido gráficos, pero mantenemos variables básicas por compatibilidad)
     $ventas_mes_init       = [];

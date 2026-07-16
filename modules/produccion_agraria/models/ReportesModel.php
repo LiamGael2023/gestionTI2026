@@ -12,7 +12,7 @@ class ReportesModel {
 
     public function getCentros() {
         $sql = "SELECT id_centro, nombre_centro
-                FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion
+                FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE activo = 1
                 ORDER BY nombre_centro";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
@@ -25,7 +25,7 @@ class ReportesModel {
 
     public function getClases() {
         $sql = "SELECT id_clase, nombre_clase
-                FROM BD_PRODUCCIONDESARROLLO.dbo.clase
+                FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE activo = 1
                 ORDER BY nombre_clase";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
@@ -38,7 +38,7 @@ class ReportesModel {
 
     public function getClientes() {
         $sql = "SELECT id_cliente, nombre_rs, dni_ruc
-                FROM BD_PRODUCCIONDESARROLLO.dbo.cliente
+                FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE activo = 1
                 ORDER BY nombre_rs";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
@@ -74,9 +74,9 @@ class ReportesModel {
                     cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c
-                       ON t.id_cliente = c.id_cliente
+                       ON t.id_cliente = c.id_cliente AND c.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
-                       ON t.id_centro = cp.id_centro
+                       ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE t.tipo_op = 'VENTA'";
 
         // Filtros dinámicos
@@ -223,26 +223,26 @@ class ReportesModel {
                     END AS valor_total_lote
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
-                        ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
-                       ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
-                       ON p.id_centro = cp.id_centro
-                -- Último precio registrado (subconsulta correlacionada)
-                LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp_last ON p.id_producto = hp_last.id_producto
-                -- UIT del año actual
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
-                       ON uit_actual.anio = YEAR(GETDATE())
-                WHERE l.stock_actual > 0
-                  AND p.maneja_stock = 1";
+                        ON l.id_producto = p.id_producto AND p.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
+               ON p.id_clase = c.id_clase AND c.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
+               ON p.id_centro = cp.id_centro AND cp.activo = 1
+        -- Último precio registrado (subconsulta correlacionada)
+        LEFT JOIN (
+            SELECT hp1.id_producto, hp1.precio_oficial
+            FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
+            WHERE hp1.fecha_registro = (
+                SELECT MAX(hp2.fecha_registro)
+                FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
+                WHERE hp2.id_producto = hp1.id_producto
+            )
+        ) hp_last ON p.id_producto = hp_last.id_producto
+        -- UIT del año actual
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
+               ON uit_actual.anio = YEAR(GETDATE()) AND uit_actual.activo = 1
+        WHERE l.stock_actual > 0
+          AND p.maneja_stock = 1";
 
         if (!empty($filtros['id_centro'])) {
             $sql .= " AND p.id_centro = ?";
@@ -321,24 +321,24 @@ class ReportesModel {
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l
                         ON k.id_lote = l.id_lote
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
-                        ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
-                       ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
-                       ON p.id_centro = cp.id_centro
-                LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp_last ON p.id_producto = hp_last.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
-                       ON uit_actual.anio = YEAR(GETDATE())
-                WHERE k.tipo_movimiento = 'MERMA'";
+        INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
+                ON l.id_producto = p.id_producto AND p.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
+               ON p.id_clase = c.id_clase AND c.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
+               ON p.id_centro = cp.id_centro AND cp.activo = 1
+        LEFT JOIN (
+            SELECT hp1.id_producto, hp1.precio_oficial
+            FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
+            WHERE hp1.fecha_registro = (
+                SELECT MAX(hp2.fecha_registro)
+                FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
+                WHERE hp2.id_producto = hp1.id_producto
+            )
+        ) hp_last ON p.id_producto = hp_last.id_producto
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
+               ON uit_actual.anio = YEAR(GETDATE()) AND uit_actual.activo = 1
+        WHERE k.tipo_movimiento = 'MERMA'";
 
         if (!empty($filtros['fecha_desde'])) {
             $sql .= " AND CAST(k.fecha AS DATE) >= ?";
@@ -481,23 +481,23 @@ class ReportesModel {
                         END
                     ) AS valor_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
-                        ON l.id_producto = p.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
-                       ON p.id_clase = c.id_clase
-                LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp_last ON p.id_producto = hp_last.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
-                       ON uit_actual.anio = YEAR(GETDATE())
-                WHERE l.stock_actual > 0
-                  AND p.maneja_stock = 1";
+        INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
+                ON l.id_producto = p.id_producto AND p.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
+               ON p.id_clase = c.id_clase AND c.activo = 1
+        LEFT JOIN (
+            SELECT hp1.id_producto, hp1.precio_oficial
+            FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
+            WHERE hp1.fecha_registro = (
+                SELECT MAX(hp2.fecha_registro)
+                FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
+                WHERE hp2.id_producto = hp1.id_producto
+            )
+        ) hp_last ON p.id_producto = hp_last.id_producto
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
+               ON uit_actual.anio = YEAR(GETDATE()) AND uit_actual.activo = 1
+        WHERE l.stock_actual > 0
+          AND p.maneja_stock = 1";
 
         if (!empty($filtros['id_centro'])) {
             $sql .= " AND p.id_centro = ?";
@@ -528,16 +528,16 @@ class ReportesModel {
                        COUNT(t.id_transaccion) as total_proformas,
                        ISNULL(SUM(t.total), 0) as monto_asignado,
                        (v.monto_total - ISNULL(SUM(t.total), 0)) as saldo_restante
-                FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
+                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON v.id_voucher = t.id_voucher
-                WHERE 1=1";
+                WHERE v.activo = 1";
 
         if (!empty($filtros['fecha_desde'])) {
-            $sql .= " AND v.fecha_deposito >= ?";
+            $sql .= " AND CAST(v.fecha_deposito AS DATE) >= ?";
             $params[] = $filtros['fecha_desde'];
         }
         if (!empty($filtros['fecha_hasta'])) {
-            $sql .= " AND v.fecha_deposito <= ?";
+            $sql .= " AND CAST(v.fecha_deposito AS DATE) <= ?";
             $params[] = $filtros['fecha_hasta'];
         }
 
@@ -571,9 +571,9 @@ class ReportesModel {
                        ISNULL(SUM(CASE WHEN t.metodo_pago = 'VENTA' THEN t.total ELSE 0 END), 0) as total_ventas,
                        ISNULL(SUM(CASE WHEN t.metodo_pago = 'DONACION' THEN t.total ELSE 0 END), 0) as total_donaciones,
                        ISNULL(SUM(t.total), 0) as total_acumulado
-                FROM BD_PRODUCCIONDESARROLLO.dbo.cliente c
+                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente c
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON c.id_cliente = t.id_cliente AND t.estado = 'PROCESADO'
-                WHERE 1=1";
+                WHERE c.activo = 1";
 
         if (!empty($filtros['cliente'])) {
             $sql .= " AND (c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?)";
@@ -601,18 +601,41 @@ class ReportesModel {
      * Reporte: Consolidado por Centro de Producción
      */
     public function getConsolidadoReport($filtros = []) {
+        $params = [];
+        $whereMain = ["cp.activo = 1"];
+        $whereVentas = ["t.estado = 'PROCESADO'"];
+        $whereMermas = ["k.tipo_movimiento = 'MERMA'"];
+
+        if (!empty($filtros['id_centro'])) {
+            $whereMain[] = "cp.id_centro = ?";
+            $params[] = intval($filtros['id_centro']);
+        }
+        if (!empty($filtros['fecha_desde'])) {
+            $whereVentas[] = "CAST(t.fecha_creacion AS DATE) >= ?";
+            $whereMermas[] = "CAST(k.fecha AS DATE) >= ?";
+            $params[] = $filtros['fecha_desde'];
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $whereVentas[] = "CAST(t.fecha_creacion AS DATE) <= ?";
+            $whereMermas[] = "CAST(k.fecha AS DATE) <= ?";
+            $params[] = $filtros['fecha_hasta'];
+            $params[] = $filtros['fecha_hasta'];
+        }
+
         $sql = "SELECT cp.id_centro, cp.nombre_centro, cp.encargado,
                        ISNULL(v.total_ventas, 0) as total_ventas,
                        ISNULL(v.total_donaciones, 0) as total_donaciones,
                        ISNULL(i.valor_inventario, 0) as valor_inventario,
                        ISNULL(m.valor_mermas, 0) as valor_mermas
                 FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
+                WHERE " . implode(" AND ", $whereMain) . "
                 LEFT JOIN (
                     SELECT id_centro,
                            SUM(CASE WHEN metodo_pago = 'VENTA' THEN total ELSE 0 END) as total_ventas,
                            SUM(CASE WHEN metodo_pago = 'DONACION' THEN total ELSE 0 END) as total_donaciones
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion
-                    WHERE estado = 'PROCESADO'
+                    FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
+                    WHERE " . implode(" AND ", $whereVentas) . "
                     GROUP BY id_centro
                 ) v ON cp.id_centro = v.id_centro
                 LEFT JOIN (
@@ -627,7 +650,7 @@ class ReportesModel {
                                END
                            ) AS valor_inventario
                     FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                     LEFT JOIN (
                         SELECT hp1.id_producto, hp1.precio_oficial
                         FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -637,7 +660,7 @@ class ReportesModel {
                             WHERE hp2.id_producto = hp1.id_producto
                         )
                     ) hp_last ON p.id_producto = hp_last.id_producto
-                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual ON uit_actual.anio = YEAR(GETDATE())
+                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual ON uit_actual.anio = YEAR(GETDATE()) AND uit_actual.activo = 1
                     WHERE l.stock_actual > 0 AND p.maneja_stock = 1
                     GROUP BY p.id_centro
                 ) i ON cp.id_centro = i.id_centro
@@ -654,7 +677,7 @@ class ReportesModel {
                            ) as valor_mermas
                     FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                     INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l2 ON k.id_lote = l2.id_lote
-                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p2 ON l2.id_producto = p2.id_producto
+                    INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p2 ON l2.id_producto = p2.id_producto AND p2.activo = 1
                     LEFT JOIN (
                         SELECT hp3.id_producto, hp3.precio_oficial
                         FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp3
@@ -664,13 +687,13 @@ class ReportesModel {
                             WHERE hp4.id_producto = hp3.id_producto
                         )
                     ) hp2 ON p2.id_producto = hp2.id_producto
-                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit2 ON uit2.anio = YEAR(GETDATE())
-                    WHERE k.tipo_movimiento = 'MERMA'
+                    LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit2 ON uit2.anio = YEAR(GETDATE()) AND uit2.activo = 1
+                    WHERE " . implode(" AND ", $whereMermas) . "
                     GROUP BY p2.id_centro
                 ) m ON cp.id_centro = m.id_centro
                 ORDER BY cp.nombre_centro ASC";
 
-        $stmt = sqlsrv_query($this->db, $sql);
+        $stmt = sqlsrv_query($this->db, $sql, $params);
         if ($stmt === false) {
             error_log('[ReportesModel::getConsolidadoReport] Error: ' . print_r(sqlsrv_errors(), true));
             return [];
@@ -712,22 +735,22 @@ class ReportesModel {
                         ELSE 0
                     END AS precio_unitario
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
-                       ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
-                       ON p.id_centro = cp.id_centro
-                LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial, hp1.fecha_registro
-                    FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp_last ON p.id_producto = hp_last.id_producto
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
-                       ON uit_actual.anio = YEAR(GETDATE())
-                WHERE 1=1";
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c
+               ON p.id_clase = c.id_clase AND c.activo = 1
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
+               ON p.id_centro = cp.id_centro AND cp.activo = 1
+        LEFT JOIN (
+            SELECT hp1.id_producto, hp1.precio_oficial, hp1.fecha_registro
+            FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
+            WHERE hp1.fecha_registro = (
+                SELECT MAX(hp2.fecha_registro)
+                FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
+                WHERE hp2.id_producto = hp1.id_producto
+            )
+        ) hp_last ON p.id_producto = hp_last.id_producto
+        LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit uit_actual
+               ON uit_actual.anio = YEAR(GETDATE()) AND uit_actual.activo = 1
+                WHERE 1=1 AND p.activo = 1";
 
         if (!empty($filtros['id_centro'])) {
             $sql .= " AND p.id_centro = ?";
@@ -752,6 +775,70 @@ class ReportesModel {
 
         $result = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            $result[] = $row;
+        }
+        return $result;
+    }
+
+    // ============================================================
+    // REPORTE 8: RELACIÓN DEL PERSONAL DE PLANILLA
+    // ============================================================
+    public function getReportePlanilla($filtros = []) {
+        $params = [];
+
+        $sql = "SELECT
+                    t.id_transaccion,
+                    t.fecha_creacion,
+                    c.id_cliente,
+                    c.dni_ruc,
+                    c.nombre_rs AS nombre_cliente,
+                    cp.id_centro,
+                    cp.nombre_centro,
+                    p.id_producto,
+                    p.nombre AS nombre_producto,
+                    p.unidad_medida,
+                    td.cantidad,
+                    td.precio_unitario,
+                    td.subtotal
+                FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c
+                       ON t.id_cliente = c.id_cliente AND c.activo = 1 AND c.tipo_cliente = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
+                       ON t.id_centro = cp.id_centro AND cp.activo = 1
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle td
+                       ON t.id_transaccion = td.id_transaccion
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p
+                       ON td.id_producto = p.id_producto AND p.activo = 1
+                WHERE t.metodo_pago = 'PLANILLA'
+                  AND t.descuento_planilla = 1
+                  AND t.tipo_op = 'VENTA'";
+
+        if (!empty($filtros['fecha_desde'])) {
+            $sql .= " AND CAST(t.fecha_creacion AS DATE) >= ?";
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $sql .= " AND CAST(t.fecha_creacion AS DATE) <= ?";
+            $params[] = $filtros['fecha_hasta'];
+        }
+        if (!empty($filtros['id_centro'])) {
+            $sql .= " AND t.id_centro = ?";
+            $params[] = intval($filtros['id_centro']);
+        }
+
+        $sql .= " ORDER BY c.nombre_rs, t.fecha_creacion, p.nombre";
+
+        $stmt = sqlsrv_query($this->db, $sql, $params);
+        if ($stmt === false) {
+            error_log('[ReportesModel::getReportePlanilla] Error: ' . print_r(sqlsrv_errors(), true));
+            return [];
+        }
+
+        $result = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            if (isset($row['fecha_creacion']) && $row['fecha_creacion'] instanceof DateTime) {
+                $row['fecha_creacion'] = $row['fecha_creacion']->format('Y-m-d H:i:s');
+            }
             $result[] = $row;
         }
         return $result;

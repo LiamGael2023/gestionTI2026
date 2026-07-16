@@ -23,6 +23,7 @@ class InventarioModel {
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
+                WHERE p.activo = 1
                 ORDER BY p.id_producto";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) {
@@ -71,7 +72,7 @@ class InventarioModel {
             ? floatval($data['porcentaje_uit']) 
             : null;
         
-        $id_clase = (!empty($id_clase) && $id_clase !== '') ? intval($id_clase) : null;
+        $id_clase = (!empty($data['id_clase']) && $data['id_clase'] !== '') ? intval($data['id_clase']) : null;
         $id_centro = (!empty($data['id_centro']) && $data['id_centro'] !== '') ? intval($data['id_centro']) : null;
         
         // Si tipo_precio no es UIT, forzar porcentaje_uit a null
@@ -209,6 +210,7 @@ class InventarioModel {
                     $id_centro
                 ];
             }
+            $stmt = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
                 return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
             }
@@ -245,19 +247,11 @@ class InventarioModel {
     }
 
     public function eliminarProducto($id) {
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto SET activo = 0 WHERE id_producto = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt === false) {
             $errors = sqlsrv_errors();
-            $errorMessage = '';
-            foreach ($errors as $error) {
-                // Error 547 es violación de restricción de clave foránea en SQL Server
-                if ($error['code'] == 547) {
-                    return ['success' => false, 'message' => 'No se puede eliminar el producto porque tiene registros relacionados (lotes, ventas, historial de precios, etc.). Elimine primero esos registros.'];
-                }
-                $errorMessage = $error['message'];
-            }
-            return ['success' => false, 'message' => $errorMessage ?: 'Error al eliminar el producto'];
+            return ['success' => false, 'message' => 'Error al desactivar el producto: ' . ($errors[0]['message'] ?? 'Error desconocido')];
         }
         return ['success' => true];
     }
@@ -267,7 +261,7 @@ class InventarioModel {
     // ========================================
     
     public function listarClasesSelect() {
-        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase ORDER BY nombre_clase";
+        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE activo = 1 ORDER BY nombre_clase";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
         $result = [];
@@ -278,7 +272,7 @@ class InventarioModel {
     }
 
     public function listarCentrosSelect() {
-        $sql = "SELECT id_centro, nombre_centro FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion ORDER BY nombre_centro";
+        $sql = "SELECT id_centro, nombre_centro FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE activo = 1 ORDER BY nombre_centro";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
         $result = [];
@@ -475,7 +469,7 @@ class InventarioModel {
 
     public function obtenerUITActual() {
         $anioActual = date('Y');
-        $sql = "SELECT valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE anio = ?";
+        $sql = "SELECT valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE anio = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$anioActual]);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             return $row['valor'];
@@ -587,7 +581,7 @@ class InventarioModel {
         try {
             sqlsrv_begin_transaction($this->db);
 
-            $sqlProd = "SELECT id_producto, id_clase, id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE maneja_stock = 1";
+            $sqlProd = "SELECT id_producto, id_clase, id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE maneja_stock = 1 AND activo = 1";
             $stmtProd = sqlsrv_query($this->db, $sqlProd);
             if ($stmtProd === false) {
                 throw new Exception('Error al obtener productos: ' . print_r(sqlsrv_errors(), true));

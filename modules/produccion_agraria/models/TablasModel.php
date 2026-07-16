@@ -11,7 +11,7 @@ class TablasModel {
     // ========================================
     
     public function listarClases() {
-        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase ORDER BY id_clase";
+        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE activo = 1 ORDER BY id_clase";
         $stmt = sqlsrv_query($this->db, $sql);
         
         if ($stmt === false) {
@@ -27,7 +27,7 @@ class TablasModel {
     }
 
     public function obtenerClase($id) {
-        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE id_clase = ?";
+        $sql = "SELECT id_clase, nombre_clase FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE id_clase = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && sqlsrv_has_rows($stmt)) {
             return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
@@ -58,8 +58,7 @@ class TablasModel {
     }
 
     public function eliminarClase($id) {
-        // DELETE físico (la tabla no tiene soft delete)
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.clase WHERE id_clase = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.clase SET activo = 0 WHERE id_clase = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         return $stmt !== false;
     }
@@ -78,7 +77,7 @@ class TablasModel {
     // ========================================
     
     public function listarCentros() {
-        $sql = "SELECT id_centro, nombre_centro, ubicacion, encargado FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion ORDER BY id_centro";
+        $sql = "SELECT id_centro, nombre_centro, ubicacion, encargado FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE activo = 1 ORDER BY id_centro";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) {
             error_log('SQL Error listarCentros: ' . print_r(sqlsrv_errors(), true));
@@ -92,7 +91,7 @@ class TablasModel {
     }
 
     public function obtenerCentro($id) {
-        $sql = "SELECT id_centro, nombre_centro, ubicacion, encargado FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE id_centro = ?";
+        $sql = "SELECT id_centro, nombre_centro, ubicacion, encargado FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE id_centro = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && sqlsrv_has_rows($stmt)) {
             return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
@@ -121,7 +120,7 @@ class TablasModel {
     }
 
     public function eliminarCentro($id) {
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.centro_produccion WHERE id_centro = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.centro_produccion SET activo = 0 WHERE id_centro = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         return $stmt !== false;
     }
@@ -134,7 +133,7 @@ class TablasModel {
         $sql = "SELECT cc.id_centro, cp.nombre_centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.clase_centro cc
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON cc.id_centro = cp.id_centro
-                WHERE cc.id_clase = ?
+                WHERE cc.id_clase = ? AND cp.activo = 1
                 ORDER BY cp.nombre_centro";
         $stmt = sqlsrv_query($this->db, $sql, [$idClase]);
         $result = [];
@@ -204,7 +203,7 @@ class TablasModel {
     // ========================================
     
     public function listarUits() {
-        $sql = "SELECT anio, valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit ORDER BY anio DESC";
+        $sql = "SELECT anio, valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE activo = 1 ORDER BY anio DESC";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) {
             error_log('SQL Error listarUits: ' . print_r(sqlsrv_errors(), true));
@@ -218,7 +217,7 @@ class TablasModel {
     }
 
     public function obtenerUit($anio) {
-        $sql = "SELECT anio, valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE anio = ?";
+        $sql = "SELECT anio, valor FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE anio = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$anio]);
         if ($stmt && sqlsrv_has_rows($stmt)) {
             return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
@@ -249,7 +248,7 @@ class TablasModel {
     }
 
     public function eliminarUit($anio) {
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.uit WHERE anio = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.uit SET activo = 0 WHERE anio = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$anio]);
         return $stmt !== false;
     }
@@ -259,7 +258,7 @@ class TablasModel {
     // ========================================
     
     public function listarClientes() {
-        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente ORDER BY id_cliente";
+        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE activo = 1 ORDER BY id_cliente";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) {
             error_log('SQL Error listarClientes: ' . print_r(sqlsrv_errors(), true));
@@ -273,7 +272,7 @@ class TablasModel {
     }
 
     public function obtenerCliente($id) {
-        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE id_cliente = ?";
+        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE id_cliente = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && sqlsrv_has_rows($stmt)) {
             return sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
@@ -302,7 +301,7 @@ class TablasModel {
     }
 
     public function eliminarCliente($id) {
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE id_cliente = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.cliente SET activo = 0 WHERE id_cliente = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         return $stmt !== false;
     }

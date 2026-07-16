@@ -981,4 +981,80 @@ Sistema de reportes con 7 tipos de informes, KPIs, filtros dinámicos y exportac
 
 ---
 
-*Última actualización: 2026-06-19*
+---
+
+## 21. Soft Delete en Tablas de Producción
+
+**Implementado: 2026-06-25**
+
+Siguiendo el mismo patrón de `comun.Usuarios`, se implementó soft delete en las tablas principales de producción. En lugar de DELETE físico, se usa `UPDATE SET activo = 0`.
+
+### 21.1. Tablas con Soft Delete
+
+| Tabla | Columna | Tipo | Default |
+|-------|---------|------|---------|
+| `producto` | `activo` | BIT | 1 |
+| `clase` | `activo` | BIT | 1 |
+| `centro_produccion` | `activo` | BIT | 1 |
+| `cliente` | `activo` | BIT | 1 |
+| `uit` | `activo` | BIT | 1 |
+| `voucher_deposito` | `activo` | BIT | 1 |
+| `dashboard_config` | `activo` | BIT | 1 (ya existía) |
+
+### 21.2. Migraciones SQL
+
+Scripts en `modules/produccion_agraria/database/`:
+- `alter_producto_activo.sql`
+- `alter_clase_activo.sql`
+- `alter_centro_produccion_activo.sql`
+- `alter_cliente_activo.sql`
+- `alter_uit_activo.sql`
+- `alter_voucher_deposito_activo.sql`
+
+Todos usan `IF NOT EXISTS` para ejecución idempotente.
+
+### 21.3. Cambios en Modelos
+
+| Modelo | Método | Cambio |
+|--------|--------|--------|
+| `InventarioModel` | `eliminarProducto()` | DELETE → `UPDATE SET activo = 0` (sin handler FK 547) |
+| `TablasModel` | `eliminarClase()` | DELETE → `UPDATE SET activo = 0` |
+| `TablasModel` | `eliminarCentro()` | DELETE → `UPDATE SET activo = 0` |
+| `TablasModel` | `eliminarCliente()` | DELETE → `UPDATE SET activo = 0` |
+| `TablasModel` | `eliminarUit()` | DELETE → `UPDATE SET activo = 0` |
+| `VoucherModel` | `eliminarVoucher()` | DELETE → `UPDATE SET activo = 0` |
+| `DashboardModel` | `saveConfig()` | DELETE → `UPDATE SET activo = 0` |
+| `DashboardModel` | `resetConfig()` | DELETE → `UPDATE SET activo = 0` |
+
+### 21.4. Filtros `WHERE activo = 1` Agregados
+
+Se agregaron filtros en **~80 queries** distribuidas en 8 archivos:
+- `InventarioModel` — listados de productos, clases, centros, UIT, stock masivo
+- `PuntoVentaModel` — clientes, productos, búsquedas
+- `BandejaModel` — LEFT JOINs con cliente, centro, producto
+- `VoucherModel` — listado de vouchers
+- `ReportesModel` — los 7 reportes + catálogos auxiliares
+- `ChatToolsModel` — las 17 tools del chatbot
+- `TablasModel` — CRUD de clase, centro, cliente, UIT
+- `DashboardModel` — ya filtraba `activo = 1` en `getConfig()`
+
+### 21.5. Tablas SIN Soft Delete
+
+| Tabla | Motivo |
+|-------|--------|
+| `lote` | No se borra; usa `stock_actual > 0` como indicador |
+| `kardex` | Registro histórico de auditoría |
+| `transaccion` | Tiene campo `estado` (PENDIENTE/PROCESADO/RECHAZADO) |
+| `transaccion_detalle` | Vinculada al ciclo de vida de `transaccion` |
+| `historial_precio` | Registro histórico |
+| `clase_centro` | Tabla de vinculación M:N; sus DELETEs son sync, no borrado |
+| `producto_centro` | Tabla de vinculación M:N; sus DELETEs son sync, no borrado |
+
+### 21.6. Regla para Nuevos Desarrollos
+
+- Toda nueva tabla de catálogo debe incluir `activo BIT NOT NULL DEFAULT 1`
+- Usar `UPDATE SET activo = 0` en lugar de `DELETE` para "eliminar" registros
+- Agregar `WHERE activo = 1` en todos los SELECTs que listen registros
+- Las queries por ID directo (`WHERE id = ?`) pueden omitir el filtro para permitir acceso de auditoría
+
+*Última actualización: 2026-06-25*

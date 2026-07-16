@@ -94,6 +94,7 @@ switch($action) {
     case 'clientes_report_data':
     case 'consolidado_report_data':
     case 'precios_report_data':
+    case 'planilla_data':
     case 'dashboard_data':
         include 'modules/produccion_agraria/controllers/ReportesController.php';
         break;

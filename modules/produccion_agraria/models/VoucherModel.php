@@ -17,6 +17,7 @@ class VoucherModel {
                        ISNULL(SUM(t.total), 0) as monto_asignado
                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON v.id_voucher = t.id_voucher
+                WHERE v.activo = 1
                 GROUP BY v.id_voucher, v.num_operacion, v.monto_total, v.fecha_deposito, 
                          v.url_imagen, v.archivo_blob
                 ORDER BY v.id_voucher DESC";
@@ -166,7 +167,7 @@ class VoucherModel {
      * Listar proformas disponibles para asignar a un voucher
      */
     public function listarProformasDisponibles($excluirIds = []) {
-        $sql = "SELECT t.id_transaccion, t.total, t.fecha_creacion, t.estado,
+        $sql = "SELECT t.id_transaccion, t.total, t.fecha_creacion, t.estado, t.num_grupo,
                        c.nombre_rs as nombre_cliente, c.dni_ruc as documento_cliente
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
@@ -180,7 +181,7 @@ class VoucherModel {
             $params = $excluirIds;
         }
         
-        $sql .= " ORDER BY t.fecha_creacion DESC";
+        $sql .= " ORDER BY t.num_grupo ASC, t.fecha_creacion DESC";
         
         $stmt = sqlsrv_query($this->db, $sql, $params);
         if ($stmt === false) {
@@ -190,6 +191,9 @@ class VoucherModel {
         
         $result = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            if (isset($row['fecha_creacion']) && $row['fecha_creacion'] instanceof DateTime) {
+                $row['fecha_creacion'] = $row['fecha_creacion']->format('Y-m-d H:i:s');
+            }
             $result[] = $row;
         }
         return $result;
@@ -244,20 +248,20 @@ class VoucherModel {
                         WHERE id_voucher = ?";
             sqlsrv_query($this->db, $sqlUpdate, [$idVoucher]);
 
-            // Luego eliminar el voucher
-            $sqlDelete = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito WHERE id_voucher = ?";
-            $stmtDelete = sqlsrv_query($this->db, $sqlDelete, [$idVoucher]);
-            if ($stmtDelete === false) {
-                throw new Exception('Error al eliminar el voucher');
+            // Luego desactivar el voucher (soft delete)
+            $sqlSoft = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito SET activo = 0 WHERE id_voucher = ?";
+            $stmtSoft = sqlsrv_query($this->db, $sqlSoft, [$idVoucher]);
+            if ($stmtSoft === false) {
+                throw new Exception('Error al desactivar el voucher');
             }
 
-            // Verificar que se eliminó
-            if (sqlsrv_rows_affected($stmtDelete) === 0) {
-                throw new Exception('Voucher no encontrado o ya fue eliminado');
+            // Verificar que se desactivó
+            if (sqlsrv_rows_affected($stmtSoft) === 0) {
+                throw new Exception('Voucher no encontrado o ya fue desactivado');
             }
 
             sqlsrv_commit($this->db);
-            return ['success' => true, 'message' => 'Voucher eliminado correctamente'];
+            return ['success' => true, 'message' => 'Voucher desactivado correctamente'];
 
         } catch (Exception $e) {
             sqlsrv_rollback($this->db);

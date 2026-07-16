@@ -36,7 +36,32 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
 <!-- Estilos del módulo -->
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/reportes.css">
+
+<style>
+.reporte-header { background: linear-gradient(135deg, #004d99 0%, #0070cc 100%); }
+.tab-btn-reporte { border-radius: 8px 8px 0 0; font-weight: 600; }
+.kpi-card { border-left: 4px solid; transition: transform .2s; }
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-ventas  { border-color: #2fb344; }
+.kpi-count   { border-color: #4299e1; }
+.kpi-ticket  { border-color: #f59e0b; }
+.kpi-stock   { border-color: #7c3aed; }
+.kpi-mermas  { border-color: #ef4444; }
+.export-bar  { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 0; }
+.badge-PROCESADO  { background: #d1fae5; color: #065f46; }
+.badge-PENDIENTE  { background: #fef3c7; color: #92400e; }
+.badge-RECHAZADO  { background: #fee2e2; color: #991b1b; }
+#spinner-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.35); z-index: 9999;
+    align-items: center; justify-content: center;
+}
+    /* Mejora de contraste para textos y tablas */
+    .form-label { color: #1e293b !important; font-weight: 600 !important; }
+    .table td { color: #334155 !important; font-weight: 500; }
+    .table th { color: #0f172a !important; font-weight: 700 !important; }
+    .text-muted { color: #475569 !important; }
+</style>
 
 <!-- Spinner overlay -->
 <div id="spinner-overlay">
@@ -61,15 +86,14 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
 <div class="page-body">
 <div class="container-xl">
 
+<!-- Logo local oculto para exportación PDF -->
+<img id="logo-pech-local" src="<?php echo BASE_URL; ?>/Logo Pech.png" alt="PECH" style="display:none;" crossorigin="anonymous">
+
     <!-- ENCABEZADO -->
     <div class="card reporte-header text-white mb-4 border-0">
         <div class="card-body py-4">
             <div class="row align-items-center">
                 <div class="col">
-                    <div class="text-uppercase fw-bold fs-5 mb-1" style="color: rgba(255,255,255,0.85);">
-                        <i class="ti ti-leaf me-2" style="color: rgba(255,255,255,0.7);"></i>
-                        Sistema de Seguimiento y control de Productos Agricolas
-                    </div>
                     <h3 class="mb-1 fw-bold"><i class="ti ti-chart-bar me-2"></i>Reportes de Producción Agraria</h3>
                     <p class="mb-0 opacity-75">Análisis de ventas, valorización de inventario y control de mermas — PECH</p>
                 </div>
@@ -82,6 +106,62 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
             </div>
         </div>
     </div>
+<style>
+    .report-card {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        border: 1px solid rgba(0, 77, 153, 0.08);
+        border-radius: 16px;
+        background: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        border-bottom: 4px solid transparent;
+        height: 100%;
+    }
+    .report-card-ventas:hover { border-bottom-color: #206bc4; }
+    .report-card-inventario:hover { border-bottom-color: #2fb344; }
+    .report-card-mermas:hover { border-bottom-color: #d63939; }
+    .report-card-vouchers:hover { border-bottom-color: #f59f00; }
+    .report-card-clientes:hover { border-bottom-color: #7c3aed; }
+    .report-card-consolidado:hover { border-bottom-color: #0ca678; }
+    .report-card-precios:hover { border-bottom-color: #3f51b5; }
+    .report-card-planilla:hover { border-bottom-color: #e91e63; }
+
+    .report-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 28px rgba(0, 77, 153, 0.1);
+        border-color: rgba(0, 77, 153, 0.15);
+    }
+    .report-card:hover .btn-abrir-rep {
+        background: #004d99 !important;
+        border-color: #004d99 !important;
+        color: #ffffff !important;
+        transform: scale(1.02);
+    }
+    .btn-abrir-rep {
+        transition: all 0.2s ease-in-out;
+        font-weight: 600;
+        border-radius: 20px;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .avatar-md {
+        width: 3.8rem;
+        height: 3.8rem;
+        line-height: 3.8rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: transform 0.3s ease;
+    }
+    .report-card:hover .avatar-md {
+        transform: scale(1.1);
+    }
+    </style>
 
     <!-- =========================================================
          MENÚ PRINCIPAL DE REPORTES
@@ -187,6 +267,21 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
                 </div>
                 <div class="mt-4">
                     <button class="btn btn-outline-indigo btn-abrir-rep w-100 py-2">
+                        <i class="ti ti-table-alias me-1"></i>Ver Reporte
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Card 8: Relación Planilla -->
+        <div class="col-md-4">
+            <div class="card report-card report-card-planilla text-center p-4 cursor-pointer" onclick="abrirReporte('planilla')">
+                <div>
+                    <div class="mb-3"><span class="avatar-md bg-pink-lt"><i class="ti ti-file-invoice fs-2 mb-0"></i></span></div>
+                    <h3 class="mb-1 text-dark fw-bold">Relación de Planilla</h3>
+                    <p class="text-muted small mb-0">Compras de personal con descuento por planilla para nómina.</p>
+                </div>
+                <div class="mt-4">
+                    <button class="btn btn-outline-pink btn-abrir-rep w-100 py-2">
                         <i class="ti ti-table-alias me-1"></i>Ver Reporte
                     </button>
                 </div>
@@ -751,6 +846,28 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
             </div>
         </div>
 
+        <!-- Tab Planilla -->
+        <div class="tab-pane fade p-4" id="tab-planilla">
+            <div class="alert alert-info d-flex align-items-center mb-3">
+                <i class="ti ti-info-circle me-2"></i>
+                <div>
+                    <strong>Relación del Personal de Planilla</strong><br>
+                    <small class="mb-0">Compras registradas con descuento por planilla. Cada producto muestra cantidad, costo unitario y subtotal. Use los filtros de fecha para seleccionar el mes.</small>
+                </div>
+            </div>
+            <div class="table-responsive" id="contenedor-tabla-planilla">
+                <table class="table table-vcenter card-table table-bordered table-sm" id="tabla-planilla">
+                    <thead id="thead-planilla">
+                        <tr><th class="text-center text-muted" colspan="3">Aplique filtros y haga clic en Generar</th></tr>
+                    </thead>
+                    <tbody id="tbody-planilla">
+                        <tr><td colspan="3" class="text-center py-4 text-muted">No hay datos</td></tr>
+                    </tbody>
+                    <tfoot id="tfoot-planilla" class="table-light fw-bold"></tfoot>
+                </table>
+            </div>
+        </div>
+
     </div><!-- /tab-content -->
 
     <!-- BARRA DE EXPORTACIÓN -->
@@ -812,6 +929,11 @@ const reportConfigs = {
         titulo: 'Catálogo de Precios Vigentes',
         filters: ['centro', 'clase', 'tipo-precio'],
         tabId: 'tab-precios'
+    },
+    planilla: {
+        titulo: 'Relación del Personal de Planilla',
+        filters: ['fecha-desde', 'fecha-hasta', 'centro'],
+        tabId: 'tab-planilla'
     }
 };
 
@@ -854,7 +976,7 @@ function abrirReporte(tipo) {
     document.getElementById('panel-export-bar').style.display = 'block';
     
     // Desactivar todas las pestañas
-    const allTabs = ['ventas', 'inventario', 'mermas', 'vouchers', 'clientes-rep', 'consolidado', 'precios'];
+    const allTabs = ['ventas', 'inventario', 'mermas', 'vouchers', 'clientes-rep', 'consolidado', 'precios', 'planilla'];
     allTabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.classList.remove('show', 'active');
@@ -974,6 +1096,15 @@ function aplicarFiltros() {
                 if (res.success) {
                     window.ultimoReporteData = res.data;
                     renderPrecios(res.data);
+                }
+            });
+    } else if (tabActiva === 'planilla') {
+        promise = fetch(url + 'action=planilla_data&' + qs)
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderPlanilla(res.data);
                 }
             });
     }
@@ -1232,11 +1363,130 @@ function renderPrecios(data) {
     document.getElementById('resultado-label').textContent = `${data.length} registro(s) encontrado(s)`;
 }
 
+function renderPlanilla(data) {
+    const thead = document.getElementById('thead-planilla');
+    const tbody = document.getElementById('tbody-planilla');
+    const tfoot = document.getElementById('tfoot-planilla');
+
+    if (!data.length) {
+        thead.innerHTML = '<tr><th class="text-center text-muted" colspan="3">Aplique filtros y haga clic en Generar</th></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No hay compras de planilla con los filtros seleccionados</td></tr>';
+        tfoot.innerHTML = '';
+        document.getElementById('resultado-label').textContent = '0 registro(s) encontrado(s)';
+        return;
+    }
+
+    // 1. Extraer productos únicos y ordenarlos
+    const productosMap = {};
+    data.forEach(r => {
+        if (!productosMap[r.id_producto]) {
+            productosMap[r.id_producto] = {
+                id: r.id_producto,
+                nombre: r.nombre_producto,
+                unidad: r.unidad_medida || 'KILO'
+            };
+        }
+    });
+    const productos = Object.values(productosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    // 2. Agrupar por empleado y por producto (sumar cantidades, subtotales; promediar precio o tomar el último)
+    const empleadosMap = {};
+    data.forEach(r => {
+        const key = r.id_cliente;
+        if (!empleadosMap[key]) {
+            empleadosMap[key] = {
+                id_cliente: r.id_cliente,
+                nombre: r.nombre_cliente,
+                dni_ruc: r.dni_ruc,
+                productos: {},
+                total: 0
+            };
+        }
+        const emp = empleadosMap[key];
+        if (!emp.productos[r.id_producto]) {
+            emp.productos[r.id_producto] = { cantidad: 0, precio: parseFloat(r.precio_unitario || 0), subtotal: 0 };
+        }
+        emp.productos[r.id_producto].cantidad += parseFloat(r.cantidad || 0);
+        emp.productos[r.id_producto].subtotal += parseFloat(r.subtotal || 0);
+        emp.total += parseFloat(r.subtotal || 0);
+    });
+    const empleados = Object.values(empleadosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    // 3. Totales por producto y gran total
+    const totalesProducto = {};
+    productos.forEach(p => { totalesProducto[p.id] = { cantidad: 0, subtotal: 0 }; });
+    let granTotal = 0;
+    empleados.forEach(emp => {
+        granTotal += emp.total;
+        productos.forEach(p => {
+            const d = emp.productos[p.id];
+            if (d) {
+                totalesProducto[p.id].cantidad += d.cantidad;
+                totalesProducto[p.id].subtotal += d.subtotal;
+            }
+        });
+    });
+
+    // 4. Construir thead (dos niveles)
+    let thProductos = '';
+    let thSubcols = '';
+    productos.forEach(p => {
+        thProductos += `<th colspan="3" class="text-center border">${p.nombre.toUpperCase()}<br><small class="fw-normal">${p.unidad}</small></th>`;
+        thSubcols += `<th class="text-center border" style="min-width:55px;">CANT</th><th class="text-center border" style="min-width:55px;">COSTO</th><th class="text-center border" style="min-width:55px;">TOTAL</th>`;
+    });
+    thead.innerHTML = `<tr><th rowspan="2" class="text-center align-middle border" style="width:40px;">N°</th><th rowspan="2" class="text-center align-middle border" style="min-width:90px;">FECHA</th><th rowspan="2" class="text-center align-middle border" style="min-width:220px;">APELLIDOS Y NOMBRES</th>${thProductos}<th rowspan="2" class="text-center align-middle border" style="min-width:70px;">TOTAL</th></tr><tr>${thSubcols}</tr>`;
+
+    // 5. Construir tbody
+    tbody.innerHTML = empleados.map((emp, idx) => {
+        let celdas = '';
+        productos.forEach(p => {
+            const d = emp.productos[p.id];
+            if (d && d.cantidad > 0) {
+                celdas += `<td class="text-center border">${d.cantidad.toLocaleString('es-PE', {maximumFractionDigits:2})}</td>
+                           <td class="text-end border">S/ ${d.precio.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                           <td class="text-end border">S/ ${d.subtotal.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
+            } else {
+                celdas += `<td class="text-center border">-</td><td class="text-center border">-</td><td class="text-center border">-</td>`;
+            }
+        });
+        const primeraFecha = data.find(r => r.id_cliente === emp.id_cliente)?.fecha_creacion || '';
+        const fechaCorta = primeraFecha ? new Date(primeraFecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit'}) : '-';
+        return `<tr>
+            <td class="text-center border">${idx + 1}</td>
+            <td class="text-center border">${fechaCorta}</td>
+            <td class="border">${emp.nombre}</td>
+            ${celdas}
+            <td class="text-end fw-bold border">S/ ${emp.total.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        </tr>`;
+    }).join('');
+
+    // 6. Construir tfoot
+    let footCeldas = '';
+    productos.forEach(p => {
+        const t = totalesProducto[p.id];
+        const precioProm = t.cantidad > 0 ? t.subtotal / t.cantidad : 0;
+        footCeldas += `<td class="text-center border fw-bold">${t.cantidad.toLocaleString('es-PE', {maximumFractionDigits:2})}</td>
+                       <td class="text-end border fw-bold">S/ ${precioProm.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                       <td class="text-end border fw-bold">S/ ${t.subtotal.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>`;
+    });
+    tfoot.innerHTML = `<tr>
+        <td colspan="3" class="text-end fw-bold border">TOTALES</td>
+        ${footCeldas}
+        <td class="text-end fw-bold border">S/ ${granTotal.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+    </tr>`;
+
+    document.getElementById('resultado-label').textContent = `${empleados.length} empleado(s) / ${data.length} línea(s)`;
+}
+
 
 // =============================================================
 // EXPORTADOR EXCEL (CSV con BOM UTF-8)
 // =============================================================
 function exportarExcel() {
+    if (tabActiva === 'planilla') {
+        exportarExcelPlanilla();
+        return;
+    }
     const config = getTabConfig();
     const rows   = getTableRows(config.tableId);
     const bom    = '\uFEFF';
@@ -1246,6 +1496,84 @@ function exportarExcel() {
     const link = document.createElement('a');
     link.href  = URL.createObjectURL(blob);
     link.download = `reporte_${tabActiva}_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+}
+
+function exportarExcelPlanilla() {
+    const data = window.ultimoReporteData || [];
+    if (!data.length) return;
+
+    // Reconstruir la matriz igual que renderPlanilla
+    const productosMap = {};
+    data.forEach(r => {
+        if (!productosMap[r.id_producto]) {
+            productosMap[r.id_producto] = { id: r.id_producto, nombre: r.nombre_producto, unidad: r.unidad_medida || 'KILO' };
+        }
+    });
+    const productos = Object.values(productosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    const empleadosMap = {};
+    data.forEach(r => {
+        const key = r.id_cliente;
+        if (!empleadosMap[key]) {
+            empleadosMap[key] = { nombre: r.nombre_cliente, productos: {}, total: 0 };
+        }
+        const emp = empleadosMap[key];
+        if (!emp.productos[r.id_producto]) {
+            emp.productos[r.id_producto] = { cantidad: 0, precio: parseFloat(r.precio_unitario || 0), subtotal: 0 };
+        }
+        emp.productos[r.id_producto].cantidad += parseFloat(r.cantidad || 0);
+        emp.productos[r.id_producto].subtotal += parseFloat(r.subtotal || 0);
+        emp.total += parseFloat(r.subtotal || 0);
+    });
+    const empleados = Object.values(empleadosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+    // Headers
+    let headers = ['N°', 'FECHA', 'APELLIDOS Y NOMBRES'];
+    productos.forEach(p => {
+        headers.push(p.nombre + ' - CANT', p.nombre + ' - COSTO', p.nombre + ' - TOTAL');
+    });
+    headers.push('TOTAL');
+
+    // Rows
+    const rows = empleados.map((emp, idx) => {
+        const primeraFecha = data.find(r => r.nombre_cliente === emp.nombre)?.fecha_creacion || '';
+        const fechaCorta = primeraFecha ? new Date(primeraFecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit'}) : '';
+        const row = [idx + 1, fechaCorta, emp.nombre];
+        productos.forEach(p => {
+            const d = emp.productos[p.id];
+            if (d && d.cantidad > 0) {
+                row.push(d.cantidad, d.precio.toFixed(2), d.subtotal.toFixed(2));
+            } else {
+                row.push('', '', '');
+            }
+        });
+        row.push(emp.total.toFixed(2));
+        return row;
+    });
+
+    // Totals row
+    const totalRow = ['', '', 'TOTALES'];
+    let granTotal = 0;
+    productos.forEach(p => {
+        let cant = 0, sub = 0;
+        empleados.forEach(emp => {
+            const d = emp.productos[p.id];
+            if (d) { cant += d.cantidad; sub += d.subtotal; }
+        });
+        const precioProm = cant > 0 ? sub / cant : 0;
+        totalRow.push(cant, precioProm.toFixed(2), sub.toFixed(2));
+        granTotal += sub;
+    });
+    totalRow.push(granTotal.toFixed(2));
+    rows.push(totalRow);
+
+    const bom = '\uFEFF';
+    const csv = bom + [headers.join(';'), ...rows.map(r => r.map(c => `"${c}"`).join(';'))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `reporte_planilla_${new Date().toISOString().slice(0,10)}.csv`;
     link.click();
 }
 
@@ -1265,9 +1593,11 @@ function drawPECHLogoFallback(doc, x, y) {
 }
 
 function drawPortraitHeaderFooter(doc, page, totalPages, totalCount) {
-    // Logo
-    const imgLogo = document.querySelector('.navbar-brand-image') || document.querySelector('img[alt="PECH"]');
-    if (imgLogo) {
+    // Logo local primero, luego navbar, luego fallback vectorial
+    const imgLogo = document.getElementById('logo-pech-local')
+                     || document.querySelector('.navbar-brand-image')
+                     || document.querySelector('img[alt="PECH"]');
+    if (imgLogo && imgLogo.complete && imgLogo.naturalWidth > 0) {
         try {
             doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
         } catch (e) {
@@ -1335,9 +1665,11 @@ function drawPortraitHeaderFooter(doc, page, totalPages, totalCount) {
 }
 
 function drawLandscapeHeaderFooter(doc, page, totalPages, totalCount, tituloReporte) {
-    // Logo
-    const imgLogo = document.querySelector('.navbar-brand-image') || document.querySelector('img[alt="PECH"]');
-    if (imgLogo) {
+    // Logo local primero, luego navbar, luego fallback vectorial
+    const imgLogo = document.getElementById('logo-pech-local')
+                     || document.querySelector('.navbar-brand-image')
+                     || document.querySelector('img[alt="PECH"]');
+    if (imgLogo && imgLogo.complete && imgLogo.naturalWidth > 0) {
         try {
             doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
         } catch (e) {
@@ -1532,6 +1864,107 @@ function exportarPDF() {
 
         doc.save(`reporte_${tabActiva}_${new Date().toISOString().slice(0,10)}.pdf`);
 
+    } else if (tabActiva === 'planilla') {
+        // -------------------------------------------------------------
+        // FORMATO PLANILLA: Horizontal (A4 Landscape), tabla pivote
+        // -------------------------------------------------------------
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+        // Reconstruir matriz
+        const data = window.ultimoReporteData || [];
+        const productosMap = {};
+        data.forEach(r => {
+            if (!productosMap[r.id_producto]) {
+                productosMap[r.id_producto] = { id: r.id_producto, nombre: r.nombre_producto, unidad: r.unidad_medida || 'KILO' };
+            }
+        });
+        const productos = Object.values(productosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        const empleadosMap = {};
+        data.forEach(r => {
+            const key = r.id_cliente;
+            if (!empleadosMap[key]) {
+                empleadosMap[key] = { nombre: r.nombre_cliente, productos: {}, total: 0 };
+            }
+            const emp = empleadosMap[key];
+            if (!emp.productos[r.id_producto]) {
+                emp.productos[r.id_producto] = { cantidad: 0, precio: parseFloat(r.precio_unitario || 0), subtotal: 0 };
+            }
+            emp.productos[r.id_producto].cantidad += parseFloat(r.cantidad || 0);
+            emp.productos[r.id_producto].subtotal += parseFloat(r.subtotal || 0);
+            emp.total += parseFloat(r.subtotal || 0);
+        });
+        const empleados = Object.values(empleadosMap).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+        // Head
+        const headRow = ['N°', 'FECHA', 'APELLIDOS Y NOMBRES'];
+        productos.forEach(p => {
+            headRow.push(p.nombre.toUpperCase() + '\nCANT', p.nombre.toUpperCase() + '\nCOSTO', p.nombre.toUpperCase() + '\nTOTAL');
+        });
+        headRow.push('TOTAL');
+
+        // Body
+        const body = empleados.map((emp, idx) => {
+            const primeraFecha = data.find(r => r.nombre_cliente === emp.nombre)?.fecha_creacion || '';
+            const fechaCorta = primeraFecha ? new Date(primeraFecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit'}) : '-';
+            const row = [String(idx + 1), fechaCorta, emp.nombre];
+            productos.forEach(p => {
+                const d = emp.productos[p.id];
+                if (d && d.cantidad > 0) {
+                    row.push(d.cantidad.toLocaleString('es-PE', {maximumFractionDigits:2}), d.precio.toFixed(2), d.subtotal.toFixed(2));
+                } else {
+                    row.push('-', '-', '-');
+                }
+            });
+            row.push(emp.total.toFixed(2));
+            return row;
+        });
+
+        // Footer (totales)
+        const totalRow = ['', '', 'TOTALES'];
+        let granTotal = 0;
+        productos.forEach(p => {
+            let cant = 0, sub = 0;
+            empleados.forEach(emp => {
+                const d = emp.productos[p.id];
+                if (d) { cant += d.cantidad; sub += d.subtotal; }
+            });
+            const precioProm = cant > 0 ? sub / cant : 0;
+            totalRow.push(cant.toLocaleString('es-PE', {maximumFractionDigits:2}), precioProm.toFixed(2), sub.toFixed(2));
+            granTotal += sub;
+        });
+        totalRow.push(granTotal.toFixed(2));
+        body.push(totalRow);
+
+        // Column styles
+        const colStyles = { 0: { cellWidth: 8 }, 1: { cellWidth: 18 }, 2: { cellWidth: 50 } };
+        let colIdx = 3;
+        productos.forEach(() => {
+            colStyles[colIdx++] = { cellWidth: 18, halign: 'center' };
+            colStyles[colIdx++] = { cellWidth: 20, halign: 'right' };
+            colStyles[colIdx++] = { cellWidth: 22, halign: 'right' };
+        });
+        colStyles[colIdx] = { cellWidth: 22, halign: 'right' };
+
+        doc.autoTable({
+            head: [headRow],
+            body: body,
+            startY: 32,
+            margin: { top: 32, bottom: 25, left: 10, right: 10 },
+            styles: { fontSize: 6.5, cellPadding: 1.5, overflow: 'linebreak' },
+            headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            columnStyles: colStyles
+        });
+
+        // Estampar cabeceras y pies de página en segunda pasada
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            drawLandscapeHeaderFooter(doc, i, totalPages, body.length, 'Relación del Personal de Planilla');
+        }
+
+        doc.save(`reporte_planilla_${new Date().toISOString().slice(0,10)}.pdf`);
+
     } else {
         // -------------------------------------------------------------
         // FORMATO GENERAL: Horizontal (A4 Landscape), 1 Columna AutoTable
@@ -1571,7 +2004,8 @@ function getTabConfig() {
         vouchers:     { titulo: 'Conciliación de Vouchers',  tableId: 'tabla-vouchers',     headers: ['ID','N° Operación','Fecha','Proformas','Monto Boucher (S/)','Monto Consumido (S/)','Saldo Restante (S/)'] },
         'clientes-rep': { titulo: 'Clientes y Recaudación',  tableId: 'tabla-clientes-rep', headers: ['ID','DNI/RUC','Cliente','Tipo Cliente','Transacciones','Ventas (S/)','Donaciones (S/)','Acumulado (S/)'] },
         consolidado:  { titulo: 'Consolidado por Centro',    tableId: 'tabla-consolidado',  headers: ['ID','Centro','Encargado','Ventas (S/)','Donaciones (S/)','Inventario (S/)','Mermas (S/)'] },
-        precios:      { titulo: 'Catálogo de Precios',        tableId: 'tabla-precios',      headers: ['ID','Producto','Clase','Centro','Tipo Precio','Vigencia UIT / Histórico','Precio Vigente (S/)'] }
+        precios:      { titulo: 'Catálogo de Precios',        tableId: 'tabla-precios',      headers: ['ID','Producto','Clase','Centro','Tipo Precio','Vigencia UIT / Histórico','Precio Vigente (S/)'] },
+        planilla:     { titulo: 'Relación del Personal de Planilla', tableId: 'tabla-planilla', headers: ['N°','Fecha','Empleado','Productos','Total (S/)'] }
     };
     return configs[tabActiva] || configs.ventas;
 }

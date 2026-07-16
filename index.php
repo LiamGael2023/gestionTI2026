@@ -74,7 +74,7 @@ $acciones_ajax = [
     'ver_imagen_producto',
     // Acciones AJAX - REPORTES
     'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
-    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data',
+    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data', 'planilla_data',
     // Acciones AJAX - VOUCHERS
     'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
     // Acciones AJAX - DASHBOARD CMS

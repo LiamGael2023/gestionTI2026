@@ -33,19 +33,28 @@
                     </div>
                     <input type="hidden" id="id_cliente">
                     <input type="hidden" id="cliente-seleccionado-nombre">
+                    <input type="hidden" id="tipo_cliente">
                 </div>
             </div>
             <div class="col-md-2">
                 <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select class="form-select" id="metodo_pago">
                     <option value="">Método de pago</option>
                     <option value="VENTA">Venta</option>
                     <option value="DONACION">Donación</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex align-items-center">
+            <div class="col-md-2 d-flex align-items-center" id="div-descuento-planilla" style="display:none;">
+                <div class="d-flex align-items-center border rounded w-100 py-2 px-3 gap-2" style="background:#fff;">
+                    <label class="fw-semibold text-muted small mb-0" for="chk-descuento-planilla" style="cursor:pointer;">
+                        <i class="ti ti-calculator me-1 align-middle"></i> Descuento planilla
+                    </label>
+                    <input type="checkbox" id="chk-descuento-planilla" class="form-check-input m-0">
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-center">
                 <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
                     <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
                         <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
@@ -170,6 +179,7 @@
 // ========================================
 
 let items = [];
+let numGrupo = localStorage.getItem('pech_pos_num_grupo') || null;
 let productosDisponibles = <?php echo json_encode($productos); ?>;
 let clientesDisponibles = <?php echo json_encode($clientes); ?>;
 
@@ -204,12 +214,15 @@ busquedaClienteInput.addEventListener('input', function() {
             </a>
         `;
     } else {
-        dropdownClientes.innerHTML = resultados.map(c => `
-            <a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${c.nombre_rs.replace(/'/g, "\\'")}', '${c.dni_ruc.replace(/'/g, "\\'")}', event)">
+        dropdownClientes.innerHTML = resultados.map(c => {
+            const nombreEsc = c.nombre_rs.replace(/'/g, "\\'");
+            const dniEsc = c.dni_ruc.replace(/'/g, "\\'");
+            const tipoEsc = String(c.tipo_cliente).replace(/'/g, "\\'");
+            return `<a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${nombreEsc}', '${dniEsc}', '${tipoEsc}', event)">
                 <div class="fw-semibold">${c.nombre_rs}</div>
                 <div class="small text-muted">${c.dni_ruc} - ${c.tipo_cliente}</div>
-            </a>
-        `).join('') + `
+            </a>`;
+        }).join('') + `
             <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
                 <i class="ti ti-user-plus me-2"></i>Registrar rápido: "${query}"
             </a>
@@ -220,12 +233,28 @@ busquedaClienteInput.addEventListener('input', function() {
 });
 
 // Seleccionar cliente del dropdown
-function seleccionarCliente(id, nombre, dniRuc, event) {
+function seleccionarCliente(id, nombre, dniRuc, tipoCliente, event) {
     event.preventDefault();
     document.getElementById('id_cliente').value = id;
     document.getElementById('cliente-seleccionado-nombre').value = nombre;
+    document.getElementById('tipo_cliente').value = tipoCliente;
     document.getElementById('busqueda-cliente').value = `${nombre} (${dniRuc})`;
     dropdownClientes.style.display = 'none';
+    actualizarOpcionesPlanilla();
+}
+
+function actualizarOpcionesPlanilla() {
+    const tipoCliente = document.getElementById('tipo_cliente').value;
+    const divDescuento = document.getElementById('div-descuento-planilla');
+    const chkDescuento = document.getElementById('chk-descuento-planilla');
+    const selMetodo = document.getElementById('metodo_pago');
+    if (tipoCliente === 'Planilla') {
+        divDescuento.style.display = 'flex';
+    } else {
+        divDescuento.style.display = 'none';
+        chkDescuento.checked = false;
+        if (selMetodo.value === 'PLANILLA') selMetodo.value = 'VENTA';
+    }
 }
 
 // Registrar cliente rápido desde input de autocompletado
@@ -542,6 +571,9 @@ document.getElementById('btn-limpiar').addEventListener('click', function() {
         document.getElementById('id_cliente').value = '';
         document.getElementById('busqueda-cliente').value = '';
         document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
         clearCartFromLocalStorage();
         renderItems();
     });
@@ -552,18 +584,24 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
     // Validaciones
     const idCliente = document.getElementById('id_cliente').value;
     const fecha = document.getElementById('fecha').value;
-    const metodoPago = document.getElementById('metodo_pago').value;
+    const metodoPagoSelect = document.getElementById('metodo_pago').value;
+    const esPlanilla = document.getElementById('tipo_cliente').value === 'Planilla' || document.getElementById('tipo_cliente').value === '1';
+    const descuentoPlanilla = esPlanilla && document.getElementById('chk-descuento-planilla').checked;
     
     if (!idCliente) {
         Swal.fire('Advertencia', 'Seleccione un cliente', 'warning');
         return;
     }
-    if (!metodoPago) {
-        Swal.fire('Advertencia', 'Seleccione el método de pago', 'warning');
-        return;
-    }
     if (items.length === 0) {
         Swal.fire('Advertencia', 'Agregue al menos un producto', 'warning');
+        return;
+    }
+
+    let metodoPagoFinal = metodoPagoSelect;
+    if (descuentoPlanilla) {
+        metodoPagoFinal = 'PLANILLA';
+    } else if (!metodoPagoSelect) {
+        Swal.fire('Advertencia', 'Seleccione el método de pago', 'warning');
         return;
     }
     
@@ -573,7 +611,9 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         id_cliente: idCliente,
         fecha: fecha,
         total: total,
-        metodo_pago: metodoPago,
+        metodo_pago: metodoPagoFinal,
+        descuento_planilla: descuentoPlanilla ? 1 : 0,
+        num_grupo: numGrupo || undefined,
         items: items
     };
     
@@ -678,7 +718,9 @@ function saveCartToLocalStorage() {
         id_cliente: document.getElementById('id_cliente').value || '',
         busqueda_cliente: document.getElementById('busqueda-cliente').value || '',
         cliente_seleccionado_nombre: document.getElementById('cliente-seleccionado-nombre').value || '',
-        metodo_pago: document.getElementById('metodo_pago').value || ''
+        tipo_cliente: document.getElementById('tipo_cliente').value || '',
+        metodo_pago: document.getElementById('metodo_pago').value || '',
+        descuento_planilla: document.getElementById('chk-descuento-planilla').checked
     };
     localStorage.setItem('pech_pos_cart', JSON.stringify(cartData));
 }
@@ -708,9 +750,18 @@ function loadCartFromLocalStorage() {
             document.getElementById('id_cliente').value = cartData.id_cliente;
             document.getElementById('busqueda-cliente').value = cartData.busqueda_cliente || '';
             document.getElementById('cliente-seleccionado-nombre').value = cartData.cliente_seleccionado_nombre || '';
+            document.getElementById('tipo_cliente').value = cartData.tipo_cliente || '';
+            actualizarOpcionesPlanilla();
+            if (cartData.descuento_planilla) {
+                const chk = document.getElementById('chk-descuento-planilla');
+                const sel = document.getElementById('metodo_pago');
+                chk.checked = true;
+                sel.value = 'PLANILLA';
+                sel.disabled = true;
+            }
         }
         
-        if (cartData.metodo_pago) {
+        if (cartData.metodo_pago && cartData.metodo_pago !== 'PLANILLA') {
             document.getElementById('metodo_pago').value = cartData.metodo_pago;
         }
         
@@ -724,13 +775,53 @@ function clearCartFromLocalStorage() {
     localStorage.removeItem('pech_pos_cart');
 }
 
+// Generar num_grupo para venta masiva
+function generarNumGrupo() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    return `VTA-${y}${m}${d}-${h}${min}${s}`;
+}
+
+// Listener del checkbox venta masiva: generar/clear num_grupo
+document.getElementById('chk-venta-masiva').addEventListener('change', function() {
+    if (this.checked) {
+        if (!numGrupo) {
+            numGrupo = generarNumGrupo();
+            localStorage.setItem('pech_pos_num_grupo', numGrupo);
+        }
+    } else {
+        numGrupo = null;
+        localStorage.removeItem('pech_pos_num_grupo');
+    }
+});
+
 // Agregar listeners para persistir cambios en cliente y método de pago
 document.getElementById('metodo_pago').addEventListener('change', saveCartToLocalStorage);
+document.getElementById('chk-descuento-planilla').addEventListener('change', function() {
+    const sel = document.getElementById('metodo_pago');
+    if (this.checked) {
+        sel.value = 'PLANILLA';
+        sel.disabled = true;
+    } else {
+        sel.disabled = false;
+        if (sel.value === 'PLANILLA') sel.value = 'VENTA';
+    }
+    saveCartToLocalStorage();
+});
 document.getElementById('busqueda-cliente').addEventListener('change', function() {
     // Si limpian a mano el campo de cliente
     if (this.value.trim() === '') {
         document.getElementById('id_cliente').value = '';
         document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
+        document.getElementById('metodo_pago').disabled = false;
     }
     saveCartToLocalStorage();
 });
@@ -739,6 +830,10 @@ document.getElementById('busqueda-cliente').addEventListener('input', function()
     if (this.value.trim() === '') {
         document.getElementById('id_cliente').value = '';
         document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
+        document.getElementById('metodo_pago').disabled = false;
         saveCartToLocalStorage();
     }
 });

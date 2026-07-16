@@ -41,7 +41,7 @@ class ChatToolsModel {
                     l.stock_actual AS stock,
                     p.unidad_medida
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
@@ -99,8 +99,8 @@ class ChatToolsModel {
                     cp.nombre_centro AS centro,
                     t.serie_comprobante + '-' + t.correlativo_comprobante AS comprobante
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE " . implode(" AND ", $where) . "
                 ORDER BY t.fecha_creacion DESC";
 
@@ -150,8 +150,8 @@ class ChatToolsModel {
                     cp.nombre_centro AS centro,
                     t.responsable_venta
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE " . implode(" AND ", $where) . "
                 ORDER BY t.fecha_creacion DESC";
 
@@ -175,7 +175,7 @@ class ChatToolsModel {
     // ============================================================
     public function consultarVouchers($params = []) {
         $sqlParams = [];
-        $where = ["1=1"];
+        $where = ["v.activo = 1"];
 
         if (!empty($params['fecha_desde'])) {
             $where[] = "v.fecha_deposito >= ?";
@@ -226,7 +226,7 @@ class ChatToolsModel {
     // ============================================================
     public function consultarProductos($params = []) {
         $sqlParams = [];
-        $where = ["1=1"];
+        $where = ["p.activo = 1"];
 
         if (!empty($params['clase'])) {
             $where[] = "c.nombre_clase LIKE ?";
@@ -300,7 +300,7 @@ class ChatToolsModel {
     // ============================================================
     public function consultarClientes($params = []) {
         $sqlParams = [];
-        $where = ["1=1"];
+        $where = ["c.activo = 1"];
 
         if (!empty($params['nombre'])) {
             $where[] = "(c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?)";
@@ -378,7 +378,7 @@ class ChatToolsModel {
                     END AS valor_perdida
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
@@ -525,7 +525,7 @@ class ChatToolsModel {
                     cp.nombre_centro AS centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
@@ -582,7 +582,7 @@ class ChatToolsModel {
                     SUM(td.subtotal) AS ingresos,
                     COUNT(DISTINCT t.id_transaccion) AS total_transacciones
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle td
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto AND p.activo = 1
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON td.id_transaccion = t.id_transaccion
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
@@ -647,7 +647,7 @@ class ChatToolsModel {
                         ELSE 0
                     END AS valor_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
@@ -722,7 +722,7 @@ class ChatToolsModel {
     // ============================================================
     public function consultarVouchersSaldo($params = []) {
         $sqlParams = [];
-        $where = ["1=1"];
+        $where = ["v.activo = 1"];
 
         if (!empty($params['fecha_desde'])) {
             $where[] = "v.fecha_deposito >= ?";
@@ -816,12 +816,12 @@ class ChatToolsModel {
             $sqlParams[] = '%' . $params['centro'] . '%';
         }
 
-        $sql = "SELECT
+                $sql = "SELECT
                     FORMAT(t.fecha_creacion, 'MMM yyyy', 'es-PE') AS mes,
                     ISNULL(SUM(t.total), 0) AS monto_total,
                     COUNT(*) AS transacciones
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro AND cp.activo = 1
                 WHERE " . implode(" AND ", $where) . "
                   AND t.fecha_creacion >= DATEADD(month, -11, DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1))
                 GROUP BY FORMAT(t.fecha_creacion, 'yyyy-MM'), FORMAT(t.fecha_creacion, 'MMM yyyy', 'es-PE')
@@ -892,7 +892,7 @@ class ChatToolsModel {
                     SUM(td.subtotal) AS ingresos
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle td
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON td.id_transaccion = t.id_transaccion
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON td.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON t.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 GROUP BY p.nombre
@@ -941,7 +941,7 @@ class ChatToolsModel {
                     cp.nombre_centro AS centro,
                     SUM(l.stock_actual) AS stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE " . implode(" AND ", $where) . "
                 GROUP BY cp.nombre_centro
@@ -1049,7 +1049,7 @@ class ChatToolsModel {
                         END
                     ) AS valor_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
@@ -1118,7 +1118,7 @@ class ChatToolsModel {
                     ), 0) AS valor_perdida
                 FROM BD_PRODUCCIONDESARROLLO.dbo.kardex k
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.lote l ON k.id_lote = l.id_lote
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
@@ -1251,7 +1251,7 @@ class ChatToolsModel {
         // Stock critico (< 10)
         $sql = "SELECT COUNT(DISTINCT p.id_producto) AS productos_criticos
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 WHERE l.stock_actual > 0 AND l.stock_actual < 10 AND p.maneja_stock = 1";
         $stmt = sqlsrv_query($this->db, $sql);
         $criticos = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC) ?: ['productos_criticos' => 0];
@@ -1280,7 +1280,7 @@ class ChatToolsModel {
                         ELSE 0
                     END), 0) AS valor_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN (
                     SELECT hp1.id_producto, hp1.precio_oficial
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
@@ -1402,7 +1402,7 @@ class ChatToolsModel {
         $sql = "SELECT TOP 5 'Producto' AS tipo, p.nombre AS resultado, p.unidad_medida AS extra, c.nombre_clase AS contexto
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                WHERE p.nombre LIKE ? OR p.nombre_cientifico LIKE ?
+                WHERE (p.nombre LIKE ? OR p.nombre_cientifico LIKE ?) AND p.activo = 1
                 ORDER BY p.nombre";
         $stmt = sqlsrv_query($this->db, $sql, [$like, $like]);
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
@@ -1412,7 +1412,7 @@ class ChatToolsModel {
         // Buscar clientes
         $sql = "SELECT TOP 5 'Cliente' AS tipo, c.nombre_rs AS resultado, c.dni_ruc AS extra, CASE WHEN c.tipo_cliente = 1 THEN 'Planilla' ELSE 'Externo' END AS contexto
                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente c
-                WHERE c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?
+                WHERE (c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?) AND c.activo = 1
                 ORDER BY c.nombre_rs";
         $stmt = sqlsrv_query($this->db, $sql, [$like, $like]);
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
@@ -1464,7 +1464,7 @@ class ChatToolsModel {
         // Stock critico
         $sql = "SELECT TOP 5 p.nombre AS producto, SUM(l.stock_actual) AS stock, cp.nombre_centro AS centro
                 FROM BD_PRODUCCIONDESARROLLO.dbo.lote l
-                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.producto p ON l.id_producto = p.id_producto AND p.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON l.id_centro = cp.id_centro
                 WHERE l.stock_actual > 0 AND l.stock_actual < 10 AND p.maneja_stock = 1
                 GROUP BY p.nombre, cp.nombre_centro

@@ -13,6 +13,7 @@ class PuntoVentaModel {
     public function listarClientes() {
         $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente 
                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente 
+                WHERE activo = 1
                 ORDER BY nombre_rs";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
@@ -29,6 +30,7 @@ class PuntoVentaModel {
                        CASE WHEN tipo_cliente = 1 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente 
                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente 
                 WHERE nombre_rs COLLATE SQL_Latin1_General_CP1_CI_AS LIKE ?
+                AND activo = 1
                 ORDER BY nombre_rs";
         $searchTerm = '%' . $query . '%';
         $stmt = sqlsrv_query($this->db, $sql, [$searchTerm]);
@@ -68,7 +70,7 @@ class PuntoVentaModel {
                         WHERE hp2.id_producto = hp1.id_producto
                     )
                 ) hp ON p.id_producto = hp.id_producto
-                WHERE p.maneja_stock = 1
+                WHERE p.maneja_stock = 1 AND p.activo = 1
                 ORDER BY p.nombre";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) {
@@ -107,7 +109,7 @@ class PuntoVentaModel {
                         WHERE hp2.id_producto = hp1.id_producto
                     )
                 ) hp ON p.id_producto = hp.id_producto
-                WHERE p.id_producto = ? AND p.maneja_stock = 1";
+                WHERE p.id_producto = ? AND p.maneja_stock = 1 AND p.activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             $row['precio_venta'] = $this->calcularPrecio($row);
@@ -140,7 +142,7 @@ class PuntoVentaModel {
             $idCentro = null;
             if (!empty($data['items'])) {
                 $primerItem = $data['items'][0];
-                $sqlCentro = "SELECT id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
+                $sqlCentro = "SELECT id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ? AND activo = 1";
                 $stmtCentro = sqlsrv_query($this->db, $sqlCentro, [$primerItem['id_producto']]);
                 if ($stmtCentro && $rowCentro = sqlsrv_fetch_array($stmtCentro, SQLSRV_FETCH_ASSOC)) {
                     $idCentro = $rowCentro['id_centro'];
@@ -149,9 +151,9 @@ class PuntoVentaModel {
             
             // Insertar encabezado de transacción y obtener ID
             $sqlTransaccion = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.transaccion 
-                        (id_cliente, id_centro, id_voucher, responsable_venta, tipo_op, metodo_pago, estado, fecha_creacion, total, serie_comprobante, correlativo_comprobante, doc_justificante)
+                        (id_cliente, id_centro, id_voucher, responsable_venta, tipo_op, metodo_pago, estado, fecha_creacion, total, serie_comprobante, correlativo_comprobante, doc_justificante, descuento_planilla, num_grupo)
                         OUTPUT INSERTED.id_transaccion
-                        VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, ?, ?)";
+                        VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, ?, ?, ?, ?)";
             $paramsTransaccion = [
                 $data['id_cliente'],
                 $idCentro ?? 1, // id_centro del producto o valor por defecto
@@ -159,11 +161,13 @@ class PuntoVentaModel {
                 $_SESSION['usuario_nombre'] ?? 'Sistema', // responsable_venta
                 'VENTA', // tipo_op
                 $data['metodo_pago'] ?? 'VENTA', // metodo_pago
-                'PENDIENTE', // estado - en proceso para bandeja de proformas
+                ($data['metodo_pago'] ?? 'VENTA') === 'PLANILLA' ? 'PROCESADO' : 'PENDIENTE', // estado
                 $data['total'],
                 null, // serie_comprobante - se asigna en proformas
                 null, // correlativo_comprobante - se asigna en proformas
-                null  // doc_justificante
+                null,  // doc_justificante
+                ($data['descuento_planilla'] ?? false) ? 1 : 0,
+                !empty($data['num_grupo']) ? $data['num_grupo'] : null // num_grupo para ventas masivas
             ];
             $stmtTransaccion = sqlsrv_query($this->db, $sqlTransaccion, $paramsTransaccion);
             if ($stmtTransaccion === false) {
@@ -288,7 +292,7 @@ class PuntoVentaModel {
         $sql = "SELECT t.id_transaccion, t.fecha_creacion as fecha, t.metodo_pago, t.total, t.estado,
                        c.nombre_rs as cliente
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
                 WHERE CAST(t.fecha_creacion as DATE) = CAST(GETDATE() as DATE)
                 AND t.tipo_op = 'VENTA'
                 ORDER BY t.fecha_creacion DESC";

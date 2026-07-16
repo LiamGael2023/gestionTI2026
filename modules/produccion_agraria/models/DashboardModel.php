@@ -36,8 +36,8 @@ class DashboardModel {
             return ['success' => false, 'message' => 'Error al iniciar transacción'];
         }
 
-        // Eliminar configuración actual
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.dashboard_config WHERE usuario_id = ?";
+        // Desactivar configuración actual (soft delete)
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.dashboard_config SET activo = 0 WHERE usuario_id = ?";
         sqlsrv_query($this->db, $sql, [$usuarioId]);
 
         // Insertar nueva configuración
@@ -61,7 +61,7 @@ class DashboardModel {
     }
 
     public function resetConfig($usuarioId) {
-        $sql = "DELETE FROM BD_PRODUCCIONDESARROLLO.dbo.dashboard_config WHERE usuario_id = ?";
+        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.dashboard_config SET activo = 0 WHERE usuario_id = ?";
         sqlsrv_query($this->db, $sql, [$usuarioId]);
         return ['success' => true, 'message' => 'Dashboard restaurado al layout por defecto'];
     }

@@ -849,30 +849,115 @@ function mostrarModalAsignarVoucher(idVoucher, montoTotal) {
     cargarProformasDisponibles();
 }
 
-// Cargar proformas disponibles para asignar
+// Cargar proformas disponibles para asignar (agrupadas por num_grupo)
 function cargarProformasDisponibles() {
     fetch(`${BASE_URL}/produccion_agraria?action=listar_proformas_disponibles`)
         .then(r => r.json())
         .then(data => {
             const tbody = document.getElementById('lista-proformas-asignar');
-            if (data.success && data.proformas.length > 0) {
-                tbody.innerHTML = data.proformas.map(p => `
+            if (!data.success || !data.proformas.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No hay proformas pendientes disponibles</td></tr>';
+                return;
+            }
+
+            const proformas = data.proformas;
+            let html = '';
+
+            // Separar: agrupadas por num_grupo y sueltas
+            const grupos = {};
+            const sueltas = [];
+            proformas.forEach(p => {
+                if (p.num_grupo && p.num_grupo.trim() !== '') {
+                    if (!grupos[p.num_grupo]) grupos[p.num_grupo] = [];
+                    grupos[p.num_grupo].push(p);
+                } else {
+                    sueltas.push(p);
+                }
+            });
+
+            // Renderizar grupos (ventas masivas)
+            const clavesGrupo = Object.keys(grupos).sort();
+            clavesGrupo.forEach(grupo => {
+                const items = grupos[grupo];
+                const totalGrupo = items.reduce((s, p) => s + parseFloat(p.total), 0);
+                const ids = items.map(p => p.id_transaccion);
+                const fechaVenta = items[0].fecha_creacion ? new Date(items[0].fecha_creacion).toLocaleDateString('es-PE', {day:'2-digit',month:'2-digit',year:'numeric'}) : '';
+
+                html += `
+                    <tr class="table-success" style="background-color: rgba(40, 167, 69, 0.08);">
+                        <td>
+                            <input type="checkbox" class="form-check-input grupo-check"
+                                   data-grupo="${grupo}"
+                                   data-ids="${ids.join(',')}"
+                                   data-monto="${totalGrupo.toFixed(2)}"
+                                   onchange="toggleGrupo(this)">
+                        </td>
+                        <td colspan="2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-success"><i class="ti ti-package me-1"></i>Venta Masiva</span>
+                                <strong class="text-dark">${items.length} ventas</strong>
+                                <span class="text-muted">— ${fechaVenta}</span>
+                                <code class="ms-2" style="font-size:0.7rem;">${grupo}</code>
+                            </div>
+                        </td>
+                        <td class="text-end fw-bold text-success">S/ ${totalGrupo.toFixed(2)}</td>
+                    </tr>`;
+
+                // Filas individuales del grupo (ocultas por defecto)
+                items.forEach(p => {
+                    const nombre = p.nombre_cliente || 'N/A';
+                    html += `
+                        <tr class="grupo-item-${grupo}" style="display:none; background-color: rgba(40, 167, 69, 0.03);">
+                            <td>
+                                <input type="checkbox" class="form-check-input proforma-check item-grupo-${grupo}"
+                                       value="${p.id_transaccion}"
+                                       data-monto="${p.total}"
+                                       onchange="calcularMontoSeleccionado()">
+                            </td>
+                            <td><strong>#${p.id_transaccion}</strong></td>
+                            <td>${nombre}</td>
+                            <td class="text-end fw-bold">S/ ${parseFloat(p.total).toFixed(2)}</td>
+                        </tr>`;
+                });
+            });
+
+            // Renderizar proformas sueltas (individuales)
+            sueltas.forEach(p => {
+                const nombre = p.nombre_cliente || 'N/A';
+                html += `
                     <tr>
                         <td>
-                            <input type="checkbox" class="form-check-input proforma-check" 
-                                   value="${p.id_transaccion}" 
+                            <input type="checkbox" class="form-check-input proforma-check"
+                                   value="${p.id_transaccion}"
                                    data-monto="${p.total}"
                                    onchange="calcularMontoSeleccionado()">
                         </td>
                         <td><strong>#${p.id_transaccion}</strong></td>
-                        <td>${p.nombre_cliente || 'N/A'}</td>
+                        <td>${nombre}</td>
                         <td class="text-end fw-bold">S/ ${parseFloat(p.total).toFixed(2)}</td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">No hay proformas pendientes disponibles</td></tr>';
-            }
+                    </tr>`;
+            });
+
+            tbody.innerHTML = html;
         });
+}
+
+// Toggle: expandir/colapsar items de un grupo
+function toggleGrupo(chk) {
+    const grupo = chk.dataset.grupo;
+    const items = document.querySelectorAll('.grupo-item-' + CSS.escape(grupo));
+    const itemChecks = document.querySelectorAll('.item-grupo-' + CSS.escape(grupo));
+
+    if (chk.checked) {
+        // Seleccionar todos los items del grupo
+        items.forEach(row => row.style.display = '');
+        itemChecks.forEach(c => c.checked = true);
+    } else {
+        // Deseleccionar y ocultar
+        items.forEach(row => row.style.display = 'none');
+        itemChecks.forEach(c => c.checked = false);
+    }
+    calcularMontoSeleccionado();
 }
 
 // Calcular monto total seleccionado
