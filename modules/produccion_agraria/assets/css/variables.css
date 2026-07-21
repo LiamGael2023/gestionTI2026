@@ -1,0 +1,93 @@
+:root {
+    /* Colores primarios - Verde agrario */
+    --pa-verde: #009540;
+    --pa-verde-dark: #007a33;
+    --pa-verde-light: #00c851;
+    --pa-primary: var(--pa-verde);
+    --pa-primary-dark: var(--pa-verde-dark);
+    --pa-primary-light: var(--pa-verde-light);
+    
+    /* Colores de acento - Azul corporativo (dashboard, reportes) */
+    --pa-blue: #004d99;
+    --pa-blue-dark: #003a73;
+    --pa-blue-light: #0070cc;
+    
+    /* Colores de estado */
+    --pa-success: #28a745;
+    --pa-success-light: #20c997;
+    --pa-warning: #f59e0b;
+    --pa-warning-light: #fbbf24;
+    --pa-danger: #dc3545;
+    --pa-danger-light: #f86c6b;
+    --pa-info: #17a2b8;
+    
+    /* KPI / Dashboard */
+    --pa-kpi-ventas: #004d99;
+    --pa-kpi-proformas: #e67e22;
+    --pa-kpi-stock: #dc2626;
+    --pa-kpi-vouchers: #9b59b6;
+    --pa-kpi-mermas: #e74c3c;
+    --pa-kpi-valor: #009540;
+    
+    /* Colores neutros (Bootstrap gray) */
+    --pa-gray-100: #f8f9fa;
+    --pa-gray-200: #e9ecef;
+    --pa-gray-300: #dee2e6;
+    --pa-gray-400: #ced4da;
+    --pa-gray-500: #adb5bd;
+    --pa-gray-600: #6c757d;
+    --pa-gray-700: #495057;
+    --pa-gray-800: #343a40;
+    --pa-gray-900: #212529;
+    
+    /* Colores dashboard (Tailwind slate) */
+    --pa-slate-50: #f8fafc;
+    --pa-slate-100: #f1f5f9;
+    --pa-slate-200: #e2e8f0;
+    --pa-slate-300: #cbd5e1;
+    --pa-slate-400: #94a3b8;
+    --pa-slate-500: #64748b;
+    --pa-slate-600: #475569;
+    --pa-slate-700: #334155;
+    --pa-slate-800: #1e293b;
+    --pa-slate-900: #0f172a;
+    
+    --pa-text-primary: #1e293b;
+    --pa-text-secondary: #64748b;
+    --pa-text-muted: #94a3b8;
+    --pa-border-color: #e2e8f0;
+    --pa-bg-card: #ffffff;
+    --pa-bg-page: #f8fafc;
+    
+    /* Sombras */
+    --pa-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --pa-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --pa-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --pa-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --pa-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.06);
+    
+    /* Bordes */
+    --pa-border-radius: 4px;
+    --pa-border-radius-sm: 2px;
+    --pa-border-radius-md: 6px;
+    --pa-border-radius-lg: 8px;
+    --pa-border-radius-xl: 10px;
+    --pa-border-radius-2xl: 12px;
+    
+    /* Espaciado */
+    --pa-spacer-xs: 0.25rem;
+    --pa-spacer-sm: 0.5rem;
+    --pa-spacer: 1rem;
+    --pa-spacer-md: 1.25rem;
+    --pa-spacer-lg: 1.5rem;
+    --pa-spacer-xl: 2rem;
+    
+    /* Tipografia */
+    --pa-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pa-font-size-xs: 0.75rem;
+    --pa-font-size-sm: 0.875rem;
+    --pa-font-size-base: 1rem;
+    --pa-font-size-lg: 1.125rem;
+    --pa-font-size-xl: 1.25rem;
+    --pa-line-height-base: 1.5;
+}

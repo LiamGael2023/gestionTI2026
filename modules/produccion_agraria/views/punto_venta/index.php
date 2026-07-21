@@ -1,0 +1,954 @@
+<div class="breadcrumb">
+    <div class="container-xl">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a href="<?php echo BASE_URL; ?>/produccion_agraria">Prod. Agraria</a>
+            </li>
+            <li class="breadcrumb-item active">Punto de Venta</li>
+        </ol>
+    </div>
+</div>
+
+<div class="page-body">
+    <div class="container-xl">
+        <div class="card mb-3 border-0 shadow-sm">
+            <div class="card-body py-2 px-3">
+                <div class="text-uppercase text-muted fw-bold fs-4">
+                    <i class="ti ti-leaf me-2 text-primary"></i>
+                    Sistema de Seguimiento y control de Productos Agricolas
+                </div>
+            </div>
+        </div>
+        <!-- Título -->
+        <h3 class="mb-4 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
+
+        <!-- Formulario de Encabezado -->
+        <div class="row g-2 mb-2">
+            <div class="col-md-4">
+                <div class="position-relative">
+                    <input type="text" class="form-control" id="busqueda-cliente" 
+                           placeholder="Buscar cliente..." autocomplete="off">
+                    <div class="dropdown-menu w-100" id="dropdown-clientes" style="display: none; max-height: 300px; overflow-y: auto;">
+                        <!-- Resultados de búsqueda se mostrarán aquí -->
+                    </div>
+                    <input type="hidden" id="id_cliente">
+                    <input type="hidden" id="cliente-seleccionado-nombre">
+                    <input type="hidden" id="tipo_cliente">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="metodo_pago">
+                    <option value="">Método de pago</option>
+                    <option value="VENTA">Venta</option>
+                    <option value="DONACION">Donación</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-center" id="div-descuento-planilla" style="display:none;">
+                <div class="d-flex align-items-center border rounded w-100 py-2 px-3 gap-2" style="background:#fff;">
+                    <label class="fw-semibold text-muted small mb-0" for="chk-descuento-planilla" style="cursor:pointer;">
+                        <i class="ti ti-calculator me-1 align-middle"></i> Descuento planilla
+                    </label>
+                    <input type="checkbox" id="chk-descuento-planilla" class="form-check-input m-0">
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-center">
+                <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
+                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
+                        <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
+                    </label>
+                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Columna principal -->
+            <div class="col-md-12">
+                <!-- Área de Items (Tabla) -->
+                <div class="card mb-2">
+                    <div class="card-body p-0">
+                        <div class="table-container" style="height: 250px; max-height: 250px; overflow-y: auto; position: relative; display: block;">
+                            <table class="table table-vcenter card-table mb-0" id="tabla-items">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="w-1">Cantidad</th>
+                                <th class="w-1">Precio Unit.</th>
+                                <th class="w-1">Subtotal</th>
+                                <th class="w-1"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-items">
+                            <!-- Items se agregarán dinámicamente -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Mensaje cuando está vacío -->
+                    <div class="text-center text-muted" id="mensaje-vacio">
+                        <i class="ti ti-shopping-cart-off fs-1 mb-2"></i>
+                        <p>No hay productos agregados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Selector de Productos -->
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="position-relative">
+                    <input type="text" class="form-control" id="busqueda-producto" 
+                           placeholder="Buscar producto..." autocomplete="off">
+                    <div class="dropdown-menu w-100" id="dropdown-productos" style="display: none;">
+                        <!-- Resultados de búsqueda se mostrarán aquí -->
+                    </div>
+                </div>
+                <small class="text-muted">Clic para agregar (cantidad: 1)</small>
+            </div>
+        </div>
+        
+        <!-- Footer de Venta -->
+        <div class="row align-items-center g-2">
+            <div class="col-md-5">
+                <div class="bg-success text-white p-2 rounded d-flex justify-content-between align-items-center">
+                    <span class="fs-5 fw-bold">Total:</span>
+                    <span class="fs-4 fw-bold" id="total-venta">S/. 0.00</span>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="d-flex gap-2 justify-content-end">
+                    <button class="btn btn-outline-secondary" id="btn-limpiar">
+                        <i class="ti ti-trash me-1"></i>Limpiar
+                    </button>
+                    <button class="btn btn-success" id="btn-procesar">
+                        <i class="ti ti-check me-1"></i>Procesar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Panel de Historial -->
+<div class="card border-0 shadow-sm mt-3" id="card-historial-cola">
+            <div class="card-header bg-success-lt py-2 px-3 border-0">
+                <h4 class="card-title text-success mb-0 d-flex align-items-center fw-bold">
+                    <i class="ti ti-history me-2 fs-3"></i> Últimas Ventas Procesadas
+                </h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                    <table class="table table-vcenter card-table mb-0" id="tabla-historial-cola">
+                        <thead>
+                            <tr class="text-muted small">
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Producto</th>
+                                <th class="text-end">Cant.</th>
+                                <th class="text-end">Monto</th>
+                                <th class="text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-historial-cola">
+                            <tr>
+                                <td colspan="6" class="text-center py-3 text-muted small">
+                                    <i class="ti ti-inbox me-1"></i>Ninguna venta registrada en esta sesión
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- Estilos compartidos del módulo -->
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/punto_venta.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// ========================================
+// PUNTO DE VENTA - LÓGICA
+// ========================================
+
+let items = [];
+let numGrupo = localStorage.getItem('pech_pos_num_grupo') || null;
+let productosDisponibles = <?php echo json_encode($productos); ?>;
+let clientesDisponibles = <?php echo json_encode($clientes); ?>;
+
+// Inicializar fecha actual
+document.getElementById('fecha').valueAsDate = new Date();
+
+// ========================================
+// BÚSQUEDA DE CLIENTES CON AUTOCOMPLETADO
+// ========================================
+const busquedaClienteInput = document.getElementById('busqueda-cliente');
+const dropdownClientes = document.getElementById('dropdown-clientes');
+let clienteAutoSeleccionando = false;
+
+busquedaClienteInput.addEventListener('input', function() {
+    if (clienteAutoSeleccionando) return;
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+        dropdownClientes.style.display = 'none';
+        return;
+    }
+    
+    // Búsqueda local en el array de clientes (igual que productos)
+    const resultados = clientesDisponibles.filter(c => 
+        c.nombre_rs.toLowerCase().includes(query) || 
+        c.dni_ruc.toLowerCase().includes(query)
+    );
+    
+    if (resultados.length === 0) {
+        const docLimpio = query.replace(/\D/g, '');
+        const esDNI = docLimpio.length === 8;
+        const esRUC = docLimpio.length === 11;
+        
+        if (esDNI || esRUC) {
+            const fuente = esDNI ? 'RENIEC' : 'SUNAT';
+            dropdownClientes.innerHTML = `<div class="dropdown-item text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>Buscando en ${fuente}...
+            </div>`;
+            dropdownClientes.style.display = 'block';
+            
+            fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=buscar_cliente_api&documento=${docLimpio}`)
+                .then(r => r.text())
+                .then(text => {
+                    const trimmed = text.trim();
+                    const js = trimmed.indexOf('{');
+                    const je = trimmed.lastIndexOf('}');
+                    if (js === -1 || je === -1) { throw new Error('Respuesta invalida'); }
+                    const d = JSON.parse(trimmed.substring(js, je + 1));
+                    
+                    if (d.success && d.data) {
+                        const c = d.data;
+                        const tipoTxt = (c.tipo_cliente == 0 || c.tipo_cliente === 'Planilla') ? 'Planilla' : 'Externo';
+                        const existe = clientesDisponibles.find(x => x.id_cliente == c.id_cliente);
+                        if (!existe) {
+                            clientesDisponibles.push({
+                                id_cliente: c.id_cliente,
+                                nombre_rs: c.nombre_rs,
+                                dni_ruc: c.dni_ruc,
+                                tipo_cliente: tipoTxt
+                            });
+                        }
+                        const nombreEsc = c.nombre_rs.replace(/'/g, "\\'");
+                        const dniEsc = c.dni_ruc.replace(/'/g, "\\'");
+                        dropdownClientes.innerHTML = `<a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${nombreEsc}', '${dniEsc}', '${tipoTxt}', event)">
+                            <div class="fw-semibold text-success"><i class="ti ti-check me-1"></i>${c.nombre_rs}</div>
+                            <div class="small text-muted">${c.dni_ruc} - ${tipoTxt} (${fuente})</div>
+                        </a>
+                        <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                            <i class="ti ti-user-plus me-2"></i>Registrar manualmente
+                        </a>`;
+                        dropdownClientes.style.display = 'block';
+                    } else {
+                        const diag = d.diag || '';
+                        const curl = d.has_curl ? 'SI' : 'NO';
+                        const fopen = d.has_fopen ? 'SI' : 'NO';
+                        dropdownClientes.innerHTML = `
+                            <div class="dropdown-item text-muted small">No encontrado en ${fuente}</div>
+                            <div class="dropdown-item text-muted small border-bottom">curl=${curl} | fopen=${fopen}</div>
+                            ${diag ? `<div class="dropdown-item text-danger small">${diag}</div>` : ''}
+                            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                                <i class="ti ti-user-plus me-2"></i>Registrar manualmente: "${query}"
+                            </a>`;
+                    }
+                })
+                .catch(() => {
+                    dropdownClientes.innerHTML = `
+                        <div class="dropdown-item text-danger">Error al consultar ${fuente}</div>
+                        <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                            <i class="ti ti-user-plus me-2"></i>Registrar manualmente
+                        </a>`;
+                });
+            return;
+        }
+        
+        // Comportamiento original para texto normal
+        dropdownClientes.innerHTML = `
+            <div class="dropdown-item text-muted">No se encontraron clientes</div>
+            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                <i class="ti ti-user-plus me-2"></i>Registrar rápido: "${query}"
+            </a>
+        `;
+    } else {
+        dropdownClientes.innerHTML = resultados.map(c => {
+            const nombreEsc = c.nombre_rs.replace(/'/g, "\\'");
+            const dniEsc = c.dni_ruc.replace(/'/g, "\\'");
+            const tipoEsc = String(c.tipo_cliente).replace(/'/g, "\\'");
+            return `<a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${nombreEsc}', '${dniEsc}', '${tipoEsc}', event)">
+                <div class="fw-semibold">${c.nombre_rs}</div>
+                <div class="small text-muted">${c.dni_ruc} - ${c.tipo_cliente}</div>
+            </a>`;
+        }).join('') + `
+            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                <i class="ti ti-user-plus me-2"></i>Registrar rápido: "${query}"
+            </a>
+        `;
+    }
+    
+    dropdownClientes.style.display = 'block';
+});
+
+// Seleccionar cliente del dropdown
+function seleccionarCliente(id, nombre, dniRuc, tipoCliente, event) {
+    if (event) event.preventDefault();
+    document.getElementById('id_cliente').value = id;
+    document.getElementById('cliente-seleccionado-nombre').value = nombre;
+    document.getElementById('tipo_cliente').value = tipoCliente;
+    document.getElementById('busqueda-cliente').value = `${nombre} (${dniRuc})`;
+    dropdownClientes.style.display = 'none';
+    actualizarOpcionesPlanilla();
+}
+
+function actualizarOpcionesPlanilla() {
+    const tipoCliente = document.getElementById('tipo_cliente').value;
+    const divDescuento = document.getElementById('div-descuento-planilla');
+    const chkDescuento = document.getElementById('chk-descuento-planilla');
+    const selMetodo = document.getElementById('metodo_pago');
+    if (tipoCliente === 'Planilla') {
+        divDescuento.style.display = 'flex';
+    } else {
+        divDescuento.style.display = 'none';
+        chkDescuento.checked = false;
+        if (selMetodo.value === 'PLANILLA') selMetodo.value = 'VENTA';
+    }
+}
+
+// Registrar cliente rápido desde input de autocompletado
+function registrarClienteRapidoDesdeInput(event, nombre) {
+    if (event) event.preventDefault();
+    
+    if (!nombre || nombre.trim() === '') {
+        Swal.fire('Advertencia', 'El nombre del cliente no puede estar vacío', 'warning');
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Registrando cliente...',
+        text: 'Por favor espere',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=crear_cliente_rapido', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ nombre: nombre.trim() })
+    })
+    .then(r => r.text())
+    .then(text => {
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error('Respuesta inválida del servidor');
+        }
+        const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+        
+        if (data.success) {
+            // Añadir al array local para futuras búsquedas
+            clientesDisponibles.push({
+                id_cliente: data.id_cliente,
+                nombre_rs: data.nombre_rs,
+                dni_ruc: data.dni_ruc,
+                tipo_cliente: 'Externo'
+            });
+            
+            // Seleccionar automáticamente
+            document.getElementById('id_cliente').value = data.id_cliente;
+            document.getElementById('cliente-seleccionado-nombre').value = data.nombre_rs;
+            document.getElementById('busqueda-cliente').value = `${data.nombre_rs} (${data.dni_ruc})`;
+            dropdownClientes.style.display = 'none';
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Cliente registrado',
+                text: `${data.nombre_rs} fue seleccionado correctamente`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            
+            // Enfocar en cantidad si el producto ya está en tabla
+            setTimeout(() => {
+                const qtyInput = document.querySelector('#tbody-items input[type="number"]');
+                if (qtyInput) {
+                    qtyInput.focus();
+                    qtyInput.select();
+                } else {
+                    document.getElementById('busqueda-producto').focus();
+                }
+            }, 300);
+        } else {
+            Swal.fire('Error', data.message || 'No se pudo registrar el cliente', 'error');
+        }
+    })
+    .catch(err => {
+        Swal.fire('Error', 'Error de conexión con el servidor: ' + err.message, 'error');
+    });
+}
+
+// Cerrar dropdown de clientes al hacer clic fuera
+document.addEventListener('click', function(e) {
+    if (!busquedaClienteInput.contains(e.target) && !dropdownClientes.contains(e.target)) {
+        dropdownClientes.style.display = 'none';
+    }
+});
+
+// ========================================
+// BÚSQUEDA DE PRODUCTOS CON AUTOCOMPLETADO
+// ========================================
+const busquedaInput = document.getElementById('busqueda-producto');
+const dropdownProductos = document.getElementById('dropdown-productos');
+
+busquedaInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    if (query.length < 2) {
+        dropdownProductos.style.display = 'none';
+        return;
+    }
+    
+    const resultados = productosDisponibles.filter(p => 
+        p.nombre.toLowerCase().includes(query)
+    );
+    
+    if (resultados.length === 0) {
+        dropdownProductos.innerHTML = '<div class="dropdown-item text-muted">No se encontraron productos</div>';
+    } else {
+        dropdownProductos.innerHTML = resultados.map(p => {
+            let badgeClass = 'bg-success-lt';
+            let badgeText = `Stock: ${p.stock_total}`;
+            if (p.stock_total <= 0) {
+                badgeClass = 'bg-secondary-lt';
+                badgeText = 'Agotado';
+            } else if (p.stock_total < 10) {
+                badgeClass = 'bg-danger-lt';
+                badgeText = `Crítico: ${p.stock_total}`;
+            }
+            return `
+                <a class="dropdown-item producto-item" href="#" onclick="agregarProductoDirecto(${p.id_producto}, '${p.nombre.replace(/'/g, "\\'")}', '${p.unidad_medida.replace(/'/g, "\\'")}', ${p.precio_venta}, event)">
+                    <div class="producto-row">
+                        <div class="producto-info">
+                            <div class="producto-icono me-3">
+                                <i class="ti ti-package"></i>
+                            </div>
+                            <div class="producto-text">
+                                <div class="producto-nombre">${p.nombre}</div>
+                                <div class="producto-unidad">${p.unidad_medida} <span class="badge ${badgeClass} ms-1">${badgeText}</span></div>
+                            </div>
+                        </div>
+                        <div class="producto-precio">
+                            S/. ${p.precio_venta.toFixed(2)}
+                        </div>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+    
+    dropdownProductos.style.display = 'block';
+});
+
+// Agregar producto al hacer clic en el dropdown
+function agregarProductoDirecto(id, nombre, unidad, precio, event) {
+    event.preventDefault();
+    
+    // Buscar el producto en la lista local para obtener su stock
+    const prodRef = productosDisponibles.find(p => p.id_producto == id);
+    const stockTotal = prodRef ? prodRef.stock_total : 0;
+    const nombreCentro = prodRef ? prodRef.nombre_centro : '';
+    const imagenNombre = prodRef ? prodRef.imagen_nombre : '';
+    
+    if (stockTotal <= 0) {
+        Swal.fire('Sin stock', 'Este producto no cuenta con stock disponible', 'warning');
+        return;
+    }
+    
+    // Verificar si ya existe
+    const existente = items.find(i => i.id_producto == id);
+    if (existente) {
+        if (existente.cantidad + 1 > stockTotal) {
+            Swal.fire('Stock insuficiente', `No puedes agregar más unidades. El stock máximo disponible es ${stockTotal} ${unidad}`, 'warning');
+            return;
+        }
+        existente.cantidad += 1;
+        existente.subtotal = existente.cantidad * existente.precio;
+    } else {
+        // Marcar como nuevo para animación
+        items.push({
+            id_producto: id,
+            nombre: nombre,
+            unidad: unidad,
+            cantidad: 1,
+            precio: parseFloat(precio) || 0,
+            subtotal: parseFloat(precio) || 0,
+            stock_max: stockTotal,
+            nombre_centro: nombreCentro,
+            imagen_nombre: imagenNombre,
+            _esNuevo: true
+        });
+    }
+    
+    renderItems();
+    
+    // Limpiar búsqueda
+    document.getElementById('busqueda-producto').value = '';
+    dropdownProductos.style.display = 'none';
+}
+
+// Cerrar dropdown al hacer clic fuera
+document.addEventListener('click', function(e) {
+    if (!busquedaInput.contains(e.target) && !dropdownProductos.contains(e.target)) {
+        dropdownProductos.style.display = 'none';
+    }
+});
+
+// Renderizar items en tabla
+function renderItems() {
+    const tbody = document.getElementById('tbody-items');
+    const mensajeVacio = document.getElementById('mensaje-vacio');
+    
+    if (items.length === 0) {
+        tbody.innerHTML = '';
+        mensajeVacio.style.display = 'block';
+        document.getElementById('total-venta').textContent = 'S/. 0.00';
+        saveCartToLocalStorage();
+        return;
+    }
+    
+    mensajeVacio.style.display = 'none';
+    
+    tbody.innerHTML = items.map((item, index) => {
+        const stockRestante = item.stock_max - item.cantidad;
+        let stockBadgeClass = 'text-success';
+        if (stockRestante < 5) {
+            stockBadgeClass = 'text-danger fw-bold';
+        } else if (stockRestante < 10) {
+            stockBadgeClass = 'text-warning fw-bold';
+        }
+        
+        let imgHtml = '';
+        if (item.imagen_nombre) {
+            imgHtml = `<img src="<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=${item.id_producto}" 
+                            alt="${item.nombre}" 
+                            class="avatar avatar-sm me-2 border rounded" 
+                            style="object-fit: cover; width: 38px; height: 38px;">`;
+        } else {
+            imgHtml = `<span class="avatar avatar-sm bg-secondary-lt me-2 rounded" style="width: 38px; height: 38px; font-size: 16px; display: inline-flex; align-items: center; justify-content: center;">📦</span>`;
+        }
+        
+        return `
+            <tr class="${item._esNuevo ? 'agregando' : ''}">
+                <td>
+                    <div class="d-flex align-items-center">
+                        ${imgHtml}
+                        <div>
+                            <div class="font-weight-medium">${item.nombre}</div>
+                            <div class="text-muted small">
+                                ${item.unidad} | <span class="text-info">${item.nombre_centro || 'Sin centro'}</span> | 
+                                Stock restante: <span class="${stockBadgeClass}">${stockRestante}</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="form-control" value="${item.cantidad}" 
+                           min="1" onchange="actualizarCantidad(${index}, this.value)" style="width: 80px;">
+                </td>
+                <td>
+                    <input type="number" class="form-control" value="${item.precio.toFixed(2)}" 
+                           step="0.01" onchange="actualizarPrecio(${index}, this.value)" style="width: 100px;">
+                </td>
+                <td class="text-end fw-bold">S/. ${item.subtotal.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="eliminarItem(${index})">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    // Quitar marca de nuevo después de renderizar
+    items.forEach(item => delete item._esNuevo);
+    
+    calcularTotal();
+    saveCartToLocalStorage();
+}
+
+// Actualizar cantidad con validación de stock máximo
+function actualizarCantidad(index, nuevaCantidad) {
+    const item = items[index];
+    const qty = parseInt(nuevaCantidad) || 1;
+    if (item.stock_max !== undefined && qty > item.stock_max) {
+        Swal.fire('Stock insuficiente', `La cantidad excede el stock máximo disponible (${item.stock_max} ${item.unidad})`, 'warning');
+        renderItems();
+        return;
+    }
+    item.cantidad = qty;
+    item.subtotal = item.cantidad * item.precio;
+    renderItems();
+}
+
+// Actualizar precio
+function actualizarPrecio(index, nuevoPrecio) {
+    items[index].precio = parseFloat(nuevoPrecio) || 0;
+    items[index].subtotal = items[index].cantidad * items[index].precio;
+    renderItems();
+}
+
+// Eliminar item
+function eliminarItem(index) {
+    items.splice(index, 1);
+    renderItems();
+}
+
+// Calcular total
+function calcularTotal() {
+    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    document.getElementById('total-venta').textContent = 'S/. ' + total.toFixed(2);
+}
+
+// Limpiar venta
+document.getElementById('btn-limpiar').addEventListener('click', function() {
+    Swal.fire({
+        title: '¿Limpiar venta?',
+        text: 'Se eliminarán todos los productos agregados',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, limpiar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        items = [];
+        document.getElementById('id_cliente').value = '';
+        document.getElementById('busqueda-cliente').value = '';
+        document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
+        clearCartFromLocalStorage();
+        renderItems();
+    });
+});
+
+// Procesar venta
+document.getElementById('btn-procesar').addEventListener('click', function() {
+    // Validaciones
+    const idCliente = document.getElementById('id_cliente').value;
+    const fecha = document.getElementById('fecha').value;
+    const metodoPagoSelect = document.getElementById('metodo_pago').value;
+    const esPlanilla = document.getElementById('tipo_cliente').value === 'Planilla' || document.getElementById('tipo_cliente').value === '1';
+    const descuentoPlanilla = esPlanilla && document.getElementById('chk-descuento-planilla').checked;
+    
+    if (!idCliente) {
+        Swal.fire('Advertencia', 'Seleccione un cliente', 'warning');
+        return;
+    }
+    if (items.length === 0) {
+        Swal.fire('Advertencia', 'Agregue al menos un producto', 'warning');
+        return;
+    }
+
+    let metodoPagoFinal = metodoPagoSelect;
+    if (descuentoPlanilla) {
+        metodoPagoFinal = 'PLANILLA';
+    } else if (!metodoPagoSelect) {
+        Swal.fire('Advertencia', 'Seleccione el método de pago', 'warning');
+        return;
+    }
+    
+    const total = items.reduce((sum, item) => sum + item.subtotal, 0);
+    
+    const ventaData = {
+        id_cliente: idCliente,
+        fecha: fecha,
+        total: total,
+        metodo_pago: metodoPagoFinal,
+        descuento_planilla: descuentoPlanilla ? 1 : 0,
+        num_grupo: numGrupo || undefined,
+        items: items
+    };
+    
+    // Deshabilitar botón para evitar doble clic
+    const btnProcesar = document.getElementById('btn-procesar');
+    if (btnProcesar) btnProcesar.disabled = true;
+    
+    // Enviar al servidor
+    fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=guardar_venta', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ventaData)
+    })
+    .then(r => r.text())
+    .then(text => {
+        if (btnProcesar) btnProcesar.disabled = false;
+        
+        const trimmed = text.trim();
+        const jsonStart = trimmed.indexOf('{');
+        const jsonEnd = trimmed.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            Swal.fire('Error', 'Respuesta inválida del servidor', 'error');
+            return;
+        }
+        try {
+            const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
+            if (data.success) {
+                // Agregar al historial de ultimas ventas (siempre)
+                const nombreCliente = document.getElementById('cliente-seleccionado-nombre').value || document.getElementById('busqueda-cliente').value;
+                const primerItem = items[0] || { nombre: 'Producto', cantidad: 0 };
+                agregarHistorialCola(nombreCliente, primerItem.nombre, primerItem.cantidad, total);
+                
+                const esMasivo = document.getElementById('chk-venta-masiva')?.checked;
+                
+                if (esMasivo) {
+                    // Mostrar toast rápido y no bloqueante
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'bottom-end',
+                        showConfirmButton: false,
+                        timer: 1500,
+                        timerProgressBar: true
+                    });
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Venta en cola registrada con éxito'
+                    });
+                    
+                    // Conservar producto bloqueado y vaciar para la siguiente venta
+                    const lockedProduct = items.length > 0 ? { ...items[0] } : null;
+                    items = [];
+                    if (lockedProduct) {
+                        lockedProduct.cantidad = 1;
+                        lockedProduct.subtotal = lockedProduct.precio;
+                        items.push(lockedProduct);
+                    }
+                    // Limpiamos el localStorage y guardamos el nuevo estado del carrito masivo bloqueado
+                    clearCartFromLocalStorage();
+                    renderItems();
+                    
+                    // Enfocar automáticamente el input de cantidad
+                    setTimeout(() => {
+                        const qtyInput = document.querySelector('#tbody-items input[type="number"]');
+                        if (qtyInput) {
+                            qtyInput.focus();
+                            qtyInput.select();
+                        }
+                    }, 200);
+                } else {
+                    // Flujo estándar: limpiar local storage y recargar
+                    clearCartFromLocalStorage();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Venta registrada',
+                        text: 'La venta se guardó correctamente',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                }
+            } else {
+                Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Error al procesar respuesta', 'error');
+        }
+    })
+    .catch(err => {
+        if (btnProcesar) btnProcesar.disabled = false;
+        Swal.fire('Error', 'Error de conexión', 'error');
+    });
+});
+
+// ========================================
+// PERSISTENCIA LOCALSTORAGE - CART UTILS
+// ========================================
+
+function saveCartToLocalStorage() {
+    const cartData = {
+        items: items,
+        id_cliente: document.getElementById('id_cliente').value || '',
+        busqueda_cliente: document.getElementById('busqueda-cliente').value || '',
+        cliente_seleccionado_nombre: document.getElementById('cliente-seleccionado-nombre').value || '',
+        tipo_cliente: document.getElementById('tipo_cliente').value || '',
+        metodo_pago: document.getElementById('metodo_pago').value || '',
+        descuento_planilla: document.getElementById('chk-descuento-planilla').checked
+    };
+    localStorage.setItem('pech_pos_cart', JSON.stringify(cartData));
+}
+
+function loadCartFromLocalStorage() {
+    try {
+        const dataStr = localStorage.getItem('pech_pos_cart');
+        if (!dataStr) return;
+        
+        const cartData = JSON.parse(dataStr);
+        if (!cartData) return;
+        
+        if (Array.isArray(cartData.items)) {
+            items = cartData.items;
+            // Restaurar dinámicamente datos de centro, imagen y stock_max si son de una sesión antigua o incompleta
+            items.forEach(item => {
+                const prodRef = productosDisponibles.find(p => p.id_producto == item.id_producto);
+                if (prodRef) {
+                    if (!item.nombre_centro) item.nombre_centro = prodRef.nombre_centro;
+                    if (!item.imagen_nombre) item.imagen_nombre = prodRef.imagen_nombre;
+                    if (item.stock_max === undefined) item.stock_max = prodRef.stock_total;
+                }
+            });
+        }
+        
+        if (cartData.id_cliente) {
+            document.getElementById('id_cliente').value = cartData.id_cliente;
+            document.getElementById('busqueda-cliente').value = cartData.busqueda_cliente || '';
+            document.getElementById('cliente-seleccionado-nombre').value = cartData.cliente_seleccionado_nombre || '';
+            document.getElementById('tipo_cliente').value = cartData.tipo_cliente || '';
+            actualizarOpcionesPlanilla();
+            if (cartData.descuento_planilla) {
+                const chk = document.getElementById('chk-descuento-planilla');
+                const sel = document.getElementById('metodo_pago');
+                chk.checked = true;
+                sel.value = 'PLANILLA';
+                sel.disabled = true;
+            }
+        }
+        
+        if (cartData.metodo_pago && cartData.metodo_pago !== 'PLANILLA') {
+            document.getElementById('metodo_pago').value = cartData.metodo_pago;
+        }
+        
+        renderItems();
+    } catch (e) {
+        console.error('Error al restaurar carrito:', e);
+    }
+}
+
+function clearCartFromLocalStorage() {
+    localStorage.removeItem('pech_pos_cart');
+}
+
+// Generar num_grupo para venta masiva
+function generarNumGrupo() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    return `VTA-${y}${m}${d}-${h}${min}${s}`;
+}
+
+// Listener del checkbox venta masiva: generar/clear num_grupo
+document.getElementById('chk-venta-masiva').addEventListener('change', function() {
+    if (this.checked) {
+        if (!numGrupo) {
+            numGrupo = generarNumGrupo();
+            localStorage.setItem('pech_pos_num_grupo', numGrupo);
+        }
+    } else {
+        numGrupo = null;
+        localStorage.removeItem('pech_pos_num_grupo');
+    }
+});
+
+// Agregar listeners para persistir cambios en cliente y método de pago
+document.getElementById('metodo_pago').addEventListener('change', saveCartToLocalStorage);
+document.getElementById('chk-descuento-planilla').addEventListener('change', function() {
+    const sel = document.getElementById('metodo_pago');
+    if (this.checked) {
+        sel.value = 'PLANILLA';
+        sel.disabled = true;
+    } else {
+        sel.disabled = false;
+        if (sel.value === 'PLANILLA') sel.value = 'VENTA';
+    }
+    saveCartToLocalStorage();
+});
+document.getElementById('busqueda-cliente').addEventListener('change', function() {
+    // Si limpian a mano el campo de cliente
+    if (this.value.trim() === '') {
+        document.getElementById('id_cliente').value = '';
+        document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
+        document.getElementById('metodo_pago').disabled = false;
+    }
+    saveCartToLocalStorage();
+});
+// También guardar si se limpia el cliente por evento input vacío
+document.getElementById('busqueda-cliente').addEventListener('input', function() {
+    if (this.value.trim() === '') {
+        document.getElementById('id_cliente').value = '';
+        document.getElementById('cliente-seleccionado-nombre').value = '';
+        document.getElementById('tipo_cliente').value = '';
+        document.getElementById('chk-descuento-planilla').checked = false;
+        document.getElementById('div-descuento-planilla').style.display = 'none';
+        document.getElementById('metodo_pago').disabled = false;
+        saveCartToLocalStorage();
+    }
+});
+
+// Cargar carrito guardado al iniciar
+document.addEventListener('DOMContentLoaded', loadCartFromLocalStorage);
+
+// Función para agregar registros al historial de venta masiva
+function agregarHistorialCola(cliente, producto, cantidad, total) {
+    const tbody = document.getElementById('tbody-historial-cola');
+    if (!tbody) return;
+    
+    const hora = new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    // Remover mensaje de vacío si existe
+    if (tbody.innerHTML.includes('Ninguna venta registrada')) {
+        tbody.innerHTML = '';
+    }
+    
+    const tr = document.createElement('tr');
+    tr.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+    tr.innerHTML = `
+        <td>${hora}</td>
+        <td><strong class="text-dark">${cliente}</strong></td>
+        <td>${producto}</td>
+        <td class="text-end fw-bold">${cantidad}</td>
+        <td class="text-end text-success fw-bold">S/. ${parseFloat(total).toFixed(2)}</td>
+        <td class="text-center"><span class="badge bg-success-lt text-success"><i class="ti ti-check me-1"></i>Guardado</span></td>
+    `;
+    
+    tbody.insertBefore(tr, tbody.firstChild);
+    
+    // Suavizar fondo a los 2 segundos
+    setTimeout(() => {
+        tr.style.transition = 'background-color 1s ease';
+        tr.style.backgroundColor = 'transparent';
+    }, 2000);
+}
+
+// Escuchar tecla Enter en el input de cantidad para procesar ágilmente
+const tbodyItems = document.getElementById('tbody-items');
+if (tbodyItems) {
+    tbodyItems.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.type === 'number') {
+            e.preventDefault();
+            document.getElementById('btn-procesar').click();
+        }
+    });
+}
+</script>

@@ -1,0 +1,229 @@
+/* ========================================
+   PRODUCCION AGRARIA - COMPONENTES CSS
+   Estilos compartidos para todas las vistas
+   ======================================== */
+
+/* Gradientes personalizados */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--pa-verde) 0%, var(--pa-verde-light) 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--pa-success) 0%, var(--pa-success-light) 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--pa-warning) 0%, var(--pa-warning-light) 100%) !important;
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(135deg, var(--pa-danger) 0%, var(--pa-danger-light) 100%) !important;
+}
+
+/* Outline badges */
+.bg-outline-success {
+    background-color: rgba(0, 149, 64, 0.1);
+    color: var(--pa-verde);
+    border: 1px solid var(--pa-verde);
+}
+
+.bg-outline-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--pa-warning);
+    border: 1px solid var(--pa-warning);
+}
+
+.bg-outline-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--pa-danger);
+    border: 1px solid var(--pa-danger);
+}
+
+.bg-outline-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: var(--pa-info);
+    border: 1px solid var(--pa-info);
+}
+
+/* Avatar backgrounds */
+.bg-success-lt {
+    background-color: rgba(0, 149, 64, 0.1);
+    color: var(--pa-verde);
+}
+
+.bg-warning-lt {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--pa-warning);
+}
+
+.bg-danger-lt {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--pa-danger);
+}
+
+.bg-info-lt {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: var(--pa-info);
+}
+
+/* Botones personalizados */
+.btn-success {
+    background: linear-gradient(135deg, var(--pa-verde) 0%, var(--pa-verde-light) 100%);
+    border: none;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, var(--pa-verde-dark) 0%, var(--pa-verde) 100%);
+}
+
+/* Tabla vertical center */
+.table-vcenter td,
+.table-vcenter th {
+    vertical-align: middle;
+}
+
+/* Avatar */
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--pa-border-radius);
+    font-size: 1.2rem;
+}
+
+.avatar-sm {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+}
+
+.avatar-lg {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.5rem;
+}
+
+/* Cards con sombra */
+.card-shadow {
+    box-shadow: var(--pa-shadow);
+    border: none;
+}
+
+.card-shadow-sm {
+    box-shadow: var(--pa-shadow-sm);
+    border: none;
+}
+
+/* Estadísticas cards */
+.stat-card {
+    border-radius: var(--pa-border-radius-lg);
+    padding: var(--pa-spacer-lg);
+    color: white;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card i {
+    font-size: 2rem;
+    margin-bottom: var(--pa-spacer-sm);
+    display: block;
+}
+
+.stat-card h4 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+
+.stat-card small {
+    font-size: var(--pa-font-size-sm);
+    opacity: 0.9;
+}
+
+/* Badges con iconos */
+.badge-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Breadcrumb personalizado */
+.breadcrumb-wrapper {
+    background: var(--pa-gray-100);
+    padding: 0.75rem 0;
+    margin-bottom: var(--pa-spacer-lg);
+}
+
+/* Page header */
+.page-header {
+    margin-bottom: var(--pa-spacer-lg);
+}
+
+.page-header h3 {
+    color: var(--pa-gray-800);
+    font-weight: 700;
+}
+
+/* Filtros de búsqueda */
+.search-filters {
+    background: white;
+    padding: var(--pa-spacer);
+    border-radius: var(--pa-border-radius-lg);
+    box-shadow: var(--pa-shadow-sm);
+    margin-bottom: var(--pa-spacer-lg);
+}
+
+/* Tabla de datos */
+.data-table {
+    background: white;
+    border-radius: var(--pa-border-radius-lg);
+    box-shadow: var(--pa-shadow-sm);
+    overflow: hidden;
+}
+
+.data-table thead th {
+    background: var(--pa-gray-100);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: var(--pa-font-size-sm);
+    letter-spacing: 0.5px;
+}
+
+/* Botones de acción en tabla */
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: var(--pa-font-size-sm);
+}
+
+/* Paginación personalizada */
+.pagination-custom .page-link {
+    border: none;
+    color: var(--pa-gray-600);
+    padding: 0.5rem 0.75rem;
+}
+
+.pagination-custom .page-item.active .page-link {
+    background: var(--pa-verde);
+    color: white;
+    border-radius: var(--pa-border-radius);
+}
+
+.pagination-custom .page-item.disabled .page-link {
+    color: var(--pa-gray-400);
+}
+
+/* Modales */
+.modal-header-success {
+    background: linear-gradient(135deg, var(--pa-verde) 0%, var(--pa-verde-light) 100%);
+    color: white;
+}
+
+.modal-header-success .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}

@@ -1,0 +1,115 @@
+/* ============================================================
+   Inventario — Estilos de tabla, paginacion y animaciones
+   ============================================================ */
+
+/* Animaciones para filtrado de tabla */
+tbody tr {
+    transition: all 0.3s ease-in-out;
+    opacity: 1;
+}
+tbody tr.filtrando {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+tbody tr.mostrando {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* Spinner de carga en filtros */
+.filtro-loading {
+    position: relative;
+    pointer-events: none;
+}
+.filtro-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--pa-gray-100);
+    border-top: 2px solid var(--pa-blue-light);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Paginacion de tabla de productos */
+.pagination-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--pa-spacer);
+}
+.pagination-info {
+    font-size: var(--pa-font-size-sm);
+    color: var(--pa-gray-600);
+}
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.pagination-controls .page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--pa-gray-300);
+    background: var(--pa-bg-card);
+    color: var(--pa-gray-700);
+    border-radius: var(--pa-border-radius-md);
+    font-size: var(--pa-font-size-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.pagination-controls .page-btn:hover:not(.disabled):not(.active) {
+    background: var(--pa-gray-100);
+    border-color: var(--pa-gray-500);
+}
+.pagination-controls .page-btn.active {
+    background: #206bc4;
+    color: var(--pa-bg-card);
+    border-color: #206bc4;
+    font-weight: 600;
+}
+.pagination-controls .page-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.pagination-controls .page-btn i { font-size: 18px; }
+.pagination-controls .page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    color: var(--pa-gray-500);
+    font-size: var(--pa-font-size-sm);
+    user-select: none;
+}
+
+/* Formulario de producto - checkboxes de centros */
+#contenedor-centros-checkboxes {
+    background: var(--pa-gray-100);
+}
+#contenedor-centros-checkboxes .form-check {
+    margin-bottom: 2px;
+}
+
+/* Preview de imagen */
+#preview-imagen-container {
+    display: none;
+    margin-top: 0.5rem;
+}
+#preview-imagen {
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: var(--pa-border-radius-lg);
+    border: 2px solid var(--pa-gray-300);
+}

@@ -9,3 +9,7 @@ error_log
 
 # Carpetas de editores
 .vscode/
+
+# Variables de entorno
+.env
+env
