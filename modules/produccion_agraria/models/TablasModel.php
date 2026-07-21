@@ -271,6 +271,41 @@ class TablasModel {
         return $result;
     }
 
+    public function listarClientesPaginado($page = 1, $limit = 20, $search = '') {
+        $where = "WHERE activo = 1";
+        $params = [];
+        if (!empty($search)) {
+            $where .= " AND (dni_ruc LIKE ? OR nombre_rs LIKE ?)";
+            $params[] = "%{$search}%";
+            $params[] = "%{$search}%";
+        }
+        $countSql = "SELECT COUNT(*) FROM BD_PRODUCCIONDESARROLLO.dbo.cliente $where";
+        $countStmt = sqlsrv_query($this->db, $countSql, $params);
+        $total = 0;
+        if ($countStmt) {
+            $row = sqlsrv_fetch_array($countStmt, SQLSRV_FETCH_NUMERIC);
+            $total = (int)$row[0];
+            sqlsrv_free_stmt($countStmt);
+        }
+        $offset = ($page - 1) * $limit;
+        $dataSql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente $where ORDER BY id_cliente OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
+        $dataStmt = sqlsrv_query($this->db, $dataSql, $params);
+        $data = [];
+        if ($dataStmt) {
+            while ($row = sqlsrv_fetch_array($dataStmt, SQLSRV_FETCH_ASSOC)) {
+                $data[] = $row;
+            }
+            sqlsrv_free_stmt($dataStmt);
+        }
+        return [
+            'data' => $data,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'totalPages' => $limit > 0 ? ceil($total / $limit) : 0
+        ];
+    }
+
     public function obtenerCliente($id) {
         $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE id_cliente = ? AND activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);

@@ -45,6 +45,7 @@ switch($action) {
     case 'obtener_cliente':
     case 'guardar_cliente':
     case 'eliminar_cliente':
+    case 'listar_clientes':
         include 'modules/produccion_agraria/controllers/TablasController.php';
         break;
     // Acciones AJAX - INVENTARIO/PRODUCTO
@@ -62,6 +63,7 @@ switch($action) {
         include 'modules/produccion_agraria/controllers/InventarioController.php';
         break;
     // Acciones AJAX - PUNTO DE VENTA
+    case 'buscar_cliente_api':
     case 'buscar_producto':
     case 'buscar_clientes':
     case 'guardar_venta':

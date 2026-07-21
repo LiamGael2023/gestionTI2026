@@ -51,6 +51,49 @@ if ($module == 'auth' && ($action == 'autenticar' || $action == 'logout')) {
     exit();
 }
 
+// ── TEST API (borrar despues) ──
+if ($action === 'test_api_directo') {
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: text/html; charset=utf-8');
+    $doc = $_GET['documento'] ?? '75720362';
+    echo "<h2>Test API Directo</h2>";
+    echo "curl: " . (function_exists('curl_init')?'SI':'NO') . "<br>";
+    echo "fopen: " . ini_get('allow_url_fopen') . "<br>";
+    echo "PHP: " . phpversion() . "<br>";
+    echo "doc: " . htmlspecialchars($doc) . "<hr>";
+    
+    $start = microtime(true);
+    $ch = curl_init("https://api.apis.net.pe/v1/dni?numero=$doc");
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>10, CURLOPT_SSL_VERIFYPEER=>false, CURLOPT_SSL_VERIFYHOST=>0]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+    $elapsed = round((microtime(true) - $start) * 1000);
+    
+    echo "<b>RENIEC:</b> HTTP=$code Error=" . ($err?:'OK') . " Time={$elapsed}ms<br>";
+    $json = json_decode($resp, true);
+    echo "nombre: " . htmlspecialchars($json['nombre'] ?? 'NO') . "<br>";
+    echo "<pre>" . htmlspecialchars(substr($resp?:'(vacio)', 0, 800)) . "</pre><hr>";
+    
+    $start2 = microtime(true);
+    $ch2 = curl_init("https://www.chavimochic.gob.pe/api_incidencias/api_personal.php?documento=$doc");
+    curl_setopt_array($ch2, [CURLOPT_RETURNTRANSFER=>true, CURLOPT_TIMEOUT=>10, CURLOPT_SSL_VERIFYPEER=>false, CURLOPT_SSL_VERIFYHOST=>0]);
+    $resp2 = curl_exec($ch2);
+    $code2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+    $err2 = curl_error($ch2);
+    curl_close($ch2);
+    $elapsed2 = round((microtime(true) - $start2) * 1000);
+    
+    echo "<b>Personal PECH:</b> HTTP=$code2 Error=" . ($err2?:'OK') . " Time={$elapsed2}ms<br>";
+    $json2 = json_decode($resp2, true);
+    echo "empleado: " . (($json2 && !empty($json2['data'])) ? 'SI' : 'NO') . "<br>";
+    echo "<pre>" . htmlspecialchars(substr($resp2?:'(vacio)', 0, 800)) . "</pre><hr>";
+    
+    echo "TOTAL: " . ($elapsed + $elapsed2) . "ms";
+    exit;
+}
+
 // =================================================================================
 // 4. SISTEMA PRINCIPAL (Requiere estar logueado)
 // =================================================================================
@@ -62,13 +105,13 @@ $acciones_ajax = [
     'obtener_clase', 'guardar_clase', 'eliminar_clase',
     'obtener_centro', 'guardar_centro', 'eliminar_centro',
     'obtener_uit', 'guardar_uit', 'eliminar_uit',
-    'obtener_cliente', 'guardar_cliente', 'eliminar_cliente',
+    'obtener_cliente', 'guardar_cliente', 'eliminar_cliente', 'listar_clientes',
     'obtener_vinculacion', 'guardar_vinculaciones',
     'obtener_producto', 'guardar_producto', 'eliminar_producto',
     'obtener_lotes', 'obtener_kardex', 'guardar_lote', 'guardar_merma',
     'agregar_stock_masivo',
     'obtener_precio_actual', 'guardar_precio',
-    'buscar_producto', 'buscar_clientes', 'guardar_venta', 'crear_cliente_rapido',
+    'buscar_producto', 'buscar_clientes', 'buscar_cliente_api', 'guardar_venta', 'crear_cliente_rapido',
     'obtener_proforma', 'procesar_proforma', 'anular_proforma', 'siguiente_correlativo',
     'listar_vouchers', 'guardar_voucher', 'listar_proformas_disponibles', 'asignar_voucher_proformas', 'descargar_voucher',
     'ver_imagen_producto',

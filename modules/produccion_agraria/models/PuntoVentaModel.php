@@ -1,6 +1,7 @@
 <?php
 class PuntoVentaModel {
     private $db;
+    public $lastError = '';
 
     public function __construct($db) {
         $this->db = $db;
@@ -335,6 +336,200 @@ class PuntoVentaModel {
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             return $row['id'];
+        }
+        return null;
+    }
+
+    // ========================================
+    // BUSQUEDA DE CLIENTES POR API (RENIEC/SUNAT/PERSONAL PECH)
+    // ========================================
+
+    public function httpGet($url) {
+        $hasCurl = function_exists('curl_init');
+        $this->lastError = '';
+
+        if ($hasCurl) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 10,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_FOLLOWLOCATION => true
+            ]);
+            $resp = curl_exec($ch);
+            $curlErr = curl_error($ch);
+            $curlInfo = curl_getinfo($ch);
+            $httpCode = $curlInfo['http_code'] ?? 0;
+            curl_close($ch);
+
+            if ($resp === false || $resp === '') {
+                $this->lastError = "curl error: " . ($curlErr ?: 'empty response') . " http=$httpCode";
+                return null;
+            }
+            $decoded = json_decode($resp, true);
+            if ($decoded === null) {
+                $sample = substr($resp, 0, 300);
+                $this->lastError = "http=$httpCode, not JSON. Sample: " . $sample;
+                return null;
+            }
+            return $decoded;
+        }
+
+        if (ini_get('allow_url_fopen')) {
+            $ctx = stream_context_create([
+                'http' => ['timeout' => 10, 'header' => "User-Agent: gestionTI/1.0\r\n"],
+                'ssl' => ['verify_peer' => false, 'verify_peer_name' => false]
+            ]);
+            $resp = @file_get_contents($url, false, $ctx);
+            if ($resp === false || $resp === '') {
+                $this->lastError = 'fopen: empty response';
+                return null;
+            }
+            $decoded = @json_decode($resp, true);
+            if ($decoded === null) {
+                $sample = substr($resp, 0, 200);
+                $this->lastError = "fopen: not JSON. Sample: " . $sample;
+                return null;
+            }
+            return $decoded;
+        }
+
+        $this->lastError = 'no HTTP client available';
+        return null;
+    }
+
+    private function consultarRENIEC($dni) {
+        $data = $this->httpGet("https://api.apis.net.pe/v1/dni?numero=$dni");
+        return $data['nombre'] ?? null;
+    }
+
+    private function consultarSUNAT($ruc) {
+        $data = $this->httpGet("https://api.apis.net.pe/v1/ruc?numero=$ruc");
+        return $data['nombre'] ?? null;
+    }
+
+    private function consultarPersonalPECH($dni) {
+        $data = $this->httpGet("https://www.chavimochic.gob.pe/api_incidencias/api_personal.php?documento=$dni");
+        if ($data && isset($data['success']) && $data['success'] && !empty($data['data'])) {
+            $emp = $data['data'][0];
+            $nombre = trim(($emp['Trab_Paterno'] ?? '') . ' ' . ($emp['Trab_Materno'] ?? '') . ' ' . ($emp['Nombres'] ?? ''));
+            return ['empleado' => true, 'nombre' => $nombre];
+        }
+        return ['empleado' => false, 'nombre' => null];
+    }
+
+    public function buscarClientePorAPI($documento) {
+        $doc = trim($documento);
+        $this->lastError = '';
+
+        if (empty($doc)) return null;
+
+        $s = sqlsrv_query($this->db,
+            "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente FROM BD_PRODUCCIONDESARROLLO.dbo.cliente WHERE dni_ruc = ?",
+            [$doc]);
+        if ($s && sqlsrv_has_rows($s)) {
+            $r = sqlsrv_fetch_array($s, SQLSRV_FETCH_ASSOC);
+            sqlsrv_free_stmt($s);
+            sqlsrv_query($this->db, "UPDATE BD_PRODUCCIONDESARROLLO.dbo.cliente SET activo = 1 WHERE id_cliente = ?", [$r['id_cliente']]);
+            $r['tipo_cliente'] = ($r['tipo_cliente'] == 0) ? 'Planilla' : 'Externo';
+            $r['fuente'] = 'BD';
+            return $r;
+        }
+        sqlsrv_free_stmt($s);
+
+        $len = strlen($doc);
+        $t1 = microtime(true);
+
+        if ($len === 8 && ctype_digit($doc)) {
+            $nombre = $this->consultarRENIEC($doc);
+            $errReniec = $this->lastError;
+            $pech = $this->consultarPersonalPECH($doc);
+            $errPech = $this->lastError;
+            $esEmpleado = $pech['empleado'];
+            $nombrePech = $pech['nombre'];
+            $tipo = $esEmpleado ? 0 : 1;
+
+            $nombreFinal = $nombre;
+            $fuente = 'RENIEC';
+
+            if (!$nombre && $nombrePech) {
+                $nombreFinal = $nombrePech;
+                $fuente = 'PERSONAL_PECH';
+            }
+            if (!$nombre && !$nombrePech && $esEmpleado) {
+                $nombreFinal = 'EMPLEADO PECH - ' . $doc;
+                $fuente = 'PERSONAL_PECH';
+            }
+
+            $this->lastError = "DNI $doc: RENIEC=" . ($nombre?:'FAIL') . " ($errReniec) | PECH=" . ($esEmpleado?'SI':'NO') . " nombre=" . ($nombrePech?:'NO') . " ($errPech)";
+
+            if ($nombreFinal) {
+                $r = $this->registrarClienteAPI($doc, $nombreFinal, $tipo, $fuente);
+                if ($r) $r['_diag'] = "{$fuente}=OK, PersonalPECH=" . ($esEmpleado?'SI':'NO') . ", time=" . round((microtime(true)-$t1)*1000)."ms";
+                return $r;
+            }
+            return null;
+        }
+
+        if ($len === 11 && ctype_digit($doc)) {
+            $nombre = $this->consultarSUNAT($doc);
+            $errSunat = $this->lastError;
+            if ($nombre) {
+                $r = $this->registrarClienteAPI($doc, $nombre, 1, 'SUNAT');
+                if ($r) $r['_diag'] = "SUNAT=OK, time=" . round((microtime(true)-$t1)*1000)."ms";
+                return $r;
+            }
+            $this->lastError = "RUC $doc: SUNAT=FAIL ($errSunat)";
+        }
+
+        return null;
+    }
+
+    public function registrarClienteAPI($dniRuc, $nombreRs, $tipoCliente, $fuente) {
+        $tipoCliente = intval($tipoCliente);
+        $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.cliente (dni_ruc, nombre_rs, tipo_cliente, activo)
+                OUTPUT INSERTED.id_cliente VALUES (?, ?, ?, 1)";
+        $stmt = sqlsrv_query($this->db, $sql, [$dniRuc, $nombreRs, $tipoCliente]);
+        if ($stmt && sqlsrv_has_rows($stmt)) {
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            return [
+                'id_cliente' => $row['id_cliente'],
+                'dni_ruc' => $dniRuc,
+                'nombre_rs' => $nombreRs,
+                'tipo_cliente' => ($tipoCliente == 0) ? 'Planilla' : 'Externo',
+                'fuente' => $fuente
+            ];
+        }
+
+        $errors = sqlsrv_errors();
+        $isDuplicate = false;
+        foreach ($errors as $err) {
+            if ($err['code'] == 2627 || $err['code'] == 2601) {
+                $isDuplicate = true;
+                break;
+            }
+        }
+
+        if ($isDuplicate) {
+            $upd = sqlsrv_query($this->db,
+                "UPDATE BD_PRODUCCIONDESARROLLO.dbo.cliente SET activo = 1, nombre_rs = ?, tipo_cliente = ?
+                 OUTPUT INSERTED.id_cliente, INSERTED.dni_ruc, INSERTED.nombre_rs, INSERTED.tipo_cliente
+                 WHERE dni_ruc = ?",
+                [$nombreRs, $tipoCliente, $dniRuc]);
+            if ($upd && sqlsrv_has_rows($upd)) {
+                $row = sqlsrv_fetch_array($upd, SQLSRV_FETCH_ASSOC);
+                return [
+                    'id_cliente' => $row['id_cliente'],
+                    'dni_ruc' => $row['dni_ruc'],
+                    'nombre_rs' => $row['nombre_rs'],
+                    'tipo_cliente' => ($row['tipo_cliente'] == 0) ? 'Planilla' : 'Externo',
+                    'fuente' => $fuente . ' (reutilizado)'
+                ];
+            }
+            $this->lastError = 'UPDATE fallido: ' . json_encode(sqlsrv_errors());
+        } else {
+            $this->lastError = 'SQL INSERT ERROR: ' . json_encode($errors);
         }
         return null;
     }

@@ -210,13 +210,29 @@
                 </div>
                 </div>
                 
-                <!-- SECCIÓN: CLIENTES -->
+                 <!-- SECCIÓN: CLIENTES -->
                 <div id="panel-cliente" style="display:<?php echo $tabla == 'cliente' ? 'block' : 'none' ?>">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h3 class="card-title">Clientes</h3>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-cliente" onclick="limpiarFormCliente()">
                         <i class="ti ti-plus me-1"></i>Nuevo Cliente
                     </button>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="ti ti-search"></i></span>
+                            <input type="text" id="cliente-search" class="form-control" placeholder="Buscar por DNI/RUC o nombre..." onkeyup="buscarClientesDebounced()">
+                        </div>
+                    </div>
+                    <div class="col-md-4 ms-auto text-end">
+                        <select id="cliente-page-size" class="form-select d-inline-block w-auto" onchange="cargarClientes(1)">
+                            <option value="10">10 por página</option>
+                            <option value="20" selected>20 por página</option>
+                            <option value="50">50 por página</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="table-responsive">
@@ -231,7 +247,8 @@
                             </tr>
                         </thead>
                         <tbody id="tabla-clientes">
-                            <?php foreach ($clientes as $cliente): ?>
+                            <?php if (!empty($clientes['data'])): ?>
+                            <?php foreach ($clientes['data'] as $cliente): ?>
                             <tr data-id="<?php echo $cliente['id_cliente']; ?>">
                                 <td><?php echo $cliente['id_cliente']; ?></td>
                                 <td><?php echo htmlspecialchars($cliente['dni_ruc']); ?></td>
@@ -253,13 +270,42 @@
                                 </td>
                             </tr>
                             <?php endforeach; ?>
-                            <?php if (empty($clientes)): ?>
-                            <tr>
-                                <td colspan="5" class="text-center text-muted">No hay clientes registrados</td>
-                            </tr>
+                            <?php else: ?>
+                            <tr><td colspan="5" class="text-center text-muted">No hay clientes registrados</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <small class="text-muted" id="cliente-info">Mostrando <?php echo count($clientes['data'] ?? []); ?> de <?php echo $clientes['total'] ?? 0; ?> clientes</small>
+                    <nav id="cliente-pagination" aria-label="Clientes">
+                        <?php
+                        $totalPages = $clientes['totalPages'] ?? 0;
+                        $currentPage = $clientes['page'] ?? 1;
+                        if ($totalPages > 1):
+                        ?>
+                        <ul class="pagination mb-0">
+                            <li class="page-item <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="javascript:void(0)" onclick="cargarClientes(<?php echo max(1, $currentPage - 1); ?>)">&laquo;</a>
+                            </li>
+                            <?php for ($p = 1; $p <= min($totalPages, 10); $p++): ?>
+                            <li class="page-item <?php echo $p == $currentPage ? 'active' : ''; ?>">
+                                <a class="page-link" href="javascript:void(0)" onclick="cargarClientes(<?php echo $p; ?>)"><?php echo $p; ?></a>
+                            </li>
+                            <?php endfor; ?>
+                            <?php if ($totalPages > 10): ?>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <li class="page-item">
+                                <a class="page-link" href="javascript:void(0)" onclick="cargarClientes(<?php echo $totalPages; ?>)"><?php echo $totalPages; ?></a>
+                            </li>
+                            <?php endif; ?>
+                            <li class="page-item <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="javascript:void(0)" onclick="cargarClientes(<?php echo min($totalPages, $currentPage + 1); ?>)">&raquo;</a>
+                            </li>
+                        </ul>
+                        <?php endif; ?>
+                    </nav>
                 </div>
                 </div>
                 
@@ -1066,7 +1112,7 @@ function eliminarCliente(id) {
                 try {
                     const data = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
                     if (data.success) {
-                        Swal.fire('Eliminado', 'El cliente fue eliminado', 'success').then(() => location.reload());
+                        Swal.fire('Eliminado', 'El cliente fue eliminado', 'success').then(() => cargarClientes(clientePaginaActual));
                     } else {
                         Swal.fire('Error', 'No se pudo eliminar', 'error');
                     }
@@ -1079,6 +1125,77 @@ function eliminarCliente(id) {
             });
         }
     });
+}
+
+let clientePaginaActual = 1;
+
+function cargarClientes(page) {
+    clientePaginaActual = page;
+    const search = document.getElementById('cliente-search').value || '';
+    const limit = document.getElementById('cliente-page-size').value || 20;
+    const tbody = document.getElementById('tabla-clientes');
+    const infoEl = document.getElementById('cliente-info');
+    const pagEl = document.getElementById('cliente-pagination');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted"><div class="spinner-border spinner-border-sm me-1" role="status"></div>Cargando...</td></tr>';
+    
+    fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=listar_clientes&page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(d => {
+            if (!d || !d.data) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Error al cargar datos</td></tr>'; return; }
+            if (d.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No hay clientes registrados</td></tr>';
+                infoEl.textContent = '0 clientes';
+                pagEl.innerHTML = '';
+                return;
+            }
+            let html = '';
+            d.data.forEach(c => {
+                const tipoTexto = (c.tipo_cliente == 1 || c.tipo_cliente === true) ? 'Planilla' : 'Externo';
+                html += `<tr data-id="${c.id_cliente}">
+                    <td>${c.id_cliente}</td>
+                    <td>${escapeHtml(c.dni_ruc)}</td>
+                    <td>${escapeHtml(c.nombre_rs)}</td>
+                    <td>${escapeHtml(tipoTexto)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary me-1" onclick="editarCliente(${c.id_cliente})" title="Editar"><i class="ti ti-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarCliente(${c.id_cliente})" title="Eliminar"><i class="ti ti-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+            const inicio = (d.page - 1) * d.limit + 1;
+            const fin = Math.min(d.page * d.limit, d.total);
+            infoEl.textContent = `Mostrando ${inicio}-${fin} de ${d.total} clientes`;
+            
+            let pagHtml = '';
+            if (d.totalPages > 1) {
+                pagHtml = '<ul class="pagination mb-0">';
+                pagHtml += `<li class="page-item ${d.page <= 1 ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cargarClientes(${d.page - 1})">&laquo;</a></li>`;
+                const mostrar = 7;
+                let pInicio = Math.max(1, d.page - Math.floor(mostrar / 2));
+                let pFin = Math.min(d.totalPages, pInicio + mostrar - 1);
+                if (pFin - pInicio < mostrar - 1) pInicio = Math.max(1, pFin - mostrar + 1);
+                if (pInicio > 1) { pagHtml += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cargarClientes(1)">1</a></li>`; if (pInicio > 2) pagHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>'; }
+                for (let p = pInicio; p <= pFin; p++) { pagHtml += `<li class="page-item ${p == d.page ? 'active' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cargarClientes(${p})">${p}</a></li>`; }
+                if (pFin < d.totalPages) { if (pFin < d.totalPages - 1) pagHtml += '<li class="page-item disabled"><span class="page-link">...</span></li>'; pagHtml += `<li class="page-item"><a class="page-link" href="javascript:void(0)" onclick="cargarClientes(${d.totalPages})">${d.totalPages}</a></li>`; }
+                pagHtml += `<li class="page-item ${d.page >= d.totalPages ? 'disabled' : ''}"><a class="page-link" href="javascript:void(0)" onclick="cargarClientes(${d.page + 1})">&raquo;</a></li>`;
+                pagHtml += '</ul>';
+            }
+            pagEl.innerHTML = pagHtml;
+        })
+        .catch(err => { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Error de conexión</td></tr>'; });
+}
+
+let clienteSearchTimer = null;
+function buscarClientesDebounced() {
+    clearTimeout(clienteSearchTimer);
+    clienteSearchTimer = setTimeout(() => cargarClientes(1), 400);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
 }
 
 function handleSubmitCliente(e) {
@@ -1107,7 +1224,7 @@ function handleSubmitCliente(e) {
                     text: 'El cliente se guardó correctamente',
                     timer: 1500,
                     showConfirmButton: false
-                }).then(() => location.reload());
+                }).then(() => cargarClientes(clientePaginaActual));
             } else {
                 Swal.fire('Error', data.message || 'No se pudo guardar', 'error');
             }

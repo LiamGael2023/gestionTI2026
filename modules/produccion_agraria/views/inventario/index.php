@@ -211,7 +211,8 @@
                             <label class="form-label">Tipo de Precio</label>
                             <select class="form-select" id="tipo_precio" name="tipo_precio" onchange="togglePorcentajeUIT()">
                                 <option value="">Seleccione...</option>
-                                <option value="Variable">Variable</option>
+                                <option value="Fijo">Fijo (manual)</option>
+                                <option value="Variable">Variable (historial)</option>
                                 <option value="UIT">Porcentaje UIT</option>
                             </select>
                         </div>
@@ -1272,6 +1273,11 @@ function limpiarFormProducto() {
     document.getElementById('id_centro').value = '';
     marcarCentros([]);
     filtrarClasesPorCentro();
+    // Limpiar opciones dinámicas agregadas en ediciones previas (marcadas como "(actual)")
+    const selectTipoLimp = document.getElementById('tipo_precio');
+    Array.from(selectTipoLimp.options).forEach(o => {
+        if (/\s\(actual\)$/.test(o.textContent)) o.remove();
+    });
     document.getElementById('tipo_precio').value = '';
     document.getElementById('porcentaje_uit').value = '';
     document.getElementById('modal-producto-titulo').textContent = 'Nuevo Producto';
@@ -1318,7 +1324,17 @@ function editarProducto(id) {
                     }
                     filtrarClasesPorCentro();
                     document.getElementById('id_clase').value = data.id_clase;
-                    document.getElementById('tipo_precio').value = data.tipo_precio || '';
+                    // Tipo de precio: si el valor actual no está entre las opciones, añadirlo dinámicamente
+                    const selectTipo = document.getElementById('tipo_precio');
+                    const tipoPrecioVal = data.tipo_precio || '';
+                    let opcionExiste = Array.from(selectTipo.options).some(o => o.value === tipoPrecioVal);
+                    if (tipoPrecioVal && !opcionExiste) {
+                        const opt = document.createElement('option');
+                        opt.value = tipoPrecioVal;
+                        opt.textContent = tipoPrecioVal + ' (actual)';
+                        selectTipo.appendChild(opt);
+                    }
+                    selectTipo.value = tipoPrecioVal;
                     document.getElementById('porcentaje_uit').value = data.porcentaje_uit || '';
                     document.getElementById('modal-producto-titulo').textContent = 'Editar Producto';
                     togglePorcentajeUIT();
@@ -1453,6 +1469,27 @@ async function handleSubmitProducto(e) {
     if (e && e.stopPropagation) e.stopPropagation();
     
     debugLog('=== INICIANDO GUARDADO ===');
+    
+    // Validar tipo_precio: permitir solo valores permitidos por la CHECK constraint
+    const tipoPrecioVal = document.getElementById('tipo_precio').value;
+    const TIPOS_PERMITIDOS = ['Fijo', 'Variable', 'UIT'];
+    if (!TIPOS_PERMITIDOS.includes(tipoPrecioVal)) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Tipo de precio requerido',
+            text: 'Debe seleccionar un Tipo de Precio válido (Fijo, Variable o UIT).',
+            confirmButtonText: 'Entendido'
+        });
+        return;
+    }
+    // Validar porcentaje UIT si aplica
+    if (tipoPrecioVal === 'UIT') {
+        const pct = parseFloat(document.getElementById('porcentaje_uit').value);
+        if (!pct || pct <= 0) {
+            Swal.fire('Validación', 'Debe ingresar un Porcentaje UIT mayor a 0.', 'warning');
+            return;
+        }
+    }
     
     try {
         // Construir payload JSON desde los campos del formulario

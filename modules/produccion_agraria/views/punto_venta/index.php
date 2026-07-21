@@ -191,8 +191,10 @@ document.getElementById('fecha').valueAsDate = new Date();
 // ========================================
 const busquedaClienteInput = document.getElementById('busqueda-cliente');
 const dropdownClientes = document.getElementById('dropdown-clientes');
+let clienteAutoSeleccionando = false;
 
 busquedaClienteInput.addEventListener('input', function() {
+    if (clienteAutoSeleccionando) return;
     const query = this.value.toLowerCase().trim();
     
     if (query.length < 2) {
@@ -207,6 +209,72 @@ busquedaClienteInput.addEventListener('input', function() {
     );
     
     if (resultados.length === 0) {
+        const docLimpio = query.replace(/\D/g, '');
+        const esDNI = docLimpio.length === 8;
+        const esRUC = docLimpio.length === 11;
+        
+        if (esDNI || esRUC) {
+            const fuente = esDNI ? 'RENIEC' : 'SUNAT';
+            dropdownClientes.innerHTML = `<div class="dropdown-item text-muted">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>Buscando en ${fuente}...
+            </div>`;
+            dropdownClientes.style.display = 'block';
+            
+            fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=buscar_cliente_api&documento=${docLimpio}`)
+                .then(r => r.text())
+                .then(text => {
+                    const trimmed = text.trim();
+                    const js = trimmed.indexOf('{');
+                    const je = trimmed.lastIndexOf('}');
+                    if (js === -1 || je === -1) { throw new Error('Respuesta invalida'); }
+                    const d = JSON.parse(trimmed.substring(js, je + 1));
+                    
+                    if (d.success && d.data) {
+                        const c = d.data;
+                        const tipoTxt = (c.tipo_cliente == 0 || c.tipo_cliente === 'Planilla') ? 'Planilla' : 'Externo';
+                        const existe = clientesDisponibles.find(x => x.id_cliente == c.id_cliente);
+                        if (!existe) {
+                            clientesDisponibles.push({
+                                id_cliente: c.id_cliente,
+                                nombre_rs: c.nombre_rs,
+                                dni_ruc: c.dni_ruc,
+                                tipo_cliente: tipoTxt
+                            });
+                        }
+                        const nombreEsc = c.nombre_rs.replace(/'/g, "\\'");
+                        const dniEsc = c.dni_ruc.replace(/'/g, "\\'");
+                        dropdownClientes.innerHTML = `<a class="dropdown-item" href="#" onclick="seleccionarCliente(${c.id_cliente}, '${nombreEsc}', '${dniEsc}', '${tipoTxt}', event)">
+                            <div class="fw-semibold text-success"><i class="ti ti-check me-1"></i>${c.nombre_rs}</div>
+                            <div class="small text-muted">${c.dni_ruc} - ${tipoTxt} (${fuente})</div>
+                        </a>
+                        <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                            <i class="ti ti-user-plus me-2"></i>Registrar manualmente
+                        </a>`;
+                        dropdownClientes.style.display = 'block';
+                    } else {
+                        const diag = d.diag || '';
+                        const curl = d.has_curl ? 'SI' : 'NO';
+                        const fopen = d.has_fopen ? 'SI' : 'NO';
+                        dropdownClientes.innerHTML = `
+                            <div class="dropdown-item text-muted small">No encontrado en ${fuente}</div>
+                            <div class="dropdown-item text-muted small border-bottom">curl=${curl} | fopen=${fopen}</div>
+                            ${diag ? `<div class="dropdown-item text-danger small">${diag}</div>` : ''}
+                            <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                                <i class="ti ti-user-plus me-2"></i>Registrar manualmente: "${query}"
+                            </a>`;
+                    }
+                })
+                .catch(() => {
+                    dropdownClientes.innerHTML = `
+                        <div class="dropdown-item text-danger">Error al consultar ${fuente}</div>
+                        <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
+                            <i class="ti ti-user-plus me-2"></i>Registrar manualmente
+                        </a>`;
+                });
+            return;
+        }
+        
+        // Comportamiento original para texto normal
         dropdownClientes.innerHTML = `
             <div class="dropdown-item text-muted">No se encontraron clientes</div>
             <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
@@ -234,7 +302,7 @@ busquedaClienteInput.addEventListener('input', function() {
 
 // Seleccionar cliente del dropdown
 function seleccionarCliente(id, nombre, dniRuc, tipoCliente, event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
     document.getElementById('id_cliente').value = id;
     document.getElementById('cliente-seleccionado-nombre').value = nombre;
     document.getElementById('tipo_cliente').value = tipoCliente;

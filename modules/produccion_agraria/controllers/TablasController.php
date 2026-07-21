@@ -125,6 +125,16 @@ try {
     }
     
     // --- CLIENTE ---
+    if ($action == 'listar_clientes') {
+        header('Content-Type: application/json; charset=utf-8');
+        $page = max(1, intval($_GET['page'] ?? 1));
+        $limit = min(50, max(5, intval($_GET['limit'] ?? 20)));
+        $search = trim($_GET['search'] ?? '');
+        $result = $model->listarClientesPaginado($page, $limit, $search);
+        echo json_encode($result);
+        exit;
+    }
+
     if ($action == 'guardar_cliente') {
         header('Content-Type: application/json; charset=utf-8');
         $result = $model->guardarCliente($_POST);
@@ -160,7 +170,7 @@ try {
     $clases = $model->listarClases();
     $centros = $model->listarCentros();
     $uits = $model->listarUits();
-    $clientes = $model->listarClientes();
+    $clientes = $model->listarClientesPaginado(1, 20);
     
     include __DIR__ . '/../views/tablas/index.php';
     

@@ -67,6 +67,9 @@ class InventarioModel {
     }
 
     public function guardarProducto($data) {
+        // Valores permitidos por la CHECK constraint CK__producto__tipo_p__*
+        $TIPOS_PRECIOS_VALIDOS = ['Fijo', 'Variable', 'UIT'];
+
         // Convertir valores vacios a null para campos numericos
         $porcentaje_uit = (!empty($data['porcentaje_uit']) && $data['porcentaje_uit'] !== '') 
             ? floatval($data['porcentaje_uit']) 
@@ -75,8 +78,13 @@ class InventarioModel {
         $id_clase = (!empty($data['id_clase']) && $data['id_clase'] !== '') ? intval($data['id_clase']) : null;
         $id_centro = (!empty($data['id_centro']) && $data['id_centro'] !== '') ? intval($data['id_centro']) : null;
         
-        // Si tipo_precio no es UIT, forzar porcentaje_uit a null
+        // Sanitizar tipo_precio: solo aceptar valores de la whitelist
         $tipo_precio = $data['tipo_precio'] ?? null;
+        if ($tipo_precio === '' || $tipo_precio === null || !in_array($tipo_precio, $TIPOS_PRECIOS_VALIDOS, true)) {
+            $tipo_precio = null; // Se resolverá más abajo: preservar en UPDATE, default en INSERT
+        }
+
+        // Si tipo_precio no es UIT, forzar porcentaje_uit a null
         if ($tipo_precio !== 'UIT') {
             $porcentaje_uit = null;
         }
@@ -97,7 +105,7 @@ class InventarioModel {
         }
         
         if (!empty($data['id_producto'])) {
-            // UPDATE: preservar id_clase e id_centro si vienen vacios
+            // UPDATE: preservar id_clase, id_centro y tipo_precio si vienen vacios/invalidos
             if (empty($id_clase)) {
                 $sqlGet = "SELECT id_clase FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
                 $stmtGet = sqlsrv_query($this->db, $sqlGet, [$data['id_producto']]);
@@ -112,7 +120,28 @@ class InventarioModel {
                     $id_centro = $row['id_centro'];
                 }
             }
-            
+            if ($tipo_precio === null) {
+                // Preservar el valor actual de la BD si no se envió uno válido
+                $sqlGet = "SELECT tipo_precio FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ?";
+                $stmtGet = sqlsrv_query($this->db, $sqlGet, [$data['id_producto']]);
+                if ($stmtGet && $row = sqlsrv_fetch_array($stmtGet, SQLSRV_FETCH_ASSOC)) {
+                    $tipo_precio = $row['tipo_precio'];
+                }
+                if ($tipo_precio === null || $tipo_precio === '' || !in_array($tipo_precio, $TIPOS_PRECIOS_VALIDOS, true)) {
+                    $tipo_precio = 'Fijo';
+                }
+            }
+        } else {
+            // INSERT: si tipo_precio no es válido, usar default seguro 'Fijo'
+            if ($tipo_precio === null) {
+                $tipo_precio = 'Fijo';
+            }
+        }
+
+        // ========================================
+        // EJECUTAR INSERT O UPDATE
+        // ========================================
+        if (!empty($data['id_producto'])) {
             // UPDATE
             if ($eliminarImagen) {
                 $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.producto 
@@ -125,7 +154,7 @@ class InventarioModel {
                     $data['nombre_cientifico'] ?? null,
                     $data['unidad_medida'], 
                     $data['maneja_stock'] ?? 0,
-                    $data['tipo_precio'] ?? 'Fijo',
+                    $tipo_precio,
                     $porcentaje_uit,
                     $id_clase, 
                     $id_centro,
@@ -142,7 +171,7 @@ class InventarioModel {
                     $data['nombre_cientifico'] ?? null,
                     $data['unidad_medida'], 
                     $data['maneja_stock'] ?? 0,
-                    $data['tipo_precio'] ?? 'Fijo',
+                    $tipo_precio,
                     $porcentaje_uit,
                     $id_clase, 
                     $id_centro,
@@ -160,7 +189,7 @@ class InventarioModel {
                     $data['nombre_cientifico'] ?? null,
                     $data['unidad_medida'], 
                     $data['maneja_stock'] ?? 0,
-                    $data['tipo_precio'] ?? 'Fijo',
+                    $tipo_precio,
                     $porcentaje_uit,
                     $id_clase, 
                     $id_centro,
@@ -187,7 +216,7 @@ class InventarioModel {
                     $data['nombre_cientifico'] ?? null,
                     $data['unidad_medida'], 
                     $data['maneja_stock'] ?? 0,
-                    $data['tipo_precio'] ?? 'Fijo',
+                    $tipo_precio,
                     $porcentaje_uit,
                     $id_clase, 
                     $id_centro,
@@ -204,7 +233,7 @@ class InventarioModel {
                     $data['nombre_cientifico'] ?? null,
                     $data['unidad_medida'], 
                     $data['maneja_stock'] ?? 0,
-                    $data['tipo_precio'] ?? 'Fijo',
+                    $tipo_precio,
                     $porcentaje_uit,
                     $id_clase, 
                     $id_centro
