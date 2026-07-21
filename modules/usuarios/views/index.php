@@ -120,7 +120,7 @@ $(document).ready(function() {
         "processing": true, "serverSide": true,
         "ajax": { "url": "modules/usuarios/controllers/data_listado.php", "type": "POST" },
         "columns": [ { "data": 0 }, { "data": 1 }, { "data": 2 }, { "data": 3 }, { "data": 4 }, { "data": 5, "orderable": false } ],
-        "language": { "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" },
+        "language": { "url": "https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json" },
         "order": [[ 0, "desc" ]]
     });
 
