@@ -106,14 +106,6 @@ try {
         exit;
     }
     
-    if ($action == 'agregar_stock_masivo') {
-        while (ob_get_level()) { ob_end_clean(); }
-        header('Content-Type: application/json; charset=utf-8');
-        $result = $model->agregarStockMasivo();
-        echo json_encode($result);
-        exit;
-    }
-    
     if ($action == 'ver_imagen_producto') {
         $id = intval($_GET['id'] ?? 0);
         

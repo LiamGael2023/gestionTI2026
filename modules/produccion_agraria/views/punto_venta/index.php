@@ -20,119 +20,150 @@
             </div>
         </div>
         <!-- Título -->
-        <h3 class="mb-4 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
+        <h3 class="mb-3 fw-bold"><i class="ti ti-shopping-cart-share me-2 text-primary"></i>Nueva Venta</h3>
 
-        <!-- Formulario de Encabezado -->
-        <div class="row g-2 mb-2">
-            <div class="col-md-4">
-                <div class="position-relative">
-                    <input type="text" class="form-control" id="busqueda-cliente" 
-                           placeholder="Buscar cliente..." autocomplete="off">
-                    <div class="dropdown-menu w-100" id="dropdown-clientes" style="display: none; max-height: 300px; overflow-y: auto;">
-                        <!-- Resultados de búsqueda se mostrarán aquí -->
-                    </div>
-                    <input type="hidden" id="id_cliente">
-                    <input type="hidden" id="cliente-seleccionado-nombre">
-                    <input type="hidden" id="tipo_cliente">
-                </div>
-            </div>
-            <div class="col-md-2">
-                <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
-            </div>
-            <div class="col-md-2">
-                <select class="form-select" id="metodo_pago">
-                    <option value="">Método de pago</option>
-                    <option value="VENTA">Venta</option>
-                    <option value="DONACION">Donación</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-center" id="div-descuento-planilla" style="display:none;">
-                <div class="d-flex align-items-center border rounded w-100 py-2 px-3 gap-2" style="background:#fff;">
-                    <label class="fw-semibold text-muted small mb-0" for="chk-descuento-planilla" style="cursor:pointer;">
-                        <i class="ti ti-calculator me-1 align-middle"></i> Descuento planilla
-                    </label>
-                    <input type="checkbox" id="chk-descuento-planilla" class="form-check-input m-0">
-                </div>
-            </div>
-            <div class="col-md-2 d-flex align-items-center">
-                <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
-                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
-                        <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
-                    </label>
-                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
-                </div>
-            </div>
-        </div>
-        
-        <div class="row">
-            <!-- Columna principal -->
-            <div class="col-md-12">
-                <!-- Área de Items (Tabla) -->
-                <div class="card mb-2">
-                    <div class="card-body p-0">
-                        <div class="table-container" style="height: 250px; max-height: 250px; overflow-y: auto; position: relative; display: block;">
-                            <table class="table table-vcenter card-table mb-0" id="tabla-items">
-                        <thead>
-                            <tr>
-                                <th>Producto</th>
-                                <th class="w-1">Cantidad</th>
-                                <th class="w-1">Precio Unit.</th>
-                                <th class="w-1">Subtotal</th>
-                                <th class="w-1"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbody-items">
-                            <!-- Items se agregarán dinámicamente -->
-                        </tbody>
-                    </table>
-                    
-                    <!-- Mensaje cuando está vacío -->
-                    <div class="text-center text-muted" id="mensaje-vacio">
-                        <i class="ti ti-shopping-cart-off fs-1 mb-2"></i>
-                        <p>No hay productos agregados</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Selector de Productos -->
-        <div class="card mb-2">
-            <div class="card-body py-2">
-                <div class="position-relative">
-                    <input type="text" class="form-control" id="busqueda-producto" 
-                           placeholder="Buscar producto..." autocomplete="off">
-                    <div class="dropdown-menu w-100" id="dropdown-productos" style="display: none;">
-                        <!-- Resultados de búsqueda se mostrarán aquí -->
-                    </div>
-                </div>
-                <small class="text-muted">Clic para agregar (cantidad: 1)</small>
-            </div>
-        </div>
-        
-        <!-- Footer de Venta -->
-        <div class="row align-items-center g-2">
-            <div class="col-md-5">
-                <div class="bg-success text-white p-2 rounded d-flex justify-content-between align-items-center">
-                    <span class="fs-5 fw-bold">Total:</span>
-                    <span class="fs-4 fw-bold" id="total-venta">S/. 0.00</span>
-                </div>
-            </div>
-            <div class="col-md-7">
-                <div class="d-flex gap-2 justify-content-end">
-                    <button class="btn btn-outline-secondary" id="btn-limpiar">
-                        <i class="ti ti-trash me-1"></i>Limpiar
-                    </button>
-                    <button class="btn btn-success" id="btn-procesar">
-                        <i class="ti ti-check me-1"></i>Procesar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+        <!-- ============================================================
+             POS 2 COLUMNAS: Catálogo (izquierda) + Cliente/Carrito (derecha)
+             ============================================================ -->
+        <div class="row g-3 pos-main-row">
 
-<!-- Panel de Historial -->
-<div class="card border-0 shadow-sm mt-3" id="card-historial-cola">
+            <!-- COLUMNA IZQUIERDA: CATÁLOGO DE PRODUCTOS -->
+            <div class="col-lg-5 col-xl-4 d-flex">
+                <div class="card flex-fill d-flex flex-column mb-0">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <h4 class="card-title mb-0">
+                            <i class="ti ti-packages me-2 text-primary"></i>Catálogo de Productos
+                        </h4>
+                        <span class="badge bg-primary-lt" id="productos-count"></span>
+                    </div>
+                    <div class="card-body d-flex flex-column p-2">
+                        <div class="d-flex gap-2 mb-2 flex-shrink-0">
+                            <div class="input-icon w-100">
+                                <input type="text" class="form-control" id="busqueda-producto"
+                                       placeholder="Buscar producto..." autocomplete="off">
+                                <span class="input-icon-addon">
+                                    <i class="ti ti-search"></i>
+                                </span>
+                            </div>
+                            <div class="form-check form-switch mb-0 align-self-center flex-shrink-0">
+                                <input class="form-check-input" type="checkbox" id="chk-solo-stock" style="cursor:pointer;">
+                                <label class="form-check-label small text-nowrap fw-semibold" for="chk-solo-stock">Solo stock</label>
+                            </div>
+                        </div>
+                        <div class="pos-scroll-area" id="productos-grid">
+                            <div class="text-center py-4 text-muted small" id="productos-cargando">
+                                <div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando productos...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: CLIENTE Y PAGO + CARRITO -->
+            <div class="col-lg-7 col-xl-8 d-flex flex-column gap-3">
+
+                <!-- Card: Cliente y Pago -->
+                <div class="card flex-shrink-0">
+                    <div class="card-header py-2">
+                        <h4 class="card-title mb-0">
+                            <i class="ti ti-user me-2 text-primary"></i>Cliente y Pago
+                        </h4>
+                    </div>
+                    <div class="card-body py-2 px-3">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small fw-semibold mb-1">Cliente</label>
+                                <div class="position-relative">
+                                    <input type="text" class="form-control" id="busqueda-cliente"
+                                           placeholder="Buscar cliente..." autocomplete="off">
+                                    <div class="dropdown-menu w-100" id="dropdown-clientes" style="display: none; max-height: 300px; overflow-y: auto;">
+                                        <!-- Resultados de búsqueda se mostrarán aquí -->
+                                    </div>
+                                    <input type="hidden" id="id_cliente">
+                                    <input type="hidden" id="cliente-seleccionado-nombre">
+                                    <input type="hidden" id="tipo_cliente">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold mb-1">Fecha</label>
+                                <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold mb-1">Método</label>
+                                <select class="form-select" id="metodo_pago">
+                                    <option value="">Método de pago</option>
+                                    <option value="VENTA">Venta</option>
+                                    <option value="DONACION">Donación</option>
+                                </select>
+                            </div>
+                            <div class="col-12" id="div-descuento-planilla" style="display:none;">
+                                <div class="d-flex align-items-center border rounded w-100 py-2 px-3 gap-2" style="background:#fff;">
+                                    <label class="fw-semibold text-muted small mb-0" for="chk-descuento-planilla" style="cursor:pointer;">
+                                        <i class="ti ti-calculator me-1 align-middle"></i> Descuento planilla
+                                    </label>
+                                    <input type="checkbox" id="chk-descuento-planilla" class="form-check-input m-0">
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
+                                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
+                                        <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
+                                    </label>
+                                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Carrito (con barra fija inferior) -->
+                <div class="card flex-fill d-flex flex-column mb-0">
+                    <div class="card-header py-2">
+                        <h4 class="card-title mb-0">
+                            <i class="ti ti-basket me-2 text-primary"></i>Carrito
+                        </h4>
+                    </div>
+                    <div class="pos-scroll-area p-0" id="contenedor-tabla-items">
+                        <table class="table table-vcenter card-table mb-0" id="tabla-items">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="w-1">Cant</th>
+                                    <th class="w-1">Precio</th>
+                                    <th class="w-1">Subtotal</th>
+                                    <th class="w-1"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-items">
+                                <!-- Items se agregarán dinámicamente -->
+                            </tbody>
+                        </table>
+                        <div class="text-center text-muted" id="mensaje-vacio">
+                            <i class="ti ti-shopping-cart-off fs-1 mb-2"></i>
+                            <p>No hay productos agregados</p>
+                        </div>
+                    </div>
+                    <!-- Barra fija: Total + acciones -->
+                    <div class="card-footer pos-cart-footer py-2 px-3 d-flex align-items-center gap-2">
+                        <div class="total-box flex-fill d-flex justify-content-between align-items-center px-3 py-2">
+                            <span class="fw-bold total-label">TOTAL</span>
+                            <span class="fs-3 fw-bold total-amount" id="total-venta">S/. 0.00</span>
+                        </div>
+                        <div class="d-flex gap-2 flex-shrink-0">
+                            <button class="btn btn-outline-secondary flex-shrink-0" id="btn-limpiar" title="Limpiar carrito">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                            <button class="btn btn-success btn-lg fw-bold flex-shrink-0" id="btn-procesar">
+                                <i class="ti ti-check me-2"></i>Procesar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Historial -->
+        <div class="card border-0 shadow-sm mt-3" id="card-historial-cola">
             <div class="card-header bg-success-lt py-2 px-3 border-0">
                 <h4 class="card-title text-success mb-0 d-flex align-items-center fw-bold">
                     <i class="ti ti-history me-2 fs-3"></i> Últimas Ventas Procesadas
@@ -159,10 +190,10 @@
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
         </div>
     </div>
-</div>
-</div>
 </div>
 
 <!-- Estilos compartidos del módulo -->
@@ -170,7 +201,7 @@
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/components.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/common.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/responsive.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/punto_venta.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/punto_venta.css?v=<?php echo @filemtime(__DIR__ . '/../../assets/css/punto_venta.css'); ?>">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
@@ -180,8 +211,15 @@
 
 let items = [];
 let numGrupo = localStorage.getItem('pech_pos_num_grupo') || null;
-let productosDisponibles = <?php echo json_encode($productos); ?>;
-let clientesDisponibles = <?php echo json_encode($clientes); ?>;
+let productosDisponibles = <?php echo json_encode($productos, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+let clientesDisponibles = <?php echo json_encode($clientes, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+let csrfToken = <?php echo json_encode($csrfToken ?? '', JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+
+// Normaliza texto para búsquedas sin distinguir tildes ni mayúsculas
+function normalizarTexto(str) {
+    const s = String(str == null ? '' : str).toLowerCase();
+    return s.replace(/[áéíóúüñ]/g, c => ({ 'á':'a','é':'e','í':'i','ó':'o','ú':'u','ü':'u','ñ':'n' }[c]));
+}
 
 // Inicializar fecha actual
 document.getElementById('fecha').valueAsDate = new Date();
@@ -195,7 +233,7 @@ let clienteAutoSeleccionando = false;
 
 busquedaClienteInput.addEventListener('input', function() {
     if (clienteAutoSeleccionando) return;
-    const query = this.value.toLowerCase().trim();
+    const query = normalizarTexto(this.value).trim();
     
     if (query.length < 2) {
         dropdownClientes.style.display = 'none';
@@ -204,8 +242,8 @@ busquedaClienteInput.addEventListener('input', function() {
     
     // Búsqueda local en el array de clientes (igual que productos)
     const resultados = clientesDisponibles.filter(c => 
-        c.nombre_rs.toLowerCase().includes(query) || 
-        c.dni_ruc.toLowerCase().includes(query)
+        normalizarTexto(c.nombre_rs).includes(query) || 
+        normalizarTexto(c.dni_ruc).includes(query)
     );
     
     if (resultados.length === 0) {
@@ -220,7 +258,7 @@ busquedaClienteInput.addEventListener('input', function() {
             </div>`;
             dropdownClientes.style.display = 'block';
             
-            fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=buscar_cliente_api&documento=${docLimpio}`)
+            fetch(`<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=buscar_cliente_api&documento=${docLimpio}&csrf_token=${encodeURIComponent(csrfToken)}`)
                 .then(r => r.text())
                 .then(text => {
                     const trimmed = text.trim();
@@ -252,13 +290,8 @@ busquedaClienteInput.addEventListener('input', function() {
                         </a>`;
                         dropdownClientes.style.display = 'block';
                     } else {
-                        const diag = d.diag || '';
-                        const curl = d.has_curl ? 'SI' : 'NO';
-                        const fopen = d.has_fopen ? 'SI' : 'NO';
                         dropdownClientes.innerHTML = `
                             <div class="dropdown-item text-muted small">No encontrado en ${fuente}</div>
-                            <div class="dropdown-item text-muted small border-bottom">curl=${curl} | fopen=${fopen}</div>
-                            ${diag ? `<div class="dropdown-item text-danger small">${diag}</div>` : ''}
                             <a class="dropdown-item text-success fw-bold border-top" href="#" onclick="registrarClienteRapidoDesdeInput(event, '${query.replace(/'/g, "\\'")}')">
                                 <i class="ti ti-user-plus me-2"></i>Registrar manualmente: "${query}"
                             </a>`;
@@ -348,7 +381,7 @@ function registrarClienteRapidoDesdeInput(event, nombre) {
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ nombre: nombre.trim() })
+        body: JSON.stringify({ nombre: nombre.trim(), csrf_token: csrfToken })
     })
     .then(r => r.text())
     .then(text => {
@@ -410,75 +443,110 @@ document.addEventListener('click', function(e) {
 });
 
 // ========================================
-// BÚSQUEDA DE PRODUCTOS CON AUTOCOMPLETADO
+// CATÁLOGO DE PRODUCTOS (GRID)
 // ========================================
 const busquedaInput = document.getElementById('busqueda-producto');
-const dropdownProductos = document.getElementById('dropdown-productos');
 
-busquedaInput.addEventListener('input', function() {
-    const query = this.value.toLowerCase().trim();
-    
-    if (query.length < 2) {
-        dropdownProductos.style.display = 'none';
+function renderProductos(filtro) {
+    const grid = document.getElementById('productos-grid');
+    const query = normalizarTexto(filtro).trim();
+    const chkStock = document.getElementById('chk-solo-stock');
+
+    let productos = productosDisponibles.slice();
+
+    if (chkStock && chkStock.checked) {
+        productos = productos.filter(p => Number(p.stock_total || 0) > 0);
+    }
+
+    if (query.length >= 1) {
+        productos = productos.filter(p => {
+            const campos = [p.nombre, p.nombre_clase, p.nombre_centro, String(p.id_producto || '')]
+                .filter(v => v != null)
+                .map(normalizarTexto);
+            return campos.some(t => t.includes(query));
+        });
+    }
+
+    const counter = document.getElementById('productos-count');
+    if (counter) counter.textContent = productos.length + ' producto' + (productos.length === 1 ? '' : 's');
+
+    if (productos.length === 0) {
+        grid.innerHTML = '<div class="text-center py-4 text-muted small">Sin resultados</div>';
         return;
     }
-    
-    const resultados = productosDisponibles.filter(p => 
-        p.nombre.toLowerCase().includes(query)
-    );
-    
-    if (resultados.length === 0) {
-        dropdownProductos.innerHTML = '<div class="dropdown-item text-muted">No se encontraron productos</div>';
-    } else {
-        dropdownProductos.innerHTML = resultados.map(p => {
-            let badgeClass = 'bg-success-lt';
-            let badgeText = `Stock: ${p.stock_total}`;
-            if (p.stock_total <= 0) {
-                badgeClass = 'bg-secondary-lt';
-                badgeText = 'Agotado';
-            } else if (p.stock_total < 10) {
-                badgeClass = 'bg-danger-lt';
-                badgeText = `Crítico: ${p.stock_total}`;
-            }
-            return `
-                <a class="dropdown-item producto-item" href="#" onclick="agregarProductoDirecto(${p.id_producto}, '${p.nombre.replace(/'/g, "\\'")}', '${p.unidad_medida.replace(/'/g, "\\'")}', ${p.precio_venta}, event)">
-                    <div class="producto-row">
-                        <div class="producto-info">
-                            <div class="producto-icono me-3">
-                                <i class="ti ti-package"></i>
-                            </div>
-                            <div class="producto-text">
-                                <div class="producto-nombre">${p.nombre}</div>
-                                <div class="producto-unidad">${p.unidad_medida} <span class="badge ${badgeClass} ms-1">${badgeText}</span></div>
-                            </div>
-                        </div>
-                        <div class="producto-precio">
-                            S/. ${p.precio_venta.toFixed(2)}
-                        </div>
-                    </div>
-                </a>
-            `;
-        }).join('');
-    }
-    
-    dropdownProductos.style.display = 'block';
+
+    // Ordenar: con stock primero, luego alfabéticamente
+    productos.sort((a, b) => {
+        const sA = Number(a.stock_total || 0) > 0 ? 0 : 1;
+        const sB = Number(b.stock_total || 0) > 0 ? 0 : 1;
+        if (sA !== sB) return sA - sB;
+        return normalizarTexto(a.nombre).localeCompare(normalizarTexto(b.nombre));
+    });
+
+    grid.innerHTML = productos.map(p => {
+        const stockTotal = Number(p.stock_total || 0);
+        let stockClass = 'ok';
+        let stockText = 'Stock: ' + stockTotal;
+        if (stockTotal <= 0) {
+            stockClass = 'agotado';
+            stockText = 'Agotado';
+        } else if (stockTotal < 10) {
+            stockClass = 'critico';
+        }
+
+        let imgHtml = '<i class="ti ti-package"></i>';
+        if (p.imagen_nombre) {
+            imgHtml = `<img src="<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=ver_imagen_producto&id=${p.id_producto}" alt="">`;
+        }
+
+        const precio = Number(p.precio_venta || 0);
+        const titleAttr = String(p.nombre || '').replace(/"/g, '&quot;');
+
+        return `
+            <div class="producto-card${stockTotal <= 0 ? ' agotado' : ''}"
+                 onclick="agregarProductoDirecto(${p.id_producto}, event)"
+                 title="${titleAttr}">
+                <div class="producto-card-img">${imgHtml}</div>
+                <div class="producto-card-body">
+                    <div class="producto-card-nombre">${p.nombre}</div>
+                    <div class="producto-card-meta">${p.unidad_medida || ''}</div>
+                </div>
+                <div class="producto-card-side">
+                    <span class="producto-stock ${stockClass}">${stockText}</span>
+                    <span class="producto-precio">S/. ${precio.toFixed(2)}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+busquedaInput.addEventListener('input', function() {
+    renderProductos(this.value);
 });
 
-// Agregar producto al hacer clic en el dropdown
-function agregarProductoDirecto(id, nombre, unidad, precio, event) {
-    event.preventDefault();
-    
-    // Buscar el producto en la lista local para obtener su stock
+const chkSoloStock = document.getElementById('chk-solo-stock');
+if (chkSoloStock) {
+    chkSoloStock.addEventListener('change', function() {
+        renderProductos(document.getElementById('busqueda-producto').value);
+    });
+}
+
+// Agregar producto al hacer clic en la tarjeta del catálogo
+function agregarProductoDirecto(id, event) {
+    if (event) event.preventDefault();
+
     const prodRef = productosDisponibles.find(p => p.id_producto == id);
-    const stockTotal = prodRef ? prodRef.stock_total : 0;
-    const nombreCentro = prodRef ? prodRef.nombre_centro : '';
-    const imagenNombre = prodRef ? prodRef.imagen_nombre : '';
-    
+    if (!prodRef) return;
+
+    const stockTotal = Number(prodRef.stock_total || 0);
+    const nombre = prodRef.nombre;
+    const unidad = prodRef.unidad_medida || '';
+    const precio = Number(prodRef.precio_venta || 0);
+
     if (stockTotal <= 0) {
         Swal.fire('Sin stock', 'Este producto no cuenta con stock disponible', 'warning');
         return;
     }
-    
+
     // Verificar si ya existe
     const existente = items.find(i => i.id_producto == id);
     if (existente) {
@@ -495,27 +563,21 @@ function agregarProductoDirecto(id, nombre, unidad, precio, event) {
             nombre: nombre,
             unidad: unidad,
             cantidad: 1,
-            precio: parseFloat(precio) || 0,
-            subtotal: parseFloat(precio) || 0,
+            precio: precio,
+            subtotal: precio,
             stock_max: stockTotal,
-            nombre_centro: nombreCentro,
-            imagen_nombre: imagenNombre,
+            nombre_centro: prodRef.nombre_centro || '',
+            imagen_nombre: prodRef.imagen_nombre || '',
             _esNuevo: true
         });
     }
-    
+
     renderItems();
-    
-    // Limpiar búsqueda
-    document.getElementById('busqueda-producto').value = '';
-    dropdownProductos.style.display = 'none';
 }
 
-// Cerrar dropdown al hacer clic fuera
-document.addEventListener('click', function(e) {
-    if (!busquedaInput.contains(e.target) && !dropdownProductos.contains(e.target)) {
-        dropdownProductos.style.display = 'none';
-    }
+// Render inicial del catálogo
+document.addEventListener('DOMContentLoaded', function() {
+    renderProductos('');
 });
 
 // Renderizar items en tabla
@@ -682,7 +744,8 @@ document.getElementById('btn-procesar').addEventListener('click', function() {
         metodo_pago: metodoPagoFinal,
         descuento_planilla: descuentoPlanilla ? 1 : 0,
         num_grupo: numGrupo || undefined,
-        items: items
+        items: items,
+        csrf_token: csrfToken
     };
     
     // Deshabilitar botón para evitar doble clic

@@ -12,33 +12,14 @@ class PuntoVentaModel {
     // ========================================
     
     public function listarClientes() {
-        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, tipo_cliente 
+        // tipo_cliente: 0 = Planilla (empleados PECH), 1 = Externo
+        $sql = "SELECT id_cliente, dni_ruc, nombre_rs,
+                       CASE WHEN tipo_cliente = 0 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente 
                 FROM BD_PRODUCCIONDESARROLLO.dbo.cliente 
                 WHERE activo = 1
                 ORDER BY nombre_rs";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt === false) return [];
-        $result = [];
-        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-            $result[] = $row;
-        }
-        return $result;
-    }
-
-    public function buscarClientes($query) {
-        // Búsqueda solo por nombre
-        $sql = "SELECT id_cliente, dni_ruc, nombre_rs, 
-                       CASE WHEN tipo_cliente = 1 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente 
-                FROM BD_PRODUCCIONDESARROLLO.dbo.cliente 
-                WHERE nombre_rs COLLATE SQL_Latin1_General_CP1_CI_AS LIKE ?
-                AND activo = 1
-                ORDER BY nombre_rs";
-        $searchTerm = '%' . $query . '%';
-        $stmt = sqlsrv_query($this->db, $sql, [$searchTerm]);
-        if ($stmt === false) {
-            error_log('SQL Error buscarClientes: ' . print_r(sqlsrv_errors(), true));
-            return [];
-        }
         $result = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             $result[] = $row;
@@ -59,18 +40,14 @@ class PuntoVentaModel {
                         FROM BD_PRODUCCIONDESARROLLO.dbo.lote l 
                         WHERE l.id_producto = p.id_producto AND l.stock_actual > 0) as stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit u ON u.anio = YEAR(GETDATE())
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro AND cp.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit u ON u.anio = YEAR(GETDATE()) AND u.activo = 1
                 LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial
+                    SELECT hp1.id_producto, hp1.precio_oficial,
+                           ROW_NUMBER() OVER (PARTITION BY hp1.id_producto ORDER BY hp1.fecha_registro DESC, hp1.id_historial DESC) AS rn
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp ON p.id_producto = hp.id_producto
+                ) hp ON p.id_producto = hp.id_producto AND hp.rn = 1
                 WHERE p.maneja_stock = 1 AND p.activo = 1
                 ORDER BY p.nombre";
         $stmt = sqlsrv_query($this->db, $sql);
@@ -98,18 +75,14 @@ class PuntoVentaModel {
                         FROM BD_PRODUCCIONDESARROLLO.dbo.lote l 
                         WHERE l.id_producto = p.id_producto AND l.stock_actual > 0) as stock_total
                 FROM BD_PRODUCCIONDESARROLLO.dbo.producto p
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit u ON u.anio = YEAR(GETDATE())
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.clase c ON p.id_clase = c.id_clase AND c.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp ON p.id_centro = cp.id_centro AND cp.activo = 1
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.uit u ON u.anio = YEAR(GETDATE()) AND u.activo = 1
                 LEFT JOIN (
-                    SELECT hp1.id_producto, hp1.precio_oficial
+                    SELECT hp1.id_producto, hp1.precio_oficial,
+                           ROW_NUMBER() OVER (PARTITION BY hp1.id_producto ORDER BY hp1.fecha_registro DESC, hp1.id_historial DESC) AS rn
                     FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp1
-                    WHERE hp1.fecha_registro = (
-                        SELECT MAX(hp2.fecha_registro)
-                        FROM BD_PRODUCCIONDESARROLLO.dbo.historial_precio hp2
-                        WHERE hp2.id_producto = hp1.id_producto
-                    )
-                ) hp ON p.id_producto = hp.id_producto
+                ) hp ON p.id_producto = hp.id_producto AND hp.rn = 1
                 WHERE p.id_producto = ? AND p.maneja_stock = 1 AND p.activo = 1";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
@@ -137,33 +110,85 @@ class PuntoVentaModel {
     
     public function guardarVenta($data) {
         sqlsrv_begin_transaction($this->db);
-        
+
         try {
-            // Obtener id_centro del primer producto
-            $idCentro = null;
-            if (!empty($data['items'])) {
-                $primerItem = $data['items'][0];
-                $sqlCentro = "SELECT id_centro FROM BD_PRODUCCIONDESARROLLO.dbo.producto WHERE id_producto = ? AND activo = 1";
-                $stmtCentro = sqlsrv_query($this->db, $sqlCentro, [$primerItem['id_producto']]);
-                if ($stmtCentro && $rowCentro = sqlsrv_fetch_array($stmtCentro, SQLSRV_FETCH_ASSOC)) {
-                    $idCentro = $rowCentro['id_centro'];
+            // ── Validación básica ──
+            if (empty($data['id_cliente'])) {
+                throw new Exception('Debe seleccionar un cliente.');
+            }
+            if (empty($data['items']) || !is_array($data['items'])) {
+                throw new Exception('No se recibieron ítems de venta.');
+            }
+
+            // ── Fecha opcional (permite ventas retroactivas) ──
+            $fecha = null;
+            if (!empty($data['fecha'])) {
+                $fechaObj = DateTime::createFromFormat('Y-m-d', $data['fecha']);
+                if ($fechaObj) {
+                    $fecha = $fechaObj->format('Y-m-d');
                 }
             }
-            
-            // Insertar encabezado de transacción y obtener ID
+
+            // ── Normalizar ítems y RECALCULAR precios en servidor ──
+            // No se confía en el precio/subtotal/total enviado por el cliente.
+            $itemsNorm = [];
+            $total = 0.0;
+            $idCentro = null;
+
+            foreach ($data['items'] as $item) {
+                $idProducto = intval($item['id_producto'] ?? 0);
+                $cantidad = intval($item['cantidad'] ?? 0);
+
+                if ($idProducto <= 0) {
+                    throw new Exception('Producto inválido en la venta.');
+                }
+                if ($cantidad <= 0) {
+                    throw new Exception('La cantidad debe ser un número entero mayor a cero.');
+                }
+
+                $producto = $this->buscarProducto($idProducto);
+                if (!$producto) {
+                    throw new Exception('Producto no encontrado o no disponible para la venta.');
+                }
+
+                $precio = floatval($producto['precio_venta'] ?? 0);
+                if ($precio <= 0) {
+                    throw new Exception("El producto '{$producto['nombre']}' no tiene precio definido.");
+                }
+
+                if ($idCentro === null) {
+                    $idCentro = $producto['id_centro'] ?? null;
+                }
+
+                $subtotal = round($precio * $cantidad, 2);
+                $total += $subtotal;
+
+                $itemsNorm[] = [
+                    'id_producto' => $idProducto,
+                    'nombre'      => $producto['nombre'],
+                    'cantidad'    => $cantidad,
+                    'precio'      => $precio,
+                    'subtotal'    => $subtotal,
+                    'id_centro'   => $producto['id_centro'] ?? null,
+                ];
+            }
+            $total = round($total, 2);
+
+            // ── Insertar encabezado de transacción ──
             $sqlTransaccion = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.transaccion 
                         (id_cliente, id_centro, id_voucher, responsable_venta, tipo_op, metodo_pago, estado, fecha_creacion, total, serie_comprobante, correlativo_comprobante, doc_justificante, descuento_planilla, num_grupo)
                         OUTPUT INSERTED.id_transaccion
-                        VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, ?, ?, ?, ?)";
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ISNULL(CAST(? AS DATE), GETDATE()), ?, ?, ?, ?, ?, ?)";
             $paramsTransaccion = [
                 $data['id_cliente'],
-                $idCentro ?? 1, // id_centro del producto o valor por defecto
+                $idCentro ?? 1, // id_centro del primer producto o valor por defecto
                 null, // id_voucher - se asigna en proformas
                 $_SESSION['usuario_nombre'] ?? 'Sistema', // responsable_venta
                 'VENTA', // tipo_op
                 $data['metodo_pago'] ?? 'VENTA', // metodo_pago
                 ($data['metodo_pago'] ?? 'VENTA') === 'PLANILLA' ? 'PROCESADO' : 'PENDIENTE', // estado
-                $data['total'],
+                $fecha, // fecha_creacion (retroactiva si se indicó)
+                $total,
                 null, // serie_comprobante - se asigna en proformas
                 null, // correlativo_comprobante - se asigna en proformas
                 null,  // doc_justificante
@@ -172,62 +197,64 @@ class PuntoVentaModel {
             ];
             $stmtTransaccion = sqlsrv_query($this->db, $sqlTransaccion, $paramsTransaccion);
             if ($stmtTransaccion === false) {
-                throw new Exception('Error al insertar transacción: ' . print_r(sqlsrv_errors(), true));
+                error_log('[guardarVenta] Error insertando transaccion: ' . print_r(sqlsrv_errors(), true));
+                throw new Exception('Error al insertar la transacción.');
             }
-            
+
             $row = sqlsrv_fetch_array($stmtTransaccion, SQLSRV_FETCH_ASSOC);
             $idTransaccion = $row ? $row['id_transaccion'] : null;
-            
+
             if (!$idTransaccion) {
-                throw new Exception('Error: No se pudo obtener el ID de transacción');
+                throw new Exception('No se pudo obtener el ID de la transacción.');
             }
-            
-            // Insertar detalles y descontar de lotes (FIFO)
-            foreach ($data['items'] as $item) {
+
+            // ── Descontar stock FIFO e insertar detalle por lote ──
+            foreach ($itemsNorm as $item) {
                 $cantidadPendiente = $item['cantidad'];
                 $idProducto = $item['id_producto'];
-                
-                // Buscar lotes del producto ordenados por fecha de creacion (FIFO), filtrados por centro
+
+                // UPDLOCK evita sobreventa ante ventas concurrentes del mismo lote
                 $sqlLotes = "SELECT id_lote, stock_actual, codigo_lote 
-                            FROM BD_PRODUCCIONDESARROLLO.dbo.lote 
+                            FROM BD_PRODUCCIONDESARROLLO.dbo.lote WITH (UPDLOCK, ROWLOCK) 
                             WHERE id_producto = ? AND stock_actual > 0 AND id_centro = ?
                             ORDER BY fecha_creacion ASC, id_lote ASC";
-                $stmtLotes = sqlsrv_query($this->db, $sqlLotes, [$idProducto, $idCentro ?? 1]);
+                $stmtLotes = sqlsrv_query($this->db, $sqlLotes, [$idProducto, $item['id_centro'] ?? $idCentro ?? 1]);
                 if ($stmtLotes === false) {
-                    throw new Exception('Error al buscar lotes: ' . print_r(sqlsrv_errors(), true));
+                    error_log('[guardarVenta] Error buscando lotes: ' . print_r(sqlsrv_errors(), true));
+                    throw new Exception('Error al buscar lotes del producto.');
                 }
-                
+
                 $lotes = [];
                 while ($rowLote = sqlsrv_fetch_array($stmtLotes, SQLSRV_FETCH_ASSOC)) {
                     $lotes[] = $rowLote;
                 }
-                
+
                 if (empty($lotes)) {
                     throw new Exception("No hay stock disponible para el producto: {$item['nombre']}");
                 }
-                
-                $idLoteUsado = null;
-                $saldoKardex = 0;
-                
-                // Descontar de los lotes más antiguos primero
+
+                $asignaciones = []; // id_lote => cantidad usada
+
+                // Descontar de los lotes más antiguos primero (FIFO)
                 foreach ($lotes as $lote) {
                     if ($cantidadPendiente <= 0) break;
-                    
+
                     $idLote = $lote['id_lote'];
-                    $stockDisponible = $lote['stock_actual'];
+                    $stockDisponible = intval($lote['stock_actual']);
                     $cantidadDescontar = min($cantidadPendiente, $stockDisponible);
                     $nuevoStock = $stockDisponible - $cantidadDescontar;
-                    
+
                     // Actualizar stock del lote
                     $sqlUpdateLote = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.lote 
                                      SET stock_actual = ? 
                                      WHERE id_lote = ?";
                     $stmtUpdateLote = sqlsrv_query($this->db, $sqlUpdateLote, [$nuevoStock, $idLote]);
                     if ($stmtUpdateLote === false) {
-                        throw new Exception('Error al actualizar stock del lote: ' . print_r(sqlsrv_errors(), true));
+                        error_log('[guardarVenta] Error actualizando lote: ' . print_r(sqlsrv_errors(), true));
+                        throw new Exception('Error al actualizar el stock del lote.');
                     }
-                    
-                    // Obtener saldo actual del kardex para este producto
+
+                    // Obtener saldo actual del kardex para este lote
                     $sqlSaldo = "SELECT TOP 1 saldo_final 
                                FROM BD_PRODUCCIONDESARROLLO.dbo.kardex 
                                WHERE id_lote = ? 
@@ -235,96 +262,80 @@ class PuntoVentaModel {
                     $stmtSaldo = sqlsrv_query($this->db, $sqlSaldo, [$idLote]);
                     $saldoActual = 0;
                     if ($stmtSaldo && $rowSaldo = sqlsrv_fetch_array($stmtSaldo, SQLSRV_FETCH_ASSOC)) {
-                        $saldoActual = $rowSaldo['saldo_final'];
+                        $saldoActual = floatval($rowSaldo['saldo_final'] ?? 0);
                     }
                     $nuevoSaldo = $saldoActual - $cantidadDescontar;
-                    
+
                     // Registrar en kardex
                     $sqlKardex = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.kardex 
                                 (id_lote, id_transaccion, tipo_movimiento, cantidad, saldo_final, fecha)
                                 VALUES (?, ?, 'VENTA', ?, ?, GETDATE())";
                     $stmtKardex = sqlsrv_query($this->db, $sqlKardex, [$idLote, $idTransaccion, $cantidadDescontar, $nuevoSaldo]);
                     if ($stmtKardex === false) {
-                        throw new Exception('Error al registrar kardex: ' . print_r(sqlsrv_errors(), true));
+                        error_log('[guardarVenta] Error insertando kardex: ' . print_r(sqlsrv_errors(), true));
+                        throw new Exception('Error al registrar el kardex.');
                     }
-                    
+
+                    $asignaciones[] = ['id_lote' => $idLote, 'cantidad' => $cantidadDescontar];
                     $cantidadPendiente -= $cantidadDescontar;
-                    $idLoteUsado = $idLote;
-                    $saldoKardex = $nuevoSaldo;
                 }
-                
+
                 if ($cantidadPendiente > 0) {
                     throw new Exception("Stock insuficiente para el producto: {$item['nombre']}. Faltan {$cantidadPendiente} unidades.");
                 }
-                
-                // Insertar detalle de transacción con el lote usado (el más antiguo)
-                $sqlDetalle = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle 
-                               (id_transaccion, id_producto, id_lote, cantidad, precio_unitario, subtotal)
-                               OUTPUT INSERTED.id_detalle
-                               VALUES (?, ?, ?, ?, ?, ?)";
-                $paramsDetalle = [
-                    $idTransaccion,
-                    $idProducto,
-                    $idLoteUsado,
-                    $item['cantidad'],
-                    $item['precio'],
-                    $item['subtotal']
-                ];
-                $stmtDetalle = sqlsrv_query($this->db, $sqlDetalle, $paramsDetalle);
-                if ($stmtDetalle === false) {
-                    throw new Exception('Error al insertar detalle: ' . print_r(sqlsrv_errors(), true));
+
+                // Una fila de detalle por cada lote usado (trazabilidad FIFO completa)
+                foreach ($asignaciones as $asig) {
+                    $subtotalLote = round($asig['cantidad'] * $item['precio'], 2);
+                    $sqlDetalle = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle 
+                                   (id_transaccion, id_producto, id_lote, cantidad, precio_unitario, subtotal)
+                                   VALUES (?, ?, ?, ?, ?, ?)";
+                    $stmtDetalle = sqlsrv_query($this->db, $sqlDetalle, [
+                        $idTransaccion,
+                        $idProducto,
+                        $asig['id_lote'],
+                        $asig['cantidad'],
+                        $item['precio'],
+                        $subtotalLote
+                    ]);
+                    if ($stmtDetalle === false) {
+                        error_log('[guardarVenta] Error insertando detalle: ' . print_r(sqlsrv_errors(), true));
+                        throw new Exception('Error al insertar el detalle de la venta.');
+                    }
                 }
-                
-                // Obtener el ID del detalle insertado
-                $rowDetalle = sqlsrv_fetch_array($stmtDetalle, SQLSRV_FETCH_ASSOC);
-                $idDetalle = $rowDetalle ? $rowDetalle['id_detalle'] : null;
             }
-            
+
             sqlsrv_commit($this->db);
             return ['success' => true, 'id_transaccion' => $idTransaccion];
-            
+
         } catch (Exception $e) {
             sqlsrv_rollback($this->db);
+            error_log('[guardarVenta] Venta rechazada: ' . $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage()];
         }
-    }
-
-    public function listarVentasHoy() {
-        $sql = "SELECT t.id_transaccion, t.fecha_creacion as fecha, t.metodo_pago, t.total, t.estado,
-                       c.nombre_rs as cliente
-                FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c ON t.id_cliente = c.id_cliente AND c.activo = 1
-                WHERE CAST(t.fecha_creacion as DATE) = CAST(GETDATE() as DATE)
-                AND t.tipo_op = 'VENTA'
-                ORDER BY t.fecha_creacion DESC";
-        $stmt = sqlsrv_query($this->db, $sql);
-        if ($stmt === false) return [];
-        $result = [];
-        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
-            $result[] = $row;
-        }
-        return $result;
     }
 
     public function crearClienteRapido($nombre) {
         try {
             $dniTemp = 'TEMP' . date('ymd') . rand(1000, 9999);
-            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.cliente (dni_ruc, nombre_rs, tipo_cliente) VALUES (?, ?, 0)";
+            // tipo_cliente: 0 = Planilla (empleados PECH), 1 = Externo
+            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.cliente (dni_ruc, nombre_rs, tipo_cliente)
+                    OUTPUT INSERTED.id_cliente VALUES (?, ?, 1)";
             $stmt = sqlsrv_query($this->db, $sql, [$dniTemp, $nombre]);
             if ($stmt === false) {
-                throw new Exception('Error al registrar cliente rápido: ' . print_r(sqlsrv_errors(), true));
+                error_log('[PuntoVentaModel::crearClienteRapido] SQL Error: ' . print_r(sqlsrv_errors(), true));
+                throw new Exception('Error al registrar cliente rápido.');
             }
-            
-            $sqlId = "SELECT @@IDENTITY as id_cliente";
-            $stmtId = sqlsrv_query($this->db, $sqlId);
-            $rowId = sqlsrv_fetch_array($stmtId, SQLSRV_FETCH_ASSOC);
+
+            $rowId = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
             $idCliente = $rowId ? intval($rowId['id_cliente']) : null;
-            
+
             return [
                 'success' => true,
                 'id_cliente' => $idCliente,
                 'nombre_rs' => $nombre,
-                'dni_ruc' => $dniTemp
+                'dni_ruc' => $dniTemp,
+                'tipo_cliente' => 'Externo'
             ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
@@ -439,7 +450,6 @@ class PuntoVentaModel {
         sqlsrv_free_stmt($s);
 
         $len = strlen($doc);
-        $t1 = microtime(true);
 
         if ($len === 8 && ctype_digit($doc)) {
             $nombre = $this->consultarRENIEC($doc);
@@ -466,7 +476,6 @@ class PuntoVentaModel {
 
             if ($nombreFinal) {
                 $r = $this->registrarClienteAPI($doc, $nombreFinal, $tipo, $fuente);
-                if ($r) $r['_diag'] = "{$fuente}=OK, PersonalPECH=" . ($esEmpleado?'SI':'NO') . ", time=" . round((microtime(true)-$t1)*1000)."ms";
                 return $r;
             }
             return null;
@@ -477,7 +486,6 @@ class PuntoVentaModel {
             $errSunat = $this->lastError;
             if ($nombre) {
                 $r = $this->registrarClienteAPI($doc, $nombre, 1, 'SUNAT');
-                if ($r) $r['_diag'] = "SUNAT=OK, time=" . round((microtime(true)-$t1)*1000)."ms";
                 return $r;
             }
             $this->lastError = "RUC $doc: SUNAT=FAIL ($errSunat)";

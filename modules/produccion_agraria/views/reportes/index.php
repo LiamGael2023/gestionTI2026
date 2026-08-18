@@ -1140,6 +1140,20 @@ function limpiarFiltros() {
 // =============================================================
 // RENDER DE TABLAS
 // =============================================================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Mapa seguro de clases de badge por estado (evita inyección en la clase CSS)
+const ESTADO_BADGE = {
+    'PROCESADO': 'badge-PROCESADO',
+    'PENDIENTE': 'badge-PENDIENTE',
+    'RECHAZADO': 'badge-RECHAZADO',
+    'ANULADA':   'badge-RECHAZADO',
+    'PLANILLA':  'badge-PROCESADO'
+};
+
 function renderVentas(data, kpis) {
     // KPIs
     document.getElementById('kpi-monto').textContent  = 'S/ ' + parseFloat(kpis.monto_total || 0).toLocaleString('es-PE', {minimumFractionDigits:2});
@@ -1156,15 +1170,16 @@ function renderVentas(data, kpis) {
     tbody.innerHTML = data.map(v => {
         totalMostrado += parseFloat(v.total || 0);
         const fecha = new Date(v.fecha_creacion).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
-        const comp  = v.serie_comprobante ? `${v.serie_comprobante}-${v.correlativo_comprobante}` : '-';
+        const comp  = v.serie_comprobante ? `${escapeHtml(v.serie_comprobante)}-${escapeHtml(v.correlativo_comprobante)}` : '-';
+        const badgeEstado = ESTADO_BADGE[v.estado] || 'badge-PENDIENTE';
         return `<tr>
-            <td><code>${v.id_transaccion}</code></td>
+            <td><code>${escapeHtml(v.id_transaccion)}</code></td>
             <td>${fecha}</td>
-            <td><div>${v.nombre_cliente || '-'}</div><small class="text-muted">${v.documento_cliente || ''}</small></td>
-            <td>${v.nombre_centro || '-'}</td>
-            <td>${v.metodo_pago || '-'}</td>
+            <td><div>${escapeHtml(v.nombre_cliente || '-')}</div><small class="text-muted">${escapeHtml(v.documento_cliente || '')}</small></td>
+            <td>${escapeHtml(v.nombre_centro || '-')}</td>
+            <td>${escapeHtml(v.metodo_pago || '-')}</td>
             <td><small>${comp}</small></td>
-            <td><span class="badge badge-${v.estado}">${v.estado}</span></td>
+            <td><span class="badge ${badgeEstado}">${escapeHtml(v.estado)}</span></td>
             <td class="text-end fw-bold">${parseFloat(v.total).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
     }).join('');
@@ -1188,13 +1203,13 @@ function renderInventario(data) {
         const stockBadge = i.stock_actual < 10 ? 'bg-danger' : 'bg-success';
         const fecLote = i.fecha_lote ? new Date(i.fecha_lote).toLocaleDateString('es-PE') : '-';
         return `<tr>
-            <td><div class="fw-semibold">${i.nombre_producto}</div>${i.nombre_cientifico ? `<small class="text-muted fst-italic">${i.nombre_cientifico}</small>` : ''}</td>
-            <td>${i.nombre_clase || '-'}</td>
-            <td>${i.nombre_centro || '-'}</td>
-            <td><code>${i.codigo_lote}</code></td>
+            <td><div class="fw-semibold">${escapeHtml(i.nombre_producto)}</div>${i.nombre_cientifico ? `<small class="text-muted fst-italic">${escapeHtml(i.nombre_cientifico)}</small>` : ''}</td>
+            <td>${escapeHtml(i.nombre_clase || '-')}</td>
+            <td>${escapeHtml(i.nombre_centro || '-')}</td>
+            <td><code>${escapeHtml(i.codigo_lote)}</code></td>
             <td><span class="${diasClass}"><i class="ti ti-clock me-1"></i>${i.antiguedad_dias} días</span></td>
-            <td class="text-center"><span class="badge ${stockBadge}">${parseInt(i.stock_actual).toLocaleString()} ${i.unidad_medida}</span></td>
-            <td class="text-center"><span class="badge bg-light text-dark">${i.tipo_precio}</span></td>
+            <td class="text-center"><span class="badge ${stockBadge}">${parseInt(i.stock_actual).toLocaleString()} ${escapeHtml(i.unidad_medida)}</span></td>
+            <td class="text-center"><span class="badge bg-light text-dark">${escapeHtml(i.tipo_precio)}</span></td>
             <td class="text-end">${parseFloat(i.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-success">${parseFloat(i.valor_total_lote).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
@@ -1219,10 +1234,10 @@ function renderMermas(data) {
         const fecha = new Date(m.fecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
         return `<tr>
             <td>${fecha}</td>
-            <td class="fw-semibold">${m.nombre_producto}</td>
-            <td>${m.nombre_clase || '-'}</td>
-            <td>${m.nombre_centro || '-'}</td>
-            <td><code>${m.codigo_lote}</code></td>
+            <td class="fw-semibold">${escapeHtml(m.nombre_producto)}</td>
+            <td>${escapeHtml(m.nombre_clase || '-')}</td>
+            <td>${escapeHtml(m.nombre_centro || '-')}</td>
+            <td><code>${escapeHtml(m.codigo_lote)}</code></td>
             <td class="text-center"><span class="badge bg-danger">${parseInt(m.cantidad_merma).toLocaleString()}</span></td>
             <td class="text-end">${parseFloat(m.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-danger">${parseFloat(m.valor_perdida).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1254,9 +1269,9 @@ function renderVouchers(data) {
         
         return `<tr>
             <td>${v.id_voucher}</td>
-            <td class="fw-semibold">${v.num_operation || '-'}</td>
-            <td>${v.fecha_deposito || '-'}</td>
-            <td class="text-center"><span class="badge bg-secondary">${v.total_proformas}</span></td>
+            <td class="fw-semibold">${escapeHtml(v.num_operation || '-')}</td>
+            <td>${escapeHtml(v.fecha_deposito || '-')}</td>
+            <td class="text-center"><span class="badge bg-secondary">${escapeHtml(v.total_proformas)}</span></td>
             <td class="text-end">${monto.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             <td class="text-end text-success fw-semibold">${asignado.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             <td class="text-end fw-bold ${saldoClass}">S/ ${saldo.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -1285,10 +1300,10 @@ function renderClientes(data) {
         
         return `<tr>
             <td>${c.id_cliente}</td>
-            <td>${c.dni_ruc || '-'}</td>
-            <td class="fw-semibold">${c.nombre_rs}</td>
+            <td>${escapeHtml(c.dni_ruc || '-')}</td>
+            <td class="fw-semibold">${escapeHtml(c.nombre_rs)}</td>
             <td>
-                <span class="badge ${badgeClass}">${c.tipo_cliente}</span>
+                <span class="badge ${badgeClass}">${escapeHtml(c.tipo_cliente)}</span>
             </td>
             <td class="text-center"><span class="badge bg-secondary">${transacciones}</span></td>
             <td class="text-end text-success">${ventas.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1314,8 +1329,8 @@ function renderConsolidado(data) {
         
         return `<tr>
             <td>${con.id_centro}</td>
-            <td class="fw-bold text-dark">${con.nombre_centro}</td>
-            <td>${con.encargado || '-'}</td>
+            <td class="fw-bold text-dark">${escapeHtml(con.nombre_centro)}</td>
+            <td>${escapeHtml(con.encargado || '-')}</td>
             <td class="text-end text-success fw-semibold">S/ ${ventas.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end text-warning fw-semibold">S/ ${donaciones.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end text-primary fw-semibold">S/ ${inventario.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1347,13 +1362,13 @@ function renderPrecios(data) {
         return `<tr>
             <td>${p.id_producto}</td>
             <td>
-                <div class="fw-bold text-dark">${p.nombre_producto}</div>
-                ${p.nombre_cientifico ? `<small class="text-muted fst-italic">${p.nombre_cientifico}</small>` : ''}
+                <div class="fw-bold text-dark">${escapeHtml(p.nombre_producto)}</div>
+                ${p.nombre_cientifico ? `<small class="text-muted fst-italic">${escapeHtml(p.nombre_cientifico)}</small>` : ''}
             </td>
-            <td>${p.nombre_clase || '-'}</td>
-            <td>${p.nombre_centro || '-'}</td>
+            <td>${escapeHtml(p.nombre_clase || '-')}</td>
+            <td>${escapeHtml(p.nombre_centro || '-')}</td>
             <td class="text-center">
-                <span class="badge ${tipoBadge}">${p.tipo_precio}</span>
+                <span class="badge ${tipoBadge}">${escapeHtml(p.tipo_precio)}</span>
             </td>
             <td class="text-end text-muted small">${vigencia}</td>
             <td class="text-end fw-bold text-success">S/ ${parseFloat(p.precio_unitario || 0).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1431,7 +1446,7 @@ function renderPlanilla(data) {
     let thProductos = '';
     let thSubcols = '';
     productos.forEach(p => {
-        thProductos += `<th colspan="3" class="text-center border">${p.nombre.toUpperCase()}<br><small class="fw-normal">${p.unidad}</small></th>`;
+        thProductos += `<th colspan="3" class="text-center border">${escapeHtml(p.nombre).toUpperCase()}<br><small class="fw-normal">${escapeHtml(p.unidad)}</small></th>`;
         thSubcols += `<th class="text-center border" style="min-width:55px;">CANT</th><th class="text-center border" style="min-width:55px;">COSTO</th><th class="text-center border" style="min-width:55px;">TOTAL</th>`;
     });
     thead.innerHTML = `<tr><th rowspan="2" class="text-center align-middle border" style="width:40px;">N°</th><th rowspan="2" class="text-center align-middle border" style="min-width:90px;">FECHA</th><th rowspan="2" class="text-center align-middle border" style="min-width:220px;">APELLIDOS Y NOMBRES</th>${thProductos}<th rowspan="2" class="text-center align-middle border" style="min-width:70px;">TOTAL</th></tr><tr>${thSubcols}</tr>`;
@@ -1454,7 +1469,7 @@ function renderPlanilla(data) {
         return `<tr>
             <td class="text-center border">${idx + 1}</td>
             <td class="text-center border">${fechaCorta}</td>
-            <td class="border">${emp.nombre}</td>
+            <td class="border">${escapeHtml(emp.nombre)}</td>
             ${celdas}
             <td class="text-end fw-bold border">S/ ${emp.total.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         </tr>`;
