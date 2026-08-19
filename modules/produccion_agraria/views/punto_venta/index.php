@@ -84,11 +84,11 @@
                                     <input type="hidden" id="tipo_cliente">
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <label class="form-label small fw-semibold mb-1">Fecha</label>
                                 <input type="date" class="form-control" id="fecha" value="<?php echo date('Y-m-d'); ?>">
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <label class="form-label small fw-semibold mb-1">Método</label>
                                 <select class="form-select" id="metodo_pago">
                                     <option value="">Método de pago</option>
@@ -96,20 +96,21 @@
                                     <option value="DONACION">Donación</option>
                                 </select>
                             </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-semibold mb-1" for="chk-venta-masiva">Venta Masiva</label>
+                                <div class="d-flex align-items-center justify-content-between border rounded w-100 px-3 gap-2" style="background:#fff; height:38px;">
+                                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor:pointer; white-space:nowrap;">
+                                        <i class="ti ti-users me-1 align-middle"></i> Modo Cola
+                                    </label>
+                                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
+                                </div>
+                            </div>
                             <div class="col-12" id="div-descuento-planilla" style="display:none;">
                                 <div class="d-flex align-items-center border rounded w-100 py-2 px-3 gap-2" style="background:#fff;">
                                     <label class="fw-semibold text-muted small mb-0" for="chk-descuento-planilla" style="cursor:pointer;">
                                         <i class="ti ti-calculator me-1 align-middle"></i> Descuento planilla
                                     </label>
                                     <input type="checkbox" id="chk-descuento-planilla" class="form-check-input m-0">
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="d-flex align-items-center justify-content-between border rounded w-100 py-2 px-3 gap-2" style="background: #fff;">
-                                    <label class="fw-semibold text-muted small mb-0" for="chk-venta-masiva" style="cursor: pointer;">
-                                        <i class="ti ti-users me-1 align-middle"></i> Modo Venta Masiva (Cola)
-                                    </label>
-                                    <input type="checkbox" id="chk-venta-masiva" class="form-check-input m-0" style="cursor: pointer; float: none; width: 2.5em; height: 1.25em; background-size: 1.25em; background-position: left center; border-radius: 2em; flex-shrink: 0;">
                                 </div>
                             </div>
                         </div>
