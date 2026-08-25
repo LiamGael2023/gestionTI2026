@@ -1,21 +1,23 @@
-<?php
+﻿<?php
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=reactivo');
-if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
+if ($perms === null) { $perms = ['editar' => false, 'eliminar' => false]; }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
-// Asegurar columnas FK existen (Tipo ya está en DDL base, solo agregar FKs opcionales)
+// Asegurar columnas FK existen (Tipo ya estÃ¡ en DDL base, solo agregar FKs opcionales)
 sqlsrv_query($conn, "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='laboratorio' AND TABLE_NAME='Reactivo_Lab' AND COLUMN_NAME='Id_Unidad_Medida') ALTER TABLE laboratorio.Reactivo_Lab ADD Id_Unidad_Medida INT NULL");
 sqlsrv_query($conn, "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='laboratorio' AND TABLE_NAME='Reactivo_Lab' AND COLUMN_NAME='Id_Proveedor') ALTER TABLE laboratorio.Reactivo_Lab ADD Id_Proveedor INT NULL");
 
-// Columnas para ordenación (índice DataTables → columna SQL)
+// Columnas para ordenaciÃ³n (Ã­ndice DataTables â†’ columna SQL)
 $columns = [
     0 => 'r.Id_Reactivo',
     1 => 'r.Nombre',
@@ -149,3 +151,4 @@ echo json_encode([
     'recordsFiltered' => intval($totalFiltered),
     'data'            => $data,
 ]);
+

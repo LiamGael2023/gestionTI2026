@@ -53,40 +53,12 @@ try {
 
     // ==================== GUARDAR / ACTUALIZAR ====================
     if ($action === 'guardar' || $action === 'actualizar') {
-        // Verificar permiso de creación/edición en el subódulo proveedor
-        $labModelCli = null;
-        $puedeCrearCli = false;
-        $stmtAdminCli = sqlsrv_query($conn,
-            "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1",
-            [$_SESSION['usuario_id']]);
-        if ($stmtAdminCli) {
-            $rowAdminCli = sqlsrv_fetch_array($stmtAdminCli, SQLSRV_FETCH_ASSOC);
-            if ($rowAdminCli && in_array(strtolower(trim((string)$rowAdminCli['rol'])),
-                    ['administrador','admin','superadmin','super admin'], true)) {
-                $puedeCrearCli = true;
-            }
-        }
-        if (!$puedeCrearCli) {
-            $stmtPermCli = sqlsrv_query($conn,
-                "SELECT TOP 1 pr.Pueden_Crear
-                 FROM laboratorio.Usuario_Rol ur
-                 INNER JOIN laboratorio.Rol r         ON ur.Id_Rol = r.Id_Rol AND r.Activo = 1
-                 INNER JOIN laboratorio.Permiso_Rol pr ON r.Id_Rol = pr.Id_Rol AND pr.Activo = 1
-                 INNER JOIN laboratorio.Submodulo s    ON pr.Id_Submodulo = s.Id_Submodulo AND s.Activo = 1
-                 WHERE ur.Id_Usuario = ? AND s.Url = '?module=laboratorio&action=proveedor'",
-                [$_SESSION['usuario_id']]);
-            if ($stmtPermCli) {
-                $rowPermCli = sqlsrv_fetch_array($stmtPermCli, SQLSRV_FETCH_ASSOC);
-                if ($rowPermCli && !empty($rowPermCli['Pueden_Crear'])) {
-                    $puedeCrearCli = true;
-                }
-            }
-        }
-        if (!$puedeCrearCli) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'No tiene permisos para crear o editar clientes. Solicite acceso al módulo Proveedores/Clientes.']);
-            exit;
-        }
+        // ── Control de permisos (roles de laboratorio) ────────────────────
+        require_once '../../models/LaboratorioModel.php';
+        $labModelCli  = new LaboratorioModel($conn);
+        $urlSubCli    = '?module=laboratorio&action=proveedor';
+        $permNecesito = ($action === 'guardar') ? 'crear' : 'editar';
+        $labModelCli->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubCli, $permNecesito);
 
         $datos = json_decode(file_get_contents('php://input'), true);
 
@@ -119,6 +91,7 @@ try {
 
     // ==================== ELIMINAR ====================
     if ($action === 'eliminar') {
+        $labModelCli->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubCli, 'eliminar');
         $id = $_GET['id'] ?? null;
         if (!$id) {
             http_response_code(400);
@@ -132,6 +105,7 @@ try {
 
     // ==================== REACTIVAR ====================
     if ($action === 'reactivar') {
+        $labModelCli->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubCli, 'editar');
         $id = $_GET['id'] ?? null;
         if (!$id) {
             http_response_code(400);

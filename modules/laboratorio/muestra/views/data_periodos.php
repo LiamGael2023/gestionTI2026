@@ -1,9 +1,11 @@
-<?php
+﻿<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../models/ProyectoModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -22,7 +24,7 @@ try {
     $filtro_control_calidad = isset($_POST['es_control_calidad']) ? intval($_POST['es_control_calidad']) : -1;
     $filtro_drene = isset($_POST['es_drene']) ? intval($_POST['es_drene']) : -1;
 
-    // Obtener todos los proyectos (nota: el modelo obtenerTodos no tiene paginación)
+    // Obtener todos los proyectos (nota: el modelo obtenerTodos no tiene paginaciÃ³n)
     $proyectos = $model->obtenerTodos(true);
 
     // Filtrar por tipo cuando la tabla lo solicita
@@ -41,7 +43,7 @@ try {
         }));
     }
     
-    // Aplicar paginación en PHP
+    // Aplicar paginaciÃ³n en PHP
     $total = count($proyectos);
     $proyectos = array_slice($proyectos, $start, $length);
 
@@ -66,7 +68,7 @@ try {
         }
         $estado_badge .= '">' . htmlspecialchars($estado) . '</span>';
         
-        // Botones según estado
+        // Botones segÃºn estado
         $esCalidadAgua = intval($row['Es_Control_Calidad'] ?? 0) === 1;
         $esDrene = intval($row['Es_Drene'] ?? 0) === 1;
         $fnExportar = $esCalidadAgua
@@ -75,9 +77,9 @@ try {
 
         $accion = '';
         if ($estado === 'Planificado') {
-            $accion = '<button type="button" class="btn btn-sm btn-success me-1" onclick="iniciarEjecucion(' . $id . ')" title="Iniciar Ejecución"><i class="ti ti-flash"></i> Iniciar</button> ';
+            $accion = '<button type="button" class="btn btn-sm btn-success me-1" onclick="iniciarEjecucion(' . $id . ')" title="Iniciar EjecuciÃ³n"><i class="ti ti-flash"></i> Iniciar</button> ';
         } else if ($estado === 'En Progreso') {
-            $accion = '<button type="button" class="btn btn-sm btn-info me-1" onclick="abrirAnalisis(' . $id . ')" title="Registrar Análisis"><i class="ti ti-microscope"></i> Análisis</button> ';
+            $accion = '<button type="button" class="btn btn-sm btn-info me-1" onclick="abrirAnalisis(' . $id . ')" title="Registrar AnÃ¡lisis"><i class="ti ti-microscope"></i> AnÃ¡lisis</button> ';
             $accion .= '<button type="button" class="btn btn-sm btn-success me-1" onclick="' . $fnExportar . '" title="Exportar Excel"><i class="ti ti-file-spreadsheet"></i></button> ';
         } else if ($estado === 'Finalizado' || $estado === 'Terminado') {
             $accion = '<button type="button" class="btn btn-sm btn-secondary me-1" onclick="verResultados(' . $id . ')" title="Ver Resultados"><i class="ti ti-eye"></i> Resultados</button> ';
@@ -108,3 +110,4 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
+

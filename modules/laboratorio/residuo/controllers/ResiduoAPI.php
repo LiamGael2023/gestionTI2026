@@ -16,6 +16,31 @@ $conn = Conexion::conectar();
 $action = $_GET['action'] ?? '';
 $usuario_id = $_SESSION['usuario_id'] ?? 0;
 
+// ── Control de permisos (roles de laboratorio) ─────────────────────
+require_once __DIR__ . '/../models/LaboratorioModel.php';
+$labAuth        = new LaboratorioModel($conn);
+$urlSubmodulo   = '?module=laboratorio&action=residuo';
+$permActionMap  = [
+    'crear_residuo'               => 'crear',
+    'editar_residuo'              => 'editar',
+    'eliminar_residuo'            => 'eliminar',
+    'reactivar_residuo'           => 'editar',
+    'crear_normativa'             => 'crear',
+    'editar_normativa'            => 'editar',
+    'eliminar_normativa'          => 'eliminar',
+    'reactivar_normativa'         => 'editar',
+    'crear_informe'               => 'crear',
+    'editar_informe'              => 'editar',
+    'eliminar_informe'            => 'eliminar',
+    'reactivar_informe'           => 'editar',
+    'agregar_ingreso_manual'      => 'crear',
+    'editar_ingreso_manual'       => 'editar',
+    'simular_cierre_diario'       => 'editar',
+];
+if (isset($permActionMap[$action])) {
+    $labAuth->denegarSiSinPermiso($usuario_id, $urlSubmodulo, $permActionMap[$action]);
+}
+
 try {
     switch ($action) {
         // ==================== RESIDUOS ====================

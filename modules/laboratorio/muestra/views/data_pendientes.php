@@ -1,9 +1,11 @@
-<?php
+﻿<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -55,7 +57,7 @@ try {
         $paramsBase[] = $tipoServicio;
     }
 
-    // Total sin filtro de búsqueda
+    // Total sin filtro de bÃºsqueda
     $stmtTotal = sqlsrv_query($conn, "SELECT COUNT(*) AS total" . $sqlBase . $sqlWhere, $paramsBase);
     if ($stmtTotal === false) {
         throw new Exception('No se pudo contar muestras pendientes: ' . print_r(sqlsrv_errors(), true));
@@ -63,7 +65,7 @@ try {
     $rowTotal = sqlsrv_fetch_array($stmtTotal, SQLSRV_FETCH_ASSOC);
     $total = intval($rowTotal['total'] ?? 0);
 
-    // Filtro de búsqueda adicional
+    // Filtro de bÃºsqueda adicional
     $sqlSearch = '';
     $paramsSearch = [];
     if ($search !== '') {
@@ -74,7 +76,7 @@ try {
         $paramsSearch = [$like, $like, $like];
     }
 
-    // Total filtrado (con búsqueda)
+    // Total filtrado (con bÃºsqueda)
     $paramsFiltered = array_merge($paramsBase, $paramsSearch);
     $stmtFiltered = sqlsrv_query($conn, "SELECT COUNT(*) AS total" . $sqlBase . $sqlWhere . $sqlSearch, $paramsFiltered);
     if ($stmtFiltered === false) {
@@ -116,7 +118,7 @@ try {
         $idCliente = intval($row['Id_Cliente'] ?? 0);
         $agricultorEsc = htmlspecialchars($agricultor, ENT_QUOTES, 'UTF-8');
         $accion = '<button class="btn btn-sm btn-success" onclick="abrirModalComenzarAnalisis(' . $id . ', ' . $idCliente . ', \'' . $agricultorEsc . '\')">'
-            . '<i class="ti ti-player-play"></i> Comenzar análisis</button>';
+            . '<i class="ti ti-player-play"></i> Comenzar anÃ¡lisis</button>';
         
         $data[] = [$id, $agricultor, $ubicacion, $valle, $fecha, $servicio, $estado, $tipo, $accion];
     }
@@ -139,3 +141,4 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
+

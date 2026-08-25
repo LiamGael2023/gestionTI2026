@@ -25,6 +25,28 @@ try {
     
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
     
+    // ── Control de permisos (roles de laboratorio) ─────────────────────
+    require_once '../../models/LaboratorioModel.php';
+    $labAuth        = new LaboratorioModel($conn);
+    $urlSubmodulo   = '?module=laboratorio&action=parametro';
+    $permActionMap  = [
+        'guardar'               => 'crear',
+        'actualizar'            => 'editar',
+        'eliminar'              => 'eliminar',
+        'reactivar'             => 'editar',
+        'guardar_normativa'     => 'crear',
+        'actualizar_normativa'  => 'editar',
+        'eliminar_normativa'    => 'eliminar',
+        'reactivar_normativa'   => 'editar',
+        'guardar_limite'        => 'crear',
+        'actualizar_limite'     => 'editar',
+        'eliminar_limite'       => 'eliminar',
+        'reactivar_limite'      => 'editar',
+    ];
+    if (isset($permActionMap[$action])) {
+        $labAuth->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubmodulo, $permActionMap[$action]);
+    }
+    
     if (!$action) {
         http_response_code(400);
         die(json_encode(['success' => false, 'message' => 'Accion no especificada']));

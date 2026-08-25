@@ -1,9 +1,11 @@
-<?php
+﻿<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -53,13 +55,13 @@ try {
         $params[] = $tipoServicio;
     }
 
-    // Total sin búsqueda
+    // Total sin bÃºsqueda
     $stmtTotal = sqlsrv_query($conn, "SELECT COUNT(*) AS total" . $sqlBase . $sqlWhere, $params);
     if ($stmtTotal === false) throw new Exception('Error count total: ' . print_r(sqlsrv_errors(), true));
     $rowTotal = sqlsrv_fetch_array($stmtTotal, SQLSRV_FETCH_ASSOC);
     $total = intval($rowTotal['total'] ?? 0);
 
-    // Filtro de búsqueda
+    // Filtro de bÃºsqueda
     $sqlSearch = '';
     $paramsSearch = [];
     if ($search !== '') {
@@ -141,3 +143,4 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
+

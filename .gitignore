@@ -13,3 +13,6 @@ error_log
 # Variables de entorno
 .env
 env
+
+# Vault Obsidian de reporte final (no versionado)
+reporte_final/

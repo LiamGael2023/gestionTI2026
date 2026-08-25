@@ -41,6 +41,32 @@ try {
     
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
     
+    // ── Control de permisos (roles de laboratorio) ─────────────────────
+    require_once '../../models/LaboratorioModel.php';
+    $labAuth        = new LaboratorioModel($conn);
+    $urlSubmodulo   = '?module=laboratorio&action=muestra';
+    $permActionMap  = [
+        'iniciar_ejecucion'                    => 'editar',
+        'confirmar_recepcion'                  => 'editar',
+        'iniciar_analisis_agricultor'          => 'editar',
+        'crear_bitacora_por_defecto_turno'     => 'crear',
+        'actualizar_observacion_bitacora_por_defecto' => 'editar',
+        'exportar_bitacoras_por_defecto_rango' => 'exportar',
+        'guardar_muestra_por_defecto'          => 'crear',
+        'guardar_muestra_individual'           => 'crear',
+        'actualizar_muestra_por_defecto'       => 'editar',
+        'duplicar_muestras_por_defecto'        => 'crear',
+        'desactivar_muestra_por_defecto'       => 'eliminar',
+        'reactivar_muestra_por_defecto'        => 'editar',
+        'eliminar_proyecto'                    => 'eliminar',
+        'rechazar_muestra'                     => 'editar',
+        // 'retornar_a_analisis' y 'firmar_muestra' conservan su propio
+        // control de rol en servidor (no se duplica aquí).
+    ];
+    if (isset($permActionMap[$action])) {
+        $labAuth->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubmodulo, $permActionMap[$action]);
+    }
+    
     if (!$action) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Acción no especificada']);
