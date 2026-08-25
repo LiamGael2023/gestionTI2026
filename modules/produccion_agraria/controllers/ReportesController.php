@@ -80,6 +80,19 @@ try {
         exit;
     }
 
+    if ($action === 'vouchers_report_data') {
+        header('Content-Type: application/json; charset=utf-8');
+        $filtros = [
+            'fecha_desde' => $_GET['fecha_desde'] ?? '',
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+        ];
+        echo json_encode([
+            'success' => true,
+            'data'    => $model->getVouchersReport($filtros),
+        ]);
+        exit;
+    }
+
     if ($action === 'clientes_report_data') {
         header('Content-Type: application/json; charset=utf-8');
         $filtros = [
@@ -158,6 +171,7 @@ try {
     $mermas_init      = [];
     
     // Carga inicial vacía para los reportes
+    $vouchers_init    = [];
     $clientes_init    = [];
     $consolidado_init = [];
     $precios_init     = [];

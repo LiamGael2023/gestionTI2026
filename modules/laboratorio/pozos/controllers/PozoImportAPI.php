@@ -18,7 +18,6 @@ try {
     require_once '../../../../config/config.php';
     require_once '../../../../config/db.php';
     require_once '../../../../config/db_postgresql.php';
-    require_once '../../../../core/Auth.php';
 
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
@@ -26,26 +25,12 @@ try {
 
     $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-    Auth::check();
-
     if (!isset($_SESSION['usuario_id'])) {
         throw new Exception('Usuario no autenticado.');
     }
     $usuario_id = intval($_SESSION['usuario_id']);
     $conn = Conexion::conectar();
     if (!$conn) throw new Exception("No se pudo conectar a SQL Server.");
-
-    // ── Control de permisos (roles de laboratorio) ─────────────────────
-    require_once '../../models/LaboratorioModel.php';
-    $labAuthImp = new LaboratorioModel($conn);
-    $urlSubImp  = '?module=laboratorio&action=pozos';
-    $permImpMap = [
-        'importar_historicos_init'  => 'eliminar',   // destructivo (DELETE + reseed)
-        'importar_historicos_batch' => 'editar',
-    ];
-    if (isset($permImpMap[$action])) {
-        $labAuthImp->denegarSiSinPermiso($usuario_id, $urlSubImp, $permImpMap[$action]);
-    }
 
     // ==================== INIT: Limpiar solo datos de pozos y obtener lotes ====================
     if ($action === 'importar_historicos_init') {

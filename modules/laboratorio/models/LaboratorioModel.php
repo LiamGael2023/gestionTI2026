@@ -150,39 +150,6 @@ class LaboratorioModel {
         ];
     }
 
-    /**
-     * Verifica si el usuario tiene un permiso concreto (ver/crear/editar/eliminar/
-     * exportar/firmar) sobre un submódulo del laboratorio.
-     * Los administradores comun tienen todos los permisos.
-     *
-     * @param int    $id_usuario     ID de usuario (comun.Usuarios)
-     * @param string $url_submodulo  URL del submódulo, ej. '?module=laboratorio&action=equipo'
-     * @param string $accion         'ver'|'crear'|'editar'|'eliminar'|'exportar'|'firmar'
-     * @return bool
-     */
-    public function verificarPermisoLab($id_usuario, $url_submodulo, $accion) {
-        if ($this->esAdministrador($id_usuario)) return true;
-        $permisos = $this->obtenerPermisosSubmodulo($id_usuario, $url_submodulo);
-        if ($permisos === null) return false;
-        return (bool)($permisos[$accion] ?? false);
-    }
-
-    /**
-     * Helper de API: si el usuario no tiene el permiso requerido, responde 403
-     * en JSON y detiene la ejecución. Devuelve true si SÍ tiene permiso.
-     */
-    public function denegarSiSinPermiso($id_usuario, $url_submodulo, $accion) {
-        if ($this->verificarPermisoLab($id_usuario, $url_submodulo, $accion)) {
-            return true;
-        }
-        if (!headers_sent()) {
-            http_response_code(403);
-            header('Content-Type: application/json; charset=utf-8');
-        }
-        echo json_encode(['success' => false, 'message' => 'Acceso denegado: no tiene permiso para ' . $accion . ' en este módulo.']);
-        exit;
-    }
-
     // ── Gestión de roles (solo para admins) ────────────────────────────────
 
     public function listarRoles() {

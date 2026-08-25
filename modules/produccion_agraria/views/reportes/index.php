@@ -61,8 +61,6 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
     .table td { color: #334155 !important; font-weight: 500; }
     .table th { color: #0f172a !important; font-weight: 700 !important; }
     .text-muted { color: #475569 !important; }
-    .reporte-paginacion { border-top: 1px solid #e2e8f0; background: #f8fafc; }
-    .reporte-paginacion .page-link { cursor: pointer; user-select: none; }
 </style>
 
 <!-- Spinner overlay -->
@@ -125,6 +123,7 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
     .report-card-ventas:hover { border-bottom-color: #206bc4; }
     .report-card-inventario:hover { border-bottom-color: #2fb344; }
     .report-card-mermas:hover { border-bottom-color: #d63939; }
+    .report-card-vouchers:hover { border-bottom-color: #f59f00; }
     .report-card-clientes:hover { border-bottom-color: #7c3aed; }
     .report-card-consolidado:hover { border-bottom-color: #0ca678; }
     .report-card-precios:hover { border-bottom-color: #3f51b5; }
@@ -208,6 +207,21 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
                 </div>
                 <div class="mt-4">
                     <button class="btn btn-outline-danger btn-abrir-rep w-100 py-2">
+                        <i class="ti ti-table-alias me-1"></i>Ver Reporte
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Card 4: Vouchers -->
+        <div class="col-md-4">
+            <div class="card report-card report-card-vouchers text-center p-4 cursor-pointer" onclick="abrirReporte('vouchers')">
+                <div>
+                    <div class="mb-3"><span class="avatar-md bg-warning-lt"><i class="ti ti-file-analytics fs-2 mb-0"></i></span></div>
+                    <h3 class="mb-1 text-dark fw-bold">Conciliación de Vouchers</h3>
+                    <p class="text-muted small mb-0">Monitoreo de depósitos bancarios vs. consumido en ventas.</p>
+                </div>
+                <div class="mt-4">
+                    <button class="btn btn-outline-warning btn-abrir-rep w-100 py-2">
                         <i class="ti ti-table-alias me-1"></i>Ver Reporte
                     </button>
                 </div>
@@ -634,6 +648,74 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
         </div>
 
         <!-- =====================================================
+             TAB 4: CONCILIACIÓN DE VOUCHERS
+        ===================================================== -->
+        <div class="tab-pane fade p-4" id="tab-vouchers">
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="card kpi-card kpi-ventas">
+                        <div class="card-body">
+                            <div class="text-muted small">Total Depósitos en Vouchers / Resoluciones</div>
+                            <div class="h3 mb-0 fw-bold text-success" id="kpi-vouchers-total">
+                                S/ <?php 
+                                    $sumVouchers = array_sum(array_column($vouchers_init, 'monto_total'));
+                                    echo number_format($sumVouchers, 2, '.', ','); 
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card kpi-card kpi-count">
+                        <div class="card-body">
+                            <div class="text-muted small">Total Saldo Libre (Por Conciliar)</div>
+                            <div class="h3 mb-0 fw-bold text-primary" id="kpi-vouchers-saldo">
+                                S/ <?php 
+                                    $sumSaldo = array_sum(array_column($vouchers_init, 'saldo_restante'));
+                                    echo number_format($sumSaldo, 2, '.', ','); 
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table" id="tabla-vouchers">
+                    <thead>
+                        <tr>
+                            <th class="w-1">ID</th>
+                            <th>N° Operación / Resolución</th>
+                            <th>Fecha de Depósito</th>
+                            <th class="text-center">Proformas Ligadas</th>
+                            <th class="text-end">Monto del Boucher (S/)</th>
+                            <th class="text-end">Monto Consumido (S/)</th>
+                            <th class="text-end">Saldo Restante (S/)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($vouchers_init as $v): ?>
+                        <tr>
+                            <td><?php echo $v['id_voucher']; ?></td>
+                            <td class="fw-semibold"><?php echo htmlspecialchars($v['num_operation']); ?></td>
+                            <td><?php echo htmlspecialchars($v['fecha_deposito']); ?></td>
+                            <td class="text-center"><span class="badge bg-secondary"><?php echo htmlspecialchars($v['total_proformas']); ?></span></td>
+                            <td class="text-end"><?php echo number_format($v['monto_total'], 2, '.', ','); ?></td>
+                            <td class="text-end text-success fw-semibold"><?php echo number_format($v['monto_asignado'], 2, '.', ','); ?></td>
+                            <td class="text-end fw-bold <?php echo ($v['saldo_restante'] < 0) ? 'text-danger' : 'text-primary'; ?>">
+                                S/ <?php echo number_format($v['saldo_restante'], 2, '.', ','); ?>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($vouchers_init)): ?>
+                        <tr><td colspan="7" class="text-center py-4 text-muted">No hay registros de vouchers en el período seleccionado</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- =====================================================
              TAB 5: CLIENTES Y RECAUDACIÓN
         ===================================================== -->
         <div class="tab-pane fade p-4" id="tab-clientes-rep">
@@ -651,7 +733,7 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
                             <th class="text-end">Total Acumulado (S/)</th>
                         </tr>
                     </thead>
-                    <tbody id="tbody-clientes-rep">
+                    <tbody>
                         <?php foreach ($clientes_init as $c): ?>
                         <tr>
                             <td><?php echo $c['id_cliente']; ?></td>
@@ -693,7 +775,7 @@ $total_mermas_valor = array_sum(array_column($mermas_init, 'valor_perdida'));
                             <th class="text-end text-danger">Mermas / Pérdidas (S/)</th>
                         </tr>
                     </thead>
-                    <tbody id="tbody-consolidado">
+                    <tbody>
                         <?php foreach ($consolidado_init as $con): ?>
                         <tr>
                             <td><?php echo $con['id_centro']; ?></td>
@@ -828,6 +910,11 @@ const reportConfigs = {
         filters: ['fecha-desde', 'fecha-hasta', 'centro', 'clase'],
         tabId: 'tab-mermas'
     },
+    vouchers: {
+        titulo: 'Reporte de Conciliación de Vouchers y Depósitos',
+        filters: ['fecha-desde', 'fecha-hasta'],
+        tabId: 'tab-vouchers'
+    },
     'clientes-rep': {
         titulo: 'Reporte de Clientes y Recaudación Acumulada',
         filters: ['cliente'],
@@ -889,7 +976,7 @@ function abrirReporte(tipo) {
     document.getElementById('panel-export-bar').style.display = 'block';
     
     // Desactivar todas las pestañas
-    const allTabs = ['ventas', 'inventario', 'mermas', 'clientes-rep', 'consolidado', 'precios', 'planilla'];
+    const allTabs = ['ventas', 'inventario', 'mermas', 'vouchers', 'clientes-rep', 'consolidado', 'precios', 'planilla'];
     allTabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         if (el) el.classList.remove('show', 'active');
@@ -975,6 +1062,15 @@ function aplicarFiltros() {
                     renderMermas(res.data);
                 }
             });
+    } else if (tabActiva === 'vouchers') {
+        promise = fetch(url + 'action=vouchers_report_data&' + qs)
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    window.ultimoReporteData = res.data;
+                    renderVouchers(res.data);
+                }
+            });
     } else if (tabActiva === 'clientes-rep') {
         promise = fetch(url + 'action=clientes_report_data&' + qs)
             .then(r => r.json())
@@ -1058,91 +1154,6 @@ const ESTADO_BADGE = {
     'PLANILLA':  'badge-PROCESADO'
 };
 
-// =============================================================
-// PAGINACIÓN CLIENT-SIDE (10 registros por página)
-// =============================================================
-const PAGE_SIZE = 10;
-const paginationState = {};
-
-function paginationContainer(table) {
-    const parent = table ? table.parentElement : null;
-    let cont = parent ? parent.querySelector('.reporte-paginacion') : null;
-    if (!parent) return null;
-    if (!cont) {
-        cont = document.createElement('div');
-        cont.className = 'reporte-paginacion';
-        parent.appendChild(cont);
-    }
-    return cont;
-}
-
-function renderPaginated(tbodyId, rowHtmlArray) {
-    const tbody = document.getElementById(tbodyId);
-    if (!tbody) return;
-    const table = tbody.closest('table');
-    const cont = paginationContainer(table);
-
-    if (!rowHtmlArray || rowHtmlArray.length === 0) {
-        if (cont) cont.innerHTML = '';
-        return;
-    }
-
-    paginationState[tbodyId] = { rows: rowHtmlArray.slice(), page: 1 };
-    drawPage(tbodyId);
-}
-
-function drawPage(tbodyId) {
-    const st = paginationState[tbodyId];
-    const tbody = document.getElementById(tbodyId);
-    if (!st || !tbody) return;
-
-    const totalPages = Math.max(1, Math.ceil(st.rows.length / PAGE_SIZE));
-    if (st.page > totalPages) st.page = totalPages;
-    const start = (st.page - 1) * PAGE_SIZE;
-    tbody.innerHTML = st.rows.slice(start, start + PAGE_SIZE).join('');
-    drawPaginationControls(tbodyId, st, totalPages);
-}
-
-function drawPaginationControls(tbodyId, st, totalPages) {
-    const tbody = document.getElementById(tbodyId);
-    if (!tbody) return;
-    const table = tbody.closest('table');
-    const cont = paginationContainer(table);
-    if (!cont) return;
-
-    if (totalPages <= 1) { cont.innerHTML = ''; return; }
-
-    const desde = (st.page - 1) * PAGE_SIZE + 1;
-    const hasta = Math.min(st.page * PAGE_SIZE, st.rows.length);
-
-    let html = '<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted px-3 py-2">';
-    html += `<span>Mostrando ${desde}-${hasta} de ${st.rows.length} registros</span>`;
-    html += '<ul class="pagination pagination-sm mb-0">';
-    html += `<li class="page-item ${st.page === 1 ? 'disabled' : ''}"><a class="page-link" href="#" data-pag-tbody="${tbodyId}" data-pag-page="${st.page - 1}">&laquo;</a></li>`;
-    for (let p = 1; p <= totalPages; p++) {
-        html += `<li class="page-item ${p === st.page ? 'active' : ''}"><a class="page-link" href="#" data-pag-tbody="${tbodyId}" data-pag-page="${p}">${p}</a></li>`;
-    }
-    html += `<li class="page-item ${st.page === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" data-pag-tbody="${tbodyId}" data-pag-page="${st.page + 1}">&raquo;</a></li>`;
-    html += '</ul></div>';
-
-    cont.innerHTML = html;
-}
-
-document.addEventListener('click', function (e) {
-    const link = e.target.closest('a.page-link[data-pag-tbody]');
-    if (!link) return;
-    e.preventDefault();
-    const tbodyId = link.getAttribute('data-pag-tbody');
-    const page = parseInt(link.getAttribute('data-pag-page'), 10);
-    const st = paginationState[tbodyId];
-    if (!st) return;
-    const totalPages = Math.ceil(st.rows.length / PAGE_SIZE);
-    if (page >= 1 && page <= totalPages) {
-        st.page = page;
-        drawPage(tbodyId);
-    }
-});
-
 function renderVentas(data, kpis) {
     // KPIs
     document.getElementById('kpi-monto').textContent  = 'S/ ' + parseFloat(kpis.monto_total || 0).toLocaleString('es-PE', {minimumFractionDigits:2});
@@ -1153,11 +1164,10 @@ function renderVentas(data, kpis) {
     const tbody = document.getElementById('tbody-ventas');
     if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No hay ventas con los filtros seleccionados</td></tr>';
-        renderPaginated('tbody-ventas', []);
         document.getElementById('subtotal-ventas').textContent = 'S/ 0.00';
         return;
     }
-    const filas = data.map(v => {
+    tbody.innerHTML = data.map(v => {
         totalMostrado += parseFloat(v.total || 0);
         const fecha = new Date(v.fecha_creacion).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
         const comp  = v.serie_comprobante ? `${escapeHtml(v.serie_comprobante)}-${escapeHtml(v.correlativo_comprobante)}` : '-';
@@ -1172,8 +1182,7 @@ function renderVentas(data, kpis) {
             <td><span class="badge ${badgeEstado}">${escapeHtml(v.estado)}</span></td>
             <td class="text-end fw-bold">${parseFloat(v.total).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
-    renderPaginated('tbody-ventas', filas);
+    }).join('');
     document.getElementById('subtotal-ventas').textContent = 'S/ ' + totalMostrado.toLocaleString('es-PE', {minimumFractionDigits:2});
     document.getElementById('resultado-label').textContent = `${data.length} registro(s) encontrado(s)`;
 }
@@ -1183,13 +1192,12 @@ function renderInventario(data) {
     const tbody = document.getElementById('tbody-inventario');
     if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No hay inventario con stock disponible</td></tr>';
-        renderPaginated('tbody-inventario', []);
         document.getElementById('total-inventario').textContent = 'S/ 0.00';
         document.getElementById('kpi-valor-inventario').textContent = 'S/ 0.00';
         document.getElementById('kpi-lotes-activos').textContent = '0';
         return;
     }
-    const filas = data.map(i => {
+    tbody.innerHTML = data.map(i => {
         totalValor += parseFloat(i.valor_total_lote || 0);
         const diasClass = i.antiguedad_dias > 20 ? 'text-danger fw-bold' : (i.antiguedad_dias > 7 ? 'text-warning' : 'text-success');
         const stockBadge = i.stock_actual < 10 ? 'bg-danger' : 'bg-success';
@@ -1205,8 +1213,7 @@ function renderInventario(data) {
             <td class="text-end">${parseFloat(i.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-success">${parseFloat(i.valor_total_lote).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
-    renderPaginated('tbody-inventario', filas);
+    }).join('');
     document.getElementById('total-inventario').textContent = 'S/ ' + totalValor.toLocaleString('es-PE', {minimumFractionDigits:2});
     document.getElementById('kpi-valor-inventario').textContent = 'S/ ' + totalValor.toLocaleString('es-PE', {minimumFractionDigits:2});
     document.getElementById('kpi-lotes-activos').textContent = data.length.toLocaleString();
@@ -1217,13 +1224,12 @@ function renderMermas(data) {
     const tbody = document.getElementById('tbody-mermas');
     if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No hay registros de merma en el período seleccionado</td></tr>';
-        renderPaginated('tbody-mermas', []);
         document.getElementById('total-mermas').textContent = 'S/ 0.00';
         document.getElementById('kpi-valor-mermas').textContent = 'S/ 0.00';
         document.getElementById('kpi-count-mermas').textContent = '0';
         return;
     }
-    const filas = data.map(m => {
+    tbody.innerHTML = data.map(m => {
         totalPerdida += parseFloat(m.valor_perdida || 0);
         const fecha = new Date(m.fecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
         return `<tr>
@@ -1236,8 +1242,7 @@ function renderMermas(data) {
             <td class="text-end">${parseFloat(m.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-danger">${parseFloat(m.valor_perdida).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
-    renderPaginated('tbody-mermas', filas);
+    }).join('');
     document.getElementById('total-mermas').textContent = 'S/ ' + totalPerdida.toLocaleString('es-PE', {minimumFractionDigits:2});
     document.getElementById('kpi-valor-mermas').textContent = 'S/ ' + totalPerdida.toLocaleString('es-PE', {minimumFractionDigits:2});
     document.getElementById('kpi-count-mermas').textContent = data.length.toLocaleString();
@@ -1245,11 +1250,47 @@ function renderMermas(data) {
 
 // Gráficos removidos - migración planeada para el Dashboard principal
 
-function renderClientes(data) {
-    const tbody = document.getElementById('tbody-clientes-rep');
+function renderVouchers(data) {
+    const tbody = document.querySelector('#tabla-vouchers tbody');
     if (!tbody) return;
     
-    const filas = data.map(c => {
+    let totalMonto = 0;
+    let totalSaldo = 0;
+    
+    tbody.innerHTML = data.map(v => {
+        const monto = parseFloat(v.monto_total);
+        const asignado = parseFloat(v.monto_assigned || v.monto_asignado || 0);
+        const saldo = parseFloat(v.saldo_restante);
+        
+        totalMonto += monto;
+        totalSaldo += saldo;
+        
+        const saldoClass = saldo < 0 ? 'text-danger' : 'text-primary';
+        
+        return `<tr>
+            <td>${v.id_voucher}</td>
+            <td class="fw-semibold">${escapeHtml(v.num_operation || '-')}</td>
+            <td>${escapeHtml(v.fecha_deposito || '-')}</td>
+            <td class="text-center"><span class="badge bg-secondary">${escapeHtml(v.total_proformas)}</span></td>
+            <td class="text-end">${monto.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td class="text-end text-success fw-semibold">${asignado.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td class="text-end fw-bold ${saldoClass}">S/ ${saldo.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+        </tr>`;
+    }).join('');
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No hay registros de vouchers en el período seleccionado</td></tr>';
+    }
+    
+    document.getElementById('kpi-vouchers-total').textContent = 'S/ ' + totalMonto.toLocaleString('es-PE', {minimumFractionDigits:2});
+    document.getElementById('kpi-vouchers-saldo').textContent = 'S/ ' + totalSaldo.toLocaleString('es-PE', {minimumFractionDigits:2});
+}
+
+function renderClientes(data) {
+    const tbody = document.querySelector('#tabla-clientes-rep tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = data.map(c => {
         const transacciones = parseInt(c.total_transacciones);
         const ventas = parseFloat(c.total_ventas);
         const donaciones = parseFloat(c.total_donaciones);
@@ -1269,21 +1310,18 @@ function renderClientes(data) {
             <td class="text-end text-warning">${donaciones.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end fw-bold text-primary">S/ ${acumulado.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
+    }).join('');
     
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No hay clientes registrados</td></tr>';
-        renderPaginated('tbody-clientes-rep', []);
-    } else {
-        renderPaginated('tbody-clientes-rep', filas);
     }
 }
 
 function renderConsolidado(data) {
-    const tbody = document.getElementById('tbody-consolidado');
+    const tbody = document.querySelector('#tabla-consolidado tbody');
     if (!tbody) return;
     
-    const filas = data.map(con => {
+    tbody.innerHTML = data.map(con => {
         const ventas = parseFloat(con.total_ventas);
         const donaciones = parseFloat(con.total_donaciones);
         const inventario = parseFloat(con.valor_inventario);
@@ -1298,13 +1336,10 @@ function renderConsolidado(data) {
             <td class="text-end text-primary fw-semibold">S/ ${inventario.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end text-danger fw-bold">S/ ${mermas.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
+    }).join('');
     
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No hay centros de producción registrados</td></tr>';
-        renderPaginated('tbody-consolidado', []);
-    } else {
-        renderPaginated('tbody-consolidado', filas);
     }
 }
 
@@ -1314,12 +1349,11 @@ function renderPrecios(data) {
 
     if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No hay productos con los filtros seleccionados</td></tr>';
-        renderPaginated('tbody-precios', []);
         document.getElementById('resultado-label').textContent = '0 registro(s) encontrado(s)';
         return;
     }
 
-    const filas = data.map(p => {
+    tbody.innerHTML = data.map(p => {
         const tipoBadge = p.tipo_precio === 'UIT' ? 'bg-indigo-lt' : 'bg-green-lt';
         const vigencia = p.tipo_precio === 'UIT'
             ? `UIT x ${parseFloat(p.porcentaje_uit || 0).toFixed(4)}`
@@ -1339,8 +1373,7 @@ function renderPrecios(data) {
             <td class="text-end text-muted small">${vigencia}</td>
             <td class="text-end fw-bold text-success">S/ ${parseFloat(p.precio_unitario || 0).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
-    });
-    renderPaginated('tbody-precios', filas);
+    }).join('');
 
     document.getElementById('resultado-label').textContent = `${data.length} registro(s) encontrado(s)`;
 }
@@ -1354,7 +1387,6 @@ function renderPlanilla(data) {
         thead.innerHTML = '<tr><th class="text-center text-muted" colspan="3">Aplique filtros y haga clic en Generar</th></tr>';
         tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">No hay compras de planilla con los filtros seleccionados</td></tr>';
         tfoot.innerHTML = '';
-        renderPaginated('tbody-planilla', []);
         document.getElementById('resultado-label').textContent = '0 registro(s) encontrado(s)';
         return;
     }
@@ -1420,7 +1452,7 @@ function renderPlanilla(data) {
     thead.innerHTML = `<tr><th rowspan="2" class="text-center align-middle border" style="width:40px;">N°</th><th rowspan="2" class="text-center align-middle border" style="min-width:90px;">FECHA</th><th rowspan="2" class="text-center align-middle border" style="min-width:220px;">APELLIDOS Y NOMBRES</th>${thProductos}<th rowspan="2" class="text-center align-middle border" style="min-width:70px;">TOTAL</th></tr><tr>${thSubcols}</tr>`;
 
     // 5. Construir tbody
-    const filasPlanilla = empleados.map((emp, idx) => {
+    tbody.innerHTML = empleados.map((emp, idx) => {
         let celdas = '';
         productos.forEach(p => {
             const d = emp.productos[p.id];
@@ -1441,8 +1473,7 @@ function renderPlanilla(data) {
             ${celdas}
             <td class="text-end fw-bold border">S/ ${emp.total.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         </tr>`;
-    });
-    renderPaginated('tbody-planilla', filasPlanilla);
+    }).join('');
 
     // 6. Construir tfoot
     let footCeldas = '';
@@ -2053,6 +2084,7 @@ function getTabConfig() {
         ventas:       { titulo: 'Ventas y Facturación',      tableId: 'tabla-ventas',       headers: ['#','Fecha','Cliente','Centro','Método','Comprobante','Estado','Total (S/)'] },
         inventario:   { titulo: 'Valorización de Inventario',tableId: 'tabla-inventario',   headers: ['Producto','Clase','Centro','Lote','Antigüedad','Stock','Tipo Precio','Precio Unit.','Valor Total (S/)'] },
         mermas:       { titulo: 'Mermas y Pérdidas',         tableId: 'tabla-mermas',       headers: ['Fecha','Producto','Clase','Centro','Lote','Cantidad','Precio Unit.','Valor Pérdida (S/)'] },
+        vouchers:     { titulo: 'Conciliación de Vouchers',  tableId: 'tabla-vouchers',     headers: ['ID','N° Operación','Fecha','Proformas','Monto Boucher (S/)','Monto Consumido (S/)','Saldo Restante (S/)'] },
         'clientes-rep': { titulo: 'Clientes y Recaudación',  tableId: 'tabla-clientes-rep', headers: ['ID','DNI/RUC','Cliente','Tipo Cliente','Transacciones','Ventas (S/)','Donaciones (S/)','Acumulado (S/)'] },
         consolidado:  { titulo: 'Consolidado por Centro',    tableId: 'tabla-consolidado',  headers: ['ID','Centro','Encargado','Ventas (S/)','Donaciones (S/)','Inventario (S/)','Mermas (S/)'] },
         precios:      { titulo: 'Catálogo de Precios',        tableId: 'tabla-precios',      headers: ['ID','Producto','Clase','Centro','Tipo Precio','Vigencia UIT / Histórico','Precio Vigente (S/)'] },
@@ -2065,20 +2097,9 @@ function getTableRows(tableId) {
     const table  = document.getElementById(tableId);
     const tbody  = table ? table.querySelector('tbody') : null;
     if (!tbody) return [];
-
-    // Con paginación activa, el DOM solo muestra la página actual.
-    // Usar el conjunto completo de filas del estado de paginación para no perder datos.
-    const tbodyId = tbody.id;
-    const st = paginationState && paginationState[tbodyId];
-    const rowsHtml = st
-        ? st.rows
-        : Array.from(tbody.querySelectorAll('tr')).map(r => r.outerHTML);
-
-    return rowsHtml.map(html => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = html;
-        return Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim().replace(/\n+/g, ' '));
-    });
+    return Array.from(tbody.querySelectorAll('tr')).map(tr =>
+        Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim().replace(/\n+/g, ' '))
+    );
 }
 
 // Normaliza la fila de totales del tfoot al ancho de columnas del reporte:

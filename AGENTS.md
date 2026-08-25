@@ -250,10 +250,9 @@ La constraint `CK_transaccion_metodo_pago` en SQL Server solo permite `'VENTA'` 
 | &nbsp;&nbsp;↳ punto_venta | Submódulo | Punto de venta/proforma con descuento FIFO |
 | &nbsp;&nbsp;↳ bandeja | Submódulo | Proformas pendientes, procesamiento, vouchers |
 | &nbsp;&nbsp;↳ tablas | Submódulo | Catálogos: clases, centros, UIT, clientes |
-| &nbsp;&nbsp;↳ reportes | Submódulo | 6 tipos de reportes, KPIs, exportación PDF/Excel |
+| &nbsp;&nbsp;↳ reportes | Submódulo | 7 tipos de reportes, KPIs, exportación PDF/Excel |
 | &nbsp;&nbsp;↳ dashboard | Submódulo | Dashboard CMS No-Code con 17 widgets configurables y drag-and-drop |
 | &nbsp;&nbsp;↳ consultas | Submódulo | Chatbot IA con Tool Calling (17 tools) |
-| &nbsp;&nbsp;↳ permisos | Submódulo | Roles y visibilidad por submódulo (solo ADMIN). Tablas `rol_pa`, `submodulo_pa`, `permiso_rol_pa`, `usuario_rol_pa` |
 | **usuarios** | ✅ Activo | CRUD usuarios y permisos. Solo ADMIN |
 | **sistemas** | ✅ Activo | Registro de módulos + **fábrica de código** que genera MVC automáticamente. Solo ADMIN |
 | **consultas** | ✅ Activo | Controlador del chatbot IA |
@@ -952,7 +951,7 @@ Cada entidad tiene: `obtener_<entidad>`, `guardar_<entidad>`, `eliminar_<entidad
 
 ## 20. Submódulo Reportes (produccion_agraria/reportes)
 
-Sistema de reportes con 6 tipos de informes, KPIs, filtros dinámicos y exportación PDF/Excel con membrete institucional PECH.
+Sistema de reportes con 7 tipos de informes, KPIs, filtros dinámicos y exportación PDF/Excel con membrete institucional PECH.
 
 ### 20.1. Archivos
 
@@ -969,9 +968,10 @@ Sistema de reportes con 6 tipos de informes, KPIs, filtros dinámicos y exportac
 | 1 | Ventas y Facturación | `ventas_data` | Monto total, N° transacciones, Ticket promedio |
 | 2 | Valorización de Inventario | `inventario_data` | Valor total almacén, Lotes activos |
 | 3 | Mermas y Pérdidas | `mermas_data` | Valor estimado pérdidas, N° registros |
-| 4 | Clientes y Recaudación | `clientes_report_data` | (sin KPIs, tabla con totales acumulados) |
-| 5 | Consolidado por Centro | `consolidado_report_data` | (sin KPIs, tabla resumen multi-query) |
-| 6 | Catálogo de Precios | `precios_report_data` | (sin KPIs, tabla de precios vigentes) |
+| 4 | Conciliación de Vouchers | `vouchers_report_data` | Total depósitos, Saldo libre |
+| 5 | Clientes y Recaudación | `clientes_report_data` | (sin KPIs, tabla con totales acumulados) |
+| 6 | Consolidado por Centro | `consolidado_report_data` | (sin KPIs, tabla resumen multi-query) |
+| 7 | Catálogo de Precios | `precios_report_data` | (sin KPIs, tabla de precios vigentes) |
 
 ### 20.3. Dashboard Data Endpoints
 
@@ -981,7 +981,7 @@ Sistema de reportes con 6 tipos de informes, KPIs, filtros dinámicos y exportac
 
 ### 20.4. ReportesModel (760 líneas)
 
-- **17 métodos** organizados por tipo de reporte
+- **18 métodos** organizados por tipo de reporte
 - **Price calculation** replicada en todos los métodos que requieren valorización (usando UIT actual + último historial_precio)
 - **Consolidado por Centro** es la query más compleja: 4 subconsultas (ventas, donaciones, inventario, mermas) con LEFT JOIN sobre `centro_produccion`
 - Todas las queries usan `BD_PRODUCCIONDESARROLLO.dbo.*` con prepared statements
@@ -989,7 +989,7 @@ Sistema de reportes con 6 tipos de informes, KPIs, filtros dinámicos y exportac
 
 ### 20.5. Vista: Interfaz de Reportes
 
-- **Menú de 6 tarjetas** con iconos y colores distintivos que al hacer clic abren el reporte correspondiente
+- **Menú de 7 tarjetas** con iconos y colores distintivos que al hacer clic abren el reporte correspondiente
 - **Panel de filtros dinámico:** Muestra/oculta campos según el reporte activo (`reportConfigs` mapea tipo → filtros visibles)
 - **Tabs** con tablas renderizadas vía JavaScript a partir de datos AJAX
 - **KPIs** en cards con formato de moneda (`S/ X.XX`)
@@ -1001,53 +1001,15 @@ Sistema de reportes con 6 tipos de informes, KPIs, filtros dinámicos y exportac
 
 ---
 
-## 21. Submódulo Roles y Permisos (produccion_agraria/permisos)
-
-**Implementado: 2026-08-24**
-
-Sistema de roles y permisos por submódulo para Producción Agraria, siguiendo el patrón del módulo Laboratorio. Solo administradores comun (`ADMIN`/`superadmin`) pueden gestionar roles.
-
-### 21.1. Tablas (BD_PRODUCCIONDESARROLLO.dbo)
-
-| Tabla | Propósito |
-|-------|-----------|
-| `rol_pa` | Roles de producción (Nombre, Descripcion, Activo, Fecha_Creacion, Usuario_Creacion) |
-| `submodulo_pa` | Submódulos: inventario, punto_venta, bandeja, tablas, reportes, dashboard, consultas (con `Url`) |
-| `permiso_rol_pa` | Matriz por rol×submódulo — **solo `Pueden_Ver`** (visibilidad). Las flags Crear/Editar/Eliminar/Exportar/Firmar se insertan en 0 y NO se usan |
-| `usuario_rol_pa` | Asignación de rol a un usuario `comun` (índice único `Id_Usuario`) |
-
-Script idempotente: `modules/produccion_agraria/database/permisos_roles_schema.sql`
-
-> **Regla de negocio:** los permisos SOLO controlan si un submódulo se muestra u oculta. No hay control de crear/editar/eliminar/exportar/firmar a nivel de rol; cualquier usuario con el submódulo visible puede operarlo.
-
-### 21.2. Archivos
-
-| Archivo | Propósito |
-|---------|-----------|
-| `models/PermisosModel.php` | CRUD de roles, matriz (solo `ver`), asignación + `verificarPermiso()`/`denegarSiSinPermiso()` |
-| `controllers/PermisosController.php` | Vista + endpoints AJAX (`*_pa`) |
-| `views/permisos/index.php` | UI con 2 tabs: asignación de rol por usuario y matriz de permisos (columna "Visible") por rol |
-
-### 21.3. Endpoints AJAX
-
-Registrados en `$acciones_ajax` de `index.php` raíz: `listar_roles_pa`, `listar_usuarios_pa`, `permisos_rol_pa`, `asignar_rol_pa`, `crear_rol_pa`, `eliminar_rol_pa`, `guardar_permisos_pa`. Todos exigen ser administrador.
-
-### 21.4. Aplicación de permisos
-
-- `Produccion_agrariaController.php` valida `ver` según rol del usuario para cada submódulo (vistas y acciones AJAX).
-- **Retrocompatibilidad:** si el usuario no tiene rol de PA asignado, conserva su acceso actual; si tiene rol, se respeta la matriz `permiso_rol_pa` (solo `Pueden_Ver`).
-- La vista principal (`views/index.php`) oculta las tarjetas de submódulos sin permiso `ver`.
-- `verificarPermiso($id, $url)` y `denegarSiSinPermiso(...)` replican el patrón de `LaboratorioModel` (solo con `ver`).
-
 ---
 
-## 22. Soft Delete en Tablas de Producción
+## 21. Soft Delete en Tablas de Producción
 
 **Implementado: 2026-06-25**
 
 Siguiendo el mismo patrón de `comun.Usuarios`, se implementó soft delete en las tablas principales de producción. En lugar de DELETE físico, se usa `UPDATE SET activo = 0`.
 
-### 22.1. Tablas con Soft Delete
+### 21.1. Tablas con Soft Delete
 
 | Tabla | Columna | Tipo | Default |
 |-------|---------|------|---------|
@@ -1059,7 +1021,7 @@ Siguiendo el mismo patrón de `comun.Usuarios`, se implementó soft delete en la
 | `voucher_deposito` | `activo` | BIT | 1 |
 | `dashboard_config` | `activo` | BIT | 1 (ya existía) |
 
-### 22.2. Migraciones SQL
+### 21.2. Migraciones SQL
 
 Scripts en `modules/produccion_agraria/database/`:
 - `alter_producto_activo.sql`
@@ -1071,7 +1033,7 @@ Scripts en `modules/produccion_agraria/database/`:
 
 Todos usan `IF NOT EXISTS` para ejecución idempotente.
 
-### 22.3. Cambios en Modelos
+### 21.3. Cambios en Modelos
 
 | Modelo | Método | Cambio |
 |--------|--------|--------|
@@ -1084,7 +1046,7 @@ Todos usan `IF NOT EXISTS` para ejecución idempotente.
 | `DashboardModel` | `saveConfig()` | DELETE → `UPDATE SET activo = 0` |
 | `DashboardModel` | `resetConfig()` | DELETE → `UPDATE SET activo = 0` |
 
-### 22.4. Filtros `WHERE activo = 1` Agregados
+### 21.4. Filtros `WHERE activo = 1` Agregados
 
 Se agregaron filtros en **~80 queries** distribuidas en 8 archivos:
 - `InventarioModel` — listados de productos, clases, centros, UIT, stock masivo
@@ -1096,7 +1058,7 @@ Se agregaron filtros en **~80 queries** distribuidas en 8 archivos:
 - `TablasModel` — CRUD de clase, centro, cliente, UIT
 - `DashboardModel` — ya filtraba `activo = 1` en `getConfig()`
 
-### 22.5. Tablas SIN Soft Delete
+### 21.5. Tablas SIN Soft Delete
 
 | Tabla | Motivo |
 |-------|--------|
@@ -1108,7 +1070,7 @@ Se agregaron filtros en **~80 queries** distribuidas en 8 archivos:
 | `clase_centro` | Tabla de vinculación M:N; sus DELETEs son sync, no borrado |
 | `producto_centro` | Tabla de vinculación M:N; sus DELETEs son sync, no borrado |
 
-### 22.6. Regla para Nuevos Desarrollos
+### 21.6. Regla para Nuevos Desarrollos
 
 - Toda nueva tabla de catálogo debe incluir `activo BIT NOT NULL DEFAULT 1`
 - Usar `UPDATE SET activo = 0` en lugar de `DELETE` para "eliminar" registros
@@ -1262,12 +1224,12 @@ Cada API/controller llama `$conn = Conexion::conectar()` al inicio. Si falla, re
 comun.Usuarios.rol → 'ADMIN' | 'LABORAL' | 'USUARIO'
 
 laboratorio.Usuario_Rol → laboratorio.Rol (Id_Rol, Nombre)
-laboratorio.Rol → laboratorio.Permiso_Rol → laboratorio.Submodulo (Id_Submodulo, Nombre, Url)
-laboratorio.Permiso_Rol → permisos detallados (Pueden_Ver/Crear/Editar/Eliminar/Exportar/Firmar)
+laboratorio.Rol_Permiso → laboratorio.Submodulo (Id_Submodulo, Nombre, Url)
+laboratorio.Permiso_Submodulo → permisos detallados (leer, escribir, firmar, etc.)
 
 LaboratorioModel::obtenerResponsabilidades($id_usuario):
   - Si esAdministrador() → devuelve todos los Submodulos activos
-  - Si no → devuelve solo los Submodulos del Rol asignado al usuario con Pueden_Ver = 1
+  - Si no → devuelve solo los Submodulos del Rol asignado al usuario
 ```
 
 ---
@@ -1916,53 +1878,38 @@ Auth::check()
 
 ```
 laboratorio.Usuario_Rol:
-  Id_Usuario_Rol   INT PK IDENTITY
-  Id_Usuario       INT FK → comun.Usuarios
-  Id_Rol           INT FK → laboratorio.Rol
+  Id_Usuario INT FK → comun.Usuarios
+  Id_Rol     INT FK → laboratorio.Rol
   Fecha_Asignacion DATETIME
-  Usuario_Asignador INT
-  -- UNIQUE (Id_Usuario): un usuario = un rol de laboratorio
 
 laboratorio.Rol:
   Id_Rol       INT PK IDENTITY
   Nombre       NVARCHAR(100)
   Descripcion  NVARCHAR(MAX)
   Activo       BIT
-  Fecha_Creacion DATETIME
-  Usuario_Creacion INT
 
 laboratorio.Submodulo:
   Id_Submodulo INT PK IDENTITY
   Nombre       NVARCHAR(100)
   Icono        NVARCHAR(50)
   Descripcion  NVARCHAR(MAX)
-  Url          NVARCHAR(200)    -- e.g. '?module=laboratorio&action=muestra'
+  Url          NVARCHAR(200)    -- e.g. 'muestra', 'reactivo', 'equipo'
   Activo       BIT
 
-laboratorio.Permiso_Rol:      -- (matriz por rol × submódulo; Permiso_Submodulo es legado/obsoleto)
-  Id_Permiso_Rol   INT PK IDENTITY
-  Id_Rol           INT FK → laboratorio.Rol
-  Id_Submodulo     INT FK → laboratorio.Submodulo
-  Pueden_Ver       BIT
-  Pueden_Crear     BIT
-  Pueden_Editar    BIT
-  Pueden_Eliminar  BIT
-  Pueden_Exportar  BIT
-  Pueden_Firmar    BIT
-  Activo           BIT
-  Usuario_Creacion INT
+laboratorio.Permiso_Submodulo:
+  Id_Rol        INT FK → laboratorio.Rol
+  Id_Submodulo  INT FK → laboratorio.Submodulo
+  leer          BIT
+  escribir      BIT
+  firmar        BIT
+  ... (otros permisos)
 ```
 
 `LaboratorioModel::obtenerPermisosSubmodulo($id_usuario, $url)`:
-- Admins comun (`comun.Usuarios.rol` ∈ admin/superadmin) → todos los permisos `true`
-- Usuarios con rol lab → suma `laboratorio.Permiso_Rol` (`Pueden_Ver/Crear/Editar/Eliminar/Exportar/Firmar`)
-- Sin rol lab / sin fila de permisos → `null` (acceso denegado)
-
-**Helpers de seguridad (2026-08-24):**
-- `verificarPermisoLab($id_usuario, $url_submodulo, $accion)` → bool (admin bypass incluido)
-- `denegarSiSinPermiso($id_usuario, $url_submodulo, $accion)` → responde HTTP 403 JSON y `exit`
-- Todos los endpoints AJAX de escritura (`*API.php`, `creacion_masiva_api.php`, exports, ítems `data_*.php`) validan sesión (`Auth::check()`) y permisos por acción. Las vistas ocultan botones según `$permisos`, pero **la defensa real es en el backend**.
-- Las vistas `ver_firmar.php` y `firma_agricultor.php` requieren `firmar=true`.
+- Busca el `Submodulo.Id_Submodulo` por `Url = $url`
+- Une con `Permiso_Submodulo` para el rol del usuario
+- Retorna objeto `{firmar:bool, leer:bool, escribir:bool}`
+- La vista `ver_firmar.php` y `firma_agricultor.php` requieren `firmar=true`
 
 ---
 

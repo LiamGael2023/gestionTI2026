@@ -123,13 +123,11 @@ $acciones_ajax = [
     'ver_imagen_producto',
     // Acciones AJAX - REPORTES
     'ventas_data', 'inventario_data', 'mermas_data', 'dashboard_data',
-    'clientes_report_data', 'consolidado_report_data', 'precios_report_data', 'planilla_data',
+    'vouchers_report_data', 'clientes_report_data', 'consolidado_report_data', 'precios_report_data', 'planilla_data',
     // Acciones AJAX - VOUCHERS
     'desasignar_voucher', 'eliminar_voucher', 'actualizar_voucher',
     // Acciones AJAX - DASHBOARD CMS
     'dash_load', 'dash_save', 'dash_reset', 'dash_widget',
-    // Acciones AJAX - PERMISOS (roles producción agraria)
-    'listar_roles_pa', 'listar_usuarios_pa', 'permisos_rol_pa', 'asignar_rol_pa', 'crear_rol_pa', 'eliminar_rol_pa', 'guardar_permisos_pa',
     // Acciones AJAX - CHATBOT (desde archivo centralizado core/ChatActions.php)
     ...require 'core/ChatActions.php'
 ];

@@ -34,25 +34,6 @@ try {
 
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
 
-    // ── Control de permisos (roles de laboratorio) ─────────────────────
-    require_once '../../models/LaboratorioModel.php';
-    $labAuthPozo = new LaboratorioModel($conn);
-    $urlSubPozo  = '?module=laboratorio&action=pozos';
-    $permPozoMap = [
-        'sincronizar_pozos'           => 'editar',
-        'sincronizar_monitoreos'      => 'editar',
-        'sincronizar_insitu'          => 'editar',
-        'importar_historicos'         => 'eliminar',   // destructivo (DELETE + reseed)
-        'asignar_producto_laboratorio'=> 'editar',
-        'exportar_resultados_pg'      => 'exportar',
-        'guardar_asignacion'          => 'editar',
-        'auto_asignar_pozos_lab'      => 'editar',
-        'habilitar_laboratorio'       => 'editar',
-    ];
-    if (isset($permPozoMap[$action])) {
-        $labAuthPozo->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubPozo, $permPozoMap[$action]);
-    }
-
     if (!$action) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Accion no especificada']);

@@ -17,36 +17,6 @@
         $kpiClasses = ['kpi-ventas', 'kpi-proformas', 'kpi-stock', 'kpi-vouchers', 'kpi-mermas', 'kpi-valor'];
         $kpiLabels = ['Ventas Hoy', 'Proformas Pendientes', 'Stock Crítico', 'Vouchers Sin Asignar', 'Mermas Hoy', 'Valor Inventario'];
         $kpiTipos  = ['kpi_ventas_hoy','kpi_proformas_pendientes','kpi_stock_critico','kpi_vouchers_sin_asignar','kpi_mermas_hoy','kpi_valor_inventario'];
-        // ¿Es administrador comun? (controla tarjeta de Permisos/Roles)
-        // Fuente primaria: rol de sesión (rápido, sin BD). Fallback: consulta comun.Usuarios.
-        $esAdminPA = false;
-        $rolesAdmin = ['administrador','admin','superadmin','super admin','jefe','gerente'];
-        $rolSesionPA = strtolower(trim((string)($_SESSION['usuario_rol'] ?? '')));
-        if ($rolSesionPA !== '' && in_array($rolSesionPA, $rolesAdmin, true)) {
-            $esAdminPA = true;
-        } else {
-            try {
-                $stmtAdminPA = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", [$_SESSION['usuario_id']]);
-                if ($stmtAdminPA) {
-                    $rowAdminPA = sqlsrv_fetch_array($stmtAdminPA, SQLSRV_FETCH_ASSOC);
-                    if ($rowAdminPA && in_array(strtolower(trim((string)$rowAdminPA['rol'])), $rolesAdmin, true)) {
-                        $esAdminPA = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                $esAdminPA = false;
-            }
-        }
-        // Submódulos permitidos según rol de Producción Agraria
-        require_once __DIR__ . '/../models/PermisosModel.php';
-        $permisosPAModel = new PermisosModel($conn);
-        $submodulosPermitidos = [];
-        foreach (['inventario','punto_venta','bandeja','tablas','reportes','dashboard','consultas'] as $submod) {
-            $urlSub = '?module=produccion_agraria&action=' . $submod;
-            $perm = $permisosPAModel->obtenerPermisosSubmodulo($_SESSION['usuario_id'], $urlSub);
-            // Retrocompatibilidad: sin rol asignado -> acceso permitido
-            $submodulosPermitidos[$submod] = ($perm === null) ? true : (bool)($perm['ver'] ?? false);
-        }
         ?>
         <div class="card mb-3 border-0 shadow-sm">
             <div class="card-body py-2 px-3">
@@ -79,7 +49,6 @@
 
         <h2 class='card-title mb-5'>Módulos de Producción Agraria</h2>
         <div class='row g-3'>
-        <?php if ($submodulosPermitidos['inventario']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=inventario' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -91,8 +60,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($submodulosPermitidos['punto_venta']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=punto_venta' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -104,8 +71,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($submodulosPermitidos['bandeja']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=bandeja' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -117,8 +82,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($submodulosPermitidos['tablas']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=tablas' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -130,8 +93,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($submodulosPermitidos['reportes']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=reportes' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -143,8 +104,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($submodulosPermitidos['dashboard']): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=dashboard' class='card-link'>
                 <div class='card-link bg-gradient-primary h-100 text-white'>
@@ -156,20 +115,6 @@
                 </div>
             </a>
         </div>
-        <?php endif; ?>
-        <?php if ($esAdminPA): ?>
-        <div class='col-md-4 col-sm-6'>
-            <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=permisos' class='card-link'>
-                <div class='card-link bg-gradient-secondary h-100 text-white'>
-                    <div class='card-body text-center'>
-                        <i class='ti ti-shield-lock icon-lg mb-3'></i>
-                        <h5 class='card-title'>Roles y Permisos</h5>
-                        <p class='card-text font-small'>Administrar roles y permisos por submódulo</p>
-                    </div>
-                </div>
-            </a>
-        </div>
-        <?php endif; ?>
     </div>
 </div>
 
@@ -217,10 +162,6 @@
     /* Gradientes para las tarjetas de módulos */
     .bg-gradient-primary {
         background: linear-gradient(135deg, var(--pech-verde, #009540) 0%, #00c851 100%) !important;
-    }
-
-    .bg-gradient-secondary {
-        background: linear-gradient(135deg, #004d99 0%, #0070cc 100%) !important;
     }
 
     .card-link .card-body {

@@ -1,11 +1,9 @@
-﻿<?php
+<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
-require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
-Auth::check();
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -85,4 +83,3 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
-

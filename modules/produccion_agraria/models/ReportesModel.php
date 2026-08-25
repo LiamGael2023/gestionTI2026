@@ -520,6 +520,48 @@ class ReportesModel {
     }
 
     /**
+     * Reporte: Conciliación de Vouchers y Depósitos
+     */
+    public function getVouchersReport($filtros = []) {
+        $params = [];
+        $sql = "SELECT v.id_voucher, v.num_operacion as num_operation, v.monto_total, v.fecha_deposito,
+                       COUNT(t.id_transaccion) as total_proformas,
+                       ISNULL(SUM(t.total), 0) as monto_asignado,
+                       (v.monto_total - ISNULL(SUM(t.total), 0)) as saldo_restante
+                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t
+                       ON v.id_voucher = t.id_voucher AND t.estado = 'PROCESADO' AND t.tipo_op = 'VENTA'
+                WHERE v.activo = 1";
+
+        if (!empty($filtros['fecha_desde'])) {
+            $sql .= " AND CAST(v.fecha_deposito AS DATE) >= ?";
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $sql .= " AND CAST(v.fecha_deposito AS DATE) <= ?";
+            $params[] = $filtros['fecha_hasta'];
+        }
+
+        $sql .= " GROUP BY v.id_voucher, v.num_operacion, v.monto_total, v.fecha_deposito
+                  ORDER BY v.id_voucher DESC";
+
+        $stmt = sqlsrv_query($this->db, $sql, $params);
+        if ($stmt === false) {
+            error_log('[ReportesModel::getVouchersReport] Error: ' . print_r(sqlsrv_errors(), true));
+            return [];
+        }
+
+        $result = [];
+        while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            if (isset($row['fecha_deposito']) && $row['fecha_deposito'] instanceof DateTime) {
+                $row['fecha_deposito'] = $row['fecha_deposito']->format('Y-m-d');
+            }
+            $result[] = $row;
+        }
+        return $result;
+    }
+
+    /**
      * Reporte: Directorio de Clientes y Recaudación Acumulada
      */
     public function getClientesReport($filtros = []) {
