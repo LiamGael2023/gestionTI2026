@@ -32,6 +32,28 @@ class PermisosModel {
         return ['administrador', 'admin', 'superadmin', 'super admin', 'jefe', 'gerente'];
     }
 
+    /**
+     * Indica si el usuario ya tiene un rol de Producción Agraria asignado.
+     * Si lo tiene, la matriz de permisos se aplica estrictamente (incluso para admins).
+     */
+    public function tieneRolProduccion($id_usuario) {
+        $sql = "SELECT TOP 1 1 FROM BD_PRODUCCIONDESARROLLO.dbo.usuario_rol_pa ur
+                INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.rol_pa r ON ur.Id_Rol_PA = r.Id_Rol_PA AND r.Activo = 1
+                WHERE ur.Id_Usuario = ?";
+        $stmt = sqlsrv_query($this->db, $sql, [$id_usuario]);
+        if ($stmt === false) return false;
+        return sqlsrv_has_rows($stmt) === true;
+    }
+
+    /**
+     * Solo puede gestionar roles un administrador que NO tenga un rol de PA asignado.
+     * Un admin con rol operativo (ej. rol "Down" solo-inventario) se rige por la matriz
+     * y NO puede administrar roles/permisos.
+     */
+    public function puedeGestionarRoles($id_usuario) {
+        return $this->esAdministrador($id_usuario) && !$this->tieneRolProduccion($id_usuario);
+    }
+
     // ── Roles ────────────────────────────────────────────────────────
 
     public function listarRoles() {
@@ -167,7 +189,9 @@ class PermisosModel {
     // ── Verificación de permisos (usado por controladores y vistas) ──
 
     public function obtenerPermisosSubmodulo($id_usuario, $url_submodulo) {
-        if ($this->esAdministrador($id_usuario)) {
+        // Si el usuario tiene un rol de PA asignado, la matriz se aplica estricta
+        // (incluso si es admin común). El bypass de admin solo vale sin rol asignado.
+        if (!$this->tieneRolProduccion($id_usuario) && $this->esAdministrador($id_usuario)) {
             return ['ver' => true];
         }
         $sql = "SELECT pr.Pueden_Ver
@@ -186,7 +210,8 @@ class PermisosModel {
     }
 
     public function verificarPermiso($id_usuario, $url_submodulo, $accion = 'ver') {
-        if ($this->esAdministrador($id_usuario)) return true;
+        // Con rol de PA asignado, se aplica la matriz estricta (sin bypass de admin).
+        if (!$this->tieneRolProduccion($id_usuario) && $this->esAdministrador($id_usuario)) return true;
         $permisos = $this->obtenerPermisosSubmodulo($id_usuario, $url_submodulo);
         if ($permisos === null) return false;
         // Único permiso gestionado: ver (visibilidad)

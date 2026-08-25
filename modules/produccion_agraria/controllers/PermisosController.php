@@ -16,8 +16,8 @@ try {
     $permisosModel = new PermisosModel($conn);
     $usuarioId     = intval($_SESSION['usuario_id'] ?? 0);
 
-    // El submódulo de permisos es exclusivo para administradores
-    if (!$permisosModel->esAdministrador($usuarioId)) {
+    // El submódulo de permisos es exclusivo para administradores SIN rol de PA asignado
+    if (!$permisosModel->puedeGestionarRoles($usuarioId)) {
         while (ob_get_level()) { ob_end_clean(); }
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
