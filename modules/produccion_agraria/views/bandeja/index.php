@@ -334,6 +334,17 @@ function verDetalle(id) {
         });
 }
 
+// Escape de HTML para renderizados dinámicos
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Escape seguro para valores dentro de atributos onclick (comillas simples JS + atributo HTML)
+function jsAttr(str) {
+    return String(str == null ? '' : str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
 function mostrarDetalle(p) {
     document.getElementById('detalle-id').textContent = p.id_transaccion;
     
@@ -341,13 +352,13 @@ function mostrarDetalle(p) {
         <div class="row mb-3">
             <div class="col-md-6">
                 <h6>Cliente</h6>
-                <p>${p.nombre_cliente || 'Sin cliente'}<br>
-                <small class="text-muted">${p.tipo_documento || ''} ${p.documento_cliente || ''}</small></p>
+                <p>${escapeHtml(p.nombre_cliente || 'Sin cliente')}<br>
+                <small class="text-muted">${escapeHtml(p.tipo_documento || '')} ${escapeHtml(p.documento_cliente || '')}</small></p>
             </div>
             <div class="col-md-6 text-md-end">
                 <h6>Información</h6>
-                <p><span class="badge bg-${getEstadoColor(p.estado)}">${p.estado}</span><br>
-                <small class="text-muted">${p.fecha_creacion}</small></p>
+                <p><span class="badge bg-${getEstadoColor(p.estado)}">${escapeHtml(p.estado)}</span><br>
+                <small class="text-muted">${escapeHtml(p.fecha_creacion)}</small></p>
             </div>
         </div>
         <table class="table table-sm">
@@ -365,7 +376,7 @@ function mostrarDetalle(p) {
     p.detalles.forEach(d => {
         html += `
             <tr>
-                <td>${d.nombre_producto}<br><small class="text-muted">Lote: ${d.codigo_lote}</small></td>
+                <td>${escapeHtml(d.nombre_producto)}<br><small class="text-muted">Lote: ${escapeHtml(d.codigo_lote)}</small></td>
                 <td class="text-center">${d.cantidad} ${d.unidad_medida}</td>
                 <td class="text-end">S/ ${parseFloat(d.precio_unitario).toFixed(2)}</td>
                 <td class="text-end">S/ ${parseFloat(d.subtotal).toFixed(2)}</td>
@@ -384,8 +395,8 @@ function mostrarDetalle(p) {
         </table>
         ${p.serie_comprobante ? `
         <div class="alert alert-success mt-3">
-            <strong>Comprobante:</strong> ${p.serie_comprobante}-${p.correlativo_comprobante}<br>
-            <strong>Método de Pago:</strong> ${p.metodo_pago || '-'}
+            <strong>Comprobante:</strong> ${escapeHtml(p.serie_comprobante)}-${escapeHtml(p.correlativo_comprobante)}<br>
+            <strong>Método de Pago:</strong> ${escapeHtml(p.metodo_pago || '-')}
         </div>
         ` : ''}
         ${p.id_voucher ? `
@@ -718,7 +729,7 @@ function cargarVouchers() {
                     return `
                         <tr>
                             <td><strong>#${v.id_voucher}</strong></td>
-                            <td>${v.num_operation || '-'}</td>
+                            <td>${escapeHtml(v.num_operation || '-')}</td>
                             <td class="text-end fw-bold">S/ ${parseFloat(v.monto_total).toFixed(2)}</td>
                             <td class="text-center ${asignadoClass}">
                                 ${v.total_proformas > 0 
@@ -734,7 +745,7 @@ function cargarVouchers() {
                                        target="_blank">
                                         <i class="ti ti-download"></i>
                                     </a>
-                                    <button class="btn btn-sm btn-secondary" onclick="editarVoucher(${v.id_voucher}, '${(v.num_operation || '').replace(/'/g, "\\'")}', ${v.monto_total}, '${v.fecha_deposito || ''}')" title="Editar voucher">
+                                    <button class="btn btn-sm btn-secondary" onclick="editarVoucher(${v.id_voucher}, '${jsAttr(v.num_operation)}', ${v.monto_total}, '${jsAttr(v.fecha_deposito)}')" title="Editar voucher">
                                         <i class="ti ti-pencil"></i>
                                     </button>
                                     ${v.total_proformas > 0 
@@ -887,7 +898,7 @@ function cargarProformasDisponibles() {
                     <tr class="table-success" style="background-color: rgba(40, 167, 69, 0.08);">
                         <td>
                             <input type="checkbox" class="form-check-input grupo-check"
-                                   data-grupo="${grupo}"
+                                   data-grupo="${escapeHtml(grupo)}"
                                    data-ids="${ids.join(',')}"
                                    data-monto="${totalGrupo.toFixed(2)}"
                                    onchange="toggleGrupo(this)">
@@ -897,7 +908,7 @@ function cargarProformasDisponibles() {
                                 <span class="badge bg-success"><i class="ti ti-package me-1"></i>Venta Masiva</span>
                                 <strong class="text-dark">${items.length} ventas</strong>
                                 <span class="text-muted">— ${fechaVenta}</span>
-                                <code class="ms-2" style="font-size:0.7rem;">${grupo}</code>
+                                <code class="ms-2" style="font-size:0.7rem;">${escapeHtml(grupo)}</code>
                             </div>
                         </td>
                         <td class="text-end fw-bold text-success">S/ ${totalGrupo.toFixed(2)}</td>
@@ -907,15 +918,15 @@ function cargarProformasDisponibles() {
                 items.forEach(p => {
                     const nombre = p.nombre_cliente || 'N/A';
                     html += `
-                        <tr class="grupo-item-${grupo}" style="display:none; background-color: rgba(40, 167, 69, 0.03);">
+                        <tr class="grupo-item-${escapeHtml(grupo)}" style="display:none; background-color: rgba(40, 167, 69, 0.03);">
                             <td>
-                                <input type="checkbox" class="form-check-input proforma-check item-grupo-${grupo}"
+                                <input type="checkbox" class="form-check-input proforma-check item-grupo-${escapeHtml(grupo)}"
                                        value="${p.id_transaccion}"
                                        data-monto="${p.total}"
                                        onchange="calcularMontoSeleccionado()">
                             </td>
                             <td><strong>#${p.id_transaccion}</strong></td>
-                            <td>${nombre}</td>
+                            <td>${escapeHtml(nombre)}</td>
                             <td class="text-end fw-bold">S/ ${parseFloat(p.total).toFixed(2)}</td>
                         </tr>`;
                 });
@@ -933,7 +944,7 @@ function cargarProformasDisponibles() {
                                    onchange="calcularMontoSeleccionado()">
                         </td>
                         <td><strong>#${p.id_transaccion}</strong></td>
-                        <td>${nombre}</td>
+                        <td>${escapeHtml(nombre)}</td>
                         <td class="text-end fw-bold">S/ ${parseFloat(p.total).toFixed(2)}</td>
                     </tr>`;
             });

@@ -529,7 +529,8 @@ class ReportesModel {
                        ISNULL(SUM(t.total), 0) as monto_asignado,
                        (v.monto_total - ISNULL(SUM(t.total), 0)) as saldo_restante
                  FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
-                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON v.id_voucher = t.id_voucher
+                LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t
+                       ON v.id_voucher = t.id_voucher AND t.estado = 'PROCESADO' AND t.tipo_op = 'VENTA'
                 WHERE v.activo = 1";
 
         if (!empty($filtros['fecha_desde'])) {
@@ -566,7 +567,7 @@ class ReportesModel {
     public function getClientesReport($filtros = []) {
         $params = [];
         $sql = "SELECT c.id_cliente, c.dni_ruc, c.nombre_rs,
-                       CASE WHEN c.tipo_cliente = 1 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente,
+                       CASE WHEN c.tipo_cliente = 0 THEN 'Planilla' ELSE 'Externo' END as tipo_cliente,
                        COUNT(t.id_transaccion) as total_transacciones,
                        ISNULL(SUM(CASE WHEN t.metodo_pago = 'VENTA' THEN t.total ELSE 0 END), 0) as total_ventas,
                        ISNULL(SUM(CASE WHEN t.metodo_pago = 'DONACION' THEN t.total ELSE 0 END), 0) as total_donaciones,
@@ -576,9 +577,15 @@ class ReportesModel {
                 WHERE c.activo = 1";
 
         if (!empty($filtros['cliente'])) {
-            $sql .= " AND (c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?)";
-            $params[] = '%' . $filtros['cliente'] . '%';
-            $params[] = '%' . $filtros['cliente'] . '%';
+            // Acepta un ID numérico (desde el select de la vista) o texto de búsqueda
+            if (ctype_digit($filtros['cliente'])) {
+                $sql .= " AND c.id_cliente = ?";
+                $params[] = intval($filtros['cliente']);
+            } else {
+                $sql .= " AND (c.nombre_rs LIKE ? OR c.dni_ruc LIKE ?)";
+                $params[] = '%' . $filtros['cliente'] . '%';
+                $params[] = '%' . $filtros['cliente'] . '%';
+            }
         }
 
         $sql .= " GROUP BY c.id_cliente, c.dni_ruc, c.nombre_rs, c.tipo_cliente
@@ -610,16 +617,22 @@ class ReportesModel {
             $whereMain[] = "cp.id_centro = ?";
             $params[] = intval($filtros['id_centro']);
         }
+        // IMPORTANTE: el orden de $params debe coincidir con el orden de los
+        // placeholders en el SQL final: principal → subquery ventas → subquery mermas
         if (!empty($filtros['fecha_desde'])) {
             $whereVentas[] = "CAST(t.fecha_creacion AS DATE) >= ?";
-            $whereMermas[] = "CAST(k.fecha AS DATE) >= ?";
-            $params[] = $filtros['fecha_desde'];
             $params[] = $filtros['fecha_desde'];
         }
         if (!empty($filtros['fecha_hasta'])) {
             $whereVentas[] = "CAST(t.fecha_creacion AS DATE) <= ?";
-            $whereMermas[] = "CAST(k.fecha AS DATE) <= ?";
             $params[] = $filtros['fecha_hasta'];
+        }
+        if (!empty($filtros['fecha_desde'])) {
+            $whereMermas[] = "CAST(k.fecha AS DATE) >= ?";
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $whereMermas[] = "CAST(k.fecha AS DATE) <= ?";
             $params[] = $filtros['fecha_hasta'];
         }
 
@@ -802,7 +815,7 @@ class ReportesModel {
                     td.subtotal
                 FROM BD_PRODUCCIONDESARROLLO.dbo.transaccion t
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.cliente c
-                       ON t.id_cliente = c.id_cliente AND c.activo = 1 AND c.tipo_cliente = 1
+                       ON t.id_cliente = c.id_cliente AND c.activo = 1
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.centro_produccion cp
                        ON t.id_centro = cp.id_centro AND cp.activo = 1
                 INNER JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion_detalle td

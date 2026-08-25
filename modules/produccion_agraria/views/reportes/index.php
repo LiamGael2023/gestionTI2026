@@ -1140,6 +1140,20 @@ function limpiarFiltros() {
 // =============================================================
 // RENDER DE TABLAS
 // =============================================================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+// Mapa seguro de clases de badge por estado (evita inyección en la clase CSS)
+const ESTADO_BADGE = {
+    'PROCESADO': 'badge-PROCESADO',
+    'PENDIENTE': 'badge-PENDIENTE',
+    'RECHAZADO': 'badge-RECHAZADO',
+    'ANULADA':   'badge-RECHAZADO',
+    'PLANILLA':  'badge-PROCESADO'
+};
+
 function renderVentas(data, kpis) {
     // KPIs
     document.getElementById('kpi-monto').textContent  = 'S/ ' + parseFloat(kpis.monto_total || 0).toLocaleString('es-PE', {minimumFractionDigits:2});
@@ -1156,15 +1170,16 @@ function renderVentas(data, kpis) {
     tbody.innerHTML = data.map(v => {
         totalMostrado += parseFloat(v.total || 0);
         const fecha = new Date(v.fecha_creacion).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
-        const comp  = v.serie_comprobante ? `${v.serie_comprobante}-${v.correlativo_comprobante}` : '-';
+        const comp  = v.serie_comprobante ? `${escapeHtml(v.serie_comprobante)}-${escapeHtml(v.correlativo_comprobante)}` : '-';
+        const badgeEstado = ESTADO_BADGE[v.estado] || 'badge-PENDIENTE';
         return `<tr>
-            <td><code>${v.id_transaccion}</code></td>
+            <td><code>${escapeHtml(v.id_transaccion)}</code></td>
             <td>${fecha}</td>
-            <td><div>${v.nombre_cliente || '-'}</div><small class="text-muted">${v.documento_cliente || ''}</small></td>
-            <td>${v.nombre_centro || '-'}</td>
-            <td>${v.metodo_pago || '-'}</td>
+            <td><div>${escapeHtml(v.nombre_cliente || '-')}</div><small class="text-muted">${escapeHtml(v.documento_cliente || '')}</small></td>
+            <td>${escapeHtml(v.nombre_centro || '-')}</td>
+            <td>${escapeHtml(v.metodo_pago || '-')}</td>
             <td><small>${comp}</small></td>
-            <td><span class="badge badge-${v.estado}">${v.estado}</span></td>
+            <td><span class="badge ${badgeEstado}">${escapeHtml(v.estado)}</span></td>
             <td class="text-end fw-bold">${parseFloat(v.total).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
     }).join('');
@@ -1188,13 +1203,13 @@ function renderInventario(data) {
         const stockBadge = i.stock_actual < 10 ? 'bg-danger' : 'bg-success';
         const fecLote = i.fecha_lote ? new Date(i.fecha_lote).toLocaleDateString('es-PE') : '-';
         return `<tr>
-            <td><div class="fw-semibold">${i.nombre_producto}</div>${i.nombre_cientifico ? `<small class="text-muted fst-italic">${i.nombre_cientifico}</small>` : ''}</td>
-            <td>${i.nombre_clase || '-'}</td>
-            <td>${i.nombre_centro || '-'}</td>
-            <td><code>${i.codigo_lote}</code></td>
+            <td><div class="fw-semibold">${escapeHtml(i.nombre_producto)}</div>${i.nombre_cientifico ? `<small class="text-muted fst-italic">${escapeHtml(i.nombre_cientifico)}</small>` : ''}</td>
+            <td>${escapeHtml(i.nombre_clase || '-')}</td>
+            <td>${escapeHtml(i.nombre_centro || '-')}</td>
+            <td><code>${escapeHtml(i.codigo_lote)}</code></td>
             <td><span class="${diasClass}"><i class="ti ti-clock me-1"></i>${i.antiguedad_dias} días</span></td>
-            <td class="text-center"><span class="badge ${stockBadge}">${parseInt(i.stock_actual).toLocaleString()} ${i.unidad_medida}</span></td>
-            <td class="text-center"><span class="badge bg-light text-dark">${i.tipo_precio}</span></td>
+            <td class="text-center"><span class="badge ${stockBadge}">${parseInt(i.stock_actual).toLocaleString()} ${escapeHtml(i.unidad_medida)}</span></td>
+            <td class="text-center"><span class="badge bg-light text-dark">${escapeHtml(i.tipo_precio)}</span></td>
             <td class="text-end">${parseFloat(i.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-success">${parseFloat(i.valor_total_lote).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
         </tr>`;
@@ -1219,10 +1234,10 @@ function renderMermas(data) {
         const fecha = new Date(m.fecha).toLocaleDateString('es-PE', {day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit'});
         return `<tr>
             <td>${fecha}</td>
-            <td class="fw-semibold">${m.nombre_producto}</td>
-            <td>${m.nombre_clase || '-'}</td>
-            <td>${m.nombre_centro || '-'}</td>
-            <td><code>${m.codigo_lote}</code></td>
+            <td class="fw-semibold">${escapeHtml(m.nombre_producto)}</td>
+            <td>${escapeHtml(m.nombre_clase || '-')}</td>
+            <td>${escapeHtml(m.nombre_centro || '-')}</td>
+            <td><code>${escapeHtml(m.codigo_lote)}</code></td>
             <td class="text-center"><span class="badge bg-danger">${parseInt(m.cantidad_merma).toLocaleString()}</span></td>
             <td class="text-end">${parseFloat(m.precio_unitario).toFixed(4)}</td>
             <td class="text-end fw-bold text-danger">${parseFloat(m.valor_perdida).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1254,9 +1269,9 @@ function renderVouchers(data) {
         
         return `<tr>
             <td>${v.id_voucher}</td>
-            <td class="fw-semibold">${v.num_operation || '-'}</td>
-            <td>${v.fecha_deposito || '-'}</td>
-            <td class="text-center"><span class="badge bg-secondary">${v.total_proformas}</span></td>
+            <td class="fw-semibold">${escapeHtml(v.num_operation || '-')}</td>
+            <td>${escapeHtml(v.fecha_deposito || '-')}</td>
+            <td class="text-center"><span class="badge bg-secondary">${escapeHtml(v.total_proformas)}</span></td>
             <td class="text-end">${monto.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             <td class="text-end text-success fw-semibold">${asignado.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
             <td class="text-end fw-bold ${saldoClass}">S/ ${saldo.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
@@ -1285,10 +1300,10 @@ function renderClientes(data) {
         
         return `<tr>
             <td>${c.id_cliente}</td>
-            <td>${c.dni_ruc || '-'}</td>
-            <td class="fw-semibold">${c.nombre_rs}</td>
+            <td>${escapeHtml(c.dni_ruc || '-')}</td>
+            <td class="fw-semibold">${escapeHtml(c.nombre_rs)}</td>
             <td>
-                <span class="badge ${badgeClass}">${c.tipo_cliente}</span>
+                <span class="badge ${badgeClass}">${escapeHtml(c.tipo_cliente)}</span>
             </td>
             <td class="text-center"><span class="badge bg-secondary">${transacciones}</span></td>
             <td class="text-end text-success">${ventas.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1314,8 +1329,8 @@ function renderConsolidado(data) {
         
         return `<tr>
             <td>${con.id_centro}</td>
-            <td class="fw-bold text-dark">${con.nombre_centro}</td>
-            <td>${con.encargado || '-'}</td>
+            <td class="fw-bold text-dark">${escapeHtml(con.nombre_centro)}</td>
+            <td>${escapeHtml(con.encargado || '-')}</td>
             <td class="text-end text-success fw-semibold">S/ ${ventas.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end text-warning fw-semibold">S/ ${donaciones.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
             <td class="text-end text-primary fw-semibold">S/ ${inventario.toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1347,13 +1362,13 @@ function renderPrecios(data) {
         return `<tr>
             <td>${p.id_producto}</td>
             <td>
-                <div class="fw-bold text-dark">${p.nombre_producto}</div>
-                ${p.nombre_cientifico ? `<small class="text-muted fst-italic">${p.nombre_cientifico}</small>` : ''}
+                <div class="fw-bold text-dark">${escapeHtml(p.nombre_producto)}</div>
+                ${p.nombre_cientifico ? `<small class="text-muted fst-italic">${escapeHtml(p.nombre_cientifico)}</small>` : ''}
             </td>
-            <td>${p.nombre_clase || '-'}</td>
-            <td>${p.nombre_centro || '-'}</td>
+            <td>${escapeHtml(p.nombre_clase || '-')}</td>
+            <td>${escapeHtml(p.nombre_centro || '-')}</td>
             <td class="text-center">
-                <span class="badge ${tipoBadge}">${p.tipo_precio}</span>
+                <span class="badge ${tipoBadge}">${escapeHtml(p.tipo_precio)}</span>
             </td>
             <td class="text-end text-muted small">${vigencia}</td>
             <td class="text-end fw-bold text-success">S/ ${parseFloat(p.precio_unitario || 0).toLocaleString('es-PE', {minimumFractionDigits:2})}</td>
@@ -1431,7 +1446,7 @@ function renderPlanilla(data) {
     let thProductos = '';
     let thSubcols = '';
     productos.forEach(p => {
-        thProductos += `<th colspan="3" class="text-center border">${p.nombre.toUpperCase()}<br><small class="fw-normal">${p.unidad}</small></th>`;
+        thProductos += `<th colspan="3" class="text-center border">${escapeHtml(p.nombre).toUpperCase()}<br><small class="fw-normal">${escapeHtml(p.unidad)}</small></th>`;
         thSubcols += `<th class="text-center border" style="min-width:55px;">CANT</th><th class="text-center border" style="min-width:55px;">COSTO</th><th class="text-center border" style="min-width:55px;">TOTAL</th>`;
     });
     thead.innerHTML = `<tr><th rowspan="2" class="text-center align-middle border" style="width:40px;">N°</th><th rowspan="2" class="text-center align-middle border" style="min-width:90px;">FECHA</th><th rowspan="2" class="text-center align-middle border" style="min-width:220px;">APELLIDOS Y NOMBRES</th>${thProductos}<th rowspan="2" class="text-center align-middle border" style="min-width:70px;">TOTAL</th></tr><tr>${thSubcols}</tr>`;
@@ -1454,7 +1469,7 @@ function renderPlanilla(data) {
         return `<tr>
             <td class="text-center border">${idx + 1}</td>
             <td class="text-center border">${fechaCorta}</td>
-            <td class="border">${emp.nombre}</td>
+            <td class="border">${escapeHtml(emp.nombre)}</td>
             ${celdas}
             <td class="text-end fw-bold border">S/ ${emp.total.toLocaleString('es-PE', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
         </tr>`;
@@ -1592,76 +1607,117 @@ function drawPECHLogoFallback(doc, x, y) {
     doc.text('PECH', x + 14, y + 6.5, { align: 'center' });
 }
 
+function formatFecha(iso) {
+    if (!iso) return '';
+    const partes = String(iso).split('-');
+    return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : iso;
+}
+
+function getPeriodoReporte() {
+    const partes = [];
+    const desde = document.getElementById('f_fecha_desde')?.value || '';
+    const hasta = document.getElementById('f_fecha_hasta')?.value || '';
+    if (desde && hasta) partes.push(`Período: ${formatFecha(desde)} al ${formatFecha(hasta)}`);
+    else if (desde) partes.push(`Período: desde ${formatFecha(desde)}`);
+    else if (hasta) partes.push(`Período: hasta ${formatFecha(hasta)}`);
+    else partes.push('Período: completo');
+
+    [['f_centro', 'Centro'], ['f_clase', 'Clase'], ['f_estado', 'Estado']].forEach(([id, etiqueta]) => {
+        const el = document.getElementById(id);
+        const txt = el && el.selectedOptions && el.selectedOptions[0] ? el.selectedOptions[0].text : '';
+        if (txt && txt !== 'Todos' && txt !== 'Todas') {
+            partes.push(`${etiqueta}: ${txt}`);
+        }
+    });
+    return partes.join('  ·  ');
+}
+
 function drawPortraitHeaderFooter(doc, page, totalPages, totalCount) {
     // Logo local primero, luego navbar, luego fallback vectorial
     const imgLogo = document.getElementById('logo-pech-local')
                      || document.querySelector('.navbar-brand-image')
                      || document.querySelector('img[alt="PECH"]');
+
+    // Encabezado institucional: franja blanca con doble línea PECH
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, 210, 30, 'F');
+    doc.setFillColor(0, 77, 153); // Azul PECH
+    doc.rect(0, 30, 210, 1.4, 'F');
+    doc.setFillColor(0, 149, 64); // Verde PECH
+    doc.rect(0, 31.4, 210, 0.7, 'F');
+
     if (imgLogo && imgLogo.complete && imgLogo.naturalWidth > 0) {
         try {
-            doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
+            doc.addImage(imgLogo, 'PNG', 10, 6, 30, 9);
         } catch (e) {
-            drawPECHLogoFallback(doc, 14, 8);
+            drawPECHLogoFallback(doc, 10, 6);
         }
     } else {
-        drawPECHLogoFallback(doc, 14, 8);
+        drawPECHLogoFallback(doc, 10, 6);
     }
-    
-    // Título Principal
-    doc.setTextColor(0, 0, 0);
+
+    // Título del sistema (azul PECH)
+    doc.setTextColor(0, 77, 153);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Sistema Desarrollo Agricola', 105, 14, { align: 'center' });
-    
-    // Banner Verde de Subtítulo
-    doc.setFillColor(140, 181, 63); // Verde Oliva #8cb53f
-    doc.rect(55, 18, 100, 6.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text('Precios Productos', 105, 22.5, { align: 'center' });
-    
+    doc.setFontSize(10.5);
+    doc.text('Sistema de Gestión y Desarrollo Agrícola PECH', 105, 9.5, { align: 'center' });
+
+    // Título del reporte (verde PECH)
+    doc.setTextColor(0, 149, 64);
+    doc.setFontSize(11);
+    doc.text('CATÁLOGO DE PRECIOS VIGENTES', 105, 14.5, { align: 'center' });
+
+    // Período / filtros aplicados
+    const periodo = getPeriodoReporte();
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(periodo, 105, 18.5, { align: 'center' });
+
     // Bloque de información derecha
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     const now = new Date();
     const dateStr = now.toLocaleDateString('es-PE') + ' ' + now.toLocaleTimeString('es-PE');
-    doc.text(dateStr, 196, 11, { align: 'right' });
-    doc.text(`Año : ${now.getFullYear()}`, 196, 15, { align: 'right' });
-    doc.text(`Total Productos : ${totalCount}`, 196, 19, { align: 'right' });
-    
-    // Línea divisoria pie de página
+    doc.text(dateStr, 199, 9.5, { align: 'right' });
+    doc.text(`Año : ${now.getFullYear()}`, 199, 13, { align: 'right' });
+    doc.text(`Total Productos : ${totalCount}`, 199, 16.5, { align: 'right' });
+
+    // ---- Pie de página ----
+    doc.setFillColor(248, 249, 250);
+    doc.rect(10, 268, 190, 16, 'F');
     doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(14, 268, 196, 268);
-    
-    // Información institucional en columnas
+    doc.setLineWidth(0.3);
+    doc.line(10, 268, 200, 268);
+
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
     doc.text('UBICANOS', 14, 272);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.text('Campamento San José Km. 513\nPanamericana Norte\nProvincia de Virú\nRegión La Libertad.', 14, 275.5);
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.text('HORARIO DE ATENCIÓN', 85, 272);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.text('De lunes a viernes:\n09:00 am a 03:00 pm', 85, 275.5);
-    
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.text('TELEFONOS', 150, 272);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.text('044-272286\nAnexo 2030 Subgerencia', 150, 275.5);
-    
+
     // Paginación
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text(`${page}/${totalPages}`, 105, 288, { align: 'center' });
+    doc.setTextColor(0, 77, 153);
+    doc.text(`${page}/${totalPages}`, 105, 281.5, { align: 'center' });
 }
 
 function drawLandscapeHeaderFooter(doc, page, totalPages, totalCount, tituloReporte) {
@@ -1669,71 +1725,87 @@ function drawLandscapeHeaderFooter(doc, page, totalPages, totalCount, tituloRepo
     const imgLogo = document.getElementById('logo-pech-local')
                      || document.querySelector('.navbar-brand-image')
                      || document.querySelector('img[alt="PECH"]');
+
+    // Encabezado institucional: franja blanca con doble línea PECH
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, 297, 30, 'F');
+    doc.setFillColor(0, 77, 153); // Azul PECH
+    doc.rect(0, 30, 297, 1.4, 'F');
+    doc.setFillColor(0, 149, 64); // Verde PECH
+    doc.rect(0, 31.4, 297, 0.7, 'F');
+
     if (imgLogo && imgLogo.complete && imgLogo.naturalWidth > 0) {
         try {
-            doc.addImage(imgLogo, 'PNG', 14, 8, 28, 9);
+            doc.addImage(imgLogo, 'PNG', 10, 6, 30, 9);
         } catch (e) {
-            drawPECHLogoFallback(doc, 14, 8);
+            drawPECHLogoFallback(doc, 10, 6);
         }
     } else {
-        drawPECHLogoFallback(doc, 14, 8);
+        drawPECHLogoFallback(doc, 10, 6);
     }
-    
-    // Título Principal
-    doc.setTextColor(0, 0, 0);
+
+    // Título del sistema (azul PECH)
+    doc.setTextColor(0, 77, 153);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
-    doc.text('Sistema Desarrollo Agricola', 148.5, 14, { align: 'center' });
-    
-    // Banner Verde de Subtítulo
-    doc.setFillColor(140, 181, 63); // Verde Oliva #8cb53f
-    doc.rect(98, 18, 100, 6.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(tituloReporte, 148.5, 22.5, { align: 'center' });
-    
+    doc.setFontSize(10.5);
+    doc.text('Sistema de Gestión y Desarrollo Agrícola PECH', 148.5, 9.5, { align: 'center' });
+
+    // Título del reporte (verde PECH)
+    doc.setTextColor(0, 149, 64);
+    doc.setFontSize(11);
+    doc.text(String(tituloReporte).toUpperCase(), 148.5, 14.5, { align: 'center' });
+
+    // Período / filtros aplicados
+    const periodo = getPeriodoReporte();
+    doc.setTextColor(71, 85, 105);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(periodo, 148.5, 18.5, { align: 'center' });
+
     // Bloque de información derecha
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     const now = new Date();
     const dateStr = now.toLocaleDateString('es-PE') + ' ' + now.toLocaleTimeString('es-PE');
-    doc.text(dateStr, 283, 11, { align: 'right' });
-    doc.text(`Año : ${now.getFullYear()}`, 283, 15, { align: 'right' });
-    doc.text(`Total Registros : ${totalCount}`, 283, 19, { align: 'right' });
-    
-    // Línea divisoria pie de página
+    doc.text(dateStr, 286, 9.5, { align: 'right' });
+    doc.text(`Año : ${now.getFullYear()}`, 286, 13, { align: 'right' });
+    doc.text(`Total Registros : ${totalCount}`, 286, 16.5, { align: 'right' });
+
+    // ---- Pie de página ----
+    doc.setFillColor(248, 249, 250);
+    doc.rect(10, 186, 277, 16, 'F');
     doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(14, 182, 283, 182);
-    
-    // Información institucional en columnas
+    doc.setLineWidth(0.3);
+    doc.line(10, 186, 287, 186);
+
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('UBICANOS', 14, 186);
+    doc.setTextColor(0, 0, 0);
+    doc.text('UBICANOS', 14, 190);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.text('Campamento San José Km. 513\nPanamericana Norte\nProvincia de Virú\nRegión La Libertad.', 14, 189.5);
-    
+    doc.text('Campamento San José Km. 513\nPanamericana Norte\nProvincia de Virú\nRegión La Libertad.', 14, 193.5);
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('HORARIO DE ATENCIÓN', 120, 186);
+    doc.text('HORARIO DE ATENCIÓN', 120, 190);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.text('De lunes a viernes:\n09:00 am a 03:00 pm', 120, 189.5);
-    
+    doc.text('De lunes a viernes:\n09:00 am a 03:00 pm', 120, 193.5);
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('TELEFONOS', 210, 186);
+    doc.text('TELEFONOS', 210, 190);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.text('044-272286\nAnexo 2030 Subgerencia', 210, 189.5);
-    
+    doc.text('044-272286\nAnexo 2030 Subgerencia', 210, 193.5);
+
     // Paginación
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text(`${page}/${totalPages}`, 148.5, 202, { align: 'center' });
+    doc.setTextColor(0, 77, 153);
+    doc.text(`${page}/${totalPages}`, 148.5, 199, { align: 'center' });
 }
 
 // =============================================================
@@ -1750,7 +1822,7 @@ function exportarPDF() {
         // -------------------------------------------------------------
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         
-        let currentY = 32;
+        let currentY = 40;
         let currentCol = 0;
         const colX = [14, 108];
         const colWidth = 88;
@@ -1770,11 +1842,11 @@ function exportarPDF() {
             if (currentY + neededHeight > maxY) {
                 if (currentCol === 0) {
                     currentCol = 1;
-                    currentY = 32;
+                    currentY = 40;
                 } else {
                     doc.addPage();
                     currentCol = 0;
-                    currentY = 32;
+                    currentY = 40;
                 }
             }
         }
@@ -1785,13 +1857,13 @@ function exportarPDF() {
             checkSpace(16.5);
 
             // 1. Caja de Título de la Clase
-            doc.setFillColor(241, 245, 249); // slate-100
-            doc.setDrawColor(203, 213, 225); // slate-300
+            doc.setFillColor(0, 77, 153); // Azul PECH
+            doc.setDrawColor(0, 77, 153);
             doc.setLineWidth(0.2);
             doc.rect(colX[currentCol], currentY, colWidth, 6, 'FD');
             
-            doc.setTextColor(15, 23, 42); // slate-900
-            doc.setFont('helvetica', 'bolditalic');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
             doc.setFontSize(8.5);
             doc.text(clase.toUpperCase(), colX[currentCol] + 2, currentY + 4.2);
 
@@ -1949,8 +2021,8 @@ function exportarPDF() {
         doc.autoTable({
             head: [headRow],
             body: body,
-            startY: 32,
-            margin: { top: 32, bottom: 25, left: 10, right: 10 },
+            startY: 34,
+            margin: { top: 34, bottom: 26, left: 10, right: 10 },
             styles: { fontSize: 6.5, cellPadding: 1.5, overflow: 'linebreak' },
             headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold', halign: 'center' },
             columnStyles: colStyles
@@ -1971,15 +2043,26 @@ function exportarPDF() {
         // -------------------------------------------------------------
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
         const rows = getTableRows(config.tableId);
+        const totRow = getTotalesFromFooter(config.tableId, config.headers.length);
+        if (totRow) rows.push(totRow);
+
+        // Alinear a la derecha las columnas numéricas según su encabezado
+        const columnStyles = {};
+        config.headers.forEach((h, i) => {
+            if (/(total|precio|stock|saldo|monto|acumulado|ventas|donaciones|inventario|mermas|transacciones|proformas|cantidad|valor)/i.test(h)) {
+                columnStyles[i] = { halign: 'right' };
+            }
+        });
 
         doc.autoTable({
             head:       [config.headers],
             body:       rows,
-            startY:     32, // Margen de cabecera
-            margin:     { top: 32, bottom: 25, left: 14, right: 14 },
-            styles:     { fontSize: 7.5, cellPadding: 2.5 },
-            headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold' },
-            alternateRowStyles: { fillColor: [245, 248, 252] },
+            startY:     34, // Margen de cabecera
+            margin:     { top: 34, bottom: 26, left: 10, right: 10 },
+            styles:     { fontSize: 7.5, cellPadding: 2.5, textColor: [30, 41, 59] },
+            headStyles: { fillColor: [0, 77, 153], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            alternateRowStyles: { fillColor: [241, 245, 249] },
+            columnStyles: columnStyles,
         });
 
         // Estampar cabeceras y pies de página en segunda pasada
@@ -2017,5 +2100,19 @@ function getTableRows(tableId) {
     return Array.from(tbody.querySelectorAll('tr')).map(tr =>
         Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim().replace(/\n+/g, ' '))
     );
+}
+
+// Normaliza la fila de totales del tfoot al ancho de columnas del reporte:
+// etiqueta en la 1ª columna y valor en la última (evita colspans desalineados)
+function getTotalesFromFooter(tableId, numCols) {
+    const table = document.getElementById(tableId);
+    const tr = table && table.querySelector('tfoot tr');
+    if (!tr) return null;
+    const cells = Array.from(tr.querySelectorAll('td')).map(td => td.innerText.trim().replace(/\n+/g, ' '));
+    if (!cells.length) return null;
+    const row = new Array(Math.max(numCols, 1)).fill('');
+    row[0] = cells[0] || '';
+    if (numCols > 1) row[numCols - 1] = cells[cells.length - 1] || '';
+    return row;
 }
 </script>

@@ -73,9 +73,6 @@
                 <h4 class="card-title mb-0">Productos en Inventario</h4>
                 <div>
                     <span class="text-muted me-3"><?php echo count($productos); ?> productos registrados</span>
-                    <button class="btn btn-warning me-2" onclick="agregarStockMasivo()">
-                        <i class="ti ti-package-import me-1"></i>Agregar Stock (+10)
-                    </button>
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-producto" onclick="limpiarFormProducto()">
                         <i class="ti ti-plus me-1"></i>Nuevo Producto
                     </button>
@@ -664,6 +661,13 @@
 <script>
 // Datos de vinculacion clase-centro para filtro en formulario
 const VINCULACIONES = <?php echo json_encode($vinculaciones); ?>;
+
+// Escape de HTML para renderizados dinámicos
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 // Mostrar detalle de producto (lotes + kardex) - Carga desde BD vía AJAX
 function mostrarLotes(productoId, nombreProducto) {
     // Guardar producto actual para crear lotes
@@ -713,8 +717,8 @@ function mostrarLotes(productoId, nombreProducto) {
                     const rowClass = lote.estado_texto === 'Stock Crítico' ? 'table-danger' : '';
                     return `
                         <tr class="${rowClass}">
-                            <td><code>${lote.codigo_lote}</code></td>
-                            <td><span class="text-muted small">${lote.nombre_centro || '-'}</span></td>
+                            <td><code>${escapeHtml(lote.codigo_lote)}</code></td>
+                            <td><span class="text-muted small">${escapeHtml(lote.nombre_centro || '-')}</span></td>
                             <td class="text-center">
                                 <span class="badge ${lote.stock_actual < 50 ? 'bg-warning' : 'bg-success'} fs-6">${parseInt(lote.stock_actual).toLocaleString()}</span>
                             </td>
@@ -724,10 +728,10 @@ function mostrarLotes(productoId, nombreProducto) {
                                 </span>
                             </td>
                             <td class="text-center">
-                                <span class="badge ${estadoClass}">${lote.estado_texto}</span>
+                                <span class="badge ${estadoClass}">${escapeHtml(lote.estado_texto)}</span>
                             </td>
                             <td class="text-center">
-                                <button class="btn btn-white btn-icon" onclick="mostrarModalMerma(${lote.id_lote}, '${lote.codigo_lote}', ${lote.stock_actual})" title="Registrar Merma">
+                                <button class="btn btn-white btn-icon" onclick="mostrarModalMerma(${lote.id_lote})" title="Registrar Merma">
                                     <i class="ti ti-minus text-danger"></i>
                                 </button>
                             </td>
@@ -774,9 +778,9 @@ function mostrarLotes(productoId, nombreProducto) {
                     return `
                         <tr>
                             <td>${new Date(mov.fecha).toLocaleDateString('es-PE')}</td>
-                            <td><span class="badge ${tipoClass}">${mov.tipo_movimiento}</span></td>
-                            <td>${mov.documento || '-'}</td>
-                            <td><code>${mov.codigo_lote || '-'}</code></td>
+                            <td><span class="badge ${tipoClass}">${escapeHtml(mov.tipo_movimiento)}</span></td>
+                            <td>${escapeHtml(mov.documento || '-')}</td>
+                            <td><code>${escapeHtml(mov.codigo_lote || '-')}</code></td>
                             <td class="text-end ${esEntrada ? 'text-success fw-bold' : ''}">${esEntrada ? '+' + cantidad.toLocaleString() : '-'}</td>
                             <td class="text-end ${!esEntrada ? 'text-warning fw-bold' : ''}">${!esEntrada ? '-' + cantidad.toLocaleString() : '-'}</td>
                             <td class="text-end fw-bold">${parseInt(mov.saldo_final || 0).toLocaleString()}</td>
@@ -813,7 +817,12 @@ let modalLotesData = [];
 let modalKardexData = [];
 
 // Mostrar modal para reportar merma
-function mostrarModalMerma(idLote, codigoLote, stockActual) {
+function mostrarModalMerma(idLote) {
+    // Leer datos del lote desde la caché (evita inyectar strings en onclick)
+    const lote = (modalLotesData || []).find(l => l.id_lote == idLote);
+    const codigoLote = lote ? lote.codigo_lote : ('Lote #' + idLote);
+    const stockActual = lote ? lote.stock_actual : 0;
+
     loteActualId = idLote;
     loteActualStock = stockActual;
     
@@ -1658,57 +1667,6 @@ function aplicarFiltros() {
         irAPagina(1);
         
     }, 300); // Esperar 300ms para la animación de desvanecimiento
-}
-
-// =================================================================================
-// AGREGAR STOCK MASIVO (+10 a cada producto)
-// =================================================================================
-function agregarStockMasivo() {
-    Swal.fire({
-        title: 'Agregar Stock Masivo',
-        text: 'Se creara un nuevo lote con 10 unidades para cada producto que maneja stock. ¿Continuar?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Si, agregar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#f59f00',
-        cancelButtonColor: '#6c757d'
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        
-        Swal.fire({
-            title: 'Procesando...',
-            text: 'Creando lotes para todos los productos. Esto puede tomar unos segundos.',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
-        
-        fetch('<?php echo BASE_URL; ?>/index.php?module=produccion_agraria&action=agregar_stock_masivo', {
-            method: 'POST'
-        })
-        .then(r => r.text())
-        .then(text => {
-            const trimmed = text.trim();
-            const jsonStart = trimmed.indexOf('{');
-            const jsonEnd = trimmed.lastIndexOf('}');
-            const result = JSON.parse(trimmed.substring(jsonStart, jsonEnd + 1));
-            
-            if (result.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Stock agregado',
-                    text: 'Productos procesados: ' + result.productos_procesados + ' | Lotes creados: ' + result.lotes_creados + (result.omitidos > 0 ? ' | Omitidos (ya existian): ' + result.omitidos : ''),
-                    timer: 3000,
-                    showConfirmButton: true
-                }).then(() => location.reload());
-            } else {
-                Swal.fire('Error', result.message || 'Error al procesar', 'error');
-            }
-        })
-        .catch(err => {
-            Swal.fire('Error', 'Error de conexion: ' + err.message, 'error');
-        });
-    });
 }
 
 // =================================================================================

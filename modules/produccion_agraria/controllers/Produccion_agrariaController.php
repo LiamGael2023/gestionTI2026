@@ -56,7 +56,6 @@ switch($action) {
     case 'obtener_kardex':
     case 'guardar_lote':
     case 'guardar_merma':
-    case 'agregar_stock_masivo':
     case 'obtener_precio_actual':
     case 'guardar_precio':
     case 'ver_imagen_producto':
@@ -64,8 +63,6 @@ switch($action) {
         break;
     // Acciones AJAX - PUNTO DE VENTA
     case 'buscar_cliente_api':
-    case 'buscar_producto':
-    case 'buscar_clientes':
     case 'guardar_venta':
     case 'crear_cliente_rapido':
         include 'modules/produccion_agraria/controllers/PuntoVentaController.php';

@@ -107,9 +107,14 @@ try {
 
     if ($action === 'consolidado_report_data') {
         header('Content-Type: application/json; charset=utf-8');
+        $filtros = [
+            'id_centro'   => $_GET['id_centro']   ?? '',
+            'fecha_desde' => $_GET['fecha_desde'] ?? '',
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+        ];
         echo json_encode([
             'success' => true,
-            'data'    => $model->getConsolidadoReport(),
+            'data'    => $model->getConsolidadoReport($filtros),
         ]);
         exit;
     }

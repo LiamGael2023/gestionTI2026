@@ -685,50 +685,70 @@ Browser: /produccion_agraria/punto_venta
 ```
 
 `Produccion_agrariaController.php` delega las siguientes acciones a `PuntoVentaController`:
-`punto_venta`, `buscar_producto`, `buscar_clientes`, `guardar_venta`, `crear_cliente_rapido`
+`punto_venta`, `buscar_cliente_api`, `guardar_venta`, `crear_cliente_rapido`
 
-### 16.2. Controller: `PuntoVentaController.php` (86 líneas)
+> **Nota:** Los endpoints `buscar_producto` y `buscar_clientes` fueron **eliminados** (código muerto): la vista busca clientes y productos en los arrays precargados (`productosDisponibles` / `clientesDisponibles`).
+
+### 16.2. Controller: `PuntoVentaController.php` (≈190 líneas)
+
+Todas las operaciones de escritura exigen **token CSRF** (`$_SESSION['csrf_token']`, validado con `hash_equals`). Si falta o es inválido → HTTP 403.
 
 | # | Action | HTTP | AJAX | Propósito |
 |---|--------|------|------|-----------|
-| 1 | `index` (default) | GET | No | Obtiene listas iniciales de clientes, productos y ventas de hoy y renderiza la vista. |
-| 2 | `buscar_producto` | GET | Sí | Busca y retorna la información de un producto por su ID en formato JSON. |
-| 3 | `buscar_clientes` | GET | Sí | Filtra y retorna la lista de clientes coincidentes con el parámetro `q` en JSON. |
-| 4 | `guardar_venta` | POST | Sí | Registra la cabecera y el detalle de la venta. Descuenta stock por FIFO. |
-| 5 | `crear_cliente_rapido` | POST | Sí | Inserta un cliente con ID temporal incremental de forma ágil desde el formulario de venta. |
+| 1 | `index` (default) | GET | No | Obtiene listas iniciales de clientes y productos y renderiza la vista. |
+| 2 | `guardar_venta` | POST | Sí | Registra la venta. Valida CSRF y **recalcula precios en servidor** (no confía en el precio/total del cliente). |
+| 3 | `crear_cliente_rapido` | POST | Sí | Inserta un cliente temporal (tipo Externo). Valida CSRF. |
+| 4 | `buscar_cliente_api` | GET | Sí | Consulta DNI/RUC (RENIEC/SUNAT/PECH) y registra el cliente si no existe. Valida CSRF. |
 
-### 16.3. Model: `PuntoVentaModel.php` (338 líneas)
+El `catch` final captura `\Throwable`, loguea el detalle y devuelve un JSON genérico (sin filtrar mensajes internos de SQL/API).
+
+### 16.3. Model: `PuntoVentaModel.php` (≈545 líneas)
 
 Todas las consultas SQL operan sobre el esquema `BD_PRODUCCIONDESARROLLO.dbo.*`.
 
 #### Métodos:
 | Método | Propósito |
 |--------|-----------|
-| `listarClientes()` | Todos los clientes ordenados por nombre |
-| `buscarClientes($query)` | Búsqueda por nombre con `LIKE`, incluye tipo (Planilla/Externo) |
-| `listarProductosVenta()` | Productos con `maneja_stock=1` + precio calculado + stock total |
-| `buscarProducto($id)` | Producto individual con precio calculado |
+| `listarClientes()` | Todos los clientes activos ordenados por nombre. Retorna `tipo_cliente` como `'Planilla'`/`'Externo'` (0=Planilla, 1=Externo) |
+| `listarProductosVenta()` | Productos con `maneja_stock=1` + precio calculado + stock total. Último precio con tie-break `ROW_NUMBER() ... id_historial DESC` |
+| `buscarProducto($id)` | Producto individual con precio calculado. Mismo tie-break |
 | `calcularPrecio($producto)` | Helper privado: UIT × porcentaje o precio variable |
-| `guardarVenta($data)` | **Transaccional FIFO**: inserta cabecera `PENDIENTE` → descuenta lotes → kardex → detalle |
-| `listarVentasHoy()` | Ventas del día (todas, no solo PROCESADO) |
-| `crearClienteRapido($nombre)` | Genera `dni_ruc = TEMPyyMMddXXXX`, inserta con `tipo_cliente=0` |
+| `guardarVenta($data)` | **Transaccional FIFO**: recalcula precios en servidor → inserta cabecera → descuenta lotes con `WITH (UPDLOCK)` → kardex → una fila de detalle por lote |
+| `crearClienteRapido($nombre)` | Genera `dni_ruc = TEMPyyMMddXXXX`, inserta con `tipo_cliente=1` (Externo), `OUTPUT INSERTED.id_cliente` |
+
+> **Seguridad de precios:** `guardarVenta()` ignora `precio`, `subtotal` y `total` enviados por el cliente; relanza el precio oficial del producto (`calcularPrecio`), valida cantidad entera > 0 y recomputa el total. La edición visual del precio en el carrito solo aplica en el cliente (útil para mostrar), el monto real lo define el servidor.
 
 #### Flujo de `guardarVenta()`:
-1. Obtiene `id_centro` del primer producto vendido
-2. Inserta cabecera en `transaccion` con `estado='PENDIENTE'`, `tipo_op='VENTA'`, `OUTPUT INSERTED.id_transaccion`
-3. Itera ítems vendidos. Para cada producto, busca lotes activos (`stock_actual > 0`) ordenados por `fecha_creacion ASC, id_lote ASC` (FIFO)
-4. Itera lotes descontando: resta stock, registra kardex (`tipo_movimiento='VENTA'`), inserta `transaccion_detalle`
-5. Si stock insuficiente, lanza Exception
+1. Valida `id_cliente` e ítems; normaliza cantidades (entero > 0)
+2. Por cada ítem: recarga el producto con `buscarProducto()` → precio oficial → subtotal; acumula total
+3. Soporta `fecha` opcional (`Y-m-d`, ventas retroactivas); si no viene, `GETDATE()`
+4. Inserta cabecera en `transaccion` con `estado='PENDIENTE'` (o `PROCESADO` si PLANILLA), `tipo_op='VENTA'`, `OUTPUT INSERTED.id_transaccion`
+5. Por cada ítem: busca lotes activos con `WITH (UPDLOCK, ROWLOCK)` (evita sobreventa concurrente) ordenados por `fecha_creacion ASC, id_lote ASC` (FIFO), filtrando por el **centro propio del producto**
+6. Itera lotes descontando: resta stock, registra kardex (`tipo_movimiento='VENTA'`), acumula `asignaciones` por lote
+7. Inserta **una fila de `transaccion_detalle` por cada lote usado** (trazabilidad FIFO completa)
+8. Si stock insuficiente, lanza Exception → rollback
 
-### 16.4. Vista: `views/punto_venta/index.php` (868 líneas)
+### 16.4. Vista: `views/punto_venta/index.php` (~1015 líneas)
 
-Consiste en una interfaz monolítica enriquecida con Bootstrap 5 / Tabler y JavaScript vanilla.
+Interfaz monolítica Bootstrap 5 / Tabler con JavaScript vanilla. **Layout POS de 2 columnas:**
+
+```
+[Catálogo de Productos (col-lg-8)]          [Cliente y Pago (col-lg-4)]
+  [🔍 Buscar producto] [◻ Solo stock]         Cliente ▾ | Fecha | Método
+  [ grid #productos-grid de tarjetas:         [◻ Desc. planilla] [Modo Cola]
+    imagen BLOB, nombre, badge stock,        [Carrito (col-lg-4)]
+    precio — click para agregar ]             [ tabla items, header sticky,
+    scroll interno                            scroll interno ]
+                                              [ Barra fija #pos-cart-footer:
+                                                TOTAL | Limpiar | Procesar ]
+[Historial "Últimas Ventas Procesadas" (full width)]
+```
 
 #### Elementos Clave de la Interfaz:
-*   **Búsqueda y Autocompletado**:
-    *   **Clientes**: Filtrado reactivo en el cliente sobre la colección `clientesDisponibles`. Si el cliente no existe, muestra el enlace "Registrar rápido". Al pulsarlo, llama por AJAX a `crear_cliente_rapido`, añade el cliente a la lista local y lo selecciona automáticamente.
-    *   **Productos**: Búsqueda reactiva local que despliega un dropdown personalizado mostrando nombre, unidad de medida y precio vigente. Al seleccionarse, se añade a la tabla de ítems con cantidad `1`.
-*   **Tabla de Ítems Vendidos**: Permite modificar en tiempo real la cantidad y el precio unitario del producto seleccionado, recalculando subtotales y total general automáticamente.
+*   **Catálogo de Productos**: Grid de tarjetas (`renderProductos()`) filtrable en tiempo real por nombre, clase, centro o código (búsqueda sin tildes con `normalizarTexto()`), con toggle **Solo stock** y ordenamiento (con stock primero, agotados al final y sin `pointer-events`). Cada tarjeta muestra la imagen real del producto (BLOB vía `ver_imagen_producto`) o un ícono. Clic → `agregarProductoDirecto(id, event)`.
+*   **Búsqueda y Autocompletado de Clientes**: Filtrado reactivo sobre `clientesDisponibles`. Si no existe, ofrece "Registrar rápido" → AJAX `crear_cliente_rapido`, o consulta RENIEC/SUNAT/PECH vía `buscar_cliente_api` (ambos con CSRF).
+*   **Tabla de Ítems Vendidos**: Permite modificar en tiempo real la cantidad y el precio unitario (solo visual; el servidor recalcula el precio oficial en `guardarVenta`), recalculando subtotales y total.
+*   **Barra fija del carrito** (`#pos-cart-footer`): Total + botones Limpiar/Procesar siempre visibles aunque la tabla haga scroll.
 *   **Modo Venta Masiva (Cola)**:
     *   Diseñado para procesar rápidamente filas de clientes consecutivos.
     *   Al activarse mediante el switch, se mantiene fijo el producto inicial (bloqueado con cantidad 1 para el siguiente cliente) y el método de pago, limpiando el resto del formulario tras guardar.
