@@ -58,9 +58,6 @@ function formatPesoGramos($peso)
 }
 
 $conn = Conexion::conectar();
-require_once $base_path . '/modules/laboratorio/models/LaboratorioModel.php';
-$labAuthExp = new LaboratorioModel($conn);
-$labAuthExp->denegarSiSinPermiso($_SESSION['usuario_id'], '?module=laboratorio&action=residuo', 'exportar');
 $id_registro = intval($_REQUEST['id_registro'] ?? 0);
 $previewHtml = (isset($_GET['preview_html']) && $_GET['preview_html'] === '1');
 

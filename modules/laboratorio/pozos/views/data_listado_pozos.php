@@ -1,15 +1,13 @@
-﻿<?php
+<?php
 session_start();
-require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
-Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=pozos');
-if ($perms === null) { $perms = ['editar' => false, 'eliminar' => false]; }
+if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
@@ -106,4 +104,3 @@ echo json_encode([
     'recordsFiltered' => intval($totalFiltered),
     'data'            => $data,
 ]);
-

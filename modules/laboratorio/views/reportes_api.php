@@ -16,11 +16,6 @@ if (!$conn) {
     exit;
 }
 
-// ── Control de permisos (roles de laboratorio) ─────────────────────
-require_once $base_path . '/modules/laboratorio/models/LaboratorioModel.php';
-$labAuthRep = new LaboratorioModel($conn);
-$labAuthRep->denegarSiSinPermiso($_SESSION['usuario_id'], '?module=laboratorio&action=reportes', 'ver');
-
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 try {

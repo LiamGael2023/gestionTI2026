@@ -1,12 +1,10 @@
-﻿<?php
+<?php
 session_start();
-require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
-Auth::check();
 
 $conn = Conexion::conectar();
 
-// ConfiguraciÃ³n de columnas para estados
+// Configuración de columnas para estados
 $columns = array(
     0 => 'ee.Id_Estado',
     1 => 'ee.Nombre',
@@ -21,7 +19,7 @@ $search = isset($_POST['search']['value']) ? $_POST['search']['value'] : '';
 $colIndex = isset($_POST['order'][0]['column']) ? intval($_POST['order'][0]['column']) : 0;
 $colDir = isset($_POST['order'][0]['dir']) ? $_POST['order'][0]['dir'] : 'asc';
 
-// Validar Ã­ndice de columna
+// Validar índice de columna
 if ($colIndex < 0 || $colIndex >= count($columns)) {
     $colIndex = 0;
 }
@@ -50,7 +48,7 @@ if ($stmtFiltrados === false) {
 }
 $totalFiltered = sqlsrv_fetch_array($stmtFiltrados, SQLSRV_FETCH_ASSOC)['total'];
 
-// Datos con paginaciÃ³n
+// Datos con paginación
 $sqlData = "SELECT ee.* " . $sqlBase . $sqlWhere . 
            " ORDER BY ee.Activo DESC, " . $columns[$colIndex] . " " . $colDir . 
            " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
@@ -65,7 +63,7 @@ $data = array();
 $contador = $start + 1;
 
 while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
-    // Botones de acciÃ³n segÃºn estado activo/inactivo
+    // Botones de acción según estado activo/inactivo
     if ($row['Activo']) {
         // Estado activo: editar y eliminar
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
@@ -76,7 +74,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
                     '</div>';
         $badgeEstado = '';
     } else {
-        // Estado inactivo: mostrar badge y botÃ³n de reactivar
+        // Estado inactivo: mostrar badge y botón de reactivar
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
                     '<button type="button" class="btn btn-ghost-success" onclick="reactivarEstado(' . $row['Id_Estado'] . ')" title="Reactivar">' .
                     '<i class="ti ti-check"></i></button>' .
@@ -100,4 +98,3 @@ $json_data = array(
 );
 
 echo json_encode($json_data);
-

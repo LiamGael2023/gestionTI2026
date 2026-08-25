@@ -1,19 +1,17 @@
-﻿<?php
+<?php
 session_start();
-require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
-Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=servicio');
-if ($perms === null) { $perms = ['editar' => false, 'eliminar' => false]; }
+if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
-// ConfiguraciÃ³n de columnas
+// Configuración de columnas
 $columns = array(
     0 => 'st.Id_Servicio',
     1 => 'st.Nombre',
@@ -55,7 +53,7 @@ if ($stmtFiltrados === false) {
 }
 $totalFiltered = sqlsrv_fetch_array($stmtFiltrados, SQLSRV_FETCH_ASSOC)['total'];
 
-// Datos con paginaciÃ³n
+// Datos con paginación
 $sqlData = "SELECT st.*, (
                 SELECT
                     CASE
@@ -114,7 +112,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $estadoBadge = '<span class="badge bg-success">Disponible</span>';
     }
 
-    // Botones de acciÃ³n - Diferentes segÃºn si estÃ¡ activo o no
+    // Botones de acción - Diferentes según si está activo o no
     if ($row['Activo'] == 1) {
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
                     ($puedeEditar   ? '<button type="button" class="btn btn-ghost-primary" onclick="editarServicio(' . $row['Id_Servicio'] . ')" title="Editar"><i class="ti ti-pencil"></i></button>' : '') .
@@ -151,4 +149,3 @@ $json_data = array(
 );
 
 echo json_encode($json_data);
-

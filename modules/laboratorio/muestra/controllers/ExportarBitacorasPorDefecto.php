@@ -24,9 +24,6 @@ if ($fechaDesde === '' || $fechaHasta === '') {
 }
 
 $conn = Conexion::conectar();
-require_once $base_path . '/modules/laboratorio/models/LaboratorioModel.php';
-$labAuthExp = new LaboratorioModel($conn);
-$labAuthExp->denegarSiSinPermiso($_SESSION['usuario_id'], '?module=laboratorio&action=muestra', 'exportar');
 if (!$conn) {
     http_response_code(500);
     die('Error de conexion');

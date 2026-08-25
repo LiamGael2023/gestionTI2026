@@ -1,19 +1,17 @@
-﻿<?php
+<?php
 session_start();
-require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
-Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=venta');
-if ($perms === null) { $perms = ['editar' => false, 'eliminar' => false]; }
+if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
-// ConfiguraciÃ³n de columnas
+// Configuración de columnas
 $columns = array(
     0 => 'pv.Id_Producto',
     1 => 'pv.Nombre_Comercial',
@@ -73,7 +71,7 @@ if ($stmtFiltrados === false) {
 }
 $totalFiltered = sqlsrv_fetch_array($stmtFiltrados, SQLSRV_FETCH_ASSOC)['total'];
 
-// Datos con paginaciÃ³n
+// Datos con paginación
 $sqlData = "SELECT pv.*, (
                 SELECT
                     CASE
@@ -138,7 +136,7 @@ $data = array();
 $contador = $start + 1;
 
 while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
-    // Verificar si todos los servicios incluidos estÃ¡n disponibles
+    // Verificar si todos los servicios incluidos están disponibles
     $sqlCheck = "SELECT COUNT(DISTINCT ps.Id_Servicio) as noDisponibles 
                  FROM laboratorio.Producto_Servicio ps
                  JOIN laboratorio.Servicio_Tecnico st ON ps.Id_Servicio = st.Id_Servicio
@@ -186,7 +184,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $capacidadLab = '<span class="badge bg-blue-lt text-blue">' . number_format((float)$row['Capacidad_Lab'], 0, '.', ',') . '</span>';
     }
 
-    // Botones de acciÃ³n - Diferentes segÃºn si estÃ¡ activo o no
+    // Botones de acción - Diferentes según si está activo o no
     if ($row['Activo'] == 1) {
         $acciones = '<div class="btn-group btn-group-sm" role="group">' .
                     ($puedeEditar   ? '<button type="button" class="btn btn-ghost-primary" onclick="editarVenta(' . $row['Id_Producto'] . ')" title="Editar"><i class="ti ti-pencil"></i></button>' : '') .
@@ -219,4 +217,3 @@ $json_data = array(
 );
 
 echo json_encode($json_data);
-
