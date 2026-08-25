@@ -1,29 +1,31 @@
 <?php
 /**
  * DashboardController — CMS No-Code del Dashboard
- * 
+ *
  * Acciones:
  *   GET  /produccion_agraria/dashboard        → Vista (renderiza el CMS)
  *   AJAX dash_load                            → Config + datos de todos los widgets del usuario
- *   AJAX dash_save                             → Guardar layout del usuario
- *   AJAX dash_reset                            → Resetear a layout por defecto
- *   AJAX dash_widget                           → Datos de un widget individual (refresh)
+ *   AJAX dash_save                            → Guardar layout del usuario
+ *   AJAX dash_reset                           → Resetear a layout por defecto
+ *   AJAX dash_widget                          → Datos de un widget individual (refresh)
  */
 
-$base_path = dirname(dirname(dirname(__DIR__)));
+try {
+    $base_path = dirname(dirname(dirname(__DIR__)));
 
-if (!isset($conn) || !$conn) {
-    require_once $base_path . '/config/db.php';
-    require_once $base_path . '/core/Auth.php';
-    Auth::check();
-    $conn = Conexion::conectar();
-}
+    if (!isset($conn) || !$conn) {
+        require_once $base_path . '/config/db.php';
+        require_once $base_path . '/core/Auth.php';
+        Auth::check();
+        $conn = Conexion::conectar();
+    }
 
-require_once __DIR__ . '/../models/DashboardModel.php';
-$dashModel = new DashboardModel($conn);
+    require_once __DIR__ . '/../models/DashboardModel.php';
+    $dashModel = new DashboardModel($conn);
 
-$action = $_GET['action'] ?? 'index';
-$usuarioId = $_SESSION['usuario_id'] ?? 0;
+    $action     = $_GET['action'] ?? 'index';
+    $usuarioId  = $_SESSION['usuario_id'] ?? 0;
+    $permisos   = Auth::permisosModulo('produccion_agraria');
 
 // ============================================================
 // VISTA PRINCIPAL
@@ -31,8 +33,8 @@ $usuarioId = $_SESSION['usuario_id'] ?? 0;
 if ($action === 'dashboard' || $action === 'index') {
     $widgetCatalog = $dashModel->getWidgetCatalog();
     include __DIR__ . '/../views/dashboard/index.php';
-    return;
-}
+    // Lanzar return fuera del try (después del catch) para no ejecutar el resto
+} else {
 
 // ============================================================
 // AJAX: Cargar todos los widgets del usuario
@@ -120,9 +122,9 @@ if ($action === 'dash_widget') {
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json; charset=utf-8');
 
-    $tipo = $_GET['tipo'] ?? '';
+    $tipo       = $_GET['tipo'] ?? '';
     $configJson = $_GET['config'] ?? '{}';
-    $config = json_decode($configJson, true) ?: [];
+    $config     = json_decode($configJson, true) ?: [];
 
     if (empty($tipo)) {
         echo json_encode(['success' => false, 'message' => 'Falta tipo de widget']);
@@ -135,5 +137,16 @@ if ($action === 'dash_widget') {
         exit;
     }
     echo json_encode(['success' => true, 'data' => $data]);
+    exit;
+}
+
+} // fin else del bloque de acciones AJAX
+
+} catch (Throwable $e) {
+    error_log('[DashboardController] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    while (ob_get_level()) { ob_end_clean(); }
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Error interno del servidor. Por favor, intente nuevamente.']);
     exit;
 }

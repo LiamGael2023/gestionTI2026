@@ -176,7 +176,7 @@ class ReportesModel {
 
     /**
      * Calcula el valor monetario actual del inventario por lote,
-     * cruzando stock con precio vigente (fijo, variable o UIT)
+     * cruzando stock con precio vigente (variable o UIT)
      */
     public function getValorizacionInventario($filtros = []) {
         $params = [];

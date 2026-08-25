@@ -185,9 +185,10 @@ La constraint `CK_transaccion_metodo_pago` en SQL Server solo permite `'VENTA'` 
 ### Tipos de Precio
 | Tipo | Descripción |
 |------|-------------|
-| **Fijo** | Precio definido manualmente |
 | **UIT** | `valor_uit(año) * porcentaje_uit` |
 | **Variable** | Último precio de `historial_precio` (más reciente) |
+
+> **Nota (2026-07-27):** El sistema maneja únicamente dos tipos de precio: **UIT** (basado en porcentaje de la Unidad Impositiva Tributaria) y **Variable** (último precio registrado en el historial). La CHECK constraint `CK_producto_tipo_precio` en SQL Server solo permite estos dos valores.
 
 ---
 
@@ -616,7 +617,6 @@ Librerías CDN cargadas al final: SweetAlert2, jsPDF, jsPDF AutoTable.
 #### Tipos de Precio
 | Tipo | Lógica |
 |------|--------|
-| **Fijo** | Manual (no expuesto en formulario inventario) |
 | **UIT** | `precio = valor_uit * porcentaje_uit`. Porcentaje guardado en `producto.porcentaje_uit`. Calculado client-side |
 | **Variable** | Último registro de `historial_precio` (más reciente). Nuevos precios se insertan al guardar el producto |
 

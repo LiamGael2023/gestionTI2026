@@ -115,8 +115,13 @@ class BandejaModel {
         
         $stmtDet = sqlsrv_query($this->db, $sqlDet, [$idTransaccion]);
         $detalles = [];
-        while ($row = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC)) {
-            $detalles[] = $row;
+        if ($stmtDet !== false) {
+            while ($row = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC)) {
+                $detalles[] = $row;
+            }
+            sqlsrv_free_stmt($stmtDet);
+        } else {
+            error_log('[BandejaModel::obtenerProforma] Error al obtener detalles para ID ' . $idTransaccion . ': ' . print_r(sqlsrv_errors(), true));
         }
         
         $proforma['detalles'] = $detalles;

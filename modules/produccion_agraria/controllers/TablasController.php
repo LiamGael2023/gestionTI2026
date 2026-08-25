@@ -2,7 +2,7 @@
 try {
     // Calcular ruta base
     $base_path = dirname(dirname(dirname(__DIR__)));
-    
+
     // Si no hay conexión, cargarla
     if (!isset($conn) || !$conn) {
         require_once $base_path . '/config/db.php';
@@ -10,12 +10,15 @@ try {
         Auth::check();
         $conn = Conexion::conectar();
     }
-    
+
     require_once __DIR__ . '/../models/TablasModel.php';
-    
-    $model = new TablasModel($conn);
+
+    $model  = new TablasModel($conn);
     $action = $_GET['action'] ?? $_POST['action'] ?? 'listar';
-    $tabla = $_GET['tabla'] ?? 'clase';
+    $tabla  = $_GET['tabla'] ?? 'clase';
+
+    // Permisos granulares del módulo para el usuario en sesión
+    $permisos = Auth::permisosModulo('produccion_agraria');
     
     // ========================================
     // ACCIONES AJAX/JSON - Solo estas envían JSON headers
@@ -23,6 +26,10 @@ try {
     
     if ($action == 'guardar_clase') {
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_crear'] && !$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para esta acción.']);
+            exit;
+        }
         $result = $model->guardarClase($_POST);
         echo json_encode($result);
         exit;
@@ -30,7 +37,11 @@ try {
     
     if ($action == 'eliminar_clase') {
         header('Content-Type: application/json; charset=utf-8');
-        $id = $_POST['id_clase'] ?? 0;
+        if (!$permisos['pueden_eliminar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar registros.']);
+            exit;
+        }
+        $id      = $_POST['id_clase'] ?? 0;
         $success = $model->eliminarClase($id);
         echo json_encode(['success' => $success]);
         exit;
@@ -51,6 +62,10 @@ try {
     // --- CENTRO_PRODUCCION ---
     if ($action == 'guardar_centro') {
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_crear'] && !$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para esta acción.']);
+            exit;
+        }
         $result = $model->guardarCentro($_POST);
         echo json_encode($result);
         exit;
@@ -58,7 +73,11 @@ try {
     
     if ($action == 'eliminar_centro') {
         header('Content-Type: application/json; charset=utf-8');
-        $id = $_POST['id_centro'] ?? 0;
+        if (!$permisos['pueden_eliminar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar registros.']);
+            exit;
+        }
+        $id      = $_POST['id_centro'] ?? 0;
         $success = $model->eliminarCentro($id);
         echo json_encode(['success' => $success]);
         exit;
@@ -99,6 +118,10 @@ try {
     // --- UIT ---
     if ($action == 'guardar_uit') {
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_crear'] && !$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para esta acción.']);
+            exit;
+        }
         $result = $model->guardarUit($_POST);
         echo json_encode($result);
         exit;
@@ -106,7 +129,11 @@ try {
     
     if ($action == 'eliminar_uit') {
         header('Content-Type: application/json; charset=utf-8');
-        $anio = $_POST['anio'] ?? 0;
+        if (!$permisos['pueden_eliminar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar registros.']);
+            exit;
+        }
+        $anio    = $_POST['anio'] ?? 0;
         $success = $model->eliminarUit($anio);
         echo json_encode(['success' => $success]);
         exit;
@@ -137,6 +164,10 @@ try {
 
     if ($action == 'guardar_cliente') {
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_crear'] && !$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para esta acción.']);
+            exit;
+        }
         $result = $model->guardarCliente($_POST);
         echo json_encode($result);
         exit;
@@ -144,7 +175,11 @@ try {
     
     if ($action == 'eliminar_cliente') {
         header('Content-Type: application/json; charset=utf-8');
-        $id = $_POST['id_cliente'] ?? 0;
+        if (!$permisos['pueden_eliminar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar registros.']);
+            exit;
+        }
+        $id      = $_POST['id_cliente'] ?? 0;
         $success = $model->eliminarCliente($id);
         echo json_encode(['success' => $success]);
         exit;
@@ -174,9 +209,10 @@ try {
     
     include __DIR__ . '/../views/tablas/index.php';
     
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log('[TablasController] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Error interno del servidor. Por favor, intente nuevamente.']);
 }
 ?>

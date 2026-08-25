@@ -208,7 +208,6 @@
                             <label class="form-label">Tipo de Precio</label>
                             <select class="form-select" id="tipo_precio" name="tipo_precio" onchange="togglePorcentajeUIT()">
                                 <option value="">Seleccione...</option>
-                                <option value="Fijo">Fijo (manual)</option>
                                 <option value="Variable">Variable (historial)</option>
                                 <option value="UIT">Porcentaje UIT</option>
                             </select>
@@ -1333,11 +1332,12 @@ function editarProducto(id) {
                     }
                     filtrarClasesPorCentro();
                     document.getElementById('id_clase').value = data.id_clase;
-                    // Tipo de precio: si el valor actual no está entre las opciones, añadirlo dinámicamente
+                    // Tipo de precio: si el valor actual no está entre las opciones validas, añadirlo dinámicamente
                     const selectTipo = document.getElementById('tipo_precio');
                     const tipoPrecioVal = data.tipo_precio || '';
+                    const TIPOS_VALIDOS = ['Variable', 'UIT'];
                     let opcionExiste = Array.from(selectTipo.options).some(o => o.value === tipoPrecioVal);
-                    if (tipoPrecioVal && !opcionExiste) {
+                    if (tipoPrecioVal && !opcionExiste && TIPOS_VALIDOS.includes(tipoPrecioVal)) {
                         const opt = document.createElement('option');
                         opt.value = tipoPrecioVal;
                         opt.textContent = tipoPrecioVal + ' (actual)';
@@ -1481,12 +1481,12 @@ async function handleSubmitProducto(e) {
     
     // Validar tipo_precio: permitir solo valores permitidos por la CHECK constraint
     const tipoPrecioVal = document.getElementById('tipo_precio').value;
-    const TIPOS_PERMITIDOS = ['Fijo', 'Variable', 'UIT'];
+    const TIPOS_PERMITIDOS = ['Variable', 'UIT'];
     if (!TIPOS_PERMITIDOS.includes(tipoPrecioVal)) {
         Swal.fire({
             icon: 'warning',
             title: 'Tipo de precio requerido',
-            text: 'Debe seleccionar un Tipo de Precio válido (Fijo, Variable o UIT).',
+            text: 'Debe seleccionar un Tipo de Precio válido (Variable o UIT).',
             confirmButtonText: 'Entendido'
         });
         return;

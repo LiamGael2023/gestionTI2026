@@ -7,14 +7,16 @@ set_error_handler(function($severity, $message, $file, $line) {
     ob_clean();
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $message, 'file' => $file, 'line' => $line]);
+    // Loguear internamente con detalle, pero NO exponer rutas al cliente
+    error_log("[BandejaController] PHP Error ($severity): $message en $file:$line");
+    echo json_encode(['success' => false, 'message' => 'Error interno del servidor.']);
     exit;
 });
 
 try {
     // Calcular ruta base
     $base_path = dirname(dirname(dirname(__DIR__)));
-    
+
     // Si no hay conexión, cargarla
     if (!isset($conn) || !$conn) {
         require_once $base_path . '/config/db.php';
@@ -22,34 +24,41 @@ try {
         Auth::check();
         $conn = Conexion::conectar();
     }
-    
+
     require_once __DIR__ . '/../models/BandejaModel.php';
-    
-    $model = new BandejaModel($conn);
+
+    $model  = new BandejaModel($conn);
     $action = $_GET['action'] ?? $_POST['action'] ?? 'index';
+
+    // Permisos granulares para el usuario en sesión
+    $permisos = Auth::permisosModulo('produccion_agraria');
     
     // ========================================
     // ACCIONES AJAX/JSON
     // ========================================
     
     if ($action == 'obtener_proforma') {
-        error_log('[BandejaController] obtener_proforma - ID: ' . ($_GET['id'] ?? 'null'));
-        // Limpiar TODO el output buffer acumulado (header.php, etc)
+        // Solo loguear en modo DEBUG para evitar log excesivo en produccion
+        if (!empty($_ENV['APP_DEBUG'])) {
+            error_log('[BandejaController] obtener_proforma - ID: ' . ($_GET['id'] ?? 'null'));
+        }
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
-        $id = intval($_GET['id'] ?? 0);
+        $id      = intval($_GET['id'] ?? 0);
         $proforma = $model->obtenerProforma($id);
-        $json = json_encode($proforma ?: ['error' => 'Proforma no encontrada']);
-        error_log('[BandejaController] Respuesta: ' . substr($json, 0, 200));
-        echo $json;
+        echo json_encode($proforma ?: ['error' => 'Proforma no encontrada']);
         exit;
     }
     
     if ($action == 'procesar_proforma') {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para procesar proformas.']);
+            exit;
+        }
         $data = json_decode(file_get_contents('php://input'), true);
-        $id = intval($data['id_transaccion'] ?? 0);
+        $id   = intval($data['id_transaccion'] ?? 0);
         $result = $model->procesarProforma($id, $data);
         echo json_encode($result);
         exit;
@@ -58,8 +67,12 @@ try {
     if ($action == 'anular_proforma') {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
-        $data = json_decode(file_get_contents('php://input'), true);
-        $id = intval($data['id_transaccion'] ?? 0);
+        if (!$permisos['pueden_editar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para anular proformas.']);
+            exit;
+        }
+        $data   = json_decode(file_get_contents('php://input'), true);
+        $id     = intval($data['id_transaccion'] ?? 0);
         $motivo = $data['motivo'] ?? '';
         $result = $model->anularProforma($id, $motivo);
         echo json_encode($result);
@@ -90,38 +103,33 @@ try {
         exit;
     }
     
-    // Guardar nuevo voucher (con archivo BLOB opcional)
     if ($action == 'guardar_voucher') {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
-        require_once __DIR__ . '/../models/VoucherModel.php';
-        $voucherModel = new VoucherModel($conn);
-        
-        $input = file_get_contents('php://input');
-        error_log("[BandejaController] Raw input: " . substr($input, 0, 200));
-        
-        $data = json_decode($input, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            error_log("[BandejaController] JSON Error: " . json_last_error_msg());
-            echo json_encode(['success' => false, 'message' => 'Error JSON: ' . json_last_error_msg()]);
+        if (!$permisos['pueden_crear']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para registrar vouchers.']);
             exit;
         }
-        
+        require_once __DIR__ . '/../models/VoucherModel.php';
+        $voucherModel = new VoucherModel($conn);
+
+        $input = file_get_contents('php://input');
+        $data  = json_decode($input, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('[BandejaController] JSON Error guardar_voucher: ' . json_last_error_msg());
+            echo json_encode(['success' => false, 'message' => 'Error al procesar la solicitud.']);
+            exit;
+        }
+
         // Procesar archivo BLOB si viene en base64
         if (!empty($data['archivo_base64']) && !empty($data['archivo_nombre'])) {
-            error_log("[BandejaController] Archivo recibido: " . $data['archivo_nombre']);
-            // Decodificar base64 y preparar para SQL Server
             $archivo_binario = base64_decode($data['archivo_base64']);
             if ($archivo_binario !== false) {
                 $data['archivo_blob'] = $archivo_binario;
-                error_log("[BandejaController] Archivo decodificado: " . strlen($archivo_binario) . " bytes");
-            } else {
-                error_log("[BandejaController] Error al decodificar base64");
             }
         }
-        
+
         $result = $voucherModel->guardarVoucher($data);
-        error_log("[BandejaController] Resultado: " . json_encode($result));
         echo json_encode($result);
         exit;
     }
@@ -215,16 +223,19 @@ try {
         exit;
     }
     
-    // Eliminar voucher completamente
     if ($action == 'eliminar_voucher') {
         while (ob_get_level()) { ob_end_clean(); }
         header('Content-Type: application/json; charset=utf-8');
+        if (!$permisos['pueden_eliminar']) {
+            echo json_encode(['success' => false, 'message' => 'No tienes permiso para eliminar vouchers.']);
+            exit;
+        }
         require_once __DIR__ . '/../models/VoucherModel.php';
         $voucherModel = new VoucherModel($conn);
-        
-        $data = json_decode(file_get_contents('php://input'), true);
+
+        $data     = json_decode(file_get_contents('php://input'), true);
         $idVoucher = intval($data['id_voucher'] ?? 0);
-        
+
         $result = $voucherModel->eliminarVoucher($idVoucher);
         echo json_encode($result);
         exit;
@@ -279,6 +290,7 @@ try {
     while (ob_get_level()) { ob_end_clean(); }
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+    error_log('[BandejaController] Throwable: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    echo json_encode(['success' => false, 'message' => 'Error interno del servidor. Por favor, intente nuevamente.']);
     exit;
 }

@@ -111,7 +111,7 @@ try {
         '4. consultar_vouchers: Vouchers de deposito.' . "\n" .
         '   Params: fecha_desde, fecha_hasta, asignado (si/no).' . "\n" .
         '5. consultar_productos: Catalogo de productos con precios vigentes.' . "\n" .
-        '   Params: clase, centro, tipo_precio (UIT/Variable/Fijo), nombre.' . "\n" .
+        '   Params: clase, centro, tipo_precio (UIT/Variable), nombre.' . "\n" .
         '   Ej: "productos con precio UIT" → {"tool":"consultar_productos","params":{"tipo_precio":"UIT"}}' . "\n" .
         '6. consultar_clientes: Directorio de clientes.' . "\n" .
         '   Params: nombre, tipo (Planilla/Externo).' . "\n" .

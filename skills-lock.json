@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "improve-codebase-architecture": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/improve-codebase-architecture/SKILL.md",
+      "computedHash": "569299a60c8e93880f3b3c1eca55578f58f7e1a4155876edb4cb814da3d6b3ea"
+    },
+    "sqlserver-expert": {
+      "source": "fabriciofs/mcp-postgres",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/sqlserver-expert/SKILL.md",
+      "computedHash": "0555d5d90a43134e812da3826d6bc3d180d71381d56e48ebe8cefa93e457a870"
+    }
+  }
+}
