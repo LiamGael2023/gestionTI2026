@@ -1,15 +1,20 @@
 <?php
 /**
- * ExportarCalidadAgua.php — v2 (plantilla "RESULTADOS ... AGUAS SUPERFICIALES - 2026.xlsx")
+ * ExportarCalidadAgua.php — v5 (limpia, 2026-08-25)
  * Exporta el informe de Calidad Superficial de un proyecto (Es_Control_Calidad=1).
  *
  * Comportamiento (decisiones del usuario):
- *  - Solo se exportan los parámetros que tienen al menos UN resultado no nulo en alguna estación.
- *    Si todas las estaciones están vacías, la fila del parámetro se ELIMINA del Excel
- *    (secciones, nota y bloque LMP se reacomodan automáticamente).
- *  - MAX/MIN se calculan en PHP y se escriben como valores (nada de fórmulas: se romperían al
- *    quitar filas y no se recalcularían en visores sin cálculo automático).
- *  - SIN bordes y SIN rellenos: ninguna celda lleva borde; todo queda en blanco.
+ *  - Plantilla: "RESULTADOS ... AGUAS SUPERFICIALES.xlsx" (arreglada por el usuario,
+ *    SIN dibujos ni gráficos → el archivo sale íntegro, Excel no pide reparar).
+ *  - Solo se exportan los parámetros con al menos UN resultado no nulo en alguna estación.
+ *    Si todas las estaciones están vacías, la fila del parámetro se ELIMINA del Excel.
+ *  - MAX/MIN se calculan en PHP y se escriben como valores (sin fórmulas).
+ *  - Cifras EXACTAS de BD: valor sin round() + formato General (la plantilla hereda
+ *    formatos que redondean la visualización: contable sin decimales, 0.0, [0]).
+ *  - Colores explícitos: azul FUERTE 335693 (título, cabeceras, secciones) + texto blanco
+ *    bold; azul SUAVE DAE3F3 (filas de datos y LMP) + texto negro.
+ *  - Config: db.php → config.php → Auth.php (patrón ExportarProyectoMonitoreo; sin
+ *    config.php el redirect de sesión vencida fatala por BASE_URL indefinida).
  *
  * Uso: ExportarCalidadAgua.php?id_proyecto=X
  */
@@ -19,6 +24,7 @@ ini_set('display_errors', '0');
 
 $base_path = realpath(dirname(__FILE__) . '/../../../../');
 require_once $base_path . '/config/db.php';
+require_once $base_path . '/config/config.php';
 require_once $base_path . '/core/Auth.php';
 
 Auth::check();
@@ -32,8 +38,8 @@ require_once $autoloadLibs;
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 // ============================================================
 // HELPERS
@@ -44,16 +50,22 @@ function _cs_sinTildes(string $s): string {
     return str_replace($b, $r, $s);
 }
 
-// Normaliza para comparar: MAYÚSCULAS, sin tildes, sin caracteres especiales ni espacios
+// Normaliza para comparar: MAYÚSCULAS, sin tildes, sin caracteres especiales ni espacios.
+// ⚠️ strtoupper ANTES del preg_replace (si va después, "Dren Bitín" → "DB").
 function _cs_norm(string $s): string {
-    return strtoupper(preg_replace('/[^A-Z0-9]/', '', _cs_sinTildes($s)));
+    return preg_replace('/[^A-Z0-9]/', '', strtoupper(_cs_sinTildes($s)));
 }
 
 // Base del nombre de parámetro: quita paréntesis y sufijos (ej. "Amonio (NH4)" → "AMONIO")
 function _cs_base(string $s): string {
-    $t = preg_replace('/\s*\(.*$/', '', trim($s));   // quita "(...)" y lo que sigue
+    $t = preg_replace('/\s*\(.*$/', '', trim($s));
     $t = preg_replace('/[^A-Z0-9]/', '', strtoupper(_cs_sinTildes($t)));
     return $t;
+}
+
+function _cs_palabrasSignificativas(string $texto): array {
+    $t = preg_replace('/[^A-Z0-9 ]/', ' ', strtoupper(_cs_sinTildes($texto)));
+    return array_values(array_filter(explode(' ', $t), fn($p) => strlen($p) >= 3));
 }
 
 function _cs_esNumero($v): bool {
@@ -65,6 +77,13 @@ function _cs_esNumero($v): bool {
 
 function _cs_aNumero($v): float {
     return floatval(str_replace(',', '.', (string)$v));
+}
+
+// Fila final tras eliminar filas sin resultados
+function _cs_filaFinal(int $filaOrig, array $omitidas): int {
+    $menores = 0;
+    foreach ($omitidas as $o) { if ($o < $filaOrig) $menores++; }
+    return $filaOrig - $menores;
 }
 
 // ============================================================
@@ -91,9 +110,8 @@ if (!preg_match('/^CALIDAD\s+SUPERFICIAL\s+(\d{4})\s*-\s*([A-Za-zÁÉÍÓÚÑÜ]
     http_response_code(400);
     die('Nombre de proyecto no reconocido: ' . $nombreProyecto);
 }
-$anio       = $m[1];
-$mesNombre  = ucfirst(strtolower($m[2]));   // "Marzo"
-$mesUpper   = strtoupper($mesNombre);       // "MARZO"
+$anio      = $m[1];
+$mesUpper  = strtoupper($m[2]);        // "MARZO"
 
 // ============================================================
 // MUESTRAS DEL PROYECTO (estaciones)
@@ -119,7 +137,7 @@ if (empty($muestras)) { http_response_code(409); die('El proyecto no tiene muest
 $idsMuestras = array_column($muestras, 'id');
 
 // ============================================================
-// PARÁMETROS ACTIVOS (para mapear nombre del template → Id_Parametro)
+// PARÁMETROS ACTIVOS (nombre → Id_Parametro)
 // ============================================================
 $paramsActivos = [];
 $stmtPa = sqlsrv_query($conn, "SELECT Id_Parametro, Nombre FROM laboratorio.Parametro_Analisis WHERE Activo = 1");
@@ -152,14 +170,15 @@ if ($stmtR) {
 }
 
 // ============================================================
-// PLANTILLA
+// PLANTILLA (arreglada por el usuario: SIN dibujos ni gráficos)
 // ============================================================
-$templatePath = $base_path . '/modules/laboratorio/muestra/plantilla/RESULTADOS ANÁLISIS FISICO QUIMICOS Y MICROBIOLOGICOS DE LA CALIDAD AMBIENTAL DE AGUAS SUPERFICIALES - 2026.xlsx';
+$templatePath = $base_path . '/modules/laboratorio/muestra/plantilla/RESULTADOS ANÁLISIS FISICO QUIMICOS Y MICROBIOLOGICOS DE LA CALIDAD AMBIENTAL DE AGUAS SUPERFICIALES.xlsx';
 if (!file_exists($templatePath)) { http_response_code(500); die('Plantilla no encontrada'); }
+
 $spreadsheet = IOFactory::load($templatePath);
-$sheet = $spreadsheet->getActiveSheet();   // única hoja: "MARZO 2026"
-$sheet->setTitle($mesUpper . ' ' . $anio); // "MARZO 2026"
-$sheet->setShowGridlines(false);           // vista limpia, sin rejilla
+$sheet = $spreadsheet->getActiveSheet();          // única hoja: "MARZO 2026"
+$sheet->setTitle($mesUpper . ' ' . $anio);        // "MARZO 2026"
+$sheet->setShowGridlines(false);
 
 // Título (fila 4): texto fijo + mes - año
 $sheet->getCell('B4')->setValue(
@@ -169,38 +188,22 @@ $sheet->getCell('B4')->setValue(
 
 // ============================================================
 // MAPEO ESTACIONES: cabeceras F7..O7 ↔ muestras
-// Reglas (por puntaje, cada muestra se usa 1 sola vez):
-//   100 = Nivel_Agua normalizado idéntico a la cabecera
-//    80 = Nivel_Agua EMPIEZA con la cabecera  (ej. "CANAL EVACUADOR DEL DESARENADOR" → "CANAL EVACUADOR")
-//    70 = la cabecera EMPIEZA con el Nivel_Agua
-//    60 = la descripción completa contiene TODAS las palabras (≥3 letras) de la cabecera
-//         (ej. "CANAL MADRE: EN LA ENTRADA AL DESARENADOR" → "ENTRADA DESARENADOR")
+// (asignación "most constrained first": se asignan primero las columnas
+//  con menos candidatas para que una muestra ambigua no sea robada)
 // ============================================================
 $columnasEstacion = [];   // letra columna (F..O) => [id_muestra, header]
 for ($ci = 6; $ci <= 15; $ci++) {
-    $letra = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci);
+    $letra = Coordinate::stringFromColumnIndex($ci);
     $header = trim((string)$sheet->getCell($letra . '7')->getValue());
     if ($header === '') continue;
     $columnasEstacion[$letra] = ['id' => null, 'header' => $header];
 }
 
-function _cs_palabrasSignificativas(string $norm): array {
-    // palabras de ≥3 letras del texto normalizado (sin caracteres especiales)
-    $t = preg_replace('/[^A-Z0-9 ]/', ' ', $norm);
-    $palabras = array_values(array_filter(explode(' ', $t), fn($p) => strlen($p) >= 3));
-    return $palabras;
-}
-
-// Asignación "most constrained first": para cada columna se calculan sus
-// mejores candidatas (mayor puntaje); se asignan PRIMERO las columnas con
-// MENOS candidatas, de modo que una muestra ambigua (ej. varias "CANAL MADRE")
-// no sea "robada" por una columna que tiene alternativas.
 $colCands = [];
 foreach ($columnasEstacion as $letra => $infoCol) {
     $hdrNorm = _cs_norm($infoCol['header']);
-    // OJO: las "palabras significativas" deben calcularse sobre el texto CON
-    // espacios (la normalización _cs_norm pega todo y rompe el match por palabras).
-    $hdrWords = _cs_palabrasSignificativas(_cs_sinTildes(strtoupper($infoCol['header'])));
+    // palabras significativas sobre el texto CON espacios (normalización aparte)
+    $hdrWords = _cs_palabrasSignificativas($infoCol['header']);
 
     $mejorScore = 0;
     $cands = [];
@@ -235,8 +238,7 @@ foreach ($columnasEstacion as $letra => $infoCol) {
     }
 }
 
-// Orden: primero las columnas con menos candidatas (más restrictivas),
-// y dentro del mismo tamaño, las de mayor puntaje.
+// Orden: menos candidatas primero; dentro del mismo tamaño, mayor puntaje
 uksort($colCands, function ($a, $b) use ($colCands) {
     $na = count($colCands[$a]['cands']);
     $nb = count($colCands[$b]['cands']);
@@ -257,12 +259,11 @@ foreach ($colCands as $letra => $infoCand) {
 }
 
 // ============================================================
-// FILAS DE DATOS DEL TEMPLATE (estructura fija verificada)
+// FILAS DE DATOS DEL TEMPLATE (estructura fija)
 // Físicos: 10-14 | Químicos: 17-29 | Microbiológicos: 32-33
 // ============================================================
 $filasDatos = [10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 32, 33];
 
-// Para cada fila: nombre del template → Id_Parametro
 $filasInfo = [];
 foreach ($filasDatos as $fila) {
     $nombreTpl = trim((string)$sheet->getCell('B' . $fila)->getValue());
@@ -270,14 +271,10 @@ foreach ($filasDatos as $fila) {
     $filasInfo[$fila] = ['nombre' => $nombreTpl, 'id_param' => $idParam];
 }
 
-// ============================================================
-// LIMPIAR VALORES DE EJEMPLO DE LA PLANTILLA en las filas de datos
-// (F..O): evita que queden valores del mes de muestra cuando una
-// estación no tiene muestra asignada o el resultado es nulo.
-// ============================================================
+// Limpiar valores de ejemplo de la plantilla en las filas de datos (F..O)
 foreach ($filasDatos as $fila) {
     for ($ci = 6; $ci <= 15; $ci++) {
-        $l = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci);
+        $l = Coordinate::stringFromColumnIndex($ci);
         $sheet->getCell($l . $fila)->setValue(null);
     }
 }
@@ -298,23 +295,14 @@ foreach ($filasInfo as $fila => $info) {
     if (!$tieneValor) $filasOmitir[] = $fila;
 }
 
-// ============================================================
-// ELIMINAR FILAS SIN RESULTADOS (de abajo hacia arriba para no romper índices)
-// ============================================================
+// Eliminar filas sin resultados (de abajo hacia arriba para no romper índices)
 rsort($filasOmitir);
 foreach ($filasOmitir as $fila) {
     $sheet->removeRow($fila, 1);
 }
 
-// Fila final de cada fila de datos tras los borrados
-function _cs_filaFinal(int $filaOrig, array $omitidas): int {
-    $menores = 0;
-    foreach ($omitidas as $o) { if ($o < $filaOrig) $menores++; }
-    return $filaOrig - $menores;
-}
-
 // ============================================================
-// LIMPIAR COLUMNAS MAX/MIN (P/Q) — se reescriben con valores calculados
+// LIMPIAR COLUMNAS MAX/MIN (P/Q) — se reescriben calculados
 // ============================================================
 for ($f = 4; $f <= 45; $f++) {
     $sheet->getCell('P' . $f)->setValue(null);
@@ -336,11 +324,11 @@ foreach ($filasInfo as $filaOrig => $info) {
         $idM = $col['id'];
         $v = ($idM !== null) ? ($resultados[$idM][$idParam] ?? '') : '';
         if ($v === '') {
-            $sheet->getCell($letra . $nf)->setValue(null);   // en blanco (sin valores de ejemplo)
+            $sheet->getCell($letra . $nf)->setValue(null);   // en blanco
             continue;
         }
         if (_cs_esNumero($v)) {
-            $sheet->getCell($letra . $nf)->setValue(_cs_aNumero($v));
+            $sheet->getCell($letra . $nf)->setValue(_cs_aNumero($v));   // cifra EXACTA (sin round)
             $valoresNum[] = _cs_aNumero($v);
         } else {
             $sheet->getCell($letra . $nf)->setValue($v);     // ">1100", "N.D." etc.
@@ -358,33 +346,83 @@ foreach ($filasInfo as $filaOrig => $info) {
 }
 
 // ============================================================
-// BARRIDO FINAL: SIN BORDES Y SIN RELLENOS en todo el rango usado
-// (decisión del usuario: ninguna celda con borde; todo en blanco)
+// CIFRAS EXACTAS EN PANTALLA: formato General en el área de resultados
+// (F..Q). La plantilla hereda formatos que redondean la visualización
+// (contable sin decimales, 0.0, [0]) — un pH 8.66 se vería 9.
 // ============================================================
-$maxFila = 45;   // el template llega a la fila 45 (bloque LMP); tras borrar filas, menos
-$sheet->getStyle('B4:Q' . $maxFila)->applyFromArray([
-    'borders' => [
-        'allBorders' => ['borderStyle' => Border::BORDER_NONE, 'color' => ['argb' => 'FF000000']],
-    ],
-    'fill' => [
-        'fillType' => Fill::FILL_NONE,
-        'startColor' => ['argb' => 'FFFFFFFF'],
-    ],
-]);
+$sheet->getStyle('F9:Q45')->getNumberFormat()->setFormatCode('General');
 
 // ============================================================
-// OUTPUT
+// COLORES DE LA PLANTILLA (azul fuerte + azul suave) — EXPLÍCITOS
+// ============================================================
+// La plantilla usa colores THEME y PhpSpreadsheet los resuelve mal al guardar
+// (los convertía a blanco). Pedido del usuario 2026-08-25.
+$azulFuerte = 'FF335693';
+$azulSuave  = 'FFDAE3F3';
+$maxFilaColores = $sheet->getHighestDataRow();
+
+// Fila 4 (título) y cabeceras (6-8): azul fuerte + texto blanco bold
+foreach (['B4:O4', 'B6:O8'] as $rangoTitulo) {
+    $sheet->getStyle($rangoTitulo)
+          ->getFill()->setFillType(Fill::FILL_SOLID)
+          ->getStartColor()->setARGB($azulFuerte);
+    $sheet->getStyle($rangoTitulo)->getFont()->getColor()->setARGB('FFFFFFFF');
+    $sheet->getStyle($rangoTitulo)->getFont()->setBold(true);
+}
+
+// Filas de datos (10 en adelante, incluye LMP): azul suave
+// (solo relleno; el color de fuente ya quedó negro o rojo al escribir los datos)
+$sheet->getStyle('B10:Q' . $maxFilaColores)
+      ->getFill()->setFillType(Fill::FILL_SOLID)
+      ->getStartColor()->setARGB($azulSuave);
+
+// Filas de SECCIÓN ("ANALISIS ..."): azul fuerte + texto blanco bold
+for ($r = 4; $r <= $maxFilaColores; $r++) {
+    $valB = $sheet->getCell('B' . $r)->getValue();
+    if (is_string($valB) && stripos($valB, 'ANALISIS') !== false) {
+        $sheet->getStyle('B' . $r . ':Q' . $r)
+              ->getFill()->setFillType(Fill::FILL_SOLID)
+              ->getStartColor()->setARGB($azulFuerte);
+        $sheet->getStyle('B' . $r . ':Q' . $r)->getFont()->getColor()->setARGB('FFFFFFFF');
+        $sheet->getStyle('B' . $r . ':Q' . $r)->getFont()->setBold(true);
+    }
+}
+
+// ============================================================
+// BORDES BLANCOS FINOS (pedido del usuario 2026-08-25): todos los
+// bordes del área usada quedan en grosor fino (1) y color blanco,
+// para que el informe se vea como la plantilla.
+// ============================================================
+$sheet->getStyle('A1:' . $sheet->getHighestColumn() . $maxFilaColores)
+      ->getBorders()
+      ->getAllBorders()
+      ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+$sheet->getStyle('A1:' . $sheet->getHighestColumn() . $maxFilaColores)
+      ->getBorders()
+      ->getAllBorders()
+      ->getColor()->setARGB('FFFFFFFF');
+
+// ============================================================
+// OUTPUT (mismo patrón que ExportarProyectoMonitoreo)
 // ============================================================
 $filename = 'CALIDAD_SUPERFICIAL_' . $mesUpper . '_' . $anio . '_' . date('Ymd_His') . '.xlsx';
+
+// Archivo temporal con nombre ÚNICO por request (dos descargas no se pisan)
+$outputPath = $base_path . '/temp/calidad_superficial_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.xlsx';
+$outputDir = dirname($outputPath);
+if (!is_dir($outputDir)) mkdir($outputDir, 0777, true);
+
+$writer = new Xlsx($spreadsheet);
+$writer->save($outputPath);
 
 while (ob_get_level() > 0) ob_end_clean();
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
+header('Content-Length: ' . filesize($outputPath));
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
-
-$writer = new Xlsx($spreadsheet);
-$writer->save('php://output');
+readfile($outputPath);
+@unlink($outputPath);
 exit;
