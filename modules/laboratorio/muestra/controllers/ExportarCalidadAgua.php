@@ -79,6 +79,9 @@ $id_proyecto = intval($_GET['id_proyecto'] ?? 0);
 if ($id_proyecto <= 0) { http_response_code(400); die('Proyecto invalido'); }
 
 $conn = Conexion::conectar();
+require_once $base_path . '/modules/laboratorio/models/LaboratorioModel.php';
+$labAuthExp = new LaboratorioModel($conn);
+$labAuthExp->denegarSiSinPermiso($_SESSION['usuario_id'], '?module=laboratorio&action=muestra', 'exportar');
 if (!$conn) { http_response_code(500); die('Error de conexion'); }
 
 // 1. Proyecto

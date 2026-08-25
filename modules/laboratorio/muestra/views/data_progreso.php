@@ -1,9 +1,11 @@
-<?php
+﻿<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -60,7 +62,7 @@ try {
         $idCliente = intval($row['Id_Cliente'] ?? 0);
         $agricultorEsc = htmlspecialchars($agricultor, ENT_QUOTES, 'UTF-8');
         $accion = '<button class="btn btn-sm btn-info" onclick="abrirModalContinuarAnalisis(' . $id . ', ' . $idCliente . ', \'' . $agricultorEsc . '\')">'
-            . '<i class="ti ti-player-play"></i> Continuar análisis</button>';
+            . '<i class="ti ti-player-play"></i> Continuar anÃ¡lisis</button>';
         
         $data[] = [$id, $agricultor, $valle, $fecha, $servicio, $tipo, $accion];
     }
@@ -83,3 +85,4 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
+

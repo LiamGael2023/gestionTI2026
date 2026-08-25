@@ -1,9 +1,11 @@
-<?php
+﻿<?php
 error_reporting(0);
 ini_set('display_errors', 0);
 
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -16,7 +18,7 @@ try {
     
     $id_proyecto = intval($_POST['id_proyecto'] ?? 0);
     if ($id_proyecto <= 0) {
-        throw new Exception('ID de proyecto inválido');
+        throw new Exception('ID de proyecto invÃ¡lido');
     }
     
     $model = new MuestraModel($conn);
@@ -93,3 +95,4 @@ try {
     ], JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
 }
 ?>
+

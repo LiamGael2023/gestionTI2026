@@ -109,10 +109,12 @@ switch($action) {
         break;
 
     case 'proveedor':
+        if (!$permisos['ver']) { include 'modules/laboratorio/views/sin_acceso.php'; break; }
         include 'modules/laboratorio/proveedor/controllers/ProveedorController.php';
         break;
 
     case 'reportes':
+        if (!$permisos['ver']) { include 'modules/laboratorio/views/sin_acceso.php'; break; }
         include 'modules/laboratorio/views/reportes.php';
         break;
 

@@ -4,12 +4,15 @@ ini_set('display_errors', '0');
 
 session_start();
 require_once '../../../../config/db.php';
+require_once '../../../../core/Auth.php';
 require_once '../models/ProyectoModel.php';
 require_once '../models/MuestraModel.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
 try {
+    Auth::check();
+
     $conn = Conexion::conectar();
     if ($conn === false) {
         throw new Exception('No se pudo conectar a la BD');
@@ -24,6 +27,21 @@ try {
         $data = json_decode($json, true);
         $action = $data['action'] ?? null;
         $_POST = array_merge($_POST, $data);
+    }
+
+    // ── Control de permisos (roles de laboratorio) ─────────────────────
+    require_once '../models/LaboratorioModel.php';
+    $labAuthMasiva = new LaboratorioModel($conn);
+    $urlSubMasiva  = '?module=laboratorio&action=muestra';
+    $permActionMas = [
+        'guardarProyecto'          => 'crear',
+        'editarProyecto'           => 'editar',
+        'generarMuestras'          => 'editar',
+        'agregarMuestrasAdicionales' => 'editar',
+        'eliminarProyecto'         => 'eliminar',
+    ];
+    if (isset($permActionMas[$action])) {
+        $labAuthMasiva->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubMasiva, $permActionMas[$action]);
     }
 
     // ===== OBTENER SERVICIOS/PRODUCTOS DISPONIBLES =====

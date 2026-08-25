@@ -20,6 +20,20 @@ try {
     $model  = new ProveedorModel($conn);
     $action = $_GET['action'] ?? $_POST['action'] ?? null;
 
+    // ── Control de permisos (roles de laboratorio) ─────────────────────
+    require_once '../../models/LaboratorioModel.php';
+    $labAuth        = new LaboratorioModel($conn);
+    $urlSubmodulo   = '?module=laboratorio&action=proveedor';
+    $permActionMap  = [
+        'guardar'    => 'crear',
+        'actualizar' => 'editar',
+        'eliminar'   => 'eliminar',
+        'reactivar'  => 'editar',
+    ];
+    if (isset($permActionMap[$action])) {
+        $labAuth->denegarSiSinPermiso($_SESSION['usuario_id'], $urlSubmodulo, $permActionMap[$action]);
+    }
+
     if (!$action) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Acción no especificada']);

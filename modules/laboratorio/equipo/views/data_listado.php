@@ -1,20 +1,22 @@
-<?php
+﻿<?php
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=equipo');
-// Admins o usuarios sin restricción explícita → todos los permisos
+// Admins o usuarios sin restricciÃ³n explÃ­cita â†’ todos los permisos
 if ($perms === null) {
-    $perms = ['editar' => true, 'eliminar' => true];
+    $perms = ['editar' => false, 'eliminar' => false];
 }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
-// Configuración de columnas
+// ConfiguraciÃ³n de columnas
 $columns = [
     0 => 'el.Id_Equipo',
     1 => 'el.Nombre',
@@ -64,7 +66,7 @@ if ($stmtFiltrados === false) {
 }
 $totalFiltered = sqlsrv_fetch_array($stmtFiltrados, SQLSRV_FETCH_ASSOC)['total'];
 
-// Datos con paginación
+// Datos con paginaciÃ³n
 $sqlData = "SELECT el.*, ee.Nombre AS Estado_Nombre,
                    COALESCE(p.Razon_Social, el.Proveedor) AS Proveedor_Display"
          . $sqlBase . $sqlWhere
@@ -113,7 +115,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $rowClass = $mapaClase[$estadoLower] ?? 'row-eq-otro';
     }
 
-    // ---- PRÓXIMA CALIBRACIÓN (con alerta visual si se acerca) ----
+    // ---- PRÃ“XIMA CALIBRACIÃ“N (con alerta visual si se acerca) ----
     $proximaHtml = '-';
     if ($row['Fecha_Proxima_Calibracion'] instanceof DateTime) {
         $proximaDate   = $row['Fecha_Proxima_Calibracion'];
@@ -122,12 +124,12 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $proximaStr    = $proximaDate->format('d/m/Y');
 
         if ($diasRestantes >= 0 && $diasRestantes <= 30) {
-            $alerta      = $diasRestantes === 0 ? '¡Hoy es la fecha de calibración!' : "Faltan {$diasRestantes} día(s)";
+            $alerta      = $diasRestantes === 0 ? 'Â¡Hoy es la fecha de calibraciÃ³n!' : "Faltan {$diasRestantes} dÃ­a(s)";
             $proximaHtml = '<span class="badge-cal-proxima px-2 py-1 rounded" title="' . htmlspecialchars($alerta) . '" '
                          . 'style="background:#ede9fe;color:#6d28d9;font-weight:600;">'
                          . $proximaStr . ' <i class="ti ti-alert-circle" style="font-size:11px"></i></span>';
         } elseif ($diasRestantes < 0) {
-            $proximaHtml = '<span class="px-2 py-1 rounded" title="Calibración vencida hace ' . abs($diasRestantes) . ' día(s)" '
+            $proximaHtml = '<span class="px-2 py-1 rounded" title="CalibraciÃ³n vencida hace ' . abs($diasRestantes) . ' dÃ­a(s)" '
                          . 'style="background:#fee2e2;color:#dc2626;font-weight:600;">'
                          . $proximaStr . ' <i class="ti ti-alert-triangle" style="font-size:11px"></i></span>';
         } else {
@@ -135,16 +137,16 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         }
     }
 
-    // ---- ANTIGÜEDAD (Fecha_Adquisicion) ----
+    // ---- ANTIGÃœEDAD (Fecha_Adquisicion) ----
     $antiguedad = '-';
     if ($row['Fecha_Adquisicion'] instanceof DateTime) {
         $diffAdq = $row['Fecha_Adquisicion']->diff($hoy);
         $anios   = $diffAdq->y;
         $meses   = $diffAdq->m;
         if ($anios > 0 && $meses > 0) {
-            $antiguedad = $anios . ' año' . ($anios != 1 ? 's' : '') . ' y ' . $meses . ' mes' . ($meses != 1 ? 'es' : '');
+            $antiguedad = $anios . ' aÃ±o' . ($anios != 1 ? 's' : '') . ' y ' . $meses . ' mes' . ($meses != 1 ? 'es' : '');
         } elseif ($anios > 0) {
-            $antiguedad = $anios . ' año' . ($anios != 1 ? 's' : '');
+            $antiguedad = $anios . ' aÃ±o' . ($anios != 1 ? 's' : '');
         } elseif ($meses > 0) {
             $antiguedad = $meses . ' mes' . ($meses != 1 ? 'es' : '');
         } else {
@@ -152,7 +154,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         }
     }
 
-    // ---- BOTONES DE ACCIÓN ----
+    // ---- BOTONES DE ACCIÃ“N ----
     $idEq = $row['Id_Equipo'];
     if ($row['Activo'] == 1) {
         $btnEditar   = $puedeEditar
@@ -165,11 +167,11 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $nombreJson = htmlspecialchars(json_encode($row['Nombre']), ENT_QUOTES);
         if ($estadoLower === 'disponible') {
             $btnCalib = $puedeEditar
-                ? '<button type="button" class="btn btn-ghost-warning btn-sm" onclick="iniciarCalibracion(' . $idEq . ', ' . $nombreJson . ')" title="Iniciar Calibración"><i class="ti ti-tool"></i></button>'
+                ? '<button type="button" class="btn btn-ghost-warning btn-sm" onclick="iniciarCalibracion(' . $idEq . ', ' . $nombreJson . ')" title="Iniciar CalibraciÃ³n"><i class="ti ti-tool"></i></button>'
                 : '';
         } else {
             $btnCalib = $puedeEditar
-                ? '<button type="button" class="btn btn-ghost-teal btn-sm" onclick="finalizarCalibracion(' . $idEq . ', ' . $nombreJson . ')" title="Finalizar Calibración y marcar Disponible"><i class="ti ti-checks"></i></button>'
+                ? '<button type="button" class="btn btn-ghost-teal btn-sm" onclick="finalizarCalibracion(' . $idEq . ', ' . $nombreJson . ')" title="Finalizar CalibraciÃ³n y marcar Disponible"><i class="ti ti-checks"></i></button>'
                 : '';
         }
         $btnHistorial = '<button type="button" class="btn btn-ghost-blue btn-sm" onclick="verHistorial(' . $idEq . ', ' . $nombreJson . ')" title="Ver historial de calibraciones"><i class="ti ti-history"></i></button>';
@@ -190,7 +192,7 @@ while ($row = sqlsrv_fetch_array($stmtData, SQLSRV_FETCH_ASSOC)) {
         $proximaHtml,
         $estadoBadge,
         $acciones,
-        $rowClass    // columna 7 — oculta, usada por createdRow en JS
+        $rowClass    // columna 7 â€” oculta, usada por createdRow en JS
     ];
 }
 
@@ -200,4 +202,5 @@ echo json_encode([
     "recordsFiltered" => intval($totalFiltered),
     "data"            => $data
 ]);
+
 

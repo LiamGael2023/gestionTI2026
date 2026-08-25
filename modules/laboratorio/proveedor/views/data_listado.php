@@ -1,6 +1,8 @@
-<?php
+﻿<?php
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 
 $conn = Conexion::conectar();
 
@@ -85,3 +87,4 @@ echo json_encode([
     "recordsFiltered" => intval($totalFiltered),
     "data"            => $data
 ]);
+

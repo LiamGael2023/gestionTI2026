@@ -1,13 +1,15 @@
-<?php
+﻿<?php
 session_start();
+require_once '../../../../core/Auth.php';
 require_once '../../../../config/db.php';
+Auth::check();
 require_once '../../../../modules/laboratorio/models/LaboratorioModel.php';
 
 $conn     = Conexion::conectar();
 $labModel = new LaboratorioModel($conn);
 $userId   = intval($_SESSION['usuario_id'] ?? 0);
 $perms    = $labModel->obtenerPermisosSubmodulo($userId, '?module=laboratorio&action=parametro');
-if ($perms === null) { $perms = ['editar' => true, 'eliminar' => true]; }
+if ($perms === null) { $perms = ['editar' => false, 'eliminar' => false]; }
 $puedeEditar   = (bool)($perms['editar']   ?? false);
 $puedeEliminar = (bool)($perms['eliminar'] ?? false);
 
@@ -95,3 +97,4 @@ $json_data = array(
 
 echo json_encode($json_data);
 ?>
+

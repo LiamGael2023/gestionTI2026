@@ -46,6 +46,12 @@ if ($action === 'obtener_firma') {
 }
 
 if ($action === 'guardar_firma') {
+    // Solo usuarios con permiso de firma (Pueden_Firmar en Muestras) o admins
+    if (!$model->puedeUsarFirma($usuario_id)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'No tiene permiso para gestionar firma digital.']);
+        exit;
+    }
     try {
         $datos = json_decode(file_get_contents('php://input'), true);
         $img_firma = trim((string)($datos['img_firma'] ?? ''));
@@ -80,6 +86,11 @@ if ($action === 'guardar_firma') {
 }
 
 if ($action === 'eliminar_firma') {
+    if (!$model->puedeUsarFirma($usuario_id)) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'No tiene permiso para gestionar firma digital.']);
+        exit;
+    }
     try {
         $sql = "UPDATE laboratorio.Usuario_Lab_Firma SET Activo = 0, Fecha_Modificacion = GETDATE() WHERE Id_Usuario = ?";
         $stmt = sqlsrv_query($conn, $sql, [$usuario_id]);
