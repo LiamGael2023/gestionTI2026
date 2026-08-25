@@ -17,29 +17,11 @@
         $kpiClasses = ['kpi-ventas', 'kpi-proformas', 'kpi-stock', 'kpi-vouchers', 'kpi-mermas', 'kpi-valor'];
         $kpiLabels = ['Ventas Hoy', 'Proformas Pendientes', 'Stock Crítico', 'Vouchers Sin Asignar', 'Mermas Hoy', 'Valor Inventario'];
         $kpiTipos  = ['kpi_ventas_hoy','kpi_proformas_pendientes','kpi_stock_critico','kpi_vouchers_sin_asignar','kpi_mermas_hoy','kpi_valor_inventario'];
-        // ¿Es administrador comun? (controla tarjeta de Permisos/Roles)
-        // Fuente primaria: rol de sesión (rápido, sin BD). Fallback: consulta comun.Usuarios.
-        $esAdminPA = false;
-        $rolesAdmin = ['administrador','admin','superadmin','super admin','jefe','gerente'];
-        $rolSesionPA = strtolower(trim((string)($_SESSION['usuario_rol'] ?? '')));
-        if ($rolSesionPA !== '' && in_array($rolSesionPA, $rolesAdmin, true)) {
-            $esAdminPA = true;
-        } else {
-            try {
-                $stmtAdminPA = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", [$_SESSION['usuario_id']]);
-                if ($stmtAdminPA) {
-                    $rowAdminPA = sqlsrv_fetch_array($stmtAdminPA, SQLSRV_FETCH_ASSOC);
-                    if ($rowAdminPA && in_array(strtolower(trim((string)$rowAdminPA['rol'])), $rolesAdmin, true)) {
-                        $esAdminPA = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                $esAdminPA = false;
-            }
-        }
         // Submódulos permitidos según rol de Producción Agraria
         require_once __DIR__ . '/../models/PermisosModel.php';
         $permisosPAModel = new PermisosModel($conn);
+        // ¿Puede gestionar roles/permisos? Solo admin sin rol de PA asignado.
+        $puedeGestionarRoles = $permisosPAModel->puedeGestionarRoles($_SESSION['usuario_id']);
         $submodulosPermitidos = [];
         foreach (['inventario','punto_venta','bandeja','tablas','reportes','dashboard','consultas'] as $submod) {
             $urlSub = '?module=produccion_agraria&action=' . $submod;
@@ -157,7 +139,7 @@
             </a>
         </div>
         <?php endif; ?>
-        <?php if ($esAdminPA): ?>
+        <?php if ($puedeGestionarRoles): ?>
         <div class='col-md-4 col-sm-6'>
             <a href='<?php echo BASE_URL; ?>/produccion_agraria?action=permisos' class='card-link'>
                 <div class='card-link bg-gradient-secondary h-100 text-white'>
