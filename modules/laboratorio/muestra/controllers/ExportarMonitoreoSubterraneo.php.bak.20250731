@@ -1,0 +1,247 @@
+<?php
+/**
+ * Exportar Monitoreo de Aguas Subterraneas
+ * Rellena la plantilla Excel con datos de PostgreSQL
+ * URL: ?module=laboratorio&action=muestra&subaction=exportar_monitoreo_subterraneo
+ */
+error_reporting(E_ALL);
+ini_set('display_errors', '0');
+
+$base_path = realpath(dirname(__FILE__) . '/../../../../');
+require_once $base_path . '/config/db.php';
+require_once $base_path . '/config/db_postgresql.php';
+require_once $base_path . '/config/config.php';
+require_once $base_path . '/core/Auth.php';
+
+Auth::check();
+
+$autoloadLibs = $base_path . '/libs/vendor/autoload.php';
+if (!file_exists($autoloadLibs)) {
+    http_response_code(500);
+    die('No se encontro la libreria de exportacion');
+}
+require_once $autoloadLibs;
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+$conn = Conexion::conectar();
+if (!$conn) { http_response_code(500); die('No se pudo conectar a SQL Server'); }
+
+$pdoPg = ConexionPostgreSQL::conectar();
+if (!$pdoPg) { http_response_code(500); die('No se pudo conectar a PostgreSQL'); }
+
+// ─── Template ────────────────────────────────────────────────────
+$templatePath = 'D:/SISTEMAS/gestionTI2026/modules/laboratorio/muestra/plantilla/AGUAS SUBTERRANEAS - PRIMER MONITOREO.xlsx';
+if (!file_exists($templatePath)) {
+    // Intentar ruta relativa
+    $templatePath = $base_path . '/templates/AGUAS SUBTERRANEAS - PRIMER MONITOREO -2026.xlsx';
+}
+if (!file_exists($templatePath)) {
+    http_response_code(500);
+    die('No se encontro la plantilla Excel en: ' . $templatePath);
+}
+
+// ─── Mapeo de columnas Excel → columna PostgreSQL ───────────────
+// Las hojas 2026 tienen estructura: col B=M#, C=Este, D=Norte, E=CodPozo, F=IRHS
+// Luego parámetros desde col G en adelante
+$mapaColumnas = [
+    // In-Situ (pozos_monitoreo)
+    'G' => ['tabla' => 'pozos_monitoreo', 'col' => 'ce',     'param' => 'Conductividad Electrica'],
+    'H' => ['tabla' => 'pozos_monitoreo', 'col' => 'ph',     'param' => 'pH'],
+    'I' => ['tabla' => 'pozos_monitoreo', 'col' => 'std',    'param' => 'Solidos Totales Disueltos'],
+    'J' => ['tabla' => 'pozos_monitoreo', 'col' => 't',      'param' => 'Temperatura'],
+    // Laboratorio (calidad_agua_laboratorio)
+    'K' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'turbidez',                'param' => 'Turbidez'],
+    'L' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'nitratos',                'param' => 'Nitratos'],
+    'M' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'nitritos',                'param' => 'Nitritos'],
+    'N' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'cobre',                   'param' => 'Cobre'],
+    'O' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'cromohexavalente',        'param' => 'Cromo Hexavalente'],
+    'P' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'sulfatos',                'param' => 'Sulfatos'],
+    'Q' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'manganeso',               'param' => 'Manganeso'],
+    'R' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'zinc',                    'param' => 'Zinc'],
+    'S' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'hierro',                  'param' => 'Hierro'],
+    'T' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'amonio',                  'param' => 'Amonio'],
+    'U' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'magnesio',                'param' => 'Magnesio (mg/L)'],
+    'V' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'sodio',                   'param' => 'Sodio (mg/L)'],
+    'W' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'calcio',                  'param' => 'Calcio (mg/L)'],
+    // Microbiológicos
+    'AC' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'coliformestotales',       'param' => 'Coliformes Totales'],
+    'AD' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'coliformestermotolerantes','param' => 'Coliformes Termotolerantes'],
+    'AE' => ['tabla' => 'calidad_agua_laboratorio', 'col' => 'escherichiacoli',         'param' => 'Escherichia coli'],
+];
+
+// Pesos moleculares para convertir mg/L a me/L
+$pesos = ['Mg' => 24.305, 'Na' => 22.989, 'Ca' => 40.078];
+$valencia = ['Mg' => 2, 'Na' => 1, 'Ca' => 2];
+
+// ─── Pesos moleculares desde la plantilla ───────────────────────
+$pesoMg = 24.305;
+$pesoNa = 22.989;
+$pesoCa = 40.078;
+
+try {
+    $spreadsheet = IOFactory::load($templatePath);
+
+    // Obtener la fecha del monitoreo (primer monitoreo 2026)
+    // ─── Determinar fecha del monitoreo ──────────────────────────
+    // Buscar la fecha más reciente de monitoreo en pozos_monitoreo
+    $fechaMonitoreo = null;
+    $stmtUltimo = $pdoPg->query("SELECT MAX(fechamonitoreo) as ultima FROM " . PG_SCHEMA . ".pozos_monitoreo");
+    if ($stmtUltimo && $rowUlt = $stmtUltimo->fetch(PDO::FETCH_ASSOC)) {
+        $fechaMonitoreo = $rowUlt['ultima'] ?? null;
+    }
+
+    $stats = ['pozos_procesados' => 0, 'celdas_rellenadas' => 0, 'errores' => 0];
+
+    // ─── Cargar TODOS los datos de PG (fuera del loop, solo una vez) ──
+    $datosInsitu = [];
+    $stmtInsituAll = $pdoPg->query("SELECT * FROM " . PG_SCHEMA . ".pozos_monitoreo");
+    while ($row = $stmtInsituAll->fetch(PDO::FETCH_ASSOC)) {
+        $idP = $row['id_pozo'] ?? '';
+        if ($idP) $datosInsitu[$idP][] = $row;
+    }
+
+    $datosLab = [];
+    $stmtLabAll = $pdoPg->query("SELECT cal.*, pm.fechamonitoreo 
+                                  FROM " . PG_SCHEMA . ".calidad_agua_laboratorio cal
+                                  LEFT JOIN " . PG_SCHEMA . ".pozos_monitoreo pm ON pm.id_medicion = cal.id_medicion");
+    while ($row = $stmtLabAll->fetch(PDO::FETCH_ASSOC)) {
+        $idP = $row['id_pozo'] ?? '';
+        if ($idP) $datosLab[$idP][] = $row;
+    }
+
+    // Función auxiliar: mejor match por fecha (si no hay fecha, devuelve el primero)
+    $mejorMatch = function($registros, $fechaObj) {
+        if (empty($registros)) return null;
+        if (!$fechaObj) return $registros[0]; // Sin fecha de referencia: usar el primero
+        $mejor = $registros[0];
+        $mejorDiff = PHP_INT_MAX;
+        $tsObj = strtotime($fechaObj);
+        foreach ($registros as $r) {
+            $f = $r['fechamonitoreo'] ?? $r['fecha_toma_muestra'] ?? '';
+            if (!$f) continue;
+            $diff = abs(strtotime($f) - $tsObj);
+            if ($diff < $mejorDiff) { $mejorDiff = $diff; $mejor = $r; }
+        }
+        return $mejor;
+    };
+
+    // ─── Procesar cada hoja (valle) ──────────────────────────────
+    foreach ($spreadsheet->getSheetNames() as $sheetName) {
+        // Solo procesar hojas de 2026
+        if (strpos($sheetName, '2026') === false) continue;
+
+        $sheet = $spreadsheet->getSheetByName($sheetName);
+        $maxRow = $sheet->getHighestRow();
+
+        // ─── Iterar filas de datos (desde fila 11 hasta antes de notas) ──
+        for ($row = 11; $row <= $maxRow; $row++) {
+            $codPozo = trim((string)($sheet->getCell('E' . $row)->getValue() ?? ''));
+            $codIRHS = trim((string)($sheet->getCell('F' . $row)->getValue() ?? ''));
+            if (($codPozo === '' || $codPozo === '-') && ($codIRHS === '' || $codIRHS === '-')) continue;
+
+            // Buscar Id_Pozo en SQL Server por código IRHS o código PECH
+            $idPozoReal = null;
+            if ($codIRHS !== '' && $codIRHS !== '-') {
+                $stmtPozo = sqlsrv_query($conn, 
+                    "SELECT Id_Pozo FROM laboratorio.Catastro_Pozo WHERE codigo = ?", [$codIRHS]);
+                if ($stmtPozo && $rowPz = sqlsrv_fetch_array($stmtPozo, SQLSRV_FETCH_ASSOC)) {
+                    $idPozoReal = trim((string)$rowPz['Id_Pozo']);
+                }
+            }
+            if (!$idPozoReal && $codPozo !== '' && $codPozo !== '-') {
+                $stmtPozo = sqlsrv_query($conn, 
+                    "SELECT Id_Pozo FROM laboratorio.Catastro_Pozo WHERE codigopech = ? OR Id_Pozo = ?", [$codPozo, $codPozo]);
+                if ($stmtPozo && $rowPz = sqlsrv_fetch_array($stmtPozo, SQLSRV_FETCH_ASSOC)) {
+                    $idPozoReal = trim((string)$rowPz['Id_Pozo']);
+                }
+            }
+            if (!$idPozoReal) continue;
+            
+            // Detectar fin de datos (filas de notas/estadísticas)
+            $cellB = trim((string)($sheet->getCell('B' . $row)->getValue() ?? ''));
+            if (strpos($cellB, 'M') !== 0 && !empty($cellB) && $cellB[0] !== 'M') {
+                // Si no empieza con M, verificar si es nota
+                if (stripos($cellB, 'No se realiza') !== false || 
+                    stripos($cellB, 'MAX') !== false ||
+                    stripos($cellB, 'MIN') !== false) break;
+            }
+
+            // Buscar datos para este pozo (mejor match por fecha)
+            $insitu = $mejorMatch($datosInsitu[$idPozoReal] ?? [], $fechaMonitoreo);
+            $lab = $mejorMatch($datosLab[$idPozoReal] ?? [], $fechaMonitoreo);
+
+            if (!$insitu && !$lab) continue;
+
+            $stats['pozos_procesados']++;
+
+            // ─── Rellenar celdas según mapeo ─────────────────────
+            foreach ($mapaColumnas as $colLetra => $map) {
+                $valor = null;
+                if ($map['tabla'] === 'pozos_monitoreo' && $insitu) {
+                    $valor = $insitu[$map['col']] ?? null;
+                } elseif ($map['tabla'] === 'calidad_agua_laboratorio' && $lab) {
+                    $valor = $lab[$map['col']] ?? null;
+                }
+
+                if ($valor !== null && $valor !== '') {
+                    $cell = $sheet->getCell($colLetra . $row);
+                    if (is_numeric($valor)) {
+                        $cell->setValue(round(floatval($valor), 2));
+                    } else {
+                        $cell->setValue($valor);
+                    }
+                    $stats['celdas_rellenadas']++;
+                }
+            }
+
+            // ─── Calcular me/L y RAS: NO sobrescribir fórmulas del Excel ──
+            // Las columnas X(me/L), Y(me/L), Z(me/L), AA(RAS), AB(Grado) tienen FÓRMULAS
+            // Solo escribir en U(mg/L), V(mg/L), W(mg/L) y Excel recalcula automáticamente
+
+            // ─── Rellenar datos del pozo desde Catastro_Pozo ──────
+            if ($idPozoReal) {
+                $stmtPz = sqlsrv_query($conn, 
+                    "SELECT codigopech, codigo, coord_este, coord_norte FROM laboratorio.Catastro_Pozo WHERE Id_Pozo = ?", 
+                    [$idPozoReal]);
+                if ($stmtPz && $rowPz = sqlsrv_fetch_array($stmtPz, SQLSRV_FETCH_ASSOC)) {
+                    // Columna E: código PECH (ej: PM-28A, CH-181)
+                    $cellE = $sheet->getCell('E' . $row);
+                    $codPech = trim((string)($rowPz['codigopech'] ?? ''));
+                    if ($codPech !== '') $cellE->setValue($codPech);
+                    // Columna F: código IRHS (ej: IRHS-13-12-01-908)
+                    $cellF = $sheet->getCell('F' . $row);
+                    $codIRHSdb = trim((string)($rowPz['codigo'] ?? ''));
+                    if ($codIRHSdb !== '') $cellF->setValue($codIRHSdb);
+                    // Coordenadas
+                    $cellC = $sheet->getCell('C' . $row);
+                    $cellD = $sheet->getCell('D' . $row);
+                    if ($rowPz['coord_este']) $cellC->setValue(round(floatval($rowPz['coord_este']), 2));
+                    if ($rowPz['coord_norte']) $cellD->setValue(round(floatval($rowPz['coord_norte']), 2));
+                }
+            }
+        }
+    }
+
+    // ─── Guardar y descargar ─────────────────────────────────────
+    $outputPath = $base_path . '/temp/monitoreo_subterraneo_exportado.xlsx';
+    $outputDir = dirname($outputPath);
+    if (!is_dir($outputDir)) mkdir($outputDir, 0777, true);
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save($outputPath);
+
+    // Descargar
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="AGUAS_SUBTERRANEAS_EXPORTADO.xlsx"');
+    header('Content-Length: ' . filesize($outputPath));
+    header('Cache-Control: max-age=0');
+    readfile($outputPath);
+    exit;
+
+} catch (Exception $e) {
+    http_response_code(500);
+    die('Error: ' . $e->getMessage());
+}
+?>

@@ -41,20 +41,36 @@ try {
 
 function renderTablaResultados($rows) {
     if (empty($rows)) {
-        echo '<tr><td colspan="6" class="text-center text-muted py-4">No hay resultados registrados para este turno.</td></tr>';
-        return;
-    }
+            echo '<tr><td colspan="7" class="text-center text-muted py-4">No hay resultados registrados para este turno.</td></tr>';
+            return;
+        }
 
-    foreach ($rows as $row) {
-        echo '<tr>';
-        echo '<td>' . intval($row['Id_Muestra'] ?? 0) . '</td>';
-        echo '<td>' . htmlspecialchars((string)($row['Punto_Toma'] ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . htmlspecialchars((string)($row['Parametro'] ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . htmlspecialchars((string)($row['Unidad'] ?? ''), ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . htmlspecialchars(trim((string)($row['Valor_Hallado'] ?? '')) !== '' ? (string)$row['Valor_Hallado'] : '(pendiente)', ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . htmlspecialchars((string)($row['Estado'] ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '</tr>';
-    }
+        $ultimoIdMuestra = null;
+        foreach ($rows as $row) {
+            $esPrimeraFilaMuestra = (intval($row['Id_Muestra'] ?? 0) !== $ultimoIdMuestra);
+            $ultimoIdMuestra = intval($row['Id_Muestra'] ?? 0);
+            echo '<tr>';
+            echo '<td>' . intval($row['Id_Muestra'] ?? 0) . '</td>';
+            echo '<td>' . htmlspecialchars((string)($row['Punto_Toma'] ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            echo '<td>' . htmlspecialchars((string)($row['Parametro'] ?? '-'), ENT_QUOTES, 'UTF-8') . '</td>';
+            echo '<td>' . htmlspecialchars((string)($row['Unidad'] ?? ''), ENT_QUOTES, 'UTF-8') . '</td>';
+            echo '<td>' . htmlspecialchars(trim((string)($row['Valor_Hallado'] ?? '')) !== '' ? (string)$row['Valor_Hallado'] : '(pendiente)', ENT_QUOTES, 'UTF-8') . '</td>';
+            echo '<td>';
+            if (!empty($row['No_Analizada'])) {
+                echo '<span class="badge bg-danger">NO ANALIZADA</span>';
+            } else {
+                echo htmlspecialchars((string)($row['Estado'] ?? '-'), ENT_QUOTES, 'UTF-8');
+            }
+            echo '</td>';
+            echo '<td>';
+            if ($esPrimeraFilaMuestra && trim((string)($row['Observacion_Muestra'] ?? '')) !== '') {
+                echo htmlspecialchars((string)$row['Observacion_Muestra'], ENT_QUOTES, 'UTF-8');
+            } else {
+                echo '<span class="text-muted">-</span>';
+            }
+            echo '</td>';
+            echo '</tr>';
+        }
 }
 ?>
 
@@ -109,8 +125,9 @@ function renderTablaResultados($rows) {
                       <th>Parámetro</th>
                       <th>Unidad</th>
                       <th>Valor hallado</th>
-                      <th>Estado</th>
-                    </tr>
+                                            <th>Estado</th>
+                                            <th>Observación</th>
+                                          </tr>
                   </thead>
                   <tbody>
                     <?php renderTablaResultados($resultadosManana); ?>
@@ -150,8 +167,9 @@ function renderTablaResultados($rows) {
                       <th>Parámetro</th>
                       <th>Unidad</th>
                       <th>Valor hallado</th>
-                      <th>Estado</th>
-                    </tr>
+                                            <th>Estado</th>
+                                            <th>Observación</th>
+                                          </tr>
                   </thead>
                   <tbody>
                     <?php renderTablaResultados($resultadosTarde); ?>

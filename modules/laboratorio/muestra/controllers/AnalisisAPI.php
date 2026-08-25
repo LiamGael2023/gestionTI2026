@@ -659,8 +659,12 @@ try {
     
     if ($action === 'guardar_resultado') {
         try {
+            $log_file = '../../debug_analisis_proyecto.log';
             $datos = json_decode(file_get_contents('php://input'), true);
             $usuario_id = $_SESSION['usuario_id'] ?? 1;
+
+            file_put_contents($log_file, "\n[" . date('Y-m-d H:i:s') . "] === GUARDAR RESULTADO ===\n", FILE_APPEND);
+            file_put_contents($log_file, "Datos: " . json_encode($datos) . "\n", FILE_APPEND);
 
             // Solo el Analista Jefe (Id_Rol=2) o administrador puede finalizar resultados
             $es_admin_gr = false;
@@ -1013,6 +1017,7 @@ try {
                 'id_resultado' => $id_resultado
             ]);
         } catch (Exception $e) {
+            file_put_contents('../../debug_analisis_proyecto.log', "\n[" . date('Y-m-d H:i:s') . "] ERROR guardar_resultado: " . $e->getMessage() . "\n", FILE_APPEND);
             http_response_code(500);
             echo json_encode([
                 'success' => false,
@@ -1022,6 +1027,320 @@ try {
         exit;
     }
     
+    // ==================== GUARDAR RESULTADOS BATCH (optimizado 2026-08) ====================
+    // Guarda N resultados en UNA sola petición y UNA transacción. Misma lógica que
+    // guardar_resultado (rol, estado de solicitud + trigger residuos, consumo dinámico,
+    // finalización de muestra/proyecto) pero sin repetir queries fijas por resultado
+    // y con las verificaciones de muestra/proyecto agrupadas al final.
+    // Idempotente: reintentar el lote completo es seguro (mismos checks).
+    
+    if ($action === 'guardar_resultados_batch') {
+        try {
+            $log_file = '../../debug_analisis_proyecto.log';
+            $datos = json_decode(file_get_contents('php://input'), true);
+            $usuario_id = $_SESSION['usuario_id'] ?? 1;
+            $resultados = $datos['resultados'] ?? null;
+
+            if (!is_array($resultados) || empty($resultados)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Datos incompletos (requiere resultados[])']);
+                exit;
+            }
+
+            file_put_contents($log_file, "\n[" . date('Y-m-d H:i:s') . "] === GUARDAR RESULTADOS BATCH (" . count($resultados) . " resultados) ===\n", FILE_APPEND);
+
+            // 1. Validar rol (una sola vez para todo el lote)
+            $es_admin_gr = false;
+            $stmtAdminGR = sqlsrv_query($conn, "SELECT TOP 1 rol FROM comun.Usuarios WHERE id_usuario = ? AND activo = 1", array($usuario_id));
+            if ($stmtAdminGR) {
+                $rowAdminGR = sqlsrv_fetch_array($stmtAdminGR, SQLSRV_FETCH_ASSOC);
+                if ($rowAdminGR && in_array(strtolower(trim((string)$rowAdminGR['rol'])), ['administrador','admin','superadmin','super admin'], true)) {
+                    $es_admin_gr = true;
+                }
+            }
+            $es_analista_jefe_gr = false;
+            $stmtAJGR = sqlsrv_query($conn, "SELECT TOP 1 1 AS existe FROM laboratorio.Usuario_Rol WHERE Id_Usuario = ? AND Id_Rol IN (1,2)", array($usuario_id));
+            if ($stmtAJGR && sqlsrv_fetch_array($stmtAJGR, SQLSRV_FETCH_ASSOC)) {
+                $es_analista_jefe_gr = true;
+            }
+            if (!$es_admin_gr && !$es_analista_jefe_gr) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Solo el Analista Jefe puede finalizar resultados. Use "Guardar Avance" para guardar un borrador.']);
+                exit;
+            }
+
+            // 2. Sanitizar: un solo UPDATE por Id_Resultado (si viene repetido, gana el último)
+            $limpios = [];
+            foreach ($resultados as $r) {
+                $id = intval($r['Id_Resultado'] ?? 0);
+                if ($id <= 0) continue;
+                $limpios[$id] = [
+                    'Valor_Hallado' => !empty($r['Valor_Hallado']) ? floatval($r['Valor_Hallado']) : null,
+                    'Observacion'   => $r['Observacion'] ?? null,
+                ];
+            }
+            if (empty($limpios)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'No hay resultados válidos en el lote']);
+                exit;
+            }
+            $ids = array_keys($limpios);
+
+            sqlsrv_begin_transaction($conn);
+            $transaccion_activa = true;
+
+            // 3. Pre-cargar Id_Solicitud de todos los resultados (1 query, no N)
+            $phIds = implode(',', array_fill(0, count($ids), '?'));
+            $stmtMap = sqlsrv_query($conn,
+                "SELECT Id_Resultado, Id_Solicitud_Analisis FROM laboratorio.Resultado_Analisis
+                 WHERE Id_Resultado IN ($phIds) AND Activo = 1", $ids);
+            if ($stmtMap === false) throw new Exception('Error al mapear resultados: ' . print_r(sqlsrv_errors(), true));
+            $mapaSolicitud = [];
+            while ($rowMap = sqlsrv_fetch_array($stmtMap, SQLSRV_FETCH_ASSOC)) {
+                $mapaSolicitud[intval($rowMap['Id_Resultado'])] = intval($rowMap['Id_Solicitud_Analisis']);
+            }
+
+            $estadosSolicitud = [];      // id_solicitud => estado anterior (cache del lote)
+            $pasanAFinalizado = [];      // [id_solicitud, marca_inicio, marca_fin] para asignar usuario residuos
+            $solicitudesLote = [];
+
+            foreach ($limpios as $id_resultado => $datosRes) {
+                $id_solicitud = $mapaSolicitud[$id_resultado] ?? 0;
+                if ($id_solicitud <= 0) {
+                    file_put_contents($log_file, "WARN: resultado $id_resultado no encontrado o inactivo (se omite)\n", FILE_APPEND);
+                    continue;
+                }
+                $solicitudesLote[$id_solicitud] = true;
+                $valor_hallado = $datosRes['Valor_Hallado'];
+                $observacion   = $datosRes['Observacion'];
+
+                // UPDATE del Resultado_Analisis
+                $stmt_update = sqlsrv_query($conn,
+                    "UPDATE laboratorio.Resultado_Analisis
+                     SET Valor_Hallado = ?, Observacion = ?, Fecha_Modificacion = GETDATE()
+                     WHERE Id_Resultado = ?",
+                    [$valor_hallado, $observacion, $id_resultado]);
+                if ($stmt_update === false) throw new Exception('Error al actualizar resultado ' . $id_resultado . ': ' . print_r(sqlsrv_errors(), true));
+
+                // Estado de la solicitud (cacheado por solicitud dentro del lote)
+                if (!isset($estadosSolicitud[$id_solicitud])) {
+                    $stmtEst = sqlsrv_query($conn, "SELECT Estado FROM laboratorio.Solicitud_Analisis WHERE Id_Solicitud_Analisis = ? AND Activo = 1", [$id_solicitud]);
+                    $rowEst  = ($stmtEst !== false) ? sqlsrv_fetch_array($stmtEst, SQLSRV_FETCH_ASSOC) : null;
+                    $estadosSolicitud[$id_solicitud] = strtolower(trim((string)($rowEst['Estado'] ?? '')));
+                }
+                $estado_solicitud_anterior = $estadosSolicitud[$id_solicitud];
+
+                $stmtChk = sqlsrv_query($conn,
+                    "SELECT COUNT(*) AS total,
+                            SUM(CASE WHEN Valor_Hallado IS NOT NULL THEN 1 ELSE 0 END) AS con_valor
+                     FROM laboratorio.Resultado_Analisis
+                     WHERE Id_Solicitud_Analisis = ? AND Activo = 1", [$id_solicitud]);
+                if ($stmtChk === false) throw new Exception('Error al validar estado de solicitud: ' . print_r(sqlsrv_errors(), true));
+                $rowChk  = sqlsrv_fetch_array($stmtChk, SQLSRV_FETCH_ASSOC);
+                $con_valor = intval($rowChk['con_valor'] ?? 0);
+                $nuevo_estado_solicitud = $con_valor > 0 ? 'Finalizado' : 'En Análisis';
+
+                $marca_inicio_residuo = date('Y-m-d H:i:s');
+                $solicitud_model->actualizarEstado($id_solicitud, $nuevo_estado_solicitud);
+                $estadosSolicitud[$id_solicitud] = strtolower($nuevo_estado_solicitud);
+
+                if ($estado_solicitud_anterior !== 'finalizado' && strtolower($nuevo_estado_solicitud) === 'finalizado') {
+                    $pasanAFinalizado[] = [$id_solicitud, $marca_inicio_residuo, date('Y-m-d H:i:s')];
+                }
+
+                // ===== CONSUMO DINÁMICO (misma lógica que guardar_resultado) =====
+                if ($valor_hallado !== null) {
+                    $stmtCheckConsumoGR = sqlsrv_query($conn,
+                        "SELECT COUNT(*) AS ya_consumido FROM laboratorio.Consumo_Resultado WHERE Id_Resultado = ? AND Activo = 1",
+                        [$id_resultado]);
+                    $yaConsumidoGR = 0;
+                    if ($stmtCheckConsumoGR !== false) {
+                        $rowCheckGR = sqlsrv_fetch_array($stmtCheckConsumoGR, SQLSRV_FETCH_ASSOC);
+                        $yaConsumidoGR = intval($rowCheckGR['ya_consumido'] ?? 0);
+                    }
+
+                    if ($yaConsumidoGR === 0) {
+                        $sql_serv = "SELECT Id_Servicio, Id_Muestra FROM laboratorio.Solicitud_Analisis WHERE Id_Solicitud_Analisis = ?";
+                        $stmt_serv = sqlsrv_query($conn, $sql_serv, [$id_solicitud]);
+                        if ($row_serv = sqlsrv_fetch_array($stmt_serv, SQLSRV_FETCH_ASSOC)) {
+                            $id_servicio_sol = intval($row_serv['Id_Servicio']);
+                            $id_muestra_sol = intval($row_serv['Id_Muestra']);
+
+                            $sql_mp = "SELECT TOP 1 Id_Muestra_Producto, Id_Producto_Venta FROM laboratorio.Muestra_Producto WHERE Id_Muestra = ? AND Activo = 1 ORDER BY Id_Muestra_Producto DESC";
+                            $stmt_mp = sqlsrv_query($conn, $sql_mp, [$id_muestra_sol]);
+                            $row_mp = sqlsrv_fetch_array($stmt_mp, SQLSRV_FETCH_ASSOC);
+                            $id_muestra_producto = $row_mp ? intval($row_mp['Id_Muestra_Producto']) : 0;
+
+                            $sql_proy = "SELECT ISNULL(Id_Proyecto, 0) AS Id_Proyecto FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ?";
+                            $stmt_proy = sqlsrv_query($conn, $sql_proy, [$id_muestra_sol]);
+                            $row_proy = sqlsrv_fetch_array($stmt_proy, SQLSRV_FETCH_ASSOC);
+                            $aplicarDescuentoReserva = ($row_proy && intval($row_proy['Id_Proyecto']) > 0);
+
+                            $stmtCntP = sqlsrv_query($conn,
+                                "SELECT COUNT(*) AS total_params FROM laboratorio.Parametro_Analisis WHERE Id_Servicio = ? AND Activo = 1",
+                                [$id_servicio_sol]);
+                            $totalParamsGR = 1;
+                            if ($stmtCntP !== false) {
+                                $rowCntP = sqlsrv_fetch_array($stmtCntP, SQLSRV_FETCH_ASSOC);
+                                $totalParamsGR = max(1, intval($rowCntP['total_params'] ?? 1));
+                            }
+
+                            $sqlReceta = "SELECT Id_Reactivo, MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) AS Cantidad_Necesaria
+                                          FROM laboratorio.Receta_Servicio
+                                          WHERE Id_Servicio = ? AND Activo = 1
+                                          GROUP BY Id_Reactivo HAVING MAX(CAST(ISNULL(Cantidad_Necesaria, 0) AS DECIMAL(18,6))) > 0";
+                            $stmtReceta = sqlsrv_query($conn, $sqlReceta, [$id_servicio_sol]);
+
+                            while ($stmtReceta !== false && ($rowReactivo = sqlsrv_fetch_array($stmtReceta, SQLSRV_FETCH_ASSOC))) {
+                                $idReactivo = intval($rowReactivo['Id_Reactivo'] ?? 0);
+                                $cantidadTotal = round(floatval($rowReactivo['Cantidad_Necesaria'] ?? 0), 6);
+                                $cantidad = round($cantidadTotal / $totalParamsGR, 6);
+
+                                if ($idReactivo <= 0 || $cantidad <= 0) continue;
+
+                                $stmtStock = sqlsrv_query($conn, "SELECT Nombre, ISNULL(Cantidad_Stock, 0) AS Stock FROM laboratorio.Reactivo_Lab WHERE Id_Reactivo = ? AND Activo = 1", [$idReactivo]);
+                                $rowStock = sqlsrv_fetch_array($stmtStock, SQLSRV_FETCH_ASSOC);
+                                if (!$rowStock) continue;
+
+                                $stockActual = floatval($rowStock['Stock'] ?? 0);
+                                if ($stockActual < $cantidad) {
+                                    $cantidad = $stockActual; // Consumir lo disponible
+                                }
+                                if ($cantidad <= 0) continue;
+
+                                $saldoNuevo = round($stockActual - $cantidad, 4);
+                                $concepto = 'Consumo dinámico por resultado #' . $id_resultado . ' (Batch, Solicitud #' . $id_solicitud . ')';
+
+                                $stmtMov = sqlsrv_query($conn, "SET NOCOUNT ON; INSERT INTO laboratorio.Movimiento_Kardex (Id_Reactivo, Fecha_Registro, Tipo_Movimiento, Cantidad, Concepto, Saldo_Resultante, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, GETDATE(), 'S', ?, ?, ?, 1, GETDATE(), ?); SELECT CAST(SCOPE_IDENTITY() AS INT) AS id;", [$idReactivo, $cantidad, $concepto, $saldoNuevo, $usuario_id]);
+
+                                $rowMov = ($stmtMov !== false) ? sqlsrv_fetch_array($stmtMov, SQLSRV_FETCH_ASSOC) : null;
+                                $idMovimiento = intval($rowMov['id'] ?? 0);
+
+                                if ($idMovimiento > 0) {
+                                    sqlsrv_query($conn, "INSERT INTO laboratorio.Consumo_Resultado (Id_Resultado, Id_Movimiento, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", [$id_resultado, $idMovimiento, $usuario_id]);
+
+                                    if ($id_muestra_producto > 0) {
+                                        sqlsrv_query($conn, "INSERT INTO laboratorio.Consumo_Reaccion (Id_Movimiento, Id_Muestra_Producto, Activo, Fecha_Creacion, Usuario_Creacion) VALUES (?, ?, 1, GETDATE(), ?)", [$idMovimiento, $id_muestra_producto, $usuario_id]);
+                                    }
+
+                                    if ($aplicarDescuentoReserva) {
+                                        sqlsrv_query($conn, "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Cantidad_Reservada = CASE WHEN ISNULL(Cantidad_Reservada, 0) >= ? THEN ISNULL(Cantidad_Reservada, 0) - ? ELSE 0 END, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", [$cantidad, $cantidad, $cantidad, $idReactivo]);
+                                    } else {
+                                        sqlsrv_query($conn, "UPDATE laboratorio.Reactivo_Lab SET Cantidad_Stock = Cantidad_Stock - ?, Fecha_Modificacion = GETDATE() WHERE Id_Reactivo = ?", [$cantidad, $idReactivo]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Asignar usuario de creación en los residuos del trigger (solicitudes que pasaron a Finalizado)
+            foreach ($pasanAFinalizado as $pf) {
+                $muestra_model->asignarUsuarioCreacionResiduosPorSolicitud($pf[0], $usuario_id, $pf[1], $pf[2]);
+            }
+
+            // 5. Verificación de muestra/proyecto: UNA vez por muestra afectada (misma lógica de guardar_resultado)
+            if (!empty($solicitudesLote)) {
+                $phSols = implode(',', array_fill(0, count($solicitudesLote), '?'));
+                $stmtMuestras = sqlsrv_query($conn,
+                    "SELECT DISTINCT Id_Muestra FROM laboratorio.Solicitud_Analisis
+                     WHERE Id_Solicitud_Analisis IN ($phSols) AND Activo = 1",
+                    array_keys($solicitudesLote));
+                $muestrasAfectadas = [];
+                if ($stmtMuestras !== false) {
+                    while ($rowM = sqlsrv_fetch_array($stmtMuestras, SQLSRV_FETCH_ASSOC)) {
+                        $muestrasAfectadas[] = intval($rowM['Id_Muestra']);
+                    }
+                }
+
+                foreach ($muestrasAfectadas as $id_muestra) {
+                    $sql_all_finished = "SELECT COUNT(*) AS total_solicitudes,
+                                                SUM(CASE WHEN Estado = 'Finalizado' THEN 1 ELSE 0 END) AS finalizadas
+                                         FROM laboratorio.Solicitud_Analisis
+                                         WHERE Id_Muestra = ? AND Activo = 1";
+                    $stmt_all = sqlsrv_query($conn, $sql_all_finished, [$id_muestra]);
+                    $row_all = ($stmt_all !== false) ? sqlsrv_fetch_array($stmt_all, SQLSRV_FETCH_ASSOC) : null;
+
+                    if ($row_all && intval($row_all['total_solicitudes']) > 0 &&
+                        intval($row_all['total_solicitudes']) === intval($row_all['finalizadas'])) {
+
+                        $sql_proyecto_muestra = "SELECT Id_Proyecto FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ? AND Activo = 1";
+                        $stmt_pm = sqlsrv_query($conn, $sql_proyecto_muestra, [$id_muestra]);
+                        $row_pm = ($stmt_pm !== false) ? sqlsrv_fetch_array($stmt_pm, SQLSRV_FETCH_ASSOC) : null;
+                        $id_proyecto_muestra = intval($row_pm['Id_Proyecto'] ?? 0);
+
+                        $sql_es_duplicada = "SELECT TOP 1 1 AS EsDuplicada FROM laboratorio.Muestra_Bitacora
+                                             WHERE Id_Muestra = ? AND Muestra_Original IS NOT NULL";
+                        $stmt_dup = sqlsrv_query($conn, $sql_es_duplicada, [$id_muestra]);
+                        $es_muestra_duplicada = ($stmt_dup !== false && sqlsrv_fetch_array($stmt_dup, SQLSRV_FETCH_ASSOC)) ? true : false;
+
+                        $estado_muestra_final = ($id_proyecto_muestra > 0 || $es_muestra_duplicada) ? 'Finalizado' : 'Por Firmar';
+
+                        $sql_estado_actual_muestra = "SELECT Estado FROM laboratorio.Muestra_Lab WHERE Id_Muestra = ? AND Activo = 1";
+                        $stmt_eam = sqlsrv_query($conn, $sql_estado_actual_muestra, [$id_muestra]);
+                        $row_eam = ($stmt_eam !== false) ? sqlsrv_fetch_array($stmt_eam, SQLSRV_FETCH_ASSOC) : null;
+                        $estado_muestra_actual = strtolower(trim((string)($row_eam['Estado'] ?? '')));
+
+                        if (strtolower($estado_muestra_final) === 'finalizado' && $estado_muestra_actual !== 'finalizado') {
+                            sqlsrv_query($conn,
+                                "UPDATE laboratorio.Muestra_Lab
+                                 SET Estado = ?, Id_Jefe_Lab = ?, Id_Especialista = ?, Fecha_Validacion = GETDATE(), Fecha_Modificacion = GETDATE()
+                                 WHERE Id_Muestra = ? AND Activo = 1",
+                                [$estado_muestra_final, $usuario_id, $usuario_id, $id_muestra]);
+                        } elseif (strtolower($estado_muestra_final) === 'por firmar' && $estado_muestra_actual !== 'por firmar') {
+                            sqlsrv_query($conn,
+                                "UPDATE laboratorio.Muestra_Lab
+                                 SET Estado = ?, Id_Especialista = ?, Fecha_Modificacion = GETDATE()
+                                 WHERE Id_Muestra = ? AND Activo = 1",
+                                [$estado_muestra_final, $usuario_id, $id_muestra]);
+                        }
+
+                        // Proyecto: si TODAS las muestras del proyecto están finalizadas
+                        if ($id_proyecto_muestra > 0) {
+                            $sql_check_proyecto = "SELECT COUNT(*) AS total_muestras,
+                                                          SUM(CASE WHEN Estado = 'Finalizado' THEN 1 ELSE 0 END) AS finalizadas
+                                                   FROM laboratorio.Muestra_Lab
+                                                   WHERE Id_Proyecto = ? AND Activo = 1";
+                            $stmt_cp = sqlsrv_query($conn, $sql_check_proyecto, [$id_proyecto_muestra]);
+                            $row_cp = ($stmt_cp !== false) ? sqlsrv_fetch_array($stmt_cp, SQLSRV_FETCH_ASSOC) : null;
+                            if ($row_cp && intval($row_cp['total_muestras']) > 0 &&
+                                intval($row_cp['total_muestras']) === intval($row_cp['finalizadas'])) {
+                                sqlsrv_query($conn,
+                                    "UPDATE laboratorio.Proyecto_Monitoreo SET Estado = 'Finalizado', Fecha_Modificacion = GETDATE()
+                                     WHERE Id_Proyecto = ? AND Activo = 1",
+                                    [$id_proyecto_muestra]);
+                            }
+                        }
+                    }
+                }
+            }
+
+            sqlsrv_commit($conn);
+            $transaccion_activa = false;
+
+            file_put_contents($log_file, "✓ BATCH GUARDADO OK (" . count($limpios) . " resultados)\n", FILE_APPEND);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Resultados guardados correctamente',
+                'guardados' => count($limpios),
+                'id_resultados' => array_values($ids)
+            ]);
+        } catch (Exception $e) {
+            if (isset($transaccion_activa) && $transaccion_activa) {
+                @sqlsrv_rollback($conn);
+            }
+            file_put_contents('../../debug_analisis_proyecto.log', "\n[" . date('Y-m-d H:i:s') . "] ERROR guardar_resultados_batch: " . $e->getMessage() . "\n", FILE_APPEND);
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al guardar resultados: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
+
     // ==================== GUARDAR AVANCE (SIN FINALIZAR) ====================
     
     if ($action === 'guardar_avance') {

@@ -178,6 +178,18 @@
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modal-nuevo-periodo">
               <i class="ti ti-plus me-2"></i> Crear Período
             </button>
+            <button type="button" class="btn btn-primary" id="btn-sincronizar-pg" onclick="sincronizarDesdePostgreSQL()">
+              <i class="ti ti-database-import me-2"></i> Extraer desde PostgreSQL
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-extraer-calidad" onclick="extraerCalidad()">
+              <i class="ti ti-droplet me-2"></i> Extraer Calidad
+            </button>
+            <button type="button" class="btn btn-danger" id="btn-historial-calidad" onclick="importarHistorialCalidad()">
+              <i class="ti ti-history me-2"></i> Importar Historial Calidad
+            </button>
+            <button type="button" class="btn btn-outline-dark" id="btn-mapeo-calidad" onclick="abrirMapeoCalidad()">
+              <i class="ti ti-settings me-2"></i> Mapeo de Calidad
+            </button>
             <?php endif; ?>
           </div>
 
@@ -187,8 +199,8 @@
 
           <ul class="nav nav-tabs mb-3" id="tabs-periodos-tipo">
             <li class="nav-item"><button class="nav-link active" id="tab-btn-monitoreo" data-bs-toggle="tab" data-bs-target="#pane-periodos-monitoreo">Monitoreo</button></li>
-            <li class="nav-item"><button class="nav-link" id="tab-btn-calidad" data-bs-toggle="tab" data-bs-target="#pane-periodos-calidad">Calidad de Agua</button></li>
-            <li class="nav-item"><button class="nav-link" id="tab-btn-drenes" data-bs-toggle="tab" data-bs-target="#pane-periodos-drenes">Drenes</button></li>
+            <li class="nav-item"><button class="nav-link" id="tab-btn-calidad" data-bs-toggle="tab" data-bs-target="#pane-periodos-calidad">Calidad Superficial</button></li>
+            <li class="nav-item"><button class="nav-link" id="tab-btn-drenes" data-bs-toggle="tab" data-bs-target="#pane-periodos-drenes">Calidad Drenes</button></li>
           </ul>
 
           <div class="tab-content">
@@ -634,6 +646,23 @@
           <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="turno_duplicacion" value="Mañana" checked><span class="form-check-label">Mañana</span></label>
           <label class="form-check form-check-inline"><input class="form-check-input" type="radio" name="turno_duplicacion" value="Tarde"><span class="form-check-label">Tarde</span></label>
         </div>
+
+        <div class="mt-3">
+          <label class="form-label d-block">Muestras a duplicar <span class="text-danger">*</span></label>
+          <div class="table-responsive" style="max-height:260px; overflow:auto;">
+            <table class="table table-sm table-vcenter card-table">
+              <thead>
+                <tr>
+                  <th style="width:70px;">N°</th>
+                  <th>Punto de toma</th>
+                  <th style="width:130px;">No analizada</th>
+                  <th>Comentario (si no se analiza)</th>
+                </tr>
+              </thead>
+              <tbody id="lista-muestras-duplicar"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -671,6 +700,7 @@ let tablasMasivaInit = false;
 let tablasDefectoInit = false;
 let tablaBitacorasDefecto = null;
 const muestrasSeleccionadas = new Set();
+const infoMuestrasDuplicar = {};
 
 let tipoServicioFiltro = 'todos';
 let muestraInicioAnalisis = { idMuestra: 0, idCliente: 0, agricultor: '', origen: 'pendiente' };
@@ -754,6 +784,20 @@ function abrirCrearClienteRapido() {
 
 // ========== INICIALIZACIÓN ==========
 $(document).ready(function () {
+  // Manejo global de sesión expirada (401): redirige al login en vez de mostrar error 500
+  $(document).ajaxError(function (event, jqXHR) {
+    if (jqXHR && jqXHR.status === 401) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Sesión expirada',
+        text: 'Tu sesión ha caducado. Vuelve a iniciar sesión.',
+        confirmButtonText: 'Ir al login'
+      }).then(function () {
+        window.location.href = 'index.php';
+      });
+    }
+  });
+
   // Mover modales a <body> para evitar conflictos de stacking context con page-wrapper de Tabler
   document.querySelectorAll('.modal').forEach(function (modal) {
     document.body.appendChild(modal);
@@ -1323,6 +1367,586 @@ function recargarTablasMasiva(reset) {
   if (window.tablaPeriodosDrenes) window.tablaPeriodosDrenes.ajax.reload(null, !!reset);
 }
 
+// -------------------------------------------------------
+// Extraer celdas y pozos recién creados desde PostgreSQL
+// -------------------------------------------------------
+// -------------------------------------------------------
+// Calidad Superficial y Calidad Drenes — Extraer / Historial / Mapeo
+// -------------------------------------------------------
+
+// Carga el modal para extraer calidad (tipo + año + mes)
+window.extraerCalidad = function() {
+    $.ajax({
+        url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=listar_esquemas',
+        type: 'GET',
+        dataType: 'json',
+        success: function(resp) {
+            if (!resp.success || !resp.esquemas) {
+                Swal.fire('Error', 'No se pudieron obtener los esquemas de calidad.', 'error');
+                return;
+            }
+            const tipos = { superficial: resp.esquemas.superficial || [], drene: resp.esquemas.drene || [] };
+
+            function opcionesMeses(tipo) {
+                const anios = tipos[tipo];
+                let html = '<select id="cal-anio" class="form-select mb-2"><option value="">Año...</option>';
+                anios.forEach(a => { html += `<option value="${a.anio}">${a.anio}</option>`; });
+                html += '</select><select id="cal-mes" class="form-select"><option value="">Mes...</option></select>';
+                return html;
+            }
+
+            Swal.fire({
+                title: '<i class="ti ti-droplet me-2"></i>Extraer Calidad',
+                html: `
+                    <div class="text-start">
+                        <label class="form-label fw-semibold">Tipo</label>
+                        <select id="cal-tipo" class="form-select mb-2">
+                            <option value="superficial">Calidad Superficial</option>
+                            <option value="drene">Calidad Drenes</option>
+                        </select>
+                        <div id="cal-año-mes"></div>
+                        <p class="small text-muted mt-2 mb-0">Se crearán las muestras con sus resultados VACÍOS para llenar.</p>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: '<i class="ti ti-cloud-download me-1"></i>Extraer',
+                confirmButtonColor: '#6c757d',
+                didOpen: () => {
+                    function cargarMeses() {
+                        const tipo = document.getElementById('cal-tipo').value;
+                        const anio = document.getElementById('cal-anio').value;
+                        const anios = tipos[tipo] || [];
+                        const a = anios.find(x => String(x.anio) === String(anio));
+                        const selMes = document.getElementById('cal-mes');
+                        selMes.innerHTML = '<option value="">Mes...</option>';
+                        if (a && a.tablas) {
+                            a.tablas.forEach(t => {
+                                selMes.innerHTML += `<option value="${t.mes.toLowerCase()}">${t.mes}</option>`;
+                            });
+                        }
+                    }
+                    document.getElementById('cal-tipo').addEventListener('change', () => {
+                        document.getElementById('cal-año-mes').innerHTML = opcionesMeses(document.getElementById('cal-tipo').value);
+                        document.getElementById('cal-anio').addEventListener('change', cargarMeses);
+                    });
+                    document.getElementById('cal-año-mes').innerHTML = opcionesMeses('superficial');
+                    document.getElementById('cal-anio').addEventListener('change', cargarMeses);
+                },
+                preConfirm: () => {
+                    const tipo = document.getElementById('cal-tipo').value;
+                    const anio = document.getElementById('cal-anio').value;
+                    const mes = document.getElementById('cal-mes').value;
+                    if (!anio || !mes) {
+                        Swal.showValidationMessage('Selecciona año y mes.');
+                        return false;
+                    }
+                    return { tipo, anio, mes };
+                }
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const { tipo, anio, mes } = result.value;
+                const btn = document.getElementById('btn-extraer-calidad');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Extrayendo...';
+
+                $.ajax({
+                    url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=importar_calidad_init&tipo=' + tipo + '&anio=' + anio + '&mes=' + mes + '&llenar_resultados=0',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(resInit) {
+                        if (!resInit.success || !resInit.lotes || resInit.lotes.length === 0) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="ti ti-droplet me-2"></i> Extraer Calidad';
+                            Swal.fire('Información', 'No hay muestras para ' + tipo + ' ' + anio + '-' + mes + '.', 'info');
+                            return;
+                        }
+                        procesarLotesCalidad(resInit, anio + ' ' + mes, tipo, 0, btn, function() {
+                            recargarTablasMasiva(false);
+                        });
+                    },
+                    error: function(xhr) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ti ti-droplet me-2"></i> Extraer Calidad';
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Error al extraer calidad.', 'error');
+                    }
+                });
+            });
+        },
+        error: function() {
+            Swal.fire('Error', 'No se pudo contactar con CalidadAPI.', 'error');
+        }
+    });
+};
+
+// Importa TODO el historial de Calidad Superficial y Calidad Drenes (todos los años, con valores)
+// ⚠️ Decisión del usuario: ANTES de importar se borra TODO lo de calidad (proyectos, muestras,
+//    resultados y tablas intermediarias) para que la importación NUNCA duplique.
+window.importarHistorialCalidad = function() {
+    Swal.fire({
+        title: '¿Importar historial de calidad?',
+        html: 'Se <b>borrará TODO lo importado antes</b> de <b>Calidad Superficial</b> y <b>Calidad Drenes</b> (proyectos, muestras, resultados y tablas intermediarias) y se volverá a importar <b>todo el historial</b> desde PostgreSQL, <b>sin duplicar nada</b>.<br><br><span class="text-danger"><i class="ti ti-alert-triangle me-1"></i>Esta acción no se puede deshacer.</span>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, borrar e importar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d63939'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const btn = document.getElementById('btn-historial-calidad');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Limpiando importación anterior...';
+
+        $.ajax({
+            url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=limpiar_calidad',
+            type: 'POST',
+            dataType: 'json',
+            success: function(resLimpia) {
+                if (!resLimpia.success) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ti ti-history me-2"></i> Importar Historial Calidad';
+                    Swal.fire('Error', resLimpia.message || 'Error al limpiar los datos de calidad.', 'error');
+                    return;
+                }
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Importando...';
+
+                $.ajax({
+                    url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=importar_calidad_historial_init&llenar_resultados=1',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(resInit) {
+                        if (!resInit.success || !resInit.lotes || resInit.lotes.length === 0) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="ti ti-history me-2"></i> Importar Historial Calidad';
+                            Swal.fire('Información', 'No hay datos de calidad para importar.', 'info');
+                            return;
+                        }
+                        procesarLotesCalidad(resInit, 'HISTORIAL', 'todos', 1, btn, function() {
+                            recargarTablasMasiva(false);
+                        });
+                    },
+                    error: function(xhr) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ti ti-history me-2"></i> Importar Historial Calidad';
+                        Swal.fire('Error', xhr.responseJSON?.message || 'Error al obtener historial de calidad.', 'error');
+                    }
+                });
+            },
+            error: function(xhr) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ti ti-history me-2"></i> Importar Historial Calidad';
+                Swal.fire('Error', xhr.responseJSON?.message || 'Error al limpiar los datos de calidad.', 'error');
+            }
+        });
+    });
+};
+
+// Procesa lotes de calidad con barra de progreso
+function procesarLotesCalidad(resInit, titulo, tipo, llenar, btn, alFinalizar) {
+    const lotes = resInit.lotes;
+    const total = lotes.length;
+    let procesados = 0;
+    let errores = 0;
+    let resultadosTotales = 0;
+
+    Swal.fire({
+        title: 'Importando Calidad ' + titulo,
+        html: `
+            <div class="mb-3"><b>Total muestras:</b> ${total} | Procesadas: <span id="cal-prog-texto">0</span></div>
+            <div class="progress">
+                <div id="cal-prog-barra" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            <div class="mt-2 small"><span class="text-muted">Resultados: <span id="cal-prog-res">0</span></span> | <span class="text-danger">Errores: <span id="cal-prog-err">0</span></span></div>
+        `,
+        allowOutsideClick: false,
+        showConfirmButton: false
+    });
+
+    function siguiente() {
+        if (procesados >= total) {
+            btn.disabled = false;
+            btn.innerHTML = (tipo === 'todos') ? '<i class="ti ti-history me-2"></i> Importar Historial Calidad' : '<i class="ti ti-droplet me-2"></i> Extraer Calidad';
+            Swal.fire({
+                icon: errores > 0 ? 'warning' : 'success',
+                title: 'Importación Completada',
+                html: `Se procesaron <b>${procesados}</b> muestras.<br>Resultados: <b>${resultadosTotales}</b>${errores > 0 ? `<br><span class="text-danger">⚠ ${errores} errores</span>` : ''}`,
+                confirmButtonText: 'Entendido'
+            }).then(() => { if (alFinalizar) alFinalizar(); });
+            return;
+        }
+
+        const lote = lotes[procesados];
+        $.ajax({
+            url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php',
+            type: 'POST',
+            data: {
+                action: 'importar_calidad_batch',
+                tipo: lote.tipo,
+                anio: lote.anio,
+                mes: lote.mes,
+                esquema: lote.esquema,
+                tabla: lote.tabla,
+                id_fila: lote.id_fila,
+                descripcion: lote.descripcion,
+                fechamonitoreo: lote.fechamonitoreo,
+                proyecto: lote.proyecto,
+                llenar_resultados: llenar
+            },
+            dataType: 'json',
+            success: function(res) {
+                procesados++;
+                if (res.success) {
+                    resultadosTotales += (res.resultados || 0);
+                } else {
+                    errores++;
+                }
+                actualizarProgresoCalidad(total, procesados, errores, resultadosTotales);
+                siguiente();
+            },
+            error: function() {
+                procesados++;
+                errores++;
+                actualizarProgresoCalidad(total, procesados, errores, resultadosTotales);
+                siguiente();
+            }
+        });
+    }
+    siguiente();
+}
+
+function actualizarProgresoCalidad(total, procesados, errores, resultados) {
+    const pct = Math.round((procesados / total) * 100);
+    document.getElementById('cal-prog-texto').innerText = procesados;
+    document.getElementById('cal-prog-res').innerText = resultados;
+    document.getElementById('cal-prog-err').innerText = errores;
+    const barra = document.getElementById('cal-prog-barra');
+    barra.style.width = pct + '%';
+    barra.innerText = pct + '%';
+}
+
+// Pantalla de Mapeo de Calidad (parámetro → columna PG por tipo)
+window.abrirMapeoCalidad = function() {
+    $.ajax({
+        url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=obtener_mapeo',
+        type: 'GET',
+        dataType: 'json',
+        success: function(resp) {
+            if (!resp.success) { Swal.fire('Error', 'No se pudo obtener el mapeo.', 'error'); return; }
+            const mapeo = resp.mapeo || [];
+            const params = resp.parametros || [];
+
+            let filas = mapeo.map(m => `
+                <tr data-id="${m.id_mapeo}" data-param="${m.id_parametro}" data-tipo="${m.tipo}">
+                    <td>${escapeHtml(m.parametro)} <small class="text-muted d-block">${escapeHtml(m.categoria||'')}</small></td>
+                    <td><span class="badge ${m.tipo==='superficial'?'bg-info':'bg-secondary'}">${m.tipo==='superficial'?'Superficial':'Drenes'}</span></td>
+                    <td><input type="text" class="form-control form-control-sm mapeo-col" value="${escapeHtml(m.columna)}" style="font-family:monospace;"></td>
+                </tr>`).join('');
+
+            let optsParams = '<option value="">-- Seleccionar parámetro --</option>';
+            params.forEach(p => {
+                optsParams += `<option value="${p.id_parametro}">${escapeHtml(p.nombre)} (${escapeHtml(p.categoria||'')})</option>`;
+            });
+
+            Swal.fire({
+                title: '<i class="ti ti-settings me-2"></i>Mapeo de Calidad',
+                html: `
+                    <p class="small text-muted text-start">Asigna cada parámetro a su columna en las tablas de calidad. Las columnas nuevas se guardan al final.</p>
+                    <div class="text-start mb-2 p-2 border rounded" style="background:#f8f9fa;">
+                        <div class="row g-2">
+                            <div class="col-5"><select id="map-param" class="form-select form-select-sm">${optsParams}</select></div>
+                            <div class="col-4">
+                                <select id="map-tipo" class="form-select form-select-sm">
+                                    <option value="superficial">Superficial</option>
+                                    <option value="drene">Drenes</option>
+                                </select>
+                            </div>
+                            <div class="col-3"><input type="text" id="map-col" class="form-control form-control-sm" placeholder="columna_pg"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary mt-2" onclick="agregarMapeoCalidad()"><i class="ti ti-plus me-1"></i>Agregar</button>
+                    </div>
+                    <div class="text-start" style="max-height:320px; overflow:auto;">
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th style="width:40%;">Columna PG</th></tr></thead>
+                            <tbody id="tabla-mapeo-body">${filas || '<tr><td colspan="3" class="text-muted">Sin mapeos</td></tr>'}</tbody>
+                        </table>
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Cambios',
+                cancelButtonText: 'Cerrar',
+                didOpen: () => { window.agregarMapeoCalidad = function() {
+                    const p = document.getElementById('map-param').value;
+                    const t = document.getElementById('map-tipo').value;
+                    const c = document.getElementById('map-col').value.trim();
+                    if (!p || !c) { Swal.showValidationMessage('Selecciona parámetro y columna.'); return; }
+                    $.ajax({
+                        url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=guardar_mapeo',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify([{ id_parametro: p, tipo: t, columna: c }]),
+                        success: function() { abrirMapeoCalidad(); },
+                        error: function(xhr) { Swal.fire('Error', xhr.responseJSON?.message || 'Error al guardar', 'error'); }
+                    });
+                }; },
+                preConfirm: function() {
+                    const cambios = [];
+                    $('#tabla-mapeo-body tr').each(function() {
+                        const id = $(this).data('id');
+                        const tipo = $(this).data('tipo');
+                        const col = $(this).find('.mapeo-col').val().trim();
+                        if (id && col) cambios.push({ id_mapeo: id, tipo: tipo, columna: col });
+                    });
+                    return cambios;
+                }
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                const cambios = result.value;
+                if (!cambios.length) return;
+                $.ajax({
+                    url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=guardar_mapeo_edicion',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(cambios),
+                    success: function() { Swal.fire('Guardado', 'Mapeo actualizado.', 'success'); },
+                    error: function(xhr) { Swal.fire('Error', xhr.responseJSON?.message || 'Error al guardar', 'error'); }
+                });
+            });
+        },
+        error: function() { Swal.fire('Error', 'No se pudo contactar con CalidadAPI.', 'error'); }
+    });
+};
+
+// -------------------------------------------------------
+// Extraer celdas y pozos recién creados desde PostgreSQL
+// -------------------------------------------------------
+window.sincronizarDesdePostgreSQL = function() {
+    const anioActual = new Date().getFullYear();
+    const mesActual  = new Date().getMonth() + 1;
+    const periodoDefecto = mesActual <= 6 ? '1' : '2';
+
+    const opcionesAnio = [anioActual - 1, anioActual, anioActual + 1]
+        .map(a => `<option value="${a}" ${a === anioActual ? 'selected' : ''}>${a}</option>`).join('');
+
+    let esquemasCalidad = null;
+
+    Swal.fire({
+        title: '<i class="ti ti-database-import me-2"></i>Extraer desde PostgreSQL',
+        html: `
+            <p class="text-muted small mb-3">Selecciona el tipo de monitoreo y el rango a extraer.</p>
+            <div class="row g-3 text-start">
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Tipo de monitoreo</label>
+                    <select id="swal-tipo" class="form-select">
+                        <option value="pozos">Monitoreo de Pozos (subterráneo)</option>
+                        <option value="superficial">Calidad Superficial</option>
+                        <option value="drene">Calidad Drenes</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-semibold">Año</label>
+                    <select id="swal-anio" class="form-select">${opcionesAnio}</select>
+                </div>
+                <div class="col-6" id="swal-periodo-wrap">
+                    <label class="form-label fw-semibold">Período</label>
+                    <select id="swal-periodo" class="form-select">
+                        <option value="1" ${periodoDefecto==='1'?'selected':''}>Período 1 — Avenida (Ene–Jun)</option>
+                        <option value="2" ${periodoDefecto==='2'?'selected':''}>Período 2 — Estiaje (Jul–Dic)</option>
+                    </select>
+                </div>
+                <div class="col-6" id="swal-mes-wrap" style="display:none;">
+                    <label class="form-label fw-semibold">Mes</label>
+                    <select id="swal-mes" class="form-select"><option value="">Mes...</option></select>
+                </div>
+            </div>
+            <div id="swal-resumen" class="alert alert-info mt-3 mb-0 small text-start py-2 px-3"></div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '<i class="ti ti-cloud-download me-1"></i>Extraer',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#004d99',
+        didOpen: () => {
+            $.ajax({
+                url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=listar_esquemas',
+                type: 'GET',
+                dataType: 'json',
+                success: function(resp) { esquemasCalidad = (resp && resp.success) ? resp.esquemas : null; },
+                error: function() { esquemasCalidad = null; }
+            });
+
+            function cargarMesesCalidad() {
+                const tipo = document.getElementById('swal-tipo').value;
+                const anio = document.getElementById('swal-anio').value;
+                const selMes = document.getElementById('swal-mes');
+                selMes.innerHTML = '<option value="">Mes...</option>';
+                if (!esquemasCalidad || !esquemasCalidad[tipo]) return;
+                const anios = esquemasCalidad[tipo];
+                const a = anios.find(x => String(x.anio) === String(anio));
+                if (a && a.tablas) {
+                    a.tablas.forEach(t => { selMes.innerHTML += `<option value="${t.mes.toLowerCase()}">${t.mes}</option>`; });
+                }
+            }
+
+            function actualizarResumen() {
+                const tipo = document.getElementById('swal-tipo').value;
+                const a = document.getElementById('swal-anio').value;
+                if (tipo === 'pozos') {
+                    const p = document.getElementById('swal-periodo').value;
+                    const meses = p === '1' ? 'Enero – Junio' : 'Julio – Diciembre';
+                    const ttipo = p === '1' ? 'Avenida' : 'Estiaje';
+                    document.getElementById('swal-resumen').innerHTML =
+                        `Se extraerá: <strong>MONITOREO POZOS {VALLE} – ${a}-0${p}</strong><br>Meses: ${meses} (${ttipo})`;
+                } else {
+                    const m = document.getElementById('swal-mes').value;
+                    const nombreTipo = tipo === 'superficial' ? 'CALIDAD SUPERFICIAL' : 'CALIDAD DRENES';
+                    document.getElementById('swal-resumen').innerHTML =
+                        m ? `Se extraerá: <strong>${nombreTipo} ${a} - ${m.toUpperCase()}</strong><br>Muestras con resultados vacíos para llenar.`
+                          : `Selecciona el mes de <strong>${nombreTipo} ${a}</strong>.`;
+                }
+            }
+
+            function toggleTipo() {
+                const tipo = document.getElementById('swal-tipo').value;
+                document.getElementById('swal-periodo-wrap').style.display = (tipo === 'pozos') ? '' : 'none';
+                document.getElementById('swal-mes-wrap').style.display = (tipo === 'pozos') ? 'none' : '';
+                actualizarResumen();
+            }
+
+            actualizarResumen();
+            document.getElementById('swal-tipo').addEventListener('change', toggleTipo);
+            document.getElementById('swal-anio').addEventListener('change', () => { cargarMesesCalidad(); actualizarResumen(); });
+            document.getElementById('swal-periodo').addEventListener('change', actualizarResumen);
+            document.getElementById('swal-mes').addEventListener('change', actualizarResumen);
+        },
+        preConfirm: () => {
+            const tipo = document.getElementById('swal-tipo').value;
+            const anio = document.getElementById('swal-anio').value;
+            if (tipo !== 'pozos') {
+                const mes = document.getElementById('swal-mes').value;
+                if (!mes) {
+                    Swal.showValidationMessage('Selecciona el mes a extraer.');
+                    return false;
+                }
+                return { tipo: tipo, anio: anio, periodo: '', mes: mes };
+            }
+            return {
+                tipo: 'pozos',
+                anio: anio,
+                periodo: document.getElementById('swal-periodo').value,
+                mes: ''
+            };
+        }
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        const { tipo, anio, periodo, mes } = result.value;
+
+        // ===== Calidad Superficial / Calidad Drenes (mismo botón) =====
+        if (tipo !== 'pozos') {
+            const btn = document.getElementById('btn-sincronizar-pg');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Extrayendo...';
+
+            $.ajax({
+                url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php?action=importar_calidad_init&tipo=' + tipo + '&anio=' + anio + '&mes=' + mes + '&llenar_resultados=0',
+                type: 'GET',
+                dataType: 'json',
+                success: function(resInit) {
+                    if (!resInit.success || !resInit.lotes || resInit.lotes.length === 0) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="ti ti-database-import me-2"></i> Extraer desde PostgreSQL';
+                        Swal.fire('Información', 'No hay muestras de ' + (tipo === 'superficial' ? 'Calidad Superficial' : 'Calidad Drenes') + ' para ' + anio + '-' + mes + '.', 'info');
+                        return;
+                    }
+                    procesarLotesCalidad(resInit, anio + ' ' + mes, tipo, 0, btn, function() {
+                        recargarTablasMasiva(false);
+                    });
+                },
+                error: function(xhr) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ti ti-database-import me-2"></i> Extraer desde PostgreSQL';
+                    Swal.fire('Error', xhr.responseJSON?.message || 'Error al extraer calidad.', 'error');
+                }
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Extrayendo datos de PostgreSQL...',
+            html: `<div class="text-center py-2"><div class="spinner-border text-primary" role="status"></div>
+                   <p class="mt-3 text-muted">Filtrando monitoreos de <strong>${anio}-0${periodo}</strong>...<br>
+                   Sincronizando pozos y generando celdas en blanco.</p></div>`,
+            allowOutsideClick: false,
+            showConfirmButton: false
+        });
+
+        $.ajax({
+            url: 'modules/laboratorio/pozos/controllers/PozoAPI.php?action=sincronizar_pozos',
+            type: 'POST',
+            dataType: 'json',
+            success: function(respPozos) {
+                $.ajax({
+                    url: 'modules/laboratorio/pozos/controllers/PozoAPI.php?action=sincronizar_monitoreos',
+                    type: 'POST',
+                    data: { anio: anio, periodo: periodo },
+                    dataType: 'json',
+                    success: function(respMon) {
+                        Swal.close();
+                        if (respMon && respMon.success) {
+                            const stats = respMon.stats || {};
+                            const creados      = stats.proyectos_creados   || 0;
+                            const actualizados = stats.proyectos_actualizados || 0;
+                            const pozosNuevos  = respPozos.insertados || 0;
+                            const muestrasCreadas = stats.muestras_creadas || 0;
+                            const label        = periodo === '1' ? 'Avenida (Ene–Jun)' : 'Estiaje (Jul–Dic)';
+                            const erroresArr   = Array.isArray(stats.errores) ? stats.errores : [];
+                            const hayErrores   = erroresArr.length > 0;
+
+                            let htmlErrores = '';
+                            if (hayErrores) {
+                                htmlErrores = '<div class="alert alert-danger mt-2 mb-0 small text-start py-2 px-3" style="max-height:140px;overflow:auto;">' +
+                                    '<b>Errores (' + erroresArr.length + '):</b><ul class="mb-0">' +
+                                    erroresArr.slice(0, 10).map(e => '<li>' + escapeHtml(String(e)) + '</li>').join('') +
+                                    (erroresArr.length > 10 ? '<li>… y ' + (erroresArr.length - 10) + ' más</li>' : '') +
+                                    '</ul></div>';
+                            }
+
+                            Swal.fire({
+                                icon: hayErrores ? 'warning' : 'success',
+                                title: hayErrores ? 'Extracción con errores' : 'Extracción Completada',
+                                html: `<div class="text-start">
+                                         <p class="mb-2">Período extraído: <strong>${anio}-0${periodo} ${label}</strong></p>
+                                         <ul class="mb-0">
+                                           <li><strong>Nuevos proyectos/períodos creados:</strong> ${creados}</li>
+                                           <li><strong>Proyectos/celdas actualizadas:</strong> ${actualizados}</li>
+                                           <li><strong>Pozos nuevos sincronizados:</strong> ${pozosNuevos}</li>
+                                           <li><strong>Muestras creadas:</strong> ${muestrasCreadas}</li>
+                                         </ul>
+                                         ${htmlErrores}
+                                         <p class="small text-muted mt-2 mb-0">Las celdas en blanco para parámetros in-situ y de laboratorio han sido generadas y están listas para su llenado.</p>
+                                       </div>`,
+                                confirmButtonText: 'Entendido',
+                                confirmButtonColor: '#004d99'
+                            }).then(() => {
+                                if (typeof recargarTablasMasiva === 'function') {
+                                    recargarTablasMasiva(false);
+                                }
+                            });
+                        } else {
+                            Swal.fire('Error', respMon.message || 'Error al sincronizar monitoreos desde PostgreSQL', 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        Swal.close();
+                        console.error('Error AJAX Monitoreos:', xhr.responseText);
+                        Swal.fire('Error', 'Error al conectar con PostgreSQL para monitoreos: ' + error, 'error');
+                    }
+                });
+            },
+            error: function(xhr, status, error) {
+                Swal.close();
+                console.error('Error AJAX Pozos:', xhr.responseText);
+                Swal.fire('Error', 'Error al conectar con PostgreSQL para pozos: ' + error, 'error');
+            }
+        });
+    });
+};
+
 function cargarServiciosMasiva() {
   $.getJSON(API_MASIVA + '?action=obtenerServicios', function (resp) {
     if (!resp.success) return;
@@ -1730,16 +2354,28 @@ function initTabDefecto() {
   });
   document.getElementById('tabla-muestras-defecto').addEventListener('change', function (e) {
     if (!e.target.classList.contains('chk-muestra-select')) return;
-    if (e.target.checked) muestrasSeleccionadas.add(e.target.value);
-    else muestrasSeleccionadas.delete(e.target.value);
+    if (e.target.checked) {
+      muestrasSeleccionadas.add(e.target.value);
+      const row = $('#tabla-muestras-defecto').DataTable().row(e.target.closest('tr')).data();
+      if (row) infoMuestrasDuplicar[e.target.value] = { punto_toma: row.punto_toma || '', ubicacion: row.ubicacion_punto || '' };
+    } else {
+      muestrasSeleccionadas.delete(e.target.value);
+      delete infoMuestrasDuplicar[e.target.value];
+    }
     actualizarCheckboxDefecto();
   });
   document.getElementById('chk-todos-muestras').addEventListener('change', function (e) {
     document.querySelectorAll('#tabla-muestras-defecto .chk-muestra-select').forEach(function (ch) {
       if (ch.disabled) return;
       ch.checked = e.target.checked;
-      if (e.target.checked) muestrasSeleccionadas.add(ch.value);
-      else muestrasSeleccionadas.delete(ch.value);
+      if (e.target.checked) {
+        muestrasSeleccionadas.add(ch.value);
+        const row = $('#tabla-muestras-defecto').DataTable().row(ch.closest('tr')).data();
+        if (row) infoMuestrasDuplicar[ch.value] = { punto_toma: row.punto_toma || '', ubicacion: row.ubicacion_punto || '' };
+      } else {
+        muestrasSeleccionadas.delete(ch.value);
+        delete infoMuestrasDuplicar[ch.value];
+      }
     });
     actualizarCheckboxDefecto();
   });
@@ -1893,9 +2529,26 @@ function limpiarFormularioDefecto() {
   document.getElementById('fecha_registro_def').value = new Date().toISOString().split('T')[0];
 }
 
+function renderListaMuestrasDuplicarDefecto() {
+  const tbody = document.getElementById('lista-muestras-duplicar');
+  tbody.innerHTML = '';
+  Array.from(muestrasSeleccionadas).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); }).forEach(function (id) {
+    const info = infoMuestrasDuplicar[id] || {};
+    const tr = document.createElement('tr');
+    tr.dataset.idOriginal = id;
+    const punto = (info.punto_toma || '').trim() !== '' ? info.punto_toma : '-';
+    tr.innerHTML = '<td>' + id + '</td>'
+      + '<td>' + punto + '</td>'
+      + '<td><input type="checkbox" class="form-check-input chk-no-analizada"></td>'
+      + '<td><input type="text" class="form-control form-control-sm comentario-muestra" placeholder="Ej: en mantenimiento" style="min-width:200px;"></td>';
+    tbody.appendChild(tr);
+  });
+}
+
 function realizarAnalisisDefecto() {
   if (muestrasSeleccionadas.size === 0) { Swal.fire('Error', 'Seleccione al menos una muestra.', 'error'); return; }
   document.getElementById('fecha_duplicacion').value = new Date().toISOString().split('T')[0];
+  renderListaMuestrasDuplicarDefecto();
   new bootstrap.Modal(document.getElementById('modal-duplicar-muestras')).show();
 }
 
@@ -1905,9 +2558,19 @@ function ejecutarDuplicacion() {
   const turno = turnoSel ? turnoSel.value : '';
   if (!fecha || !turno) { Swal.fire('Error', 'Complete todos los campos.', 'error'); return; }
   const ids = Array.from(muestrasSeleccionadas).map(function (i) { return parseInt(i); });
+  const observaciones = {};
+  document.querySelectorAll('#lista-muestras-duplicar tr').forEach(function (tr) {
+    const idOrig = parseInt(tr.dataset.idOriginal, 10);
+    if (!idOrig) return;
+    const noAnalizada = tr.querySelector('.chk-no-analizada').checked;
+    const comentario = tr.querySelector('.comentario-muestra').value.trim();
+    if (noAnalizada || comentario !== '') {
+      observaciones[idOrig] = { no_analizada: noAnalizada, observacion: comentario };
+    }
+  });
   const btn = document.getElementById('btn-confirmar-duplicacion');
   btn.disabled = true; btn.textContent = 'Procesando...';
-  fetch(API_MUESTRA + '?action=duplicar_muestras_por_defecto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids_muestras: ids, fecha_registro: fecha, turno: turno }) })
+  fetch(API_MUESTRA + '?action=duplicar_muestras_por_defecto', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids_muestras: ids, fecha_registro: fecha, turno: turno, observaciones: observaciones }) })
     .then(function (r) { return r.json(); }).then(function (data) {
       if (!data.success) throw new Error(data.message || 'Error');
       bootstrap.Modal.getInstance(document.getElementById('modal-duplicar-muestras')).hide();
@@ -2041,8 +2704,17 @@ window.abrirDetalleBitacoraFecha = function (fecha) {
         if (idB <= 0) return '<div class="card h-100"><div class="card-header"><h3 class="card-title mb-0">Turno ' + titulo + '</h3></div><div class="card-body"><div class="alert alert-warning mb-0">Sin bitácora para este turno.</div></div></div>';
         const btnC = td.tiene_pendientes ? '<a class="btn btn-sm btn-primary" href="?module=laboratorio&action=muestra&subaction=analisis_agricultor&id_bitacora=' + idB + '&agricultor=' + encodeURIComponent('Muestra por defecto') + '">Continuar análisis</a>' : '';
         const resultados = Array.isArray(td.resultados) ? td.resultados : [];
-        let filas = resultados.length ? resultados.map(function (r) { return '<tr><td>' + r.id_muestra + '</td><td>' + escapeHtml(r.ubicacion_punto||'-') + '</td><td>' + escapeHtml(r.punto_toma||'-') + '</td><td>' + escapeHtml(r.parametro||'-') + '</td><td>' + escapeHtml(r.unidad||'') + '</td><td>' + escapeHtml(r.valor_hallado||'(pendiente)') + '</td><td>' + escapeHtml(r.estado||'-') + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="text-muted">Sin resultados.</td></tr>';
-        return '<div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><h3 class="card-title mb-0">Turno ' + titulo + ' <span class="text-muted">#' + idB + '</span></h3>' + btnC + '</div><div class="card-body"><div class="mb-2"><strong>Muestras:</strong> ' + total + '</div><div class="mb-2 text-muted">' + (obs || '(sin observación)') + '</div><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>ID</th><th>Ubicación</th><th>Punto de toma</th><th>Parámetro</th><th>Unidad</th><th>Valor</th><th>Estado</th></tr></thead><tbody>' + filas + '</tbody></table></div></div></div>';
+        let ultimoIdMuestra = null;
+        let filas = resultados.length ? resultados.map(function (r) {
+          const esPrimeraFilaMuestra = String(r.id_muestra) !== String(ultimoIdMuestra);
+          ultimoIdMuestra = r.id_muestra;
+          const noAnalizada = parseInt(r.no_analizada || 0, 10) === 1;
+          const obsMuestra = (r.observacion_muestra || '').trim();
+          const estadoHtml = noAnalizada ? '<span class="badge bg-danger">NO ANALIZADA</span>' : escapeHtml(r.estado || '-');
+          const obsHtml = (esPrimeraFilaMuestra && obsMuestra !== '') ? escapeHtml(obsMuestra) : '<span class="text-muted">-</span>';
+          return '<tr><td>' + r.id_muestra + '</td><td>' + escapeHtml(r.ubicacion_punto||'-') + '</td><td>' + escapeHtml(r.punto_toma||'-') + '</td><td>' + escapeHtml(r.parametro||'-') + '</td><td>' + escapeHtml(r.unidad||'') + '</td><td>' + escapeHtml(r.valor_hallado||'(pendiente)') + '</td><td>' + estadoHtml + '</td><td>' + obsHtml + '</td></tr>';
+        }).join('') : '<tr><td colspan="8" class="text-muted">Sin resultados.</td></tr>';
+        return '<div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><h3 class="card-title mb-0">Turno ' + titulo + ' <span class="text-muted">#' + idB + '</span></h3>' + btnC + '</div><div class="card-body"><div class="mb-2"><strong>Muestras:</strong> ' + total + '</div><div class="mb-2 text-muted">' + (obs || '(sin observación)') + '</div><div class="table-responsive"><table class="table table-vcenter card-table table-striped"><thead><tr><th>ID</th><th>Ubicación</th><th>Punto de toma</th><th>Parámetro</th><th>Unidad</th><th>Valor</th><th>Estado</th><th>Observación</th></tr></thead><tbody>' + filas + '</tbody></table></div></div></div>';
       };
       document.getElementById('contenido-detalle-bitacora-fecha').innerHTML = '<div class="row g-3"><div class="col-12 col-xl-6">' + renderTurno('Mañana', data.manana || {}) + '</div><div class="col-12 col-xl-6">' + renderTurno('Tarde', data.tarde || {}) + '</div></div>';
     }).catch(function (err) { document.getElementById('contenido-detalle-bitacora-fecha').innerHTML = '<div class="alert alert-danger">' + escapeHtml(err.message || 'Error') + '</div>'; });

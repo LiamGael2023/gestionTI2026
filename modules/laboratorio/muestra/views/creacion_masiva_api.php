@@ -210,7 +210,17 @@ try {
         $proyectoModel = new ProyectoModel($conn);
         $es_control_calidad = intval($_POST['es_control_calidad'] ?? 0) === 1 ? 1 : 0;
         $es_drene = intval($_POST['es_drene'] ?? 0) === 1 ? 1 : 0;
-        
+
+        // ⚠️ Validar duplicados: no permitir dos proyectos activos con el mismo nombre
+        $nombre_proyecto_input = trim((string)($_POST['nombre_proyecto'] ?? ''));
+        if ($nombre_proyecto_input !== '') {
+            $stmtDup = sqlsrv_query($conn, "SELECT TOP 1 Id_Proyecto FROM laboratorio.Proyecto_Monitoreo
+                                            WHERE LTRIM(RTRIM(Nombre_Proyecto)) = LTRIM(RTRIM(?)) AND Activo = 1", [$nombre_proyecto_input]);
+            if ($stmtDup !== false && sqlsrv_has_rows($stmtDup)) {
+                throw new Exception('Ya existe un período con el nombre "' . $nombre_proyecto_input . '". Usa otro nombre o edita el período existente.');
+            }
+        }
+
         $datos = [
             'Nombre_Proyecto' => $_POST['nombre_proyecto'] ?? null,
             'Valle' => $_POST['valle'] ?? null,
@@ -431,8 +441,11 @@ try {
         
         // Verificar detalles ANTES de cambiar estado
         $detalles_antes = $proyectoModel->obtenerDetalles($id_proyecto);
-        
-        // Cambiar estado a "En Progreso" (esto crea las muestras automáticamente)
+        $muestras_antes = $muestraModel->contarMuestrasPorProyecto($id_proyecto);
+
+        // Cambiar estado a "En Progreso" (crea muestras SOLO si el proyecto no tiene
+        // ninguna — anti-duplicado en ProyectoModel::guardar; si ya las tiene, por
+        // ejemplo extraídas de PostgreSQL, solo cambia el estado a En Progreso).
         $id = $proyectoModel->guardar([
             'Id_Proyecto' => $id_proyecto,
             'Estado' => 'En Progreso',
@@ -440,14 +453,19 @@ try {
             'Fuentes_Drene' => $fuentes_drene
         ]);
 
-        // Contar muestras creadas
+        // Contar muestras creadas (diferencia real, no el total)
         $cantidad_muestras = $muestraModel->contarMuestrasPorProyecto($id_proyecto);
+        $creadas = max(0, intval($cantidad_muestras) - intval($muestras_antes));
 
         echo json_encode([
             'success' => true,
-            'muestras_creadas' => $cantidad_muestras,
+            'muestras_creadas' => $creadas,
             'detalles_encontrados' => count($detalles_antes),
-            'mensaje' => "Se crearon $cantidad_muestras muestras exitosamente"
+            'mensaje' => $creadas > 0
+                ? "Se crearon $creadas muestras exitosamente"
+                : ($muestras_antes > 0
+                    ? "El proyecto ya tenía $muestras_antes muestras (p.ej. extraídas de PostgreSQL). No se duplicaron; quedó en análisis."
+                    : 'Proyecto iniciado en análisis (sin muestras planificadas).')
         ]);
         exit;
     }

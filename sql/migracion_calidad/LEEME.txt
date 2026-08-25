@@ -1,0 +1,95 @@
+# Migracion Calidad -> hidrologia (BDG_SGDA, PostgreSQL 16 local)
+
+Fecha: 2026-08-24. Base LOCAL: localhost:5432, BDG_SGDA (NO tocar 10.0.100.81).
+
+## Que se hizo
+1. Creo hidrologia.drenes_catastro (31 puntos, IDs DREN-001..031) y
+   hidrologia.calidad_catastro (13 puntos, IDs CAL-001..013).
+   Identidad = ubicacion + cooreste + coornorte, desde TODAS las tablas base
+   de calidadaguadrenada2022..2026 y calidadaguasuperficial2022..2026.
+2. Columna `tipo` en pozos_monitoreo y calidad_agua_laboratorio:
+   - filas existentes (pozos) -> 'comportamiento freatico' (10626 / 2936)
+   - mediciones de drenes -> 'drene' (143)
+   - mediciones de calidad (rios/canales) -> 'calidad agua' (126)
+3. Columnas de enlace id_dren / id_calidad (FK a los catalogos) en ambas tablas,
+   porque id_pozo solo acepta pozos_catastro (FK existente, se respeta).
+4. Migro 269 mediciones (2022-2026):
+   - pozos_monitoreo: in-situ ce, ph, std, t + campana (ej. 'ABRIL 2022') + observaciones
+   - calidad_agua_laboratorio: parametros extendidos (nitratos, sulfatos, durezatotal,
+     calcio, coliformes...) enlazados por id_medicion + fecha_toma_muestra + orden
+   Los schemas originales de calidad NO se modificaron (solo lectura).
+
+## Totales finales
+drenes_catastro=31 | calidad_catastro=13 | pozos_monitoreo=10895 | calidad_agua_laboratorio=3205
+
+## Mapeo de columnas clave (origen -> hidrologia)
+- dureza (drenes 2022-23) -> durezatotal
+- observacion (2022-24) / observaciones (2025-26) -> observaciones
+- mes/mes_campana/monitoreo -> campana computada ('MES AAAA' desde fechamonitoreo)
+- ce/ph/std/t -> pozos_monitoreo (in-situ); resto parametros -> calidad_agua_laboratorio
+- fechamonitoreo era VARCHAR en superficial 2023 -> normalizado a DATE
+- filas "basura" (todo NULL, p.ej. ids 10/11 de sup2025) fueron excluidas
+
+## Archivos
+- 01_ddl.sql          : estructura de catalogos + columna tipo
+- 02_catalogo.sql     : poblado de catalogos (usa union_*.sql; version inline lista)
+- 03_migracion.sql    : migracion de mediciones (version inline lista)
+- 04_fk.sql           : columnas id_dren/id_calidad + FKs
+- union_drenes.sql    : SELECT UNION ALL de calidadaguadrenada (columnas canonicas)
+- union_superficial.sql: SELECT UNION ALL de calidadaguasuperficial
+- backup_hidrologia_20260824_102318.backup : respaldo pre-migracion (pg_restore)
+
+## Restaurar (si algo falla en la app)
+pg_restore -h localhost -p 5432 -U postgres -d BDG_SGDA -c backup_hidrologia_20260824_102318.backup
+Ojo: restaura TODO el schema hidrologia a como estaba antes de la migracion.
+
+## Pendiente / notas
+- v_calidad_agua_laboratorio sigue uniendo solo pozos_catastro (2936); las filas
+  nuevas (id_pozo NULL) no aparecen en esa vista. Si se quiere verlas, crear una vista
+  UNION con drenes_catastro/calidad_catastro o adaptar la existente.
+- Hay puntos con identico nombre+coordenadas en AMBOS dominios (p.ej. CANAL MADRE PECH
+  aparece como DREN-xxx y CAL-xxx): es intencional (identidad por dominio).
+
+## Actualizacion 2026-08-24 (2da pasada): deduplicacion de drenes
+La descripcion es el nombre real del drene. Se fusionaron los duplicados
+(same drene en varias coordenadas/sub-puntos) y se reenumeraron:
+- 31 -> 14 drenes: DV-4.0 (57 mon, 9 ids), BITIN (20, 4), DV-4.3 (19, 3),
+  DV-1.0 (3, 3), CANAL MADRE (18, 2), CENTRAL HIDROELECTRICA (18, 2),
+  + DV-2.00, 1.0, CHANQUIN, EVACUADOR, FRONTON BAJO + 3 sin nombre.
+- Todas las mediciones se repuntaron al drene que sobrevivio (pozos_monitoreo
+  y calidad_agua_laboratorio, 143 en cada tabla; enlace por id_medicion intacto).
+- IDs reenumerados DREN-001..014 (script 06_dedup.sql). FKs fk_mon_dren/fk_lab_dren
+  reconstruidas. Integridad: 0 huerfanos.
+
+## Actualizacion 2026-08-24 (3ra pasada): id_pozo = DREN-xxx / CAL-xxx
+- Se lleno id_pozo con el id del catalogo en ambas tablas (143 DREN-xxx, 126 CAL-xxx).
+- Se soltaron las FKs de id_pozo hacia pozos_catastro (ya no validan contra CHAVI).
+- Se eliminaron las columnas puente id_dren/id_calidad (ya no hacen falta).
+- Los 10626 pozos (CHAVI-xxx) quedaron intactos. Script: 07_idpozo.sql.
+
+## Actualizacion 2026-08-24 (4ta pasada): se restauro la cantidad original de drenes
+- Se revirtio la fusion de drenes: drenes_catastro vuelve a 31 (un drene por
+  ubicacion+coordenadas; DV-4.0 (1)(2)(3) vuelven a ser puntos separados).
+- Se re-migraron las 269 mediciones con id_pozo = DREN-xxx / CAL-xxx por punto
+  especifico (script 08_reconstruir.sql). Los 31 drenes + 13 calidad + 269 enlaces
+  quedaron identicos; pozos CHAVI intactos.
+- Recordatorio: id_pozo ya NO tiene FK a pozos_catastro (soltada en 07).
+
+## Actualizacion 2026-08-24 (5ta pasada): limpieza de mediciones vacias
+- Se eliminaron 4 mediciones totalmente vacias (solo geometria en la fuente):
+  id_medicion 11632 (DREN-001), 11633 (DREN-002), 11750 (CAL-002), 11751 (CAL-001),
+  junto con sus filas en calidad_agua_laboratorio.
+- Quedaron: pozos_monitoreo=10891, calidad_agua_laboratorio=3201 (drene=141, calidad=124).
+- OJO: los catalogos CAL-001/CAL-002 y DREN-001/DREN-002 siguen existiendo pero sin
+  mediciones (puntos de solo geometria). Decidir si se eliminan tambien.
+- OJO filtro: la migracion trae filas con coords-vacio por el filtro
+  'cooreste IS NOT NULL'. Si se re-ejecuta, considerar quitar el filtro de coords.
+
+## Actualizacion 2026-08-24 (6ta pasada): puntos fantasma eliminados y reenumeracion
+- Investigacion completa (todos los schemas 2022-2026 + pozos_catastro + red +
+  redpozos2018 + comportamiento): los 4 puntos (DREN-001/002 = slots ids 8/9 de
+  drenes-febrero-2025; CAL-001/002 = slots ids 10/11 de sup-marzo/julio-2025)
+  son filas de plantilla SOLO con geometria, sin monitoreo en ninguna parte.
+- Se eliminaron del catalogo y se reenumero: drenes_catastro=29 (DREN-001..029),
+  calidad_catastro=11 (CAL-001..011). id_pozo repuntados (141 drene + 124 calidad
+  en cada tabla). 0 referencias invalidas. Script: 09_limpiar_renumerar.sql.

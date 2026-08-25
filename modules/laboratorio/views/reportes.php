@@ -617,7 +617,19 @@
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const buffer = await res.arrayBuffer();
           const wb = XLSX.read(buffer, { type: 'array', cellStyles: true, cellNF: true, cellDates: true });
-          const sheet = wb.Sheets[wb.SheetNames[0]];
+
+          // Usar la HOJA ACTIVA del workbook (el exportador fija la hoja del
+          // valle como activa). Si no hay índice activo, caer a la primera.
+          let hojaNombre = wb.SheetNames[0];
+          try {
+            const wbView = wb.Workbook && wb.Workbook.WBView;
+            const activa = wbView && wbView[0] && wbView[0].activeTab;
+            if (typeof activa === 'number' && wb.SheetNames[activa]) {
+              hojaNombre = wb.SheetNames[activa];
+            }
+          } catch (e) { /* primera hoja por defecto */ }
+
+          const sheet = wb.Sheets[hojaNombre];
           normalizeSheetRange(sheet);
           const html = sheetToStyledHtml(sheet);
           previewExcelWrap.innerHTML = html;

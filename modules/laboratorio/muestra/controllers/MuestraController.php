@@ -79,6 +79,10 @@ switch($subaction) {
     case 'recepcion_formulario':
         include 'modules/laboratorio/muestra/views/recepcion_formulario.php';
         break;
+
+    case 'exportar_monitoreo_subterraneo':
+        include 'modules/laboratorio/muestra/controllers/ExportarMonitoreoSubterraneo.php';
+        break;
     
     default:
         include 'modules/laboratorio/muestra/views/index.php';

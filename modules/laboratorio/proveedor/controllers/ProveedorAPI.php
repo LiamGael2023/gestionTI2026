@@ -67,6 +67,27 @@ try {
             exit;
         }
 
+        // Validar RUC duplicado (UNIQUE KEY en laboratorio.Proveedor.Ruc)
+        // antes del INSERT, para devolver un mensaje claro en lugar del error crudo de SQL Server.
+        $rucIngresado = trim((string)($datos['Ruc'] ?? ''));
+        if ($rucIngresado !== '') {
+            $stmtRuc = sqlsrv_query($conn, "SELECT Id_Proveedor FROM laboratorio.Proveedor WHERE Ruc = ?", [$rucIngresado]);
+            if ($stmtRuc === false) {
+                throw new Exception('Error al validar RUC: ' . print_r(sqlsrv_errors(), true));
+            }
+            $rowRuc = sqlsrv_fetch_array($stmtRuc, SQLSRV_FETCH_ASSOC);
+            $idEditando = intval($datos['Id_Proveedor'] ?? 0);
+            if ($rowRuc && intval($rowRuc['Id_Proveedor']) !== $idEditando) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Ya existe un proveedor con el RUC ' . $rucIngresado . '. Verifique el dato o seleccione el proveedor existente.',
+                    'errors'  => ['Ruc' => 'El RUC ya está registrado en otro proveedor']
+                ]);
+                exit;
+            }
+        }
+
         $id = $model->guardar($datos);
         $proveedor = $model->obtenerPorId($id);
         echo json_encode([

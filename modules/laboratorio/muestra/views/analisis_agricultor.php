@@ -825,64 +825,63 @@ function guardarResultados(event) {
     }).then((result) => {
         if (result.isConfirmed) {
         abrirModalConsumoExtra(function(payloadExtra) {
-          guardarResultadosAPI(resultados, 0, payloadExtra);
+          guardarResultadosAPI(resultados, payloadExtra, 0);
         });
         }
     });
 }
 
-  function guardarResultadosAPI(resultados, index, payloadExtra) {
-    if (index === 0) {
-      mostrarCargaAnalisis('Grabando resultados...', 'Procesando 1 de ' + resultados.length + ' resultados.');
+  // ⚡ OPTIMIZADO 2026-08: guarda TODOS los resultados en UNA sola petición
+  // (endpoint guardar_resultados_batch, una transacción). Antes era secuencial.
+  function guardarResultadosAPI(resultados, payloadExtra, reintento) {
+    reintento = reintento || 0;
+    if (reintento === 0) {
+      mostrarCargaAnalisis('Grabando resultados...', 'Guardando ' + resultados.length + ' resultados en una sola operación...');
     }
-
-    if (index >= resultados.length) {
-      actualizarCargaAnalisis('Registrando consumo extra, por favor espere...');
-      registrarConsumoExtra(payloadExtra, function(ok, dataOrMsg) {
-        cerrarCargaAnalisis();
-        if (!ok) {
-          Swal.fire('Error', String(dataOrMsg || 'Error registrando consumo extra'), 'error');
-          return;
-        }
-
-        let mensaje = 'Todos los resultados han sido guardados';
-        if (dataOrMsg && dataOrMsg.movimientos !== undefined) {
-          mensaje += '<br><small>Movimientos extra: <strong>' + dataOrMsg.movimientos + '</strong> | Residuos: <strong>' + (dataOrMsg.residuos || 0) + '</strong></small>';
-        }
-
-        Swal.fire({
-          title: 'Exito',
-          html: mensaje,
-          icon: 'success'
-        }).then(() => {
-          window.location.href = '?module=laboratorio&action=muestra';
-        });
-      });
-        return;
-    }
-
-    let resultado = resultados[index];
 
     $.ajax({
-        url: apiUrl + '?action=guardar_resultado',
+        url: apiUrl + '?action=guardar_resultados_batch',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify(resultado),
+        data: JSON.stringify({ resultados: resultados }),
         dataType: 'json',
-        timeout: 5000,
+        timeout: 120000,
         success: function(response) {
             if (response.success) {
-          const siguiente = index + 2;
-          if (siguiente <= resultados.length) {
-            actualizarCargaAnalisis('Procesando ' + siguiente + ' de ' + resultados.length + ' resultados.');
-          }
-            guardarResultadosAPI(resultados, index + 1, payloadExtra);
+              actualizarCargaAnalisis('Registrando consumo extra, por favor espere...');
+              registrarConsumoExtra(payloadExtra, function(ok, dataOrMsg) {
+                cerrarCargaAnalisis();
+                if (!ok) {
+                  Swal.fire('Error', String(dataOrMsg || 'Error registrando consumo extra'), 'error');
+                  return;
+                }
+
+                let mensaje = 'Todos los resultados han sido guardados';
+                if (dataOrMsg && dataOrMsg.movimientos !== undefined) {
+                  mensaje += '<br><small>Movimientos extra: <strong>' + dataOrMsg.movimientos + '</strong> | Residuos: <strong>' + (dataOrMsg.residuos || 0) + '</strong></small>';
+                }
+
+                Swal.fire({
+                  title: 'Exito',
+                  html: mensaje,
+                  icon: 'success'
+                }).then(() => {
+                  window.location.href = '?module=laboratorio&action=muestra';
+                });
+              });
             } else {
             cerrarCargaAnalisis();
                 Swal.fire('Error', response.message || 'Error al guardar resultado', 'error');
             }
         },
-        error: function(xhr) {
+        error: function(xhr, status, error) {
+          // Reintento automático: el lote es idempotente (consumo con check ya_consumido,
+          // residuos con dedup por solicitud, UPDATEs de estado idempotentes).
+          if ((status === 'timeout' || xhr.status === 0) && reintento < 2) {
+            actualizarCargaAnalisis('Servidor lento, reintentando el guardado...');
+            setTimeout(function() { guardarResultadosAPI(resultados, payloadExtra, reintento + 1); }, 1500);
+            return;
+          }
           cerrarCargaAnalisis();
             let errorMsg = 'Error al guardar';
             try {
@@ -892,6 +891,9 @@ function guardarResultados(event) {
                 }
             } catch(e) {
                 errorMsg = xhr.status + ' - ' + xhr.responseText.substring(0, 100);
+            }
+            if (status === 'timeout' || xhr.status === 0) {
+              errorMsg = 'El servidor tardó demasiado en responder. Los resultados guardados hasta ahora están a salvo; vuelve a intentar el guardado.';
             }
 
             Swal.fire('Error', errorMsg, 'error');
@@ -933,7 +935,8 @@ function guardarAvance() {
     });
 }
 
-function guardarAvanceAPI(resultados, index) {
+function guardarAvanceAPI(resultados, index, reintento) {
+  reintento = reintento || 0;
   if (index === 0) {
     mostrarCargaAnalisis('Guardando avance...', 'Procesando 1 de ' + resultados.length + ' resultados.');
   }
@@ -952,20 +955,26 @@ function guardarAvanceAPI(resultados, index) {
         contentType: 'application/json',
         data: JSON.stringify(resultado),
         dataType: 'json',
-        timeout: 5000,
+        timeout: 60000,
         success: function(response) {
             if (response.success) {
             const siguiente = index + 2;
             if (siguiente <= resultados.length) {
               actualizarCargaAnalisis('Procesando ' + siguiente + ' de ' + resultados.length + ' resultados.');
             }
-                guardarAvanceAPI(resultados, index + 1);
+                guardarAvanceAPI(resultados, index + 1, 0);
             } else {
             cerrarCargaAnalisis();
                 Swal.fire('Error', response.message || 'Error al guardar', 'error');
             }
         },
-        error: function(xhr) {
+        error: function(xhr, status, error) {
+          // Reintento automático en timeout/abort (guardado idempotente)
+          if ((status === 'timeout' || xhr.status === 0) && reintento < 2) {
+            actualizarCargaAnalisis('Procesando ' + (index + 1) + ' de ' + resultados.length + ' resultados. (Servidor lento, reintentando...)');
+            setTimeout(function() { guardarAvanceAPI(resultados, index, reintento + 1); }, 1500);
+            return;
+          }
           cerrarCargaAnalisis();
             let errorMsg = 'Error al guardar';
             try {
@@ -975,6 +984,9 @@ function guardarAvanceAPI(resultados, index) {
                 }
             } catch(e) {
                 errorMsg = xhr.status + ' - ' + xhr.responseText.substring(0, 100);
+            }
+            if (status === 'timeout' || xhr.status === 0) {
+              errorMsg = 'El servidor tardó demasiado en responder. Los resultados guardados hasta ahora están a salvo; vuelve a intentar el guardado.';
             }
 
             Swal.fire('Error', errorMsg, 'error');

@@ -24,7 +24,9 @@
 
     </div> </div> <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta17/dist/js/tabler.min.js"></script>
 
-<?php if (isset($module) && $module === 'produccion_agraria'): ?>
+    <script src="<?php echo BASE_URL; ?>/public/js/guard-anti-duplicados.js?v=2"></script>
+
+    <?php if (isset($module) && $module === 'produccion_agraria'): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/variables.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/modules/produccion_agraria/assets/css/chat-widget.css">
 <script>window.BASE_URL = window.BASE_URL || '<?php echo BASE_URL; ?>';</script>

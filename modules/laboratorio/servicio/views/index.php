@@ -398,8 +398,11 @@ function editarServicio(id) {
                 $('#Descripcion').val(servicio.Descripcion || '');
                 $('#Tipo_Muestra').val(servicio.Tipo_Muestra);
                 
-                // Cargar Requiere_Reactivos y mostrar/ocultar sección
-                const requiereReactivos = servicio.Requiere_Reactivos ? true : false;
+                // Cargar Requiere_Reactivos y mostrar/ocultar sección.
+                // El check se marca si la bandera viene en true O si el servicio
+                // tiene reactivos ligados (Receta_Servicio), aunque la bandera
+                // venga en 0/falta (columna ausente en BD).
+                const requiereReactivos = (servicio.Requiere_Reactivos ? true : false) || reactivos.length > 0;
                 $('#Requiere_Reactivos').prop('checked', requiereReactivos);
                 if (requiereReactivos) {
                     $('#seccion-reactivos').show();
@@ -838,6 +841,13 @@ function abrirCrearEquipoRapido() {
                     <input id="swal-eq-nombre" class="form-control" placeholder="Nombre del equipo">
                 </div>
                 <div class="mb-2">
+                    <label class="form-label">Estado <span class="text-danger">*</span></label>
+                    <select id="swal-eq-estado" class="form-select">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                    <small class="text-muted">El estado es obligatorio (validación de la API)</small>
+                </div>
+                <div class="mb-2">
                     <label class="form-label">Descripción</label>
                     <textarea id="swal-eq-desc" class="form-control" rows="2" placeholder="Descripción (opcional)"></textarea>
                 </div>
@@ -845,10 +855,31 @@ function abrirCrearEquipoRapido() {
         showCancelButton: true,
         confirmButtonText: 'Crear Equipo',
         cancelButtonText: 'Cancelar',
+        didOpen: () => {
+            // Cargar estados de equipo desde la BD
+            $.ajax({
+                url: 'modules/laboratorio/equipo/controllers/EquipoAPI.php?action=listar_estados',
+                method: 'GET', dataType: 'json',
+                success: function(resp) {
+                    if (resp.success && resp.data) {
+                        var sel = document.getElementById('swal-eq-estado');
+                        sel.innerHTML = '<option value="">-- Seleccione --</option>';
+                        resp.data.forEach(function(es) {
+                            var opt = document.createElement('option');
+                            opt.value = es.Id_Estado;
+                            opt.textContent = es.Nombre;
+                            sel.appendChild(opt);
+                        });
+                    }
+                }
+            });
+        },
         preConfirm: () => {
             const nombre = document.getElementById('swal-eq-nombre').value.trim();
+            const estado = document.getElementById('swal-eq-estado').value;
             if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
-            return { Nombre: nombre, Descripcion: document.getElementById('swal-eq-desc').value.trim() };
+            if (!estado) { Swal.showValidationMessage('Seleccione el estado del equipo'); return false; }
+            return { Nombre: nombre, Descripcion: document.getElementById('swal-eq-desc').value.trim(), Id_Estado: estado };
         }
     }).then(result => {
         if (!result.isConfirmed) return;
@@ -882,20 +913,57 @@ function abrirCrearReactivoRapido() {
                 <div class="mb-2">
                     <label class="form-label">Tipo <span class="text-danger">*</span></label>
                     <select id="swal-re-tipo" class="form-select">
-                        <option value="Reactivo">Reactivo</option>
-                        <option value="Estándar">Estándar</option>
-                        <option value="Estándar Secundario">Estándar Secundario</option>
-                        <option value="Material de referencia">Material de referencia</option>
+                        <option value="">-- Seleccione --</option>
+                        <option value="Agua">Agua</option>
+                        <option value="Suelo">Suelo</option>
                     </select>
+                    <small class="text-muted">Solo Agua o Suelo (validación de la API)</small>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Unidad de Medida</label>
+                    <select id="swal-re-unidad" class="form-select">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Cantidad Inicial <span class="text-danger">*</span></label>
+                    <input id="swal-re-cantidad" type="number" step="0.01" min="0.01" class="form-control" placeholder="Ej: 100">
+                    <small class="text-muted">Aparecerá como ingreso inicial en el kardex</small>
                 </div>
             </div>`,
         showCancelButton: true,
         confirmButtonText: 'Crear Reactivo',
         cancelButtonText: 'Cancelar',
+        didOpen: () => {
+            // Cargar unidades de medida desde la BD (igual que el modal de Reactivos)
+            $.ajax({
+                url: 'modules/laboratorio/reactivo/controllers/ReactivoAPI.php?action=listar_unidades',
+                method: 'GET', dataType: 'json',
+                success: function(resp) {
+                    if (resp.success && resp.data) {
+                        var sel = document.getElementById('swal-re-unidad');
+                        sel.innerHTML = '<option value="">-- Seleccione --</option>';
+                        resp.data.forEach(function(u) {
+                            var opt = document.createElement('option');
+                            opt.value = u.Id_Unidad_Medida;
+                            opt.textContent = u.Nombre + ' (' + u.Abreviatura + ')';
+                            sel.appendChild(opt);
+                        });
+                    }
+                }
+            });
+        },
         preConfirm: () => {
             const nombre = document.getElementById('swal-re-nombre').value.trim();
+            const tipo = document.getElementById('swal-re-tipo').value;
+            const cantidad = document.getElementById('swal-re-cantidad').value;
+            const unidad = document.getElementById('swal-re-unidad').value;
             if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
-            return { Nombre: nombre, Tipo: document.getElementById('swal-re-tipo').value };
+            if (!tipo) { Swal.showValidationMessage('Seleccione el tipo (Agua o Suelo)'); return false; }
+            if (!cantidad || parseFloat(cantidad) <= 0) { Swal.showValidationMessage('La cantidad inicial es obligatoria y debe ser mayor a 0'); return false; }
+            const data = { Nombre: nombre, Tipo: tipo, Cantidad_Inicial: cantidad };
+            if (unidad) data.Id_Unidad_Medida = unidad;
+            return data;
         }
     }).then(result => {
         if (!result.isConfirmed) return;

@@ -88,22 +88,38 @@ try {
               <th>Unidad</th>
               <th>Valor hallado</th>
               <th>Estado muestra</th>
+              <th>Observación</th>
             </tr>
           </thead>
           <tbody>
             <?php if (empty($resultados)): ?>
               <tr>
-                <td colspan="6" class="text-center text-muted py-4">No hay resultados registrados para esta bitácora.</td>
+                <td colspan="7" class="text-center text-muted py-4">No hay resultados registrados para esta bitácora.</td>
               </tr>
             <?php else: ?>
+              <?php $ultimoIdMuestra = null; ?>
               <?php foreach ($resultados as $row): ?>
+                <?php $esPrimeraFilaMuestra = (intval($row['Id_Muestra'] ?? 0) !== $ultimoIdMuestra); $ultimoIdMuestra = intval($row['Id_Muestra'] ?? 0); ?>
                 <tr>
                   <td><?php echo intval($row['Id_Muestra'] ?? 0); ?></td>
                   <td><?php echo htmlspecialchars((string)($row['Punto_Toma'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
                   <td><?php echo htmlspecialchars((string)($row['Parametro'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
                   <td><?php echo htmlspecialchars((string)($row['Unidad'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                   <td><?php echo htmlspecialchars(trim((string)($row['Valor_Hallado'] ?? '')) !== '' ? (string)$row['Valor_Hallado'] : '(pendiente)', ENT_QUOTES, 'UTF-8'); ?></td>
-                  <td><?php echo htmlspecialchars((string)($row['Estado'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?></td>
+                  <td>
+                    <?php if (!empty($row['No_Analizada'])): ?>
+                      <span class="badge bg-danger">NO ANALIZADA</span>
+                    <?php else: ?>
+                      <?php echo htmlspecialchars((string)($row['Estado'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($esPrimeraFilaMuestra && trim((string)($row['Observacion_Muestra'] ?? '')) !== ''): ?>
+                      <?php echo htmlspecialchars((string)$row['Observacion_Muestra'], ENT_QUOTES, 'UTF-8'); ?>
+                    <?php else: ?>
+                      <span class="text-muted">-</span>
+                    <?php endif; ?>
+                  </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>

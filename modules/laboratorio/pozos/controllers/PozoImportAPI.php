@@ -32,24 +32,94 @@ try {
     $conn = Conexion::conectar();
     if (!$conn) throw new Exception("No se pudo conectar a SQL Server.");
 
-    // ==================== INIT: Limpiar solo datos de pozos y obtener lotes ====================
+    // ==================== INIT: Limpiar todo el histórico de monitoreo y obtener lotes ====================
     if ($action === 'importar_historicos_init') {
         set_time_limit(300);
-        
-        // 1. Borrar datos relacionados a pozos (Es_Pozo = 1 / Es_Pozos = 1)
-        $resetSqls = [
-            "DELETE FROM laboratorio.Consumo_Resultado WHERE Id_Resultado IN (SELECT Id_Resultado FROM laboratorio.Resultado_Analisis WHERE Id_Solicitud_Analisis IN (SELECT Id_Solicitud_Analisis FROM laboratorio.Solicitud_Analisis WHERE Id_Muestra IN (SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1)))",
-            "DELETE FROM laboratorio.Resultado_Analisis WHERE Id_Solicitud_Analisis IN (SELECT Id_Solicitud_Analisis FROM laboratorio.Solicitud_Analisis WHERE Id_Muestra IN (SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1))",
-            "DELETE FROM laboratorio.Solicitud_Analisis WHERE Id_Muestra IN (SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1)",
-            "DELETE FROM laboratorio.Detalle_Agua WHERE Id_Muestra IN (SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1)",
-            "DELETE FROM laboratorio.Muestra_Producto WHERE Id_Muestra IN (SELECT Id_Muestra FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1)",
-            "DELETE FROM laboratorio.Muestra_Lab WHERE Es_Pozo = 1",
-            "DELETE FROM laboratorio.Monitoreo_Pozo_Asignacion",
-            "DELETE FROM laboratorio.Proyecto_Detalle_Analisis WHERE Id_Proyecto IN (SELECT Id_Proyecto FROM laboratorio.Proyecto_Monitoreo WHERE Es_Pozos = 1)",
-            "DELETE FROM laboratorio.Proyecto_Monitoreo WHERE Es_Pozos = 1"
-        ];
-        foreach ($resetSqls as $sqlReset) {
-            sqlsrv_query($conn, $sqlReset);
+
+        // 1. Borrar TODO lo creado en el histórico de monitoreo (proyectos Es_Pozos=1)
+        //    ⚠️ Filtro por PROYECTO (pm.Es_Pozos=1), NO por ml.Es_Pozo: existen muestras con
+        //    Es_Pozo=0 dentro de proyectos de pozos (creadas por "Crear Período" manual, que no
+        //    setea la bandera) — si no se borran, el DELETE de proyectos falla por FK (FK_Mue_Pro).
+        //    Orden = cadena de FKs (hijos primero). Una sola transacción: si algo falla → ROLLBACK.
+        $filtroM = "(pm.Es_Pozos = 1)";
+        $filtroP = "(pm.Es_Pozos = 1)";
+
+        $contar = function ($sql) use ($conn) {
+            $stmt = sqlsrv_query($conn, $sql);
+            if ($stmt === false) {
+                throw new Exception('Error al limpiar histórico de monitoreo: ' . print_r(sqlsrv_errors(), true));
+            }
+            $n = sqlsrv_rows_affected($stmt);
+            return ($n === false || $n === null) ? 0 : intval($n);
+        };
+
+        // Requerido para borrar de Monitoreo_Pozo_Asignacion (índice filtrado WHERE Activo=1 → error 1934 sin esto)
+        sqlsrv_query($conn, "SET QUOTED_IDENTIFIER ON;");
+
+        sqlsrv_begin_transaction($conn);
+        try {
+            $stats = [
+                'consumos_resultado' => $contar("DELETE cr FROM laboratorio.Consumo_Resultado cr
+                    INNER JOIN laboratorio.Resultado_Analisis ra ON ra.Id_Resultado = cr.Id_Resultado
+                    INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'consumos_reaccion' => $contar("DELETE c FROM laboratorio.Consumo_Reaccion c
+                    INNER JOIN laboratorio.Muestra_Producto mp ON mp.Id_Muestra_Producto = c.Id_Muestra_Producto
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = mp.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'resultados' => $contar("DELETE ra FROM laboratorio.Resultado_Analisis ra
+                    INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'solicitudes' => $contar("DELETE sa FROM laboratorio.Solicitud_Analisis sa
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'detalle_agua' => $contar("DELETE d FROM laboratorio.Detalle_Agua d
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = d.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'detalle_suelo' => $contar("DELETE d FROM laboratorio.Detalle_Suelo d
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = d.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'bitacora' => $contar("DELETE mb FROM laboratorio.Muestra_Bitacora mb
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = mb.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'muestra_producto' => $contar("DELETE mp FROM laboratorio.Muestra_Producto mp
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = mp.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                // Residuos vinculados a muestras de monitoreo (los propios del usuario, sin vínculo, NO se tocan)
+                'residuos' => $contar("DELETE drl FROM laboratorio.Detalle_Residuos_Log drl
+                    INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = drl.Id_Muestra
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'muestras' => $contar("DELETE ml FROM laboratorio.Muestra_Lab ml
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = ml.Id_Proyecto
+                    WHERE $filtroM"),
+                'asignaciones' => $contar("DELETE mpa FROM laboratorio.Monitoreo_Pozo_Asignacion mpa
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = mpa.Id_Proyecto
+                    WHERE $filtroP"),
+                'detalles_proyecto' => $contar("DELETE pd FROM laboratorio.Proyecto_Detalle_Analisis pd
+                    INNER JOIN laboratorio.Proyecto_Monitoreo pm ON pm.Id_Proyecto = pd.Id_Proyecto
+                    WHERE $filtroP"),
+                // Desvincular FK auto-referencial (Id_Proyecto_Pozos_Origen) antes de borrar los proyectos
+                'desvinculados' => $contar("UPDATE pm SET pm.Id_Proyecto_Pozos_Origen = NULL
+                    FROM laboratorio.Proyecto_Monitoreo pm
+                    INNER JOIN laboratorio.Proyecto_Monitoreo p2 ON pm.Id_Proyecto_Pozos_Origen = p2.Id_Proyecto
+                    WHERE p2.Es_Pozos = 1"),
+                'proyectos' => $contar("DELETE FROM laboratorio.Proyecto_Monitoreo WHERE Es_Pozos = 1"),
+            ];
+            sqlsrv_commit($conn);
+        } catch (Exception $e) {
+            sqlsrv_rollback($conn);
+            throw $e;
         }
 
         // 2. REINICIAR IDENTITY de las tablas afectadas (reseteo inteligente al máximo real)
@@ -114,7 +184,8 @@ try {
         echo json_encode([
             'success' => true, 
             'lotes' => $lotes,
-            'total_lotes' => $total_lotes
+            'total_lotes' => $total_lotes,
+            'limpiado' => $stats
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
@@ -240,9 +311,17 @@ try {
         $filasLab = $stmtDatos->fetchAll(PDO::FETCH_ASSOC);
         
         // Leer datos de pozos_monitoreo (parámetros in-situ)
-        $stmtDatosInsitu = $pdoPg->prepare("SELECT * FROM " . PG_SCHEMA . ".pozos_monitoreo WHERE id_medicion = ?");
-        $stmtDatosInsitu->execute([$id_medicion]);
-        $filasInsitu = $stmtDatosInsitu->fetchAll(PDO::FETCH_ASSOC);
+        // NOTA: calidad_agua_laboratorio.id_medicion está vacío. Usar id_pozo + fecha_toma_muestra para matchear con pozos_monitoreo
+        $filasInsitu = [];
+        if (!empty($filasLab)) {
+            $pozo_match = $filasLab[0]['id_pozo'] ?? null;
+            $fecha_match = $filasLab[0]['fecha_toma_muestra'] ?? null;
+            if ($pozo_match && $fecha_match) {
+                $stmtDatosInsitu = $pdoPg->prepare("SELECT * FROM " . PG_SCHEMA . ".pozos_monitoreo WHERE id_pozo = ? AND fechamonitoreo = ?");
+                $stmtDatosInsitu->execute([$pozo_match, $fecha_match]);
+                $filasInsitu = $stmtDatosInsitu->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
         
         // Combinar datos de ambas tablas
         $filas = [];
@@ -324,12 +403,23 @@ try {
                     $id_serv = $info['Id_Servicio'];
 
                     if (!isset($servicios_procesados[$id_serv])) {
-                        $sqlSol = "INSERT INTO laboratorio.Solicitud_Analisis (Id_Muestra, Id_Servicio, Estado, Fecha_Asignacion, Usuario_Creacion, Activo, Fecha_Creacion) VALUES (?, ?, 'Finalizado', ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
-                        $stmtSol = sqlsrv_query($conn, $sqlSol, [$id_muestra, $id_serv, $fecha_toma, $usuario_id]);
+                        // 'En Analisis' + UPDATE a 'Finalizado' (no INSERT directo 'Finalizado'):
+                        // el trigger TR_Registrar_Residuos_Automatica solo se dispara en UPDATE
+                        // con cambio a 'Finalizado' → así se registran los residuos de la importación
+                        $sqlSol = "INSERT INTO laboratorio.Solicitud_Analisis (Id_Muestra, Id_Servicio, Estado, Fecha_Asignacion, Id_Analista, Usuario_Creacion, Activo, Fecha_Creacion) VALUES (?, ?, 'En Analisis', ?, ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
+                        $stmtSol = sqlsrv_query($conn, $sqlSol, [$id_muestra, $id_serv, $fecha_toma, $usuario_id, $usuario_id]);
                         if ($stmtSol === false) continue;
                         sqlsrv_next_result($stmtSol);
                         $rowSol = sqlsrv_fetch_array($stmtSol, SQLSRV_FETCH_ASSOC);
                         $servicios_procesados[$id_serv] = intval($rowSol['id'] ?? 0);
+
+                        $id_sol_nuevo = $servicios_procesados[$id_serv] ?? 0;
+                        if ($id_sol_nuevo > 0) {
+                            sqlsrv_query($conn, "UPDATE laboratorio.Solicitud_Analisis
+                                                 SET Estado = 'Finalizado', Id_Analista = COALESCE(Id_Analista, ?)
+                                                 WHERE Id_Solicitud_Analisis = ? AND Estado <> 'Finalizado'",
+                                                 [$usuario_id, $id_sol_nuevo]);
+                        }
                     }
 
                     $id_sol = $servicios_procesados[$id_serv] ?? 0;
@@ -340,6 +430,31 @@ try {
                     if ($stmtRes !== false) $resultados_count++;
                 }
             } // end foreach $filas
+
+            // Crear solicitudes para servicios SIN datos (para que aparezcan en la tabla consolidada)
+            $serviciosCreadosVacios = [];
+            foreach ($mapaParametros as $col_pg => $info) {
+                $id_serv_vacio = $info['Id_Servicio'];
+                $id_param_vacio = $info['Id_Parametro'];
+                if (isset($servicios_procesados[$id_serv_vacio])) continue;
+
+                if (!isset($serviciosCreadosVacios[$id_serv_vacio])) {
+                    $sqlSolVacio = "INSERT INTO laboratorio.Solicitud_Analisis (Id_Muestra, Id_Servicio, Estado, Fecha_Asignacion, Usuario_Creacion, Activo, Fecha_Creacion) VALUES (?, ?, 'En Analisis', ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
+                    $stmtSolVacio = sqlsrv_query($conn, $sqlSolVacio, [$id_muestra, $id_serv_vacio, $fecha_toma, $usuario_id]);
+                    if ($stmtSolVacio === false) continue;
+                    sqlsrv_next_result($stmtSolVacio);
+                    $rowSolVacio = sqlsrv_fetch_array($stmtSolVacio, SQLSRV_FETCH_ASSOC);
+                    $serviciosCreadosVacios[$id_serv_vacio] = intval($rowSolVacio['id'] ?? 0);
+                }
+
+                $id_sol_vacio = $serviciosCreadosVacios[$id_serv_vacio] ?? 0;
+                if ($id_sol_vacio <= 0) continue;
+
+                // Crear resultado vacio para que el parametro aparezca en la tabla
+                $stmtResVacio = sqlsrv_query($conn, "INSERT INTO laboratorio.Resultado_Analisis (Id_Solicitud_Analisis, Id_Parametro, Valor_Hallado, Usuario_Creacion, Activo, Fecha_Creacion) VALUES (?, ?, NULL, ?, 1, GETDATE())",
+                    [$id_sol_vacio, $id_param_vacio, $usuario_id]);
+                if ($stmtResVacio !== false) $resultados_count++;
+            }
             } // end if !$es_futuro
 
             sqlsrv_commit($conn);

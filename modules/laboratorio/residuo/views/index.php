@@ -495,12 +495,10 @@ function inicializarTablaResiduos() {
 function inicializarTablaInformes() {
     $('#tabla-informes').DataTable({
         processing: true,
-        paging: false,
-        info: false,
+        serverSide: true,
         ajax: {
             url: 'modules/laboratorio/residuo/views/data_informes.php',
-            type: 'POST',
-            dataSrc: 'data'
+            type: 'POST'
         },
         columnDefs: [
             { orderable: false, targets: [5] }

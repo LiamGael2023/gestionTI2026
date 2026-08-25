@@ -131,7 +131,7 @@ if ($idEspecialista > 0) {
 /**
  * Inyecta firmas digitales como imágenes dentro del XLSX (ZIP) después del restore.
  */
-$injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow0) {
+$injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $rowEncargado0, $colEncargado0, $rowAnalista0, $colAnalista0) {
     if (!$encargadoB64 && !$analistaB64) return;
 
     $zip = new \ZipArchive();
@@ -147,13 +147,11 @@ $injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow
     $emuPerPx = 9525; // 914400 EMU/inch ÷ 96 DPI
 
     // ─── 1. Decodificar imágenes y calcular dimensiones reales ───────────────
-    // col 1 = columna B (encargado, IZQUIERDA)
-    // col 6 = columna G (analista,  DERECHA)
     $imagesToAdd = [];
     foreach ([
-        ['encargado', $encargadoB64, 1],
-        ['analista',  $analistaB64,  6],
-    ] as [$tag, $b64, $colFrom]) {
+        ['encargado', $encargadoB64, $colEncargado0, $rowEncargado0],
+        ['analista',  $analistaB64,  $colAnalista0,  $rowAnalista0],
+    ] as [$tag, $b64, $colFrom, $rowFrom]) {
         if (!$b64) continue;
         // Soporta "data:image/...;base64,..." y base64 puro (blob de BD)
         $b64clean = preg_replace('#^data:image/[\w+\-]+;base64,#', '', trim((string)$b64));
@@ -180,7 +178,7 @@ $injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow
         $mediaFile = 'xl/media/firma_' . $tag . '.' . $ext;
         $zip->deleteName($mediaFile);
         $zip->addFromString($mediaFile, $raw);
-        $imagesToAdd[] = ['tag' => $tag, 'ext' => $ext, 'colFrom' => $colFrom, 'cx' => $cx, 'cy' => $cy];
+        $imagesToAdd[] = ['tag' => $tag, 'ext' => $ext, 'colFrom' => $colFrom, 'rowFrom' => $rowFrom, 'cx' => $cx, 'cy' => $cy];
     }
 
     if (empty($imagesToAdd)) { $zip->close(); return; }
@@ -258,7 +256,7 @@ $injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow
             .   '<xdr:from>'
             .     '<xdr:col>'    . $info['colFrom'] . '</xdr:col>'
             .     '<xdr:colOff>114300</xdr:colOff>'
-            .     '<xdr:row>'    . $firmaRow0       . '</xdr:row>'
+            .     '<xdr:row>'    . $info['rowFrom'] . '</xdr:row>'
             .     '<xdr:rowOff>114300</xdr:rowOff>'
             .   '</xdr:from>'
             .   '<xdr:ext cx="' . $cx . '" cy="' . $cy . '"/>'
@@ -288,6 +286,36 @@ $injectFirmasEnXlsx = function ($zipPath, $encargadoB64, $analistaB64, $firmaRow
 
     $zip->deleteName($drawingPath);
     $zip->addFromString($drawingPath, $dom->saveXML());
+
+    // ─── 5. Sincronizar relación en sheet1.xml.rels y sheet1.xml ────────────────
+    $sheetRelsPath = 'xl/worksheets/_rels/sheet1.xml.rels';
+    $sheetRelsXml  = $zip->getFromName($sheetRelsPath);
+    if ($sheetRelsXml === false || trim($sheetRelsXml) === '') {
+        $sheetRelsXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                      . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+    }
+
+    if (strpos($sheetRelsXml, 'drawings/drawing1.xml') === false) {
+        preg_match_all('/Id="rId(\d+)"/i', $sheetRelsXml, $mS);
+        $maxSId = empty($mS[1]) ? 10 : (max(array_map('intval', $mS[1])) + 1);
+        $drawingRelId = 'rId' . $maxSId;
+        $sheetRelsXml = str_replace(
+            '</Relationships>',
+            '<Relationship Id="' . $drawingRelId . '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>',
+            $sheetRelsXml
+        );
+        $zip->deleteName($sheetRelsPath);
+        $zip->addFromString($sheetRelsPath, $sheetRelsXml);
+
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheetXml !== false && strpos($sheetXml, '<drawing') === false) {
+            $drawingTag = '<drawing xmlns:r="' . $nsR . '" r:id="' . $drawingRelId . '"/>';
+            $sheetXml = str_replace('</worksheet>', $drawingTag . '</worksheet>', $sheetXml);
+            $zip->deleteName('xl/worksheets/sheet1.xml');
+            $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
+        }
+    }
+
     $zip->close();
 };
 
@@ -312,6 +340,7 @@ $sqlParametros = "SELECT
                     ISNULL(um.Abreviatura, pa.Unidad_Medida) AS UnidadParametro,
                     pa.Metodo_Utilizado,
                     pa.Tipo_Parametro,
+                    ISNULL(pa.Es_Exportable, 1) AS Es_Exportable,
                     CASE pa.Categoria WHEN 'Fisico' THEN 1 WHEN 'Quimico' THEN 2 WHEN 'Microbiologico' THEN 3 ELSE 4 END AS OrderCat
                   FROM laboratorio.Parametro_Analisis pa
                   LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
@@ -435,6 +464,10 @@ $normalizar = function ($txt) {
 
 $sheetData = [];
 foreach ($parametros as $p) {
+    if (isset($p['Es_Exportable']) && (intval($p['Es_Exportable']) === 0 || $p['Es_Exportable'] === false || $p['Es_Exportable'] === '0')) {
+        continue;
+    }
+    
     // Filtrar parámetros según tipo de muestra (Agua/Suelo/Ambos)
     // $esSuelo se determina más abajo; guardamos todos y filtramos al agrupar
     $tipo = trim((string)($p['Tipo_Parametro'] ?? 'Ambos'));
@@ -793,7 +826,22 @@ $paintBlueHeaders = function ($sheet, $isSuelo) use ($normalizeStyleText) {
         'NORMATIVA DE PRUEBA',
         'UNIDAD DE MEDIDA',
         'PARAMETRO',
-        'RESULTADOS'
+        'RESULTADOS',
+        'PROFUNDIDAD',
+        'PROFUNDIDAD DE MUESTRA',
+        'NUMERO DE SUBMUESTRAS',
+        'NÚMERO DE SUBMUESTRAS',
+        'CULTIVO',
+        'CULTIVO ANTERIOR',
+        'CULTIVO IMPLEMENTADO',
+        'CULTIVO POR IMPLEMENTAR',
+        'FUENTE DE RIEGO',
+        'FUENTE',
+        'TIPO DE FUENTE',
+        'TIPO FUENTE',
+        'TIPO DE MUESTRA',
+        'TIPO DE FUENTE DE AGUA',
+        'FUENTE DE AGUA'
     ];
 
     $prefixTargets = [
@@ -803,7 +851,14 @@ $paintBlueHeaders = function ($sheet, $isSuelo) use ($normalizeStyleText) {
         'CLASIFICACION',
         '1. PARAMETROS FISICOS',
         '2. PARAMETROS QUIMICOS',
-        '3. PARAMETROS MICROBIOLOGICOS'
+        '3. PARAMETROS MICROBIOLOGICOS',
+        'PROFUNDIDAD',
+        'NUMERO DE SUBMUESTRAS',
+        'CULTIVO',
+        'FUENTE',
+        'TIPO DE FUENTE',
+        'TIPO FUENTE',
+        'TIPO DE MUESTRA'
     ];
 
     $categoryPrefixes = [
@@ -840,7 +895,7 @@ $paintBlueHeaders = function ($sheet, $isSuelo) use ($normalizeStyleText) {
     $maxCol = Coordinate::columnIndexFromString('K');
     $maxRow = min(120, $sheet->getHighestRow());
     $categoryStartCol = 'B';
-    $categoryEndCol = $isSuelo ? 'K' : 'I';
+    $categoryEndCol = 'K';
 
     for ($r = 1; $r <= $maxRow; $r++) {
         for ($c = 1; $c <= $maxCol; $c++) {
@@ -914,6 +969,22 @@ $paintBlueHeaders = function ($sheet, $isSuelo) use ($normalizeStyleText) {
             }
         }
     }
+};
+
+$clearCategoryBorders = function ($sheet, $row) {
+    $bMain = $sheet->getStyle('B' . $row . ':K' . $row)->getBorders();
+    $bMain->getTop()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
+    $bMain->getBottom()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
+    $bMain->getLeft()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
+    $bMain->getRight()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
+
+    if ($row > 1) {
+        $bPrev = $sheet->getStyle('B' . ($row - 1) . ':K' . ($row - 1))->getBorders();
+        $bPrev->getBottom()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
+    }
+
+    $bNext = $sheet->getStyle('B' . ($row + 1) . ':K' . ($row + 1))->getBorders();
+    $bNext->getTop()->setBorderStyle(Border::BORDER_THIN)->getColor()->setARGB(Color::COLOR_WHITE);
 };
 
 if ($esSuelo) {
@@ -1009,7 +1080,7 @@ if ($esSuelo) {
     };
 
     // Estilo cabeceras SUELO (merge + estilo, sin tocar el texto de la plantilla)
-    $estiloHeaderSuelo = function ($row) use ($sheet) {
+    $estiloHeaderSuelo = function ($row) use ($sheet, $clearCategoryBorders) {
         $sh = $sheet->getStyle('B' . $row . ':K' . $row);
         $sh->getFill()->setFillType(Fill::FILL_SOLID);
         $sh->getFill()->getStartColor()->setARGB('FF2F5597');
@@ -1019,7 +1090,7 @@ if ($esSuelo) {
         $sh->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $sh->getAlignment()->setIndent(2);
         $sh->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        $sh->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $clearCategoryBorders($sheet, $row);
         $sheet->getRowDimension($row)->setRowHeight(22);
     };
 
@@ -1095,8 +1166,20 @@ if ($esSuelo) {
     $sNorm->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
     $sNorm->getBorders()->getAllBorders()->getColor()->setARGB(Color::COLOR_WHITE);
 
+    // Helper seguro para fusionar celdas sin duplicados ni solapamientos en sheet1.xml
+    $safeMerge = function ($range) use ($sheet) {
+        $existing = $sheet->getMergeCells();
+        if (!isset($existing[$range]) && !in_array($range, $existing, true)) {
+            try {
+                $sheet->mergeCells($range);
+            } catch (Exception $e) {
+                // Ignorar conflictos si ya están fusionadas
+            }
+        }
+    };
+
     // ─── Escribir grupo de parámetros ───
-    $escribirGrupo = function ($grupo, $dataStart, $dataEnd) use ($sheet, &$shiftAcum) {
+    $escribirGrupo = function ($grupo, $dataStart, $dataEnd) use ($sheet, &$shiftAcum, $safeMerge) {
         $count = count($grupo);
         if ($count === 0) return;
         
@@ -1113,8 +1196,8 @@ if ($esSuelo) {
             $r = $dataStart + $i;
             $item = $grupo[$i];
             
-            $sheet->mergeCells('B' . $r . ':C' . $r);
-            $sheet->mergeCells('I' . $r . ':K' . $r);
+            $safeMerge('B' . $r . ':C' . $r);
+            $safeMerge('I' . $r . ':K' . $r);
             
             $sheet->setCellValue('B' . $r, $item['parametro']);
             $sheet->setCellValue('D' . $r, ($item['metodo'] !== '' ? $item['metodo'] : '-'));
@@ -1151,8 +1234,8 @@ if ($esSuelo) {
     };
 
     // ─── Estilo cabeceras de categoría ───
-    $estiloHeader = function ($row) use ($sheet) {
-        $sheet->mergeCells('B' . $row . ':K' . $row);
+    $estiloHeader = function ($row) use ($sheet, $safeMerge, $clearCategoryBorders) {
+        $safeMerge('B' . $row . ':K' . $row);
         $sh = $sheet->getStyle('B' . $row . ':K' . $row);
         $sh->getFill()->setFillType(Fill::FILL_SOLID);
         $sh->getFill()->getStartColor()->setARGB('FF2F5597');
@@ -1161,18 +1244,23 @@ if ($esSuelo) {
         $sh->getFont()->setSize(11);
         $sh->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $sh->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        $sh->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+        $clearCategoryBorders($sheet, $row);
         $sheet->getRowDimension($row)->setRowHeight(22);
     };
-    $shiftAcum = 0;
-    $escribirGrupo($grupos['fisicos'],         $DATA_FIS_START,  $DATA_FIS_END);
-    $escribirGrupo($grupos['quimicos'],        $DATA_QUIM_START + $shiftAcum, $DATA_QUIM_END + $shiftAcum);
-    $escribirGrupo($grupos['microbiologicos'], $DATA_MICRO_START + $shiftAcum, $DATA_MICRO_END + $shiftAcum);
 
-    // Aplicar estilo a cabeceras después de inserciones (posiciones ya ajustadas)
+    $shiftAcum = 0;
+    $escribirGrupo($grupos['fisicos'], $DATA_FIS_START, $DATA_FIS_END);
+    $shiftFisicos = $shiftAcum;
+
+    $escribirGrupo($grupos['quimicos'], $DATA_QUIM_START + $shiftFisicos, $DATA_QUIM_END + $shiftFisicos);
+    $shiftQuimicos = $shiftAcum;
+
+    $escribirGrupo($grupos['microbiologicos'], $DATA_MICRO_START + $shiftQuimicos, $DATA_MICRO_END + $shiftQuimicos);
+
+    // Aplicar estilo a cabeceras después de inserciones con los desfases correspondientes por grupo
     $estiloHeader(28);
-    $estiloHeader(36 + $shiftAcum);
-    $estiloHeader(49 + $shiftAcum);
+    $estiloHeader(36 + $shiftFisicos);
+    $estiloHeader(49 + $shiftQuimicos);
 
     $sheet->setCellValue('B' . (56 + $shiftAcum), ($observacionFormateada !== '' ? $observacionFormateada : '-'));
 
@@ -1195,7 +1283,7 @@ if ($esSuelo) {
             $sr->getFont()->setSize(11);
             $sr->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             $sr->getAlignment()->setIndent(2);
-            $sr->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_NONE);
+            $clearCategoryBorders($sheet, $rr);
             $sheet->getRowDimension($rr)->setRowHeight(22);
         } else {
             $sr->getFill()->setFillType(Fill::FILL_SOLID);
@@ -1206,8 +1294,8 @@ if ($esSuelo) {
     }
 } else {
     $estiloHeader(28);
-    $estiloHeader(36 + $shiftAcum);
-    $estiloHeader(49 + $shiftAcum);
+    $estiloHeader(36 + $shiftFisicos);
+    $estiloHeader(49 + $shiftQuimicos);
 }
 
 $nombreArchivo = ($esSuelo ? 'Analisis_Suelo_Muestra_' : 'Analisis_Agua_Muestra_') . $id_muestra . '.xlsx';
@@ -1314,8 +1402,7 @@ if ($srcZip->open($plantillaPath) === true && $dstZip->open($tmpFile) === true) 
 
         $mustRestore = (
             strpos($name, 'xl/media/') === 0 ||
-            strpos($name, 'xl/drawings/') === 0 ||
-            $name === 'xl/worksheets/_rels/sheet1.xml.rels'
+            strpos($name, 'xl/drawings/') === 0
         );
 
         if (!$mustRestore) {
@@ -1334,11 +1421,31 @@ if ($srcZip->open($plantillaPath) === true && $dstZip->open($tmpFile) === true) 
     $dstZip->close();
 }
 
-// Inyectar firmas digitales en el XLSX generado
-// 0-indexed OOXML: row 66 = Excel fila 67 (inicio del espacio vacío de firmas, antes de la línea A/B en fila 74)
-// La imagen con cy calculado ocupa ~7 filas y queda justo encima de las líneas A y B
-$firmaRow0 = $esSuelo ? (66 + $desfaseFilasSuelo) : (66 + $desfaseFilasAgua);
-$injectFirmasEnXlsx($tmpFile, $firmaEncargadoB64, $firmaAnalistaB64, $firmaRow0);
+// ─── Buscar celdas marcadoras 'A' y 'B' para ubicar las firmas dinámicamente ───
+$desfaseFilasAgua = $shiftAcum ?? 0;
+$rowEncargado0 = $esSuelo ? (62 + $desfaseFilasSuelo) : (71 + $desfaseFilasAgua);
+$colEncargado0 = 1;
+$rowAnalista0  = $esSuelo ? (62 + $desfaseFilasSuelo) : (71 + $desfaseFilasAgua);
+$colAnalista0  = 6;
+
+$maxSearchRow = $sheet->getHighestRow();
+for ($r = 40; $r <= $maxSearchRow; $r++) {
+    for ($c = 1; $c <= 11; $c++) {
+        $val = trim((string)$sheet->getCellByColumnAndRow($c, $r)->getValue());
+        if ($val === 'A') {
+            // Empezar 4 filas arriba (fila 59) para que la firma de ~5 filas de alto quede centrada SOBRE la celda A (fila 63)
+            $rowEncargado0 = max(0, $r - 5);
+            $colEncargado0 = $c - 1;
+            $sheet->setCellValueByColumnAndRow($c, $r, '');
+        } elseif ($val === 'B') {
+            $rowAnalista0 = max(0, $r - 5);
+            $colAnalista0 = $c - 1;
+            $sheet->setCellValueByColumnAndRow($c, $r, '');
+        }
+    }
+}
+
+$injectFirmasEnXlsx($tmpFile, $firmaEncargadoB64, $firmaAnalistaB64, $rowEncargado0, $colEncargado0, $rowAnalista0, $colAnalista0);
 
 readfile($tmpFile);
 @unlink($tmpFile);

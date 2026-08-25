@@ -31,6 +31,8 @@ class ProveedorModel {
     }
 
     public function guardar($datos) {
+        // Normaliza campos opcionales: vacio o solo espacios -> NULL (nunca cadena vacia)
+        $norm = function ($v) { $t = trim((string)($v ?? '')); return $t !== '' ? $t : null; };
         if (empty($datos['Id_Proveedor'])) {
             $sql = "INSERT INTO laboratorio.Proveedor 
                         (Razon_Social, Ruc, Nombre_Contacto, Telefono, Email, Direccion, Usuario_Creacion, Activo, Fecha_Creacion)
@@ -38,11 +40,11 @@ class ProveedorModel {
                     VALUES (?, ?, ?, ?, ?, ?, ?, 1, GETDATE())";
             $params = [
                 trim($datos['Razon_Social']),
-                !empty($datos['Ruc'])           ? trim($datos['Ruc'])           : null,
-                !empty($datos['Nombre_Contacto'])? trim($datos['Nombre_Contacto']): null,
-                !empty($datos['Telefono'])       ? trim($datos['Telefono'])       : null,
-                !empty($datos['Email'])          ? trim($datos['Email'])          : null,
-                !empty($datos['Direccion'])      ? trim($datos['Direccion'])      : null,
+                $norm($datos['Ruc'] ?? ''),
+                $norm($datos['Nombre_Contacto'] ?? ''),
+                $norm($datos['Telefono'] ?? ''),
+                $norm($datos['Email'] ?? ''),
+                $norm($datos['Direccion'] ?? ''),
                 $_SESSION['usuario_id'] ?? 1
             ];
             $stmt = sqlsrv_query($this->db, $sql, $params);
@@ -59,11 +61,11 @@ class ProveedorModel {
                     WHERE Id_Proveedor=?";
             $params = [
                 trim($datos['Razon_Social']),
-                !empty($datos['Ruc'])           ? trim($datos['Ruc'])           : null,
-                !empty($datos['Nombre_Contacto'])? trim($datos['Nombre_Contacto']): null,
-                !empty($datos['Telefono'])       ? trim($datos['Telefono'])       : null,
-                !empty($datos['Email'])          ? trim($datos['Email'])          : null,
-                !empty($datos['Direccion'])      ? trim($datos['Direccion'])      : null,
+                $norm($datos['Ruc'] ?? ''),
+                $norm($datos['Nombre_Contacto'] ?? ''),
+                $norm($datos['Telefono'] ?? ''),
+                $norm($datos['Email'] ?? ''),
+                $norm($datos['Direccion'] ?? ''),
                 $datos['Id_Proveedor']
             ];
             $stmt = sqlsrv_query($this->db, $sql, $params);

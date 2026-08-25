@@ -77,9 +77,15 @@ try {
                 exit;
             }
 
+            // Filtro de año y período enviado desde el frontend
+            $anio    = intval($_POST['anio']    ?? date('Y'));
+            $periodo = intval($_POST['periodo'] ?? (date('n') <= 6 ? 1 : 2));
+            if ($anio < 2020 || $anio > 2030) $anio = intval(date('Y'));
+            if ($periodo !== 1 && $periodo !== 2) $periodo = (date('n') <= 6 ? 1 : 2);
+
             $sincModel = new SincronizacionMonitoreoModel($conn);
             $usuario_id = $_SESSION['usuario_id'] ?? 1;
-            $resultado = $sincModel->sincronizarMonitoreos($pdoPg, $usuario_id);
+            $resultado = $sincModel->sincronizarMonitoreos($pdoPg, $usuario_id, $anio, $periodo);
 
             echo json_encode([
                 'success' => true,
@@ -232,7 +238,7 @@ try {
             if (!$pdoPg) throw new Exception("No se pudo conectar a PostgreSQL.");
 
             // Validar proyecto
-            $sqlProy = "SELECT Estado, Es_Pozos FROM laboratorio.Proyecto_Monitoreo WHERE Id_Proyecto = ?";
+            $sqlProy = "SELECT Estado, Es_Pozos, Es_Control_Calidad, Es_Drene, Nombre_Proyecto FROM laboratorio.Proyecto_Monitoreo WHERE Id_Proyecto = ?";
             $stmtProy = sqlsrv_query($conn, $sqlProy, [$id_proyecto]);
             $proy = sqlsrv_fetch_array($stmtProy, SQLSRV_FETCH_ASSOC);
             if (!$proy) throw new Exception("Proyecto no encontrado");
@@ -241,13 +247,136 @@ try {
                 // Permitiremos exportar los que ya estén listos, pero preferiblemente validarlo.
             }
 
-            // Obtener mapeo de parámetros para calidad_agua_laboratorio
-            $sqlParam = "SELECT Id_Parametro, Posgre_Nombre FROM laboratorio.Parametro_Analisis 
-                         WHERE Posgre_Tabla = 'calidad_agua_laboratorio' AND Posgre_Nombre IS NOT NULL AND Activo = 1";
+            // ===== SOPORTE CALIDAD SUPERFICIAL / CALIDAD DRENES =====
+            // Exporta los resultados a las tablas PG dinámicas:
+            //   calidadaguasuperficial{año}.monitoreosuperficial{mes} (variante monitoreosuperficia{mes})
+            //   calidadaguadrenada{año}.monitoreodrenaje{mes}
+            $es_calidad = intval($proy['Es_Control_Calidad'] ?? 0) === 1 ? 'superficial'
+                        : (intval($proy['Es_Drene'] ?? 0) === 1 ? 'drene' : '');
+            if ($es_calidad !== '') {
+                $statsCal = ['actualizados' => 0, 'muestras' => 0];
+
+                // 1. Año y mes desde el nombre del proyecto: "CALIDAD SUPERFICIAL 2026 - MARZO"
+                if (!preg_match('/CALIDAD (SUPERFICIAL|DRENES) (\d{4}) - ([A-Za-zÁÉÍÓÚÑÜ]+)/i', trim((string)$proy['Nombre_Proyecto']), $mProy)) {
+                    throw new Exception('No se pudo determinar año/mes del proyecto de calidad: ' . $proy['Nombre_Proyecto']);
+                }
+                $anioCal = $mProy[2];
+                $mesCal  = strtolower(trim($mProy[3]));
+                $esquemaCal = ($es_calidad === 'superficial') ? "calidadaguasuperficial$anioCal" : "calidadaguadrenada$anioCal";
+                $prefijosCal = ($es_calidad === 'superficial') ? ['monitoreosuperficial', 'monitoreosuperficia'] : ['monitoreodrenaje'];
+
+                // 2. Descubrir la tabla real (maneja variantes tipográficas: monitoreosuperficiamarzo)
+                $tablaCal = '';
+                $stmtSch = $pdoPg->query("SELECT 1 FROM information_schema.schemata WHERE schema_name = '" . $esquemaCal . "'");
+                if (!$stmtSch->fetch()) throw new Exception("Esquema PG no encontrado: $esquemaCal");
+                foreach ($prefijosCal as $pref) {
+                    $stmtTab = $pdoPg->query("SELECT table_name FROM information_schema.tables
+                                              WHERE table_schema = '" . $esquemaCal . "' AND table_name = '" . $pref . $mesCal . "'");
+                    $rowTab = $stmtTab->fetch(PDO::FETCH_ASSOC);
+                    if ($rowTab) { $tablaCal = $rowTab['table_name']; break; }
+                }
+                if ($tablaCal === '') throw new Exception("Tabla mensual no encontrada para $esquemaCal (monitoreo*$mesCal)");
+
+                // 3. Mapeo de calidad: Id_Parametro → Columna_PG
+                $stmtMap = sqlsrv_query($conn, "SELECT pa.Id_Parametro, mc.Columna_PG
+                                                FROM laboratorio.Mapeo_Calidad mc
+                                                INNER JOIN laboratorio.Parametro_Analisis pa ON pa.Id_Parametro = mc.Id_Parametro AND pa.Activo = 1
+                                                WHERE mc.Tipo_Calidad = ? AND mc.Activo = 1", [$es_calidad]);
+                $mapaCal = [];
+                while ($rowMap = sqlsrv_fetch_array($stmtMap, SQLSRV_FETCH_ASSOC)) {
+                    $mapaCal[intval($rowMap['Id_Parametro'])] = $rowMap['Columna_PG'];
+                }
+                if (empty($mapaCal)) throw new Exception('No hay mapeo de calidad configurado para ' . $es_calidad);
+
+                // 4. Muestras del proyecto (Id_Medicion_PG = id de la fila PG)
+                $stmtMuestrasCal = sqlsrv_query($conn, "SELECT ml.Id_Muestra, ml.Id_Medicion_PG, ml.Observacion_Muestra
+                                                        FROM laboratorio.Muestra_Lab ml
+                                                        WHERE ml.Id_Proyecto = ? AND ml.Id_Medicion_PG IS NOT NULL AND ml.Activo = 1", [$id_proyecto]);
+
+                $prefijoObs = ($es_calidad === 'superficial') ? 'Calidad superficial - ' : 'Calidad drene - ';
+
+                while ($muestraCal = sqlsrv_fetch_array($stmtMuestrasCal, SQLSRV_FETCH_ASSOC)) {
+                    $idFilaPG = intval($muestraCal['Id_Medicion_PG']);
+                    if ($idFilaPG <= 0) continue;
+                    $statsCal['muestras']++;
+
+                    // Resultados no nulos
+                    $stmtResCal = sqlsrv_query($conn, "SELECT ra.Id_Parametro, ra.Valor_Hallado
+                                                       FROM laboratorio.Resultado_Analisis ra
+                                                       INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
+                                                       WHERE sa.Id_Muestra = ? AND ra.Valor_Hallado IS NOT NULL AND sa.Activo = 1", [$muestraCal['Id_Muestra']]);
+                    $valoresCal = [];
+                    while ($resCal = sqlsrv_fetch_array($stmtResCal, SQLSRV_FETCH_ASSOC)) {
+                        $idParamCal = intval($resCal['Id_Parametro']);
+                        if (isset($mapaCal[$idParamCal])) {
+                            $valoresCal[$mapaCal[$idParamCal]] = $resCal['Valor_Hallado'];
+                        }
+                    }
+
+                    // Descripción (nombre del dren/río editable) → columna descripcion
+                    $obsCal = trim((string)($muestraCal['Observacion_Muestra'] ?? ''));
+                    if (stripos($obsCal, $prefijoObs) === 0) {
+                        $obsCal = trim(substr($obsCal, strlen($prefijoObs)));
+                    }
+                    if ($obsCal !== '') {
+                        $valoresCal['descripcion'] = $obsCal;
+                    }
+
+                    if (empty($valoresCal)) continue;
+
+                    // Leer fila PG
+                    $stmtFilaPG = $pdoPg->prepare("SELECT * FROM $esquemaCal.$tablaCal WHERE id = ?");
+                    $stmtFilaPG->execute([$idFilaPG]);
+                    $filaPGCal = $stmtFilaPG->fetch(PDO::FETCH_ASSOC);
+                    if (!$filaPGCal) continue;
+
+                    // Solo columnas que CAMBIARON (comparación normalizada)
+                    $setParts = [];
+                    $paramsUpd = [];
+                    foreach ($valoresCal as $col => $val) {
+                        $existente = $filaPGCal[$col] ?? null;
+                        $cambio = true;
+                        if ($existente !== null && $existente !== '') {
+                            if (is_numeric($existente) && is_numeric($val)) {
+                                // Comparación numérica con tolerancia (evita falsos cambios por precisión)
+                                $cambio = abs(floatval($existente) - floatval($val)) > 0.0000001;
+                            } else {
+                                $cambio = strval($existente) !== strval($val);
+                            }
+                        }
+                        if ($cambio) {
+                            $setParts[] = $col . ' = ?';
+                            $paramsUpd[] = $val;
+                        }
+                    }
+
+                    if (!empty($setParts)) {
+                        $paramsUpd[] = $idFilaPG;
+                        $sqlUpdCal = "UPDATE $esquemaCal.$tablaCal SET " . implode(', ', $setParts) . " WHERE id = ?";
+                        $pdoPg->prepare($sqlUpdCal)->execute($paramsUpd);
+                        $statsCal['actualizados']++;
+                    }
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'stats'   => ['actualizados' => $statsCal['actualizados']],
+                    'nota'    => "Exportado a $esquemaCal.$tablaCal (" . $statsCal['muestras'] . " muestras)"
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // Obtener mapeo de parámetros para AMBAS tablas PG (lab + in-situ)
+            $sqlParam = "SELECT Id_Parametro, Posgre_Nombre, Posgre_Tabla FROM laboratorio.Parametro_Analisis 
+                         WHERE (Posgre_Tabla = 'calidad_agua_laboratorio' OR Posgre_Tabla = 'pozos_monitoreo') 
+                         AND Posgre_Nombre IS NOT NULL AND Activo = 1";
             $stmtParam = sqlsrv_query($conn, $sqlParam);
             $mapaParams = [];
             while ($rowP = sqlsrv_fetch_array($stmtParam, SQLSRV_FETCH_ASSOC)) {
-                $mapaParams[$rowP['Id_Parametro']] = $rowP['Posgre_Nombre'];
+                $mapaParams[$rowP['Id_Parametro']] = [
+                    'col'   => $rowP['Posgre_Nombre'],
+                    'tabla' => $rowP['Posgre_Tabla']
+                ];
             }
 
             if (empty($mapaParams)) {
@@ -268,44 +397,48 @@ try {
                 $id_muestra = $muestra['Id_Muestra'];
                 $id_medicion = $muestra['Id_Medicion_PG'];
                 $id_pozo = $muestra['Id_Pozo'];
-                $orden = $muestra['Numero_Muestra'];
 
                 // Obtener todos los resultados de laboratorio para esta muestra
-                $sqlRes = "SELECT ra.Id_Parametro, ra.Valor_Hallado 
+                $sqlRes = "SELECT ra.Id_Parametro, ra.Valor_Hallado, ra.Fecha_Modificacion
                            FROM laboratorio.Resultado_Analisis ra
                            INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
                            WHERE sa.Id_Muestra = ? AND ra.Valor_Hallado IS NOT NULL AND sa.Activo = 1";
                 $stmtRes = sqlsrv_query($conn, $sqlRes, [$id_muestra]);
                 
-                $valoresToUpdate = [];
+                // Separar por tabla PG (lab vs in-situ)
+                $valoresLab = [];
+                $valoresInsitu = [];
                 while ($res = sqlsrv_fetch_array($stmtRes, SQLSRV_FETCH_ASSOC)) {
                     $id_param = $res['Id_Parametro'];
                     if (isset($mapaParams[$id_param])) {
-                        $colPg = $mapaParams[$id_param];
-                        $valoresToUpdate[$colPg] = $res['Valor_Hallado'];
+                        $info = $mapaParams[$id_param];
+                        $val = $res['Valor_Hallado'];
+                        if ($info['tabla'] === 'pozos_monitoreo') {
+                            $valoresInsitu[$info['col']] = $val;
+                        } else {
+                            $valoresLab[$info['col']] = $val;
+                        }
                     }
                 }
 
-                if (!empty($valoresToUpdate)) {
-                    // Verificar qué valores YA existen en PG para no sobrescribir
+                // Procesar LAB (calidad_agua_laboratorio): solo actualizar si el valor cambió
+                if (!empty($valoresLab)) {
                     $stmtCheck = $pdoPg->prepare("SELECT * FROM " . PG_SCHEMA . ".calidad_agua_laboratorio WHERE id_laboratorio = ?");
                     $stmtCheck->execute([$id_medicion]);
                     $registroPG = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
                     if ($registroPG) {
-                        // Filtrar: solo enviar valores que están VACÍOS/NULL en PG
                         $valoresFiltrados = [];
-                        foreach ($valoresToUpdate as $col => $val) {
+                        foreach ($valoresLab as $col => $val) {
                             $valorExistente = $registroPG[$col] ?? null;
-                            if ($valorExistente === null || $valorExistente === '' || $valorExistente === '0') {
+                            // Solo enviar si es diferente al valor actual en PG
+                            if ($valorExistente === null || $valorExistente === '' || strval($valorExistente) !== strval($val)) {
                                 $valoresFiltrados[$col] = $val;
                             }
                         }
 
                         if (!empty($valoresFiltrados)) {
                             $stats['actualizados']++;
-
-                            // Construir UPDATE dinámico (SIN tocar orden)
                             $setParts = [];
                             $paramsUpd = [];
                             foreach ($valoresFiltrados as $col => $val) {
@@ -313,17 +446,53 @@ try {
                                 $paramsUpd[] = $val;
                             }
                             $paramsUpd[] = $id_medicion;
-
                             $sqlUpd = "UPDATE " . PG_SCHEMA . ".calidad_agua_laboratorio SET " . implode(", ", $setParts) . " WHERE id_laboratorio = ?";
                             $stmtUpd = $pdoPg->prepare($sqlUpd);
                             $stmtUpd->execute($paramsUpd);
                         }
                     }
-                    // Si no existe en PG, omitir
+                }
+
+                // Procesar IN-SITU (pozos_monitoreo): actualizar por pozo + fecha
+                if (!empty($valoresInsitu)) {
+                    $stmtLab = $pdoPg->prepare("SELECT id_pozo, fecha_toma_muestra FROM " . PG_SCHEMA . ".calidad_agua_laboratorio WHERE id_laboratorio = ?");
+                    $stmtLab->execute([$id_medicion]);
+                    $lab = $stmtLab->fetch(PDO::FETCH_ASSOC);
+
+                    if ($lab && $lab['id_pozo'] && $lab['fecha_toma_muestra']) {
+                        $stmtIns = $pdoPg->prepare("SELECT * FROM " . PG_SCHEMA . ".pozos_monitoreo WHERE id_pozo = ? AND fechamonitoreo = ?");
+                        $stmtIns->execute([$lab['id_pozo'], $lab['fecha_toma_muestra']]);
+                        $insituPG = $stmtIns->fetch(PDO::FETCH_ASSOC);
+
+                        if ($insituPG) {
+                            $valoresInsituFiltrados = [];
+                            foreach ($valoresInsitu as $col => $val) {
+                                $valorExistente = $insituPG[$col] ?? null;
+                                if ($valorExistente === null || $valorExistente === '' || strval($valorExistente) !== strval($val)) {
+                                    $valoresInsituFiltrados[$col] = $val;
+                                }
+                            }
+
+                            if (!empty($valoresInsituFiltrados)) {
+                                $stats['actualizados']++;
+                                $setParts = [];
+                                $paramsUpd = [];
+                                foreach ($valoresInsituFiltrados as $col => $val) {
+                                    $setParts[] = "$col = ?";
+                                    $paramsUpd[] = $val;
+                                }
+                                $paramsUpd[] = $lab['id_pozo'];
+                                $paramsUpd[] = $lab['fecha_toma_muestra'];
+                                $sqlUpd = "UPDATE " . PG_SCHEMA . ".pozos_monitoreo SET " . implode(", ", $setParts) . " WHERE id_pozo = ? AND fechamonitoreo = ?";
+                                $stmtUpd = $pdoPg->prepare($sqlUpd);
+                                $stmtUpd->execute($paramsUpd);
+                            }
+                        }
+                    }
                 }
             }
 
-            echo json_encode(['success' => true, 'message' => 'Resultados exportados correctamente a PostgreSQL', 'stats' => $stats, 'nota' => 'Solo se actualizan registros existentes en calidad_agua_laboratorio']);
+            echo json_encode(['success' => true, 'message' => 'Resultados exportados correctamente a PostgreSQL (lab + in-situ)', 'stats' => $stats, 'nota' => 'Solo se actualizan valores que cambiaron en el laboratorio.']);
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Error al exportar: ' . $e->getMessage()]);

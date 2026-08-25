@@ -10,7 +10,18 @@ Auth::check();
 
 $conn = Conexion::conectar();
 
-// Consulta principal (sin paginación server-side)
+// Variables de DataTables (server-side, igual que data_residuos / data_normativas)
+$draw = intval($_POST['draw'] ?? 1);
+$start = intval($_POST['start'] ?? 0);
+$length = intval($_POST['length'] ?? 10);
+$search = $_POST['search']['value'] ?? '';
+
+$sql_count = "SELECT COUNT(*) as total FROM laboratorio.Registro_Residuos_Log";
+$stmt_count = sqlsrv_query($conn, $sql_count);
+$row_count = $stmt_count ? sqlsrv_fetch_array($stmt_count, SQLSRV_FETCH_ASSOC) : null;
+$totalRecords = $row_count ? intval($row_count['total']) : 0;
+
+// Consulta principal
 $sql = "SELECT 
         ROW_NUMBER() OVER (ORDER BY Id_Registro_Res DESC) as No,
         Id_Registro_Res,
@@ -19,13 +30,34 @@ $sql = "SELECT
         Anio,
         Mes,
         Activo
-        FROM laboratorio.Registro_Residuos_Log
-        ORDER BY Id_Registro_Res DESC";
+        FROM laboratorio.Registro_Residuos_Log";
 
-$stmt = sqlsrv_query($conn, $sql);
+$params = [];
+if (!empty($search)) {
+    $sql .= " WHERE (Codigo_SST LIKE ? OR Ubicacion LIKE ? OR CAST(Anio AS NVARCHAR(10)) LIKE ? OR CAST(Mes AS NVARCHAR(2)) LIKE ?)";
+    $searchParam = '%' . $search . '%';
+    $params = [$searchParam, $searchParam, $searchParam, $searchParam];
+}
+
+$sql .= " ORDER BY Id_Registro_Res DESC
+        OFFSET " . $start . " ROWS FETCH NEXT " . $length . " ROWS ONLY";
+
+$stmt = sqlsrv_query($conn, $sql, !empty($params) ? $params : null);
+if ($stmt === false) {
+    $errors = sqlsrv_errors();
+    header('Content-Type: application/json');
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Error en consulta: ' . ($errors[0]['message'] ?? 'Error desconocido')
+    ]);
+    exit;
+}
 $informes = [];
 
-$meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+$meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
@@ -39,7 +71,7 @@ while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
     } else {
         $acciones = '<button class="btn btn-sm btn-ghost-success" onclick="reactivarInforme(' . $row['Id_Registro_Res'] . ')" title="Reactivar"><i class="ti ti-check"></i></button>';
     }
-    
+
     $informes[] = [
         $row['No'],
         htmlspecialchars($row['Codigo_SST']),
@@ -50,8 +82,21 @@ while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
     ];
 }
 
+// Contar registros filtrados (total real, no solo la página actual)
+if (!empty($search)) {
+    $sql_filtered = "SELECT COUNT(*) as total FROM laboratorio.Registro_Residuos_Log
+                     WHERE (Codigo_SST LIKE ? OR Ubicacion LIKE ? OR CAST(Anio AS NVARCHAR(10)) LIKE ? OR CAST(Mes AS NVARCHAR(2)) LIKE ?)";
+    $stmt_filtered = sqlsrv_query($conn, $sql_filtered, $params);
+    $row_filtered = $stmt_filtered ? sqlsrv_fetch_array($stmt_filtered, SQLSRV_FETCH_ASSOC) : null;
+    $filteredRecords = $row_filtered ? intval($row_filtered['total']) : 0;
+} else {
+    $filteredRecords = $totalRecords;
+}
+
 header('Content-Type: application/json');
 echo json_encode([
+    'draw' => $draw,
+    'recordsTotal' => $totalRecords,
+    'recordsFiltered' => $filteredRecords,
     'data' => $informes
 ]);
-?>

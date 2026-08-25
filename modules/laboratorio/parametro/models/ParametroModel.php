@@ -4,10 +4,20 @@ class ParametroModel {
 
     public function __construct($db) {
         $this->db = $db;
+        
+        // Auto-migración: asegurar columna Es_Exportable en laboratorio.Parametro_Analisis
+        $sqlCheck = "IF NOT EXISTS (
+            SELECT 1 FROM sys.columns 
+            WHERE object_id = OBJECT_ID('laboratorio.Parametro_Analisis') AND name = 'Es_Exportable'
+        )
+        BEGIN
+            ALTER TABLE laboratorio.Parametro_Analisis ADD Es_Exportable BIT NOT NULL DEFAULT 1;
+        END";
+        @sqlsrv_query($this->db, $sqlCheck);
     }
 
     public function obtenerTodos() {
-        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
+        $sql = "SELECT p.*, ISNULL(p.Es_Exportable, 1) AS Es_Exportable, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
                 FROM laboratorio.Parametro_Analisis p 
                 LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio 
                 LEFT JOIN laboratorio.Unidad_Medida um ON p.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
@@ -27,7 +37,7 @@ class ParametroModel {
     }
 
     public function obtenerPorId($id) {
-        $sql = "SELECT p.*, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
+        $sql = "SELECT p.*, ISNULL(p.Es_Exportable, 1) AS Es_Exportable, st.Nombre AS Servicio_Nombre, ISNULL(um.Abreviatura, p.Unidad_Medida) AS Unidad_Abreviatura
                 FROM laboratorio.Parametro_Analisis p 
                 LEFT JOIN laboratorio.Servicio_Tecnico st ON p.Id_Servicio = st.Id_Servicio 
                 LEFT JOIN laboratorio.Unidad_Medida um ON p.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
@@ -45,12 +55,13 @@ class ParametroModel {
     public function guardar($datos) {
         $idUnidad = !empty($datos['Id_Unidad_Medida']) ? intval($datos['Id_Unidad_Medida']) : null;
         $unidadTexto = $datos['Unidad_Medida'] ?? null;
+        $esExportable = isset($datos['Es_Exportable']) ? (empty($datos['Es_Exportable']) ? 0 : 1) : 1;
         
         if (empty($datos['Id_Parametro'])) {
             // INSERT
             $sql = "INSERT INTO laboratorio.Parametro_Analisis 
-                    (Id_Servicio, Nombre, Unidad_Medida, Id_Unidad_Medida, Tipo_Parametro, Categoria, Metodo_Utilizado, Posgre_Nombre, Posgre_Tabla, Usuario_Creacion, Activo, Fecha_Creacion)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
+                    (Id_Servicio, Nombre, Unidad_Medida, Id_Unidad_Medida, Tipo_Parametro, Categoria, Metodo_Utilizado, Posgre_Nombre, Posgre_Tabla, Es_Exportable, Usuario_Creacion, Activo, Fecha_Creacion)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE()); SELECT SCOPE_IDENTITY() AS id;";
             $params = array(
                 $datos['Id_Servicio'] ?? null,
                 $datos['Nombre'],
@@ -61,6 +72,7 @@ class ParametroModel {
                 $datos['Metodo_Utilizado'] ?? null,
                 $datos['Posgre_Nombre'] ?? null,
                 $datos['Posgre_Tabla'] ?? null,
+                $esExportable,
                 $_SESSION['usuario_id'] ?? 1
             );
             $stmt = sqlsrv_query($this->db, $sql, $params);
@@ -74,7 +86,7 @@ class ParametroModel {
         } else {
             // UPDATE
             $sql = "UPDATE laboratorio.Parametro_Analisis 
-                    SET Id_Servicio=?, Nombre=?, Unidad_Medida=?, Id_Unidad_Medida=?, Tipo_Parametro=?, Categoria=?, Metodo_Utilizado=?, Posgre_Nombre=?, Posgre_Tabla=?, Fecha_Modificacion=GETDATE() 
+                    SET Id_Servicio=?, Nombre=?, Unidad_Medida=?, Id_Unidad_Medida=?, Tipo_Parametro=?, Categoria=?, Metodo_Utilizado=?, Posgre_Nombre=?, Posgre_Tabla=?, Es_Exportable=?, Fecha_Modificacion=GETDATE() 
                     WHERE Id_Parametro=?";
             $params = array(
                 $datos['Id_Servicio'] ?? null,
@@ -86,6 +98,7 @@ class ParametroModel {
                 $datos['Metodo_Utilizado'] ?? null,
                 $datos['Posgre_Nombre'] ?? null,
                 $datos['Posgre_Tabla'] ?? null,
+                $esExportable,
                 $datos['Id_Parametro']
             );
             

@@ -81,10 +81,11 @@ class MonitoreoPozoAsignacionModel {
                    WHERE Id_Proyecto = ? AND Numero_Muestra = ? AND Orden = ? AND Activo = 1";
         sqlsrv_query($this->db, $sqlDes, [$id_proyecto, $numero_muestra, $orden]);
 
+        // ⚠️ Monitoreo_Pozo_Asignacion NO tiene columna Usuario_Creacion
         $sqlIns = "INSERT INTO laboratorio.Monitoreo_Pozo_Asignacion
-                   (Id_Proyecto, Id_Pozo, Numero_Muestra, Orden, Es_Analisis_Laboratorio, Activo, Fecha_Creacion, Usuario_Creacion)
-                   VALUES (?, ?, ?, ?, ?, 1, GETDATE(), ?)";
-        $stmt = sqlsrv_query($this->db, $sqlIns, [$id_proyecto, $id_pozo, $numero_muestra, $orden, $es_lab, $usuario_id]);
+                   (Id_Proyecto, Id_Pozo, Numero_Muestra, Orden, Es_Analisis_Laboratorio, Activo, Fecha_Creacion)
+                   VALUES (?, ?, ?, ?, ?, 1, GETDATE())";
+        $stmt = sqlsrv_query($this->db, $sqlIns, [$id_proyecto, $id_pozo, $numero_muestra, $orden, $es_lab]);
         if ($stmt === false) {
             throw new Exception('Error al guardar asignacion: ' . print_r(sqlsrv_errors(), true));
         }
@@ -120,16 +121,16 @@ class MonitoreoPozoAsignacionModel {
         $copiadas = 0;
 
         foreach ($asignaciones as $a) {
+            // ⚠️ Monitoreo_Pozo_Asignacion NO tiene columna Usuario_Creacion
             $sqlIns = "INSERT INTO laboratorio.Monitoreo_Pozo_Asignacion
-                       (Id_Proyecto, Id_Pozo, Numero_Muestra, Orden, Es_Analisis_Laboratorio, Activo, Fecha_Creacion, Usuario_Creacion)
-                       VALUES (?, ?, ?, ?, ?, 1, GETDATE(), ?)";
+                       (Id_Proyecto, Id_Pozo, Numero_Muestra, Orden, Es_Analisis_Laboratorio, Activo, Fecha_Creacion)
+                       VALUES (?, ?, ?, ?, ?, 1, GETDATE())";
             $stmt = sqlsrv_query($this->db, $sqlIns, [
                 $id_proyecto_destino,
                 trim((string)$a['Id_Pozo']),
                 intval($a['Numero_Muestra']),
                 intval($a['Orden'] ?? 0),
-                intval($a['Es_Analisis_Laboratorio'] ?? 0),
-                $usuario_id
+                intval($a['Es_Analisis_Laboratorio'] ?? 0)
             ]);
             if ($stmt === false) {
                 throw new Exception('Error al copiar asignacion: ' . print_r(sqlsrv_errors(), true));

@@ -1922,10 +1922,31 @@ class MuestraModel {
         return true;
     }
 
-    public function duplicarMuestrasPorDefecto($idsMuestrasOriginales, $fechaRegistro, $turno) {
+    public function duplicarMuestrasPorDefecto($idsMuestrasOriginales, $fechaRegistro, $turno, $observacionesPorMuestra = []) {
         $usuarioId = $_SESSION['usuario_id'] ?? 1;
         $fechaRegistro = trim((string)$fechaRegistro);
         $turno = trim((string)$turno);
+
+        // Observaciones individuales por muestra original:
+        // mapa id_original => ['no_analizada' => bool, 'observacion' => string]
+        $obsPorMuestra = [];
+        foreach ((array)$observacionesPorMuestra as $idOrig => $info) {
+            $idInt = intval($idOrig);
+            if ($idInt <= 0) {
+                continue;
+            }
+            if (is_array($info)) {
+                $obsPorMuestra[$idInt] = [
+                    'no_analizada' => !empty($info['no_analizada']),
+                    'observacion' => trim((string)($info['observacion'] ?? ''))
+                ];
+            } else {
+                $obsPorMuestra[$idInt] = [
+                    'no_analizada' => false,
+                    'observacion' => trim((string)$info)
+                ];
+            }
+        }
 
         if ($fechaRegistro === '') {
             throw new Exception('Debe seleccionar una fecha de registro.');
@@ -1946,7 +1967,13 @@ class MuestraModel {
             throw new Exception('Debe seleccionar al menos una muestra por defecto.');
         }
 
-        $this->validarStockReactivosParaDuplicados($ids);
+        // Las muestras marcadas como "no analizada" no demandan reactivos.
+                $idsConAnalisis = array_values(array_filter($ids, function ($id) use ($obsPorMuestra) {
+                    return empty($obsPorMuestra[$id]['no_analizada']);
+                }));
+                if (!empty($idsConAnalisis)) {
+                    $this->validarStockReactivosParaDuplicados($idsConAnalisis);
+                }
 
         if (!sqlsrv_begin_transaction($this->db)) {
             throw new Exception('No se pudo iniciar la transacción de duplicación.');
@@ -1976,6 +2003,9 @@ class MuestraModel {
             $tieneColProdBit = $this->muestraBitacoraTieneColumnaProductoVenta();
 
             foreach ($ids as $idOriginal) {
+                $noAnalizada = !empty($obsPorMuestra[$idOriginal]['no_analizada']) ? 1 : 0;
+                $observacionMuestra = trim((string)($obsPorMuestra[$idOriginal]['observacion'] ?? ''));
+
                 $sqlOriginal = "SELECT TOP 1
                                    m.Id_Muestra,
                                    m.Id_Cliente,
@@ -2030,7 +2060,7 @@ class MuestraModel {
                         $original['Eje_X'] ?? null,
                         $original['Eje_Y'] ?? null,
                         $fechaRegistro,
-                        'Por Recepcionar',
+                        $noAnalizada ? 'No Analizada' : 'Por Recepcionar',
                         'Interno',
                         $original['Observacion_Muestra'] ?? null,
                         $fechaRegistro,
@@ -2052,17 +2082,17 @@ class MuestraModel {
                     $stmtDupBit = sqlsrv_query(
                         $this->db,
                         "INSERT INTO laboratorio.Muestra_Bitacora
-                         (Id_Muestra, Id_Bitacora, Turno, Punto_Toma, Muestra_Original, Id_Producto_Venta, Ubicacion_Punto)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [$idMuestraDuplicada, $idBitacora, $turno, $original['Punto_Toma'] ?? null, $idOriginal, $idProductoVenta, $original['Ubicacion_Punto'] ?? null]
+                         (Id_Muestra, Id_Bitacora, Turno, Punto_Toma, Muestra_Original, Id_Producto_Venta, Ubicacion_Punto, No_Analizada, Observacion_Muestra)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        [$idMuestraDuplicada, $idBitacora, $turno, $original['Punto_Toma'] ?? null, $idOriginal, $idProductoVenta, $original['Ubicacion_Punto'] ?? null, $noAnalizada, $observacionMuestra !== '' ? $observacionMuestra : null]
                     );
                 } else {
                     $stmtDupBit = sqlsrv_query(
                         $this->db,
                         "INSERT INTO laboratorio.Muestra_Bitacora
-                         (Id_Muestra, Id_Bitacora, Turno, Punto_Toma, Muestra_Original, Ubicacion_Punto)
-                         VALUES (?, ?, ?, ?, ?, ?)",
-                        [$idMuestraDuplicada, $idBitacora, $turno, $original['Punto_Toma'] ?? null, $idOriginal, $original['Ubicacion_Punto'] ?? null]
+                         (Id_Muestra, Id_Bitacora, Turno, Punto_Toma, Muestra_Original, Ubicacion_Punto, No_Analizada, Observacion_Muestra)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                        [$idMuestraDuplicada, $idBitacora, $turno, $original['Punto_Toma'] ?? null, $idOriginal, $original['Ubicacion_Punto'] ?? null, $noAnalizada, $observacionMuestra !== '' ? $observacionMuestra : null]
                     );
                 }
                 if ($stmtDupBit === false) {
@@ -2086,21 +2116,27 @@ class MuestraModel {
                     throw new Exception('Error al registrar producto en muestra duplicada: ' . print_r(sqlsrv_errors(), true));
                 }
 
-                $stmtEnAnalisis = sqlsrv_query(
-                    $this->db,
-                    "UPDATE laboratorio.Muestra_Lab
-                     SET Estado = 'En Analisis',
-                         Id_Especialista = ?,
-                         Fecha_Analisis = ISNULL(Fecha_Analisis, GETDATE()),
-                         Fecha_Modificacion = GETDATE()
-                     WHERE Id_Muestra = ? AND Activo = 1",
-                    [$usuarioId, $idMuestraDuplicada]
-                );
+                $stmtEnAnalisis = null;
+                if (!$noAnalizada) {
+                    $stmtEnAnalisis = sqlsrv_query(
+                        $this->db,
+                        "UPDATE laboratorio.Muestra_Lab
+                         SET Estado = 'En Analisis',
+                             Id_Especialista = ?,
+                             Fecha_Analisis = ISNULL(Fecha_Analisis, GETDATE()),
+                             Fecha_Modificacion = GETDATE()
+                         WHERE Id_Muestra = ? AND Activo = 1",
+                        [$usuarioId, $idMuestraDuplicada]
+                    );
+                }
                 if ($stmtEnAnalisis === false) {
                     throw new Exception('Error al pasar muestra duplicada a En Analisis: ' . print_r(sqlsrv_errors(), true));
                 }
 
-                $this->asegurarSolicitudesYResultadosPorMuestra($idMuestraDuplicada, $usuarioId);
+                // Las muestras marcadas como "no analizada" quedan sin solicitudes ni resultados.
+                if (!$noAnalizada) {
+                    $this->asegurarSolicitudesYResultadosPorMuestra($idMuestraDuplicada, $usuarioId);
+                }
 
                 $tipoMuestra = trim((string)($original['Tipo_Muestra'] ?? 'Agua'));
                 if ($tipoMuestra === 'Agua') {
@@ -2691,12 +2727,12 @@ class MuestraModel {
         }
 
         $stmt = sqlsrv_query(
-            $this->db,
-            "UPDATE laboratorio.Bitacora_Control_PTA
-             SET Observacion_General = ?, Fecha_Modificacion = GETDATE(), Usuario_Modificacion = ?
-             WHERE Id_Bitacora = ? AND Activo = 1",
-            [$observacion !== '' ? $observacion : null, $_SESSION['usuario_id'] ?? 1, $idBitacora]
-        );
+                    $this->db,
+                    "UPDATE laboratorio.Bitacora_Control_PTA
+                     SET Observacion_General = ?, Fecha_Modificacion = GETDATE()
+                     WHERE Id_Bitacora = ? AND Activo = 1",
+                    [$observacion !== '' ? $observacion : null, $idBitacora]
+                );
         if ($stmt === false) {
             throw new Exception('Error al actualizar observación de bitácora: ' . print_r(sqlsrv_errors(), true));
         }
@@ -2805,7 +2841,9 @@ class MuestraModel {
                     ISNULL(pa.Nombre, '(sin parámetro)') AS Parametro,
                     ISNULL(pa.Unidad_Medida, '') AS Unidad,
                     ISNULL(CAST(ra.Valor_Hallado AS VARCHAR(100)), '') AS Valor_Hallado,
-                    m.Estado
+                    m.Estado,
+                    ISNULL(mb.No_Analizada, 0) AS No_Analizada,
+                    ISNULL(mb.Observacion_Muestra, '') AS Observacion_Muestra
                 FROM laboratorio.Muestra_Bitacora mb
                 INNER JOIN laboratorio.Muestra_Lab m ON m.Id_Muestra = mb.Id_Muestra AND m.Activo = 1
                 LEFT JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Muestra = m.Id_Muestra AND sa.Activo = 1
@@ -2902,6 +2940,8 @@ class MuestraModel {
                     ISNULL(mb.Ubicacion_Punto, '') AS Ubicacion_Punto,
                     ISNULL(mb.Punto_Toma, '') AS Punto_Toma,
                     CONVERT(VARCHAR(5), m.Fecha_Toma, 108) AS Hora_Muestreo,
+                    ISNULL(mb.No_Analizada, 0) AS No_Analizada,
+                    ISNULL(mb.Observacion_Muestra, '') AS Observacion_Muestra,
                     ISNULL(ra.Id_Parametro, 0) AS Id_Parametro,
                     ISNULL(pa.Nombre, '') AS Parametro,
                     ISNULL(NULLIF(ll.Unidad_Medida, ''), ISNULL(pa.Unidad_Medida, '')) AS Unidad,

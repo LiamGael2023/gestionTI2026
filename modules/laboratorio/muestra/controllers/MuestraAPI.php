@@ -602,7 +602,9 @@ try {
                         'parametro' => trim((string)($r['Parametro'] ?? '-')),
                         'unidad' => trim((string)($r['Unidad'] ?? '')),
                         'valor_hallado' => trim((string)($r['Valor_Hallado'] ?? '')),
-                        'estado' => trim((string)($r['Estado'] ?? '-'))
+                        'estado' => trim((string)($r['Estado'] ?? '-')),
+                        'no_analizada' => !empty($r['No_Analizada']) ? 1 : 0,
+                        'observacion_muestra' => trim((string)($r['Observacion_Muestra'] ?? ''))
                     ];
                 }
 
@@ -896,7 +898,8 @@ try {
             $resultado = $muestra_model->duplicarMuestrasPorDefecto(
                 $datos['ids_muestras'] ?? [],
                 trim((string)($datos['fecha_registro'] ?? '')),
-                trim((string)($datos['turno'] ?? ''))
+                trim((string)($datos['turno'] ?? '')),
+                $datos['observaciones'] ?? []
             );
 
             echo json_encode([

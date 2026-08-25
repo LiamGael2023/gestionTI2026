@@ -56,15 +56,22 @@ file_put_contents($log_file, "Proyecto encontrado: " . $proyecto['Nombre_Proyect
 $es_cc_proyecto    = intval($proyecto['Es_Control_Calidad'] ?? 0) === 1;
 $es_drene_proyecto = intval($proyecto['Es_Drene'] ?? 0) === 1;
 $mostrar_fuente    = $es_cc_proyecto || $es_drene_proyecto;
+$es_pozos_proyecto = intval($proyecto['Es_Pozos'] ?? 0) === 1;
 
 // Obtener muestras del proyecto con su número de orden
-$sql_muestras = "SELECT m.Id_Muestra, ROW_NUMBER() OVER (ORDER BY m.Id_Muestra) AS NumeroOrden,
+// El orden de aparición es el NÚMERO DE ORDEN real de la asignación
+// (Monitoreo_Pozo_Asignacion.Orden — viene de PG al importar: 1, 4, 5, 40...).
+// Las muestras sin asignación (proyectos que no son de pozos) usan ROW_NUMBER por Id_Muestra.
+$sql_muestras = "SELECT m.Id_Muestra,
+                 CASE WHEN mpa.Orden IS NULL THEN ROW_NUMBER() OVER (ORDER BY m.Id_Muestra) ELSE mpa.Orden END AS NumeroOrden,
                  m.Tipo_Servicio, m.Lab_Habilitado,
-                 da.Nivel_Agua
+                 da.Nivel_Agua,
+                 mpa.Id_Pozo
                  FROM laboratorio.Muestra_Lab m
                  LEFT JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = m.Id_Muestra AND da.Activo = 1
+                 LEFT JOIN laboratorio.Monitoreo_Pozo_Asignacion mpa ON m.Id_Asignacion = mpa.Id_Asignacion
                  WHERE m.Id_Proyecto = ? AND m.Activo = 1
-                 ORDER BY m.Id_Muestra";
+                 ORDER BY CASE WHEN mpa.Orden IS NULL THEN 1 ELSE 0 END, mpa.Orden, m.Id_Muestra";
 $stmt_muestras = sqlsrv_query($conn, $sql_muestras, array($id_proyecto));
 $muestras = [];
 $ids_muestras = [];
@@ -188,7 +195,7 @@ if (!empty($ids_muestras)) {
 $usuario_nombre = isset($_SESSION['usuario_nombre']) ? $_SESSION['usuario_nombre'] : 'Usuario desconocido';
 
 // Detectar si el proyecto está finalizado (modo solo lectura)
-$es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finalizado';
+$es_finalizado = isset($proyecto['Estado']) && ($proyecto['Estado'] === 'Finalizado' || $proyecto['Estado'] === 'Terminado');
 ?>
 
 <!DOCTYPE html>
@@ -351,6 +358,12 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
       width: 56px;
       box-shadow: 4px 0 8px -6px rgba(0, 0, 0, 0.18);
     }
+    .tabla-excel .sticky-left-3 {
+      left: 110px;
+      min-width: 70px;
+      width: 70px;
+      box-shadow: 4px 0 8px -6px rgba(0, 0, 0, 0.18);
+    }
     .tabla-excel .param-col { min-width: 128px; width: 128px; }
     .tabla-excel .param-input,
     .tabla-excel input[disabled] {
@@ -499,7 +512,7 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
             <table class="table table-vcenter tabla-excel">
               <thead>
                 <tr class="excel-title-row">
-                  <th colspan="<?php echo 2 + ($mostrar_fuente ? 1 : 0) + count($parametros_todos); ?>">
+                  <th colspan="<?php echo 2 + ($es_pozos_proyecto ? 1 : 0) + ($mostrar_fuente ? 1 : 0) + count($parametros_todos); ?>">
                     RESULTADOS ANÁLISIS DE <?php echo strtoupper(htmlspecialchars($proyecto['Nombre_Proyecto'])); ?>
                     <br>
                     <?php echo strtoupper(htmlspecialchars($proyecto['Temporada'] ?? '')); ?> - VALLE <?php echo strtoupper(htmlspecialchars($proyecto['Valle'] ?? '')); ?>
@@ -508,6 +521,9 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                 <tr>
                   <th class="sticky-left sticky-left-1">Ac</th>
                   <th class="sticky-left sticky-left-2">No</th>
+                  <?php if ($es_pozos_proyecto): ?>
+                    <th class="sticky-left sticky-left-3">Id Pozo</th>
+                  <?php endif; ?>
                   <?php if ($mostrar_fuente): ?>
                     <th class="param-col col-fuente"><?php echo $es_drene_proyecto ? 'Dren' : 'Nivel'; ?></th>
                   <?php endif; ?>
@@ -552,8 +568,16 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
                       <?php endif; ?>
                     </td>
                     <td class="sticky-left sticky-left-2 col-muestra"><?php echo $muestra['NumeroOrden']; ?></td>
+                    <?php if ($es_pozos_proyecto): ?>
+                      <td class="sticky-left sticky-left-3 col-muestra"><?php echo trim((string)($muestra['Id_Pozo'] ?? '')) !== '' ? htmlspecialchars((string)$muestra['Id_Pozo'], ENT_QUOTES, 'UTF-8') : '—'; ?></td>
+                    <?php endif; ?>
                     <?php if ($mostrar_fuente): ?>
-                      <td class="col-fuente"><?php echo htmlspecialchars($muestra['Nivel_Agua'] ?? '—'); ?></td>
+                      <td class="col-fuente">
+                        <?php echo htmlspecialchars($muestra['Nivel_Agua'] ?? '—'); ?>
+                        <?php if ($es_drene_proyecto): ?>
+                          <button type="button" class="btn btn-sm btn-outline-secondary ms-1 py-0 px-1" title="Editar nombre del dren" onclick="editarNombreDren(<?php echo intval($muestra['Id_Muestra']); ?>, <?php echo json_encode($muestra['Nivel_Agua'] ?? '', JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT); ?>)"><i class="ti ti-pencil"></i></button>
+                        <?php endif; ?>
+                      </td>
                     <?php endif; ?>
                     <?php foreach ($parametros_todos as $param):
                       $key = $muestra['Id_Muestra'] . '_' . $param['Id_Parametro'];
@@ -596,6 +620,9 @@ $es_finalizado = isset($proyecto['Estado']) && $proyecto['Estado'] === 'Finaliza
           <button type="button" class="btn btn-outline-dark" onclick="exportarResultadosPG()" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-database-export me-2"></i> EXPORTAR A PG
           </button>
+          <button type="button" class="btn btn-outline-info" onclick="exportarMonitoreoSubterraneo()" style="font-size: 0.95em; padding: 8px 14px;">
+                      <i class="ti ti-file-spreadsheet me-2"></i> EXPORTAR EXCEL
+                    </button>
           <button type="button" class="btn btn-outline-success" onclick="exportarProyectoMonitoreo(idProyecto)" style="font-size: 0.95em; padding: 8px 14px;">
             <i class="ti ti-file-spreadsheet me-2"></i> DESCARGAR EXCEL
           </button>
@@ -1189,11 +1216,16 @@ function sincronizarInSitu() {
     });
 }
 
+// ── Exportar Monitoreo Subterraneo (plantilla Excel) ──────────────────────
+function exportarMonitoreoSubterraneo() {
+    window.location.href = '?module=laboratorio&action=muestra&subaction=exportar_monitoreo_subterraneo';
+}
+
 // ── Exportar a PostgreSQL ───────────────────────────────────────────────────
 function exportarResultadosPG() {
     Swal.fire({
         title: 'Exportar a BD (PostgreSQL)',
-        text: 'Se enviarán los resultados de laboratorio a la base de datos externa (calidad_agua_laboratorio).',
+        text: 'Se enviarán los resultados de laboratorio a la base de datos externa (PostgreSQL).',
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Exportar',
@@ -1800,64 +1832,62 @@ function guardarResultados(event) {
     }).then((result) => {
         if (result.isConfirmed) {
         abrirModalConsumoExtra(function(payloadExtra) {
-          guardarResultadosAPI(resultados, 0, payloadExtra);
+          guardarResultadosAPI(resultados, payloadExtra, 0);
         });
         }
     });
 }
 
-  function guardarResultadosAPI(resultados, index, payloadExtra) {
-    if (index === 0) {
-      mostrarCargaAnalisis('Grabando resultados...', 'Procesando 1 de ' + resultados.length + ' resultados.');
+  // ⚡ OPTIMIZADO 2026-08: guarda TODOS los resultados en UNA sola petición
+  // (endpoint guardar_resultados_batch, una transacción). Antes era secuencial
+  // (1 request por resultado) y demoraba 15-20x más.
+  function guardarResultadosAPI(resultados, payloadExtra, reintento) {
+    reintento = reintento || 0;
+    if (reintento === 0) {
+      mostrarCargaAnalisis('Grabando resultados...', 'Guardando ' + resultados.length + ' resultados en una sola operación...');
     }
-
-    if (index >= resultados.length) {
-      actualizarCargaAnalisis('Registrando consumo extra, por favor espere...');
-      registrarConsumoExtra(payloadExtra, function(ok, dataOrMsg) {
-        cerrarCargaAnalisis();
-        if (!ok) {
-          Swal.fire('Error', String(dataOrMsg || 'Error registrando consumo extra'), 'error');
-          return;
-        }
-
-        let mensaje = 'Todos los resultados han sido guardados';
-        if (dataOrMsg && dataOrMsg.movimientos !== undefined) {
-          mensaje += '<br><small>Movimientos extra: <strong>' + dataOrMsg.movimientos + '</strong> | Residuos: <strong>' + (dataOrMsg.residuos || 0) + '</strong></small>';
-        }
-
-        Swal.fire({
-          title: 'Exito',
-          html: mensaje,
-          icon: 'success'
-        }).then(() => {
-          window.location.href = '?module=laboratorio&action=muestra&tab=masiva';
-        });
-      });
-        return;
-    }
-
-    let resultado = resultados[index];
 
     $.ajax({
-        url: apiUrl + '?action=guardar_resultado',
+        url: apiUrl + '?action=guardar_resultados_batch',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify(resultado),
+        data: JSON.stringify({ resultados: resultados }),
         dataType: 'json',
-        timeout: 5000,
+        timeout: 120000,
         success: function(response) {
             if (response.success) {
-          const siguiente = index + 2;
-          if (siguiente <= resultados.length) {
-            actualizarCargaAnalisis('Procesando ' + siguiente + ' de ' + resultados.length + ' resultados.');
-          }
-            guardarResultadosAPI(resultados, index + 1, payloadExtra);
+              actualizarCargaAnalisis('Registrando consumo extra, por favor espere...');
+              registrarConsumoExtra(payloadExtra, function(ok, dataOrMsg) {
+                cerrarCargaAnalisis();
+                if (!ok) {
+                  Swal.fire('Error', String(dataOrMsg || 'Error registrando consumo extra'), 'error');
+                  return;
+                }
+                let mensaje = 'Todos los resultados han sido guardados';
+                if (dataOrMsg && dataOrMsg.movimientos !== undefined) {
+                  mensaje += '<br><small>Movimientos extra: <strong>' + dataOrMsg.movimientos + '</strong> | Residuos: <strong>' + (dataOrMsg.residuos || 0) + '</strong></small>';
+                }
+                Swal.fire({
+                  title: 'Exito',
+                  html: mensaje,
+                  icon: 'success'
+                }).then(() => {
+                  window.location.href = '?module=laboratorio&action=muestra&tab=masiva';
+                });
+              });
             } else {
             cerrarCargaAnalisis();
                 Swal.fire('Error', response.message || 'Error al guardar resultado', 'error');
             }
         },
         error: function(xhr, status, error) {
+          // Reintento automático: el lote es idempotente (consumo con check ya_consumido,
+          // residuos con dedup por solicitud, UPDATEs de estado idempotentes).
+          if ((status === 'timeout' || xhr.status === 0) && reintento < 2) {
+            actualizarCargaAnalisis('Servidor lento, reintentando el guardado...');
+            setTimeout(function() { guardarResultadosAPI(resultados, payloadExtra, reintento + 1); }, 1500);
+            return;
+          }
           cerrarCargaAnalisis();
             let errorMsg = 'Error al guardar';
             try {
@@ -1866,9 +1896,21 @@ function guardarResultados(event) {
                     errorMsg = resp.message || errorMsg;
                 }
             } catch(e) {
+                // Respuesta no JSON: probablemente sesión expirada (Auth redirige al login)
+                if (xhr.status === 302 || xhr.status === 0 || (xhr.responseText && xhr.responseText.indexOf('<html') !== -1)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sesión expirada',
+                        text: 'Tu sesión ha caducado. Los cambios guardados hasta ahora están a salvo; vuelve a iniciar sesión para continuar.',
+                        confirmButtonText: 'Ir al login'
+                    }).then(function() { window.location.href = 'index.php'; });
+                    return;
+                }
                 errorMsg = xhr.status + ' - ' + xhr.responseText.substring(0, 100);
             }
-            
+            if (status === 'timeout' || xhr.status === 0) {
+              errorMsg = 'El servidor tardó demasiado en responder. Los resultados guardados hasta ahora están a salvo; vuelve a intentar el guardado.';
+            }
             Swal.fire('Error', errorMsg, 'error');
         }
     });
@@ -1910,7 +1952,8 @@ function guardarAvance() {
     });
 }
 
-function guardarAvanceAPI(resultados, index) {
+function guardarAvanceAPI(resultados, index, reintento) {
+  reintento = reintento || 0;
   if (index === 0) {
     mostrarCargaAnalisis('Guardando avance...', 'Procesando 1 de ' + resultados.length + ' resultados.');
   }
@@ -1930,20 +1973,26 @@ function guardarAvanceAPI(resultados, index) {
         contentType: 'application/json',
         data: JSON.stringify(resultado),
         dataType: 'json',
-        timeout: 5000,
+        timeout: 60000,
         success: function(response) {
             if (response.success) {
             const siguiente = index + 2;
             if (siguiente <= resultados.length) {
               actualizarCargaAnalisis('Procesando ' + siguiente + ' de ' + resultados.length + ' resultados.');
             }
-                guardarAvanceAPI(resultados, index + 1);
+                guardarAvanceAPI(resultados, index + 1, 0);
             } else {
             cerrarCargaAnalisis();
                 Swal.fire('Error', response.message || 'Error al guardar', 'error');
             }
         },
         error: function(xhr, status, error) {
+          // Reintento automático en timeout/abort (guardado idempotente — ver guardarResultadosAPI)
+          if ((status === 'timeout' || xhr.status === 0) && reintento < 2) {
+            actualizarCargaAnalisis('Procesando ' + (index + 1) + ' de ' + resultados.length + ' resultados. (Servidor lento, reintentando...)');
+            setTimeout(function() { guardarAvanceAPI(resultados, index, reintento + 1); }, 1500);
+            return;
+          }
           cerrarCargaAnalisis();
             let errorMsg = 'Error al guardar';
             try {
@@ -1952,9 +2001,21 @@ function guardarAvanceAPI(resultados, index) {
                     errorMsg = resp.message || errorMsg;
                 }
             } catch(e) {
+                // Respuesta no JSON: probablemente sesión expirada (Auth redirige al login)
+                if (xhr.status === 302 || xhr.status === 0 || (xhr.responseText && xhr.responseText.indexOf('<html') !== -1)) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sesión expirada',
+                        text: 'Tu sesión ha caducado. Los cambios guardados hasta ahora están a salvo; vuelve a iniciar sesión para continuar.',
+                        confirmButtonText: 'Ir al login'
+                    }).then(function() { window.location.href = 'index.php'; });
+                    return;
+                }
                 errorMsg = xhr.status + ' - ' + xhr.responseText.substring(0, 100);
             }
-            
+            if (status === 'timeout' || xhr.status === 0) {
+              errorMsg = 'El servidor tardó demasiado en responder. Los resultados guardados hasta ahora están a salvo; vuelve a intentar el guardado.';
+            }
             Swal.fire('Error', errorMsg, 'error');
         }
     });
@@ -2230,6 +2291,46 @@ window.verDetalleMuestra = function(idMuestra) {
         $(document).on('input change', '.param-input', function() {
             $(this).addClass('changed');
         });
+
+        // ===== Editar nombre del dren (descripción y exportación) =====
+        window.editarNombreDren = function(idMuestra, nombreActual) {
+            Swal.fire({
+                title: 'Editar nombre del dren',
+                input: 'text',
+                inputValue: nombreActual || '',
+                inputPlaceholder: 'Nombre del dren (ej. DREN BITÍN)',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                inputValidator: function(nuevo) {
+                    if (!nuevo || !nuevo.trim()) {
+                        return 'El nombre no puede estar vacío';
+                    }
+                }
+            }).then(function(result) {
+                if (!result.isConfirmed) return;
+                $.ajax({
+                    url: 'modules/laboratorio/muestra/controllers/CalidadAPI.php',
+                    type: 'POST',
+                    data: { action: 'actualizar_drene', id_muestra: idMuestra, nombre: result.value.trim() },
+                    dataType: 'json',
+                    success: function(resp) {
+                        if (resp && resp.success) {
+                            Swal.fire('Listo', 'Nombre del dren actualizado.', 'success').then(function() {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Error', (resp && resp.message) || 'Error al actualizar el nombre.', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Error al actualizar el nombre.';
+                        try { msg = (JSON.parse(xhr.responseText) || {}).message || msg; } catch (e) {}
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
+            });
+        };
 
         </script>
 

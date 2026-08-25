@@ -211,8 +211,21 @@ class ProyectoModel {
             
             // Si cambio a "En Progreso", crear muestras
             if ($estado_anterior !== 'En Progreso' && $estado_nuevo === 'En Progreso') {
-                file_put_contents($log_file, "✓ LLAMANDO A crearMuestrasDesdePeriodo(" . $datos['Id_Proyecto'] . ")\n", FILE_APPEND);
-                $this->crearMuestrasDesdePeriodo($datos['Id_Proyecto'], $fuentes_calidad, $datos['Fuentes_Drene'] ?? null);
+                // ⚠️ ANTI-DUPLICADO (2026-08): si el proyecto YA tiene muestras activas
+                // (p.ej. creadas por "Extraer desde PostgreSQL"), NO crear otra tanda.
+                // Solo se pasa el estado a En Progreso. Si el usuario necesita más,
+                // existe el flujo explícito "Agregar Muestras Adicionales".
+                $stmtCnt = sqlsrv_query($this->db,
+                    "SELECT COUNT(*) AS n FROM laboratorio.Muestra_Lab WHERE Id_Proyecto = ? AND Activo = 1",
+                    [$datos['Id_Proyecto']]);
+                $rowCnt = ($stmtCnt !== false) ? sqlsrv_fetch_array($stmtCnt, SQLSRV_FETCH_ASSOC) : null;
+                $muestras_existentes = intval($rowCnt['n'] ?? 0);
+                if ($muestras_existentes > 0) {
+                    file_put_contents($log_file, "✗ NO CREAR: el proyecto ya tiene $muestras_existentes muestras activas (evita duplicado)\n", FILE_APPEND);
+                } else {
+                    file_put_contents($log_file, "✓ LLAMANDO A crearMuestrasDesdePeriodo(" . $datos['Id_Proyecto'] . ")\n", FILE_APPEND);
+                    $this->crearMuestrasDesdePeriodo($datos['Id_Proyecto'], $fuentes_calidad, $datos['Fuentes_Drene'] ?? null);
+                }
             } else {
                 file_put_contents($log_file, "✗ NO LLAMAR A crearMuestrasDesdePeriodo (condición no cumplida)\n", FILE_APPEND);
             }
@@ -1359,6 +1372,30 @@ class ProyectoModel {
             throw new Exception('Error al eliminar proyecto: ' . print_r(sqlsrv_errors(), true));
         }
         return true;
+    }
+
+    /**
+     * Método público para llamar crearMuestrasPozos desde clases externas (ej. SincronizacionMonitoreoModel).
+     * Carga el proyecto y el cliente desde la BD internamente.
+     */
+    public function crearMuestrasPozosExterno($id_proyecto, $usuario_id) {
+        $log_file = sys_get_temp_dir() . '/pozos_sincronizacion.log';
+
+        // Cargar datos del proyecto
+        $sqlProy = "SELECT Nombre_Proyecto, Valle, Temporada FROM laboratorio.Proyecto_Monitoreo WHERE Id_Proyecto = ? AND Activo = 1";
+        $stmtProy = sqlsrv_query($this->db, $sqlProy, [$id_proyecto]);
+        $proyecto = $stmtProy !== false ? sqlsrv_fetch_array($stmtProy, SQLSRV_FETCH_ASSOC) : null;
+        if (!$proyecto) {
+            throw new Exception("Proyecto $id_proyecto no encontrado.");
+        }
+
+        // Cargar cliente CHAVIMOCHIC (o usar 1 como fallback)
+        $sqlCli = "SELECT TOP 1 Id_Cliente FROM laboratorio.Cliente WHERE Razon_Social LIKE '%CHAVIMOCHIC%' AND Activo = 1";
+        $stmtCli = sqlsrv_query($this->db, $sqlCli);
+        $rowCli = $stmtCli !== false ? sqlsrv_fetch_array($stmtCli, SQLSRV_FETCH_ASSOC) : null;
+        $id_cliente = $rowCli ? intval($rowCli['Id_Cliente']) : 1;
+
+        $this->crearMuestrasPozos($id_proyecto, $proyecto, $id_cliente, $usuario_id, $log_file);
     }
 
     private function crearMuestrasPozos($id_proyecto, $proyecto, $id_cliente, $usuario_id, $log_file) {

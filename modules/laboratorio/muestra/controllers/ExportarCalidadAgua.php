@@ -1,4 +1,18 @@
 <?php
+/**
+ * ExportarCalidadAgua.php — v2 (plantilla "RESULTADOS ... AGUAS SUPERFICIALES - 2026.xlsx")
+ * Exporta el informe de Calidad Superficial de un proyecto (Es_Control_Calidad=1).
+ *
+ * Comportamiento (decisiones del usuario):
+ *  - Solo se exportan los parámetros que tienen al menos UN resultado no nulo en alguna estación.
+ *    Si todas las estaciones están vacías, la fila del parámetro se ELIMINA del Excel
+ *    (secciones, nota y bloque LMP se reacomodan automáticamente).
+ *  - MAX/MIN se calculan en PHP y se escriben como valores (nada de fórmulas: se romperían al
+ *    quitar filas y no se recalcularían en visores sin cálculo automático).
+ *  - SIN bordes y SIN rellenos: ninguna celda lleva borde; todo queda en blanco.
+ *
+ * Uso: ExportarCalidadAgua.php?id_proyecto=X
+ */
 ob_start();
 error_reporting(0);
 ini_set('display_errors', '0');
@@ -16,64 +30,45 @@ if (!file_exists($autoloadLibs)) {
 }
 require_once $autoloadLibs;
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 // ============================================================
 // HELPERS
 // ============================================================
-function _caq_sinTildes(string $s): string {
+function _cs_sinTildes(string $s): string {
     $b = ['á','é','í','ó','ú','Á','É','Í','Ó','Ú','ä','ë','ï','ö','ü','Ä','Ë','Ï','Ö','Ü','ñ','Ñ'];
     $r = ['a','e','i','o','u','A','E','I','O','U','a','e','i','o','u','A','E','I','O','U','n','N'];
     return str_replace($b, $r, $s);
 }
 
-function _caq_normCat(string $cat): string {
-    $c = strtoupper(_caq_sinTildes(trim($cat)));
-    if (strpos($c, 'FISIC')       !== false) return 'FISICO';
-    if (strpos($c, 'QUIMIC')      !== false) return 'QUIMICO';
-    if (strpos($c, 'MICROBIOLOG') !== false) return 'MICROBIOLOGICO';
-    return ($c !== '') ? $c : 'OTROS';
+// Normaliza para comparar: MAYÚSCULAS, sin tildes, sin caracteres especiales ni espacios
+function _cs_norm(string $s): string {
+    return strtoupper(preg_replace('/[^A-Z0-9]/', '', _cs_sinTildes($s)));
 }
 
-function _caq_catLabel(string $normCat): string {
-    $m = [
-        'FISICO'         => 'ANÁLISIS FÍSICOS',
-        'QUIMICO'        => 'ANÁLISIS QUÍMICOS',
-        'MICROBIOLOGICO' => 'ANÁLISIS MICROBIOLÓGICOS',
-    ];
-    return $m[$normCat] ?? ('ANÁLISIS ' . $normCat);
+// Base del nombre de parámetro: quita paréntesis y sufijos (ej. "Amonio (NH4)" → "AMONIO")
+function _cs_base(string $s): string {
+    $t = preg_replace('/\s*\(.*$/', '', trim($s));   // quita "(...)" y lo que sigue
+    $t = preg_replace('/[^A-Z0-9]/', '', strtoupper(_cs_sinTildes($t)));
+    return $t;
 }
 
-function _caq_fmtNum($v): string {
-    if ($v === null || trim((string)$v) === '') return '';
-    $s = rtrim(rtrim(number_format((float)$v, 6, '.', ''), '0'), '.');
-    return ($s === '' || $s === '-') ? '0' : $s;
-}
-
-function _caq_fmtLim($min, $max): string {
-    $mi = ($min !== null && trim((string)$min) !== '') ? _caq_fmtNum($min) : '';
-    $ma = ($max !== null && trim((string)$max) !== '') ? _caq_fmtNum($max) : '';
-    if ($mi !== '' && $ma !== '') return $mi . ' - ' . $ma;
-    if ($ma !== '') return $ma;
-    if ($mi !== '') return $mi;
-    return '-';
-}
-
-function _caq_parseNum($v): ?float {
-    if ($v === null) return null;
+function _cs_esNumero($v): bool {
+    if ($v === null) return false;
     $t = trim(str_replace(',', '.', (string)$v));
-    if ($t === '' || $t === '-') return null;
-    $t = preg_replace('/[^0-9.\-]/', '', $t);
-    return (is_numeric($t) && $t !== '') ? floatval($t) : null;
+    if ($t === '' || $t === '-') return false;
+    return is_numeric($t);
+}
+
+function _cs_aNumero($v): float {
+    return floatval(str_replace(',', '.', (string)$v));
 }
 
 // ============================================================
-// BASE DE DATOS
+// PROYECTO
 // ============================================================
 $id_proyecto = intval($_GET['id_proyecto'] ?? 0);
 if ($id_proyecto <= 0) { http_response_code(400); die('Proyecto invalido'); }
@@ -81,369 +76,314 @@ if ($id_proyecto <= 0) { http_response_code(400); die('Proyecto invalido'); }
 $conn = Conexion::conectar();
 if (!$conn) { http_response_code(500); die('Error de conexion'); }
 
-// 1. Proyecto
 $stmtP = sqlsrv_query($conn,
-    "SELECT TOP 1 Id_Proyecto, Nombre_Proyecto, Valle, Temporada, Fecha_Inicio
+    "SELECT TOP 1 Id_Proyecto, Nombre_Proyecto
      FROM laboratorio.Proyecto_Monitoreo
      WHERE Id_Proyecto = ? AND Activo = 1 AND Es_Control_Calidad = 1",
     [$id_proyecto]);
 if (!$stmtP) { http_response_code(500); die('Error BD: proyecto'); }
 $proyecto = sqlsrv_fetch_array($stmtP, SQLSRV_FETCH_ASSOC);
-if (!$proyecto) { http_response_code(404); die('Proyecto Calidad de Agua no encontrado'); }
+if (!$proyecto) { http_response_code(404); die('Proyecto Calidad Superficial no encontrado'); }
 
-// 2. Fuentes de agua (columnas dinamicas)
-$stmtF = sqlsrv_query($conn,
-    "SELECT DISTINCT da.Fuente_Agua
-     FROM laboratorio.Muestra_Lab m
-     INNER JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = m.Id_Muestra
-     WHERE m.Id_Proyecto = ? AND m.Activo = 1 AND da.Activo = 1
-       AND da.Fuente_Agua IS NOT NULL AND LTRIM(RTRIM(da.Fuente_Agua)) <> ''
-     ORDER BY da.Fuente_Agua",
-    [$id_proyecto]);
-$fuentes = [];
-if ($stmtF) {
-    while ($r = sqlsrv_fetch_array($stmtF, SQLSRV_FETCH_ASSOC)) {
-        $fuentes[] = trim((string)$r['Fuente_Agua']);
-    }
+// Parsear año y mes desde "CALIDAD SUPERFICIAL {año} - {MES}"
+$nombreProyecto = trim((string)($proyecto['Nombre_Proyecto'] ?? ''));
+if (!preg_match('/^CALIDAD\s+SUPERFICIAL\s+(\d{4})\s*-\s*([A-Za-zÁÉÍÓÚÑÜ]+)$/i', $nombreProyecto, $m)) {
+    http_response_code(400);
+    die('Nombre de proyecto no reconocido: ' . $nombreProyecto);
 }
-if (empty($fuentes)) { http_response_code(409); die('Sin fuentes de agua definidas para exportar'); }
+$anio       = $m[1];
+$mesNombre  = ucfirst(strtolower($m[2]));   // "Marzo"
+$mesUpper   = strtoupper($mesNombre);       // "MARZO"
 
-// 3. Parametros agrupados por categoria
-$stmtPa = sqlsrv_query($conn,
-    "SELECT sub.Id_Parametro, sub.Nombre, sub.Unidad_Medida, sub.Categoria
-     FROM (
-         SELECT DISTINCT pa.Id_Parametro, pa.Nombre, ISNULL(um.Abreviatura, pa.Unidad_Medida) AS Unidad_Medida,
-                ISNULL(pa.Categoria, 'Otros') AS Categoria
-         FROM laboratorio.Parametro_Analisis pa
-         LEFT JOIN laboratorio.Unidad_Medida um ON pa.Id_Unidad_Medida = um.Id_Unidad_Medida AND um.Activo = 1
-         INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Servicio = pa.Id_Servicio
-         INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
-         WHERE ml.Id_Proyecto = ? AND ml.Activo = 1 AND sa.Activo = 1 AND pa.Activo = 1
-     ) sub
-     ORDER BY sub.Categoria, sub.Nombre",
-    [$id_proyecto]);
-if (!$stmtPa) {
-    http_response_code(500);
-    $errInfo = sqlsrv_errors();
-    die('Error BD: parametros - ' . print_r($errInfo, true));
-}
-
-$paramsPorCat = [];
-$paramIds     = [];
-while ($r = sqlsrv_fetch_array($stmtPa, SQLSRV_FETCH_ASSOC)) {
-    $id = intval($r['Id_Parametro'] ?? 0);
-    if ($id <= 0) continue;
-    $cat = _caq_normCat(trim((string)($r['Categoria'] ?? '')));
-    $paramsPorCat[$cat][] = [
-        'id'     => $id,
-        'nombre' => trim((string)($r['Nombre'] ?? '')),
-        'unidad' => trim((string)($r['Unidad_Medida'] ?? '-')),
-    ];
-    $paramIds[] = $id;
-}
-if (empty($paramIds)) { http_response_code(409); die('Sin parametros asociados al proyecto'); }
-
-// 4. Resultados [fuente][id_param] = valor
-$resultados = [];
-$phP = implode(',', array_fill(0, count($paramIds), '?'));
-$stmtR = sqlsrv_query($conn,
-    "SELECT da.Fuente_Agua, ra.Id_Parametro,
-            MAX(CAST(ra.Valor_Hallado AS NVARCHAR(255))) AS Valor
-     FROM laboratorio.Resultado_Analisis ra
-     INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
-     INNER JOIN laboratorio.Muestra_Lab ml ON ml.Id_Muestra = sa.Id_Muestra
-     INNER JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = ml.Id_Muestra
-     WHERE ml.Id_Proyecto = ? AND ml.Activo = 1 AND sa.Activo = 1 AND ra.Activo = 1
-       AND da.Fuente_Agua IS NOT NULL AND ra.Id_Parametro IN ($phP)
-     GROUP BY da.Fuente_Agua, ra.Id_Parametro",
-    array_merge([$id_proyecto], $paramIds));
-if ($stmtR) {
-    while ($r = sqlsrv_fetch_array($stmtR, SQLSRV_FETCH_ASSOC)) {
-        $f = trim((string)($r['Fuente_Agua'] ?? ''));
-        $p = intval($r['Id_Parametro'] ?? 0);
-        $v = trim((string)($r['Valor'] ?? ''));
-        if ($f !== '' && $p > 0) {
-            $resultados[$f][$p] = ($v === '' ? '-' : $v);
-        }
-    }
-}
-
-// 5. Limites [id_param]['riego'/'animales'] = ['texto','min','max']
-$limites = [];
-$stmtL = sqlsrv_query($conn,
-    "SELECT Id_Parametro, Valor_Min, Valor_Max, Descripcion
-     FROM laboratorio.Limite_Legal
-     WHERE Activo = 1 AND Id_Parametro IN ($phP)
-       AND Descripcion IN ('Riego de Vegetales', 'Consumo de Animales')",
-    $paramIds);
-if ($stmtL) {
-    while ($r = sqlsrv_fetch_array($stmtL, SQLSRV_FETCH_ASSOC)) {
-        $id    = intval($r['Id_Parametro'] ?? 0);
-        $desc  = strtoupper(trim((string)($r['Descripcion'] ?? '')));
-        $clave = (strpos($desc, 'RIEGO') !== false) ? 'riego' : 'animales';
-        $limites[$id][$clave] = [
-            'texto' => _caq_fmtLim($r['Valor_Min'], $r['Valor_Max']),
-            'min'   => $r['Valor_Min'],
-            'max'   => $r['Valor_Max'],
+// ============================================================
+// MUESTRAS DEL PROYECTO (estaciones)
+// ============================================================
+$muestras = [];
+$stmtM = sqlsrv_query($conn,
+    "SELECT ml.Id_Muestra, da.Nivel_Agua, ml.Observacion_Muestra
+     FROM laboratorio.Muestra_Lab ml
+     INNER JOIN laboratorio.Detalle_Agua da ON da.Id_Muestra = ml.Id_Muestra AND da.Activo = 1
+     WHERE ml.Id_Proyecto = ? AND ml.Activo = 1
+     ORDER BY ml.Id_Muestra", [$id_proyecto]);
+if ($stmtM) {
+    while ($r = sqlsrv_fetch_array($stmtM, SQLSRV_FETCH_ASSOC)) {
+        $muestras[] = [
+            'id'    => intval($r['Id_Muestra'] ?? 0),
+            'corto' => trim((string)($r['Nivel_Agua'] ?? '')),
+            'obs'   => trim((string)($r['Observacion_Muestra'] ?? '')),
         ];
     }
 }
+if (empty($muestras)) { http_response_code(409); die('El proyecto no tiene muestras para exportar'); }
 
-$excedeLimite = function (int $idParam, $valor) use ($limites): bool {
-    $n = _caq_parseNum($valor);
-    if ($n === null) return false;
-    foreach ($limites[$idParam] ?? [] as $info) {
-        $mx = _caq_parseNum($info['max'] ?? null);
-        $mn = _caq_parseNum($info['min'] ?? null);
-        if ($mx !== null && $n > $mx) return true;
-        if ($mn !== null && $n < $mn) return true;
+$idsMuestras = array_column($muestras, 'id');
+
+// ============================================================
+// PARÁMETROS ACTIVOS (para mapear nombre del template → Id_Parametro)
+// ============================================================
+$paramsActivos = [];
+$stmtPa = sqlsrv_query($conn, "SELECT Id_Parametro, Nombre FROM laboratorio.Parametro_Analisis WHERE Activo = 1");
+if ($stmtPa) {
+    while ($r = sqlsrv_fetch_array($stmtPa, SQLSRV_FETCH_ASSOC)) {
+        $paramsActivos[_cs_base((string)$r['Nombre'])] = intval($r['Id_Parametro']);
     }
-    return false;
-};
-
-// ============================================================
-// LAYOUT DE COLUMNAS
-// A(1): margen blanco
-// B(2): Parametros
-// C(3): Unidad de Medida
-// D(4): DS Riego de Vegetales
-// E(5): DS Consumo de Animales
-// F(6)..F+N-1: Fuentes (dinamico)
-// F+N: MAX   /   F+N+1: MIN
-// ============================================================
-$nFuentes  = count($fuentes);
-$colFStart = 6;
-$colMax    = $colFStart + $nFuentes;
-$colMin    = $colMax + 1;
-$colFin    = $colMin;
-
-$letFStart = Coordinate::stringFromColumnIndex($colFStart);
-$letMax    = Coordinate::stringFromColumnIndex($colMax);
-$letMin    = Coordinate::stringFromColumnIndex($colMin);
-$letFin    = Coordinate::stringFromColumnIndex($colFin);
-
-// ============================================================
-// CONSTRUIR SPREADSHEET DESDE CERO (sin template = sin corrupcion)
-// ============================================================
-$spreadsheet = new Spreadsheet();
-$sheet       = $spreadsheet->getActiveSheet();
-$sheet->setTitle('Resultados');
-
-$C_AZUL_OSC    = 'FF3483CC';  // Azul oscuro: título, cabeceras principales
-$C_AZUL_MED    = 'FF6CB0F0';  // Azul medio: secciones, normativa, MAX/MIN
-$C_CELESTE     = 'FFC4DFF7';  // Celeste: nombres de nivel (F7+) y celdas de resultados
-$C_PARAM_LIGHT = 'FFDCE6F1';  // Celeste muy claro: nombres de parámetros
-$C_BLANCO      = 'FFFFFFFF';  // Blanco: bordes y fondo de límites/unidades
-$C_NEGRO       = 'FF000000';
-$C_ROJO        = 'FFFF0000';
-
-$applyStyle = function (string $rango, array $arr) use ($sheet) {
-    $sheet->getStyle($rango)->applyFromArray($arr);
-};
-
-$mkEncabezado = function (string $bgArgb, int $size = 10) use ($C_BLANCO): array {
-    return [
-        'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $bgArgb]],
-        'font'      => ['bold' => true, 'color' => ['argb' => $C_BLANCO], 'size' => $size],
-        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-        'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => $C_BLANCO]]],
-    ];
-};
-
-$estiloDato = [
-    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_BLANCO]],
-    'font'      => ['bold' => false, 'color' => ['argb' => $C_NEGRO], 'size' => 9],
-    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => $C_BLANCO]]],
-];
-$estiloDatoNombre = array_merge($estiloDato, [
-    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true, 'indent' => 1],
-    'font'      => ['bold' => false, 'italic' => true, 'color' => ['argb' => $C_NEGRO], 'size' => 9],
-]);
-$estiloDatoCeleste = [
-    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_CELESTE]],
-    'font'      => ['bold' => false, 'color' => ['argb' => $C_NEGRO], 'size' => 9],
-    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => $C_BLANCO]]],
-];
-
-// ============================================================
-// FILAS 1-3: margen visual
-// ============================================================
-foreach ([1, 2, 3] as $mr) { $sheet->getRowDimension($mr)->setRowHeight(5); }
-
-// ============================================================
-// FILA 4: NOMBRE DEL PROYECTO
-// ============================================================
-$sheet->mergeCells('B4:' . $letFin . '4');
-$sheet->getCell('B4')->setValue(strtoupper(trim((string)($proyecto['Nombre_Proyecto'] ?? ''))));
-$applyStyle('B4:' . $letFin . '4', $mkEncabezado($C_AZUL_OSC, 11));
-$sheet->getRowDimension(4)->setRowHeight(34);
-
-// ============================================================
-// FILA 5: TEMPORADA
-// ============================================================
-$sheet->mergeCells('B5:' . $letFin . '5');
-
-$fecha_inicio = '';
-if ($proyecto['Fecha_Inicio']) {
-    $meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    $mes = intval($proyecto['Fecha_Inicio']->format('n')) - 1;
-    $año = $proyecto['Fecha_Inicio']->format('Y');
-    $fecha_inicio = strtoupper($meses[$mes]) . ' ' . $año;
-}
-$sheet->getCell('B5')->setValue($fecha_inicio);
-$applyStyle('B5:' . $letFin . '5', $mkEncabezado($C_AZUL_OSC, 10));
-$sheet->getRowDimension(5)->setRowHeight(20);
-
-// ============================================================
-// FILA 6: CABECERAS (con merge B6:B7 y C6:C7 para doble fila)
-// ============================================================
-$sheet->mergeCells('B6:B7');
-$sheet->getCell('B6')->setValue('PARÁMETROS');
-
-$sheet->mergeCells('C6:C7');
-$sheet->getCell('C6')->setValue('Unidad de Medida');
-
-$sheet->mergeCells('D6:E6');
-$sheet->getCell('D6')->setValue('DS N°004-2017 MINAM');
-
-$sheet->mergeCells($letFStart . '6:' . $letFin . '6');
-$sheet->getCell($letFStart . '6')->setValue('RESULTADOS');
-
-$applyStyle('B6:' . $letFin . '6', $mkEncabezado($C_AZUL_OSC));
-$sheet->getRowDimension(6)->setRowHeight(20);
-
-// ============================================================
-// FILA 7: SUB-CABECERAS
-// ============================================================
-$sheet->getCell('D7')->setValue('Riego Vegetales');
-$sheet->getCell('E7')->setValue('Bebida Animales');
-
-$colIdx7 = $colFStart;
-foreach ($fuentes as $fuente) {
-    $sheet->getCell(Coordinate::stringFromColumnIndex($colIdx7) . '7')->setValue(strtoupper($fuente));
-    $colIdx7++;
-}
-$sheet->getCell($letMax . '7')->setValue('MAX');
-$sheet->getCell($letMin . '7')->setValue('MIN');
-
-$applyStyle('D7:' . $letFin . '7', $mkEncabezado($C_AZUL_MED));
-$sheet->getRowDimension(7)->setRowHeight(44);
-
-// ============================================================
-// ANCHOS DE COLUMNAS
-// ============================================================
-$sheet->getColumnDimension('A')->setWidth(3);
-$sheet->getColumnDimension('B')->setWidth(26);
-$sheet->getColumnDimension('C')->setWidth(13);
-$sheet->getColumnDimension('D')->setWidth(14);
-$sheet->getColumnDimension('E')->setWidth(14);
-$sheet->getColumnDimension($letMax)->setWidth(10);
-$sheet->getColumnDimension($letMin)->setWidth(10);
-for ($ci = $colFStart; $ci < $colMax; $ci++) {
-    $w = max(14, min(28, strlen($fuentes[$ci - $colFStart]) * 0.95 + 2));
-    $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($ci))->setWidth($w);
 }
 
 // ============================================================
-// SECCIONES Y FILAS DE PARAMETROS
+// RESULTADOS [Id_Muestra][Id_Parametro] = Valor_Hallado
 // ============================================================
-$catOrden = ['FISICO', 'QUIMICO', 'MICROBIOLOGICO'];
-foreach (array_keys($paramsPorCat) as $cat) {
-    if (!in_array($cat, $catOrden, true)) $catOrden[] = $cat;
+$resultados = [];
+$phM = implode(',', array_fill(0, count($idsMuestras), '?'));
+$stmtR = sqlsrv_query($conn,
+    "SELECT sa.Id_Muestra, ra.Id_Parametro, ra.Valor_Hallado
+     FROM laboratorio.Resultado_Analisis ra
+     INNER JOIN laboratorio.Solicitud_Analisis sa ON sa.Id_Solicitud_Analisis = ra.Id_Solicitud_Analisis
+     WHERE sa.Id_Muestra IN ($phM) AND ra.Activo = 1 AND sa.Activo = 1",
+    $idsMuestras);
+if ($stmtR) {
+    while ($r = sqlsrv_fetch_array($stmtR, SQLSRV_FETCH_ASSOC)) {
+        $idM = intval($r['Id_Muestra'] ?? 0);
+        $idP = intval($r['Id_Parametro'] ?? 0);
+        $v   = trim((string)($r['Valor_Hallado'] ?? ''));
+        if ($idM > 0 && $idP > 0) {
+            $resultados[$idM][$idP] = $v;   // '' cuando es null
+        }
+    }
 }
 
-$filaActual = 8;
+// ============================================================
+// PLANTILLA
+// ============================================================
+$templatePath = $base_path . '/modules/laboratorio/muestra/plantilla/RESULTADOS ANÁLISIS FISICO QUIMICOS Y MICROBIOLOGICOS DE LA CALIDAD AMBIENTAL DE AGUAS SUPERFICIALES - 2026.xlsx';
+if (!file_exists($templatePath)) { http_response_code(500); die('Plantilla no encontrada'); }
+$spreadsheet = IOFactory::load($templatePath);
+$sheet = $spreadsheet->getActiveSheet();   // única hoja: "MARZO 2026"
+$sheet->setTitle($mesUpper . ' ' . $anio); // "MARZO 2026"
+$sheet->setShowGridlines(false);           // vista limpia, sin rejilla
 
-foreach ($catOrden as $normCat) {
-    if (!isset($paramsPorCat[$normCat])) continue;
+// Título (fila 4): texto fijo + mes - año
+$sheet->getCell('B4')->setValue(
+    "RESULTADOS ANÁLISIS FISICO QUIMICOS Y MICROBIOLOGICOS DE LA CALIDAD AMBIENTAL DE AGUAS SUPERFICIALES\n" .
+    $mesUpper . ' - ' . $anio
+);
 
-    // Fila de seccion (azul medio, merged)
-    $sheet->mergeCells('B' . $filaActual . ':' . $letFin . $filaActual);
-    $sheet->getCell('B' . $filaActual)->setValue(_caq_catLabel($normCat));
-    $applyStyle('B' . $filaActual . ':' . $letFin . $filaActual, $mkEncabezado($C_AZUL_MED));
-    $sheet->getRowDimension($filaActual)->setRowHeight(18);
-    $filaActual++;
+// ============================================================
+// MAPEO ESTACIONES: cabeceras F7..O7 ↔ muestras
+// Reglas (por puntaje, cada muestra se usa 1 sola vez):
+//   100 = Nivel_Agua normalizado idéntico a la cabecera
+//    80 = Nivel_Agua EMPIEZA con la cabecera  (ej. "CANAL EVACUADOR DEL DESARENADOR" → "CANAL EVACUADOR")
+//    70 = la cabecera EMPIEZA con el Nivel_Agua
+//    60 = la descripción completa contiene TODAS las palabras (≥3 letras) de la cabecera
+//         (ej. "CANAL MADRE: EN LA ENTRADA AL DESARENADOR" → "ENTRADA DESARENADOR")
+// ============================================================
+$columnasEstacion = [];   // letra columna (F..O) => [id_muestra, header]
+for ($ci = 6; $ci <= 15; $ci++) {
+    $letra = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci);
+    $header = trim((string)$sheet->getCell($letra . '7')->getValue());
+    if ($header === '') continue;
+    $columnasEstacion[$letra] = ['id' => null, 'header' => $header];
+}
 
-    // Filas de parametros
-    foreach ($paramsPorCat[$normCat] as $param) {
-        $idParam = $param['id'];
-        $fila    = $filaActual;
-        $filaActual++;
+function _cs_palabrasSignificativas(string $norm): array {
+    // palabras de ≥3 letras del texto normalizado (sin caracteres especiales)
+    $t = preg_replace('/[^A-Z0-9 ]/', ' ', $norm);
+    $palabras = array_values(array_filter(explode(' ', $t), fn($p) => strlen($p) >= 3));
+    return $palabras;
+}
 
-        // Estilo base de la fila completa
-        $applyStyle('B' . $fila . ':' . $letFin . $fila, $estiloDato);
-        // Nombre con estilo especial (izquierda + italic)
-        $applyStyle('B' . $fila, $estiloDatoNombre);
+// Asignación "most constrained first": para cada columna se calculan sus
+// mejores candidatas (mayor puntaje); se asignan PRIMERO las columnas con
+// MENOS candidatas, de modo que una muestra ambigua (ej. varias "CANAL MADRE")
+// no sea "robada" por una columna que tiene alternativas.
+$colCands = [];
+foreach ($columnasEstacion as $letra => $infoCol) {
+    $hdrNorm = _cs_norm($infoCol['header']);
+    // OJO: las "palabras significativas" deben calcularse sobre el texto CON
+    // espacios (la normalización _cs_norm pega todo y rompe el match por palabras).
+    $hdrWords = _cs_palabrasSignificativas(_cs_sinTildes(strtoupper($infoCol['header'])));
 
-        // Valores
-        $sheet->getCell('B' . $fila)->setValue($param['nombre']);
-        $sheet->getCell('C' . $fila)->setValue($param['unidad'] !== '' ? $param['unidad'] : '-');
-        $sheet->getCell('D' . $fila)->setValue($limites[$idParam]['riego']['texto']    ?? '-');
-        $sheet->getCell('E' . $fila)->setValue($limites[$idParam]['animales']['texto'] ?? '-');
+    $mejorScore = 0;
+    $cands = [];
+    foreach ($muestras as $mu) {
+        $cortoNorm = _cs_norm($mu['corto']);
+        $obsNorm   = _cs_norm($mu['obs']);
 
-        // Resultados por fuente (celeste)
-        // Aplicar fondo celeste al rango completo de fuentes de esta fila
-        $letFuenteFin = Coordinate::stringFromColumnIndex($colFStart + $nFuentes - 1);
-        $applyStyle($letFStart . $fila . ':' . $letFuenteFin . $fila, $estiloDatoCeleste);
-
-        $numVals = [];
-        $colIdx  = $colFStart;
-        foreach ($fuentes as $fuente) {
-            $valor     = $resultados[$fuente][$idParam] ?? '-';
-            $colLetter = Coordinate::stringFromColumnIndex($colIdx);
-            $sheet->getCell($colLetter . $fila)->setValue($valor);
-
-            $numV = _caq_parseNum($valor);
-            if ($numV !== null) $numVals[] = $numV;
-
-            if ($excedeLimite($idParam, $valor)) {
-                $sheet->getStyle($colLetter . $fila)->getFont()->getColor()->setARGB($C_ROJO);
-                $sheet->getStyle($colLetter . $fila)->getFont()->setBold(true);
+        $score = 0;
+        if ($cortoNorm !== '' && $cortoNorm === $hdrNorm) {
+            $score = 100;
+        } elseif ($cortoNorm !== '' && strpos($cortoNorm, $hdrNorm) === 0 && $hdrNorm !== '') {
+            $score = 80;
+        } elseif ($cortoNorm !== '' && $hdrNorm !== '' && strpos($hdrNorm, $cortoNorm) === 0) {
+            $score = 70;
+        } elseif (!empty($hdrWords)) {
+            $todas = true;
+            foreach ($hdrWords as $w) {
+                if ($w === '' || strpos($obsNorm, $w) === false) { $todas = false; break; }
             }
-            $colIdx++;
+            if ($todas) $score = 60;
         }
 
-        // MAX / MIN
-        if (!empty($numVals)) {
-            $maxV = max($numVals);
-            $minV = min($numVals);
-            $sheet->getCell($letMax . $fila)->setValue($maxV);
-            $sheet->getCell($letMin . $fila)->setValue($minV);
-            if ($excedeLimite($idParam, (string)$maxV)) {
-                $sheet->getStyle($letMax . $fila)->getFont()->getColor()->setARGB($C_ROJO);
-                $sheet->getStyle($letMax . $fila)->getFont()->setBold(true);
-            }
+        if ($score > $mejorScore) {
+            $mejorScore = $score;
+            $cands = [$mu['id']];
+        } elseif ($score === $mejorScore && $score > 0) {
+            $cands[] = $mu['id'];
+        }
+    }
+    if ($mejorScore > 0) {
+        $colCands[$letra] = ['score' => $mejorScore, 'cands' => $cands];
+    }
+}
+
+// Orden: primero las columnas con menos candidatas (más restrictivas),
+// y dentro del mismo tamaño, las de mayor puntaje.
+uksort($colCands, function ($a, $b) use ($colCands) {
+    $na = count($colCands[$a]['cands']);
+    $nb = count($colCands[$b]['cands']);
+    if ($na !== $nb) return $na <=> $nb;
+    return $colCands[$b]['score'] <=> $colCands[$a]['score'];
+});
+
+$usadas = [];
+foreach ($colCands as $letra => $infoCand) {
+    $elegida = null;
+    foreach ($infoCand['cands'] as $idCand) {
+        if (!isset($usadas[$idCand])) { $elegida = $idCand; break; }
+    }
+    if ($elegida !== null) {
+        $columnasEstacion[$letra]['id'] = $elegida;
+        $usadas[$elegida] = true;
+    }
+}
+
+// ============================================================
+// FILAS DE DATOS DEL TEMPLATE (estructura fija verificada)
+// Físicos: 10-14 | Químicos: 17-29 | Microbiológicos: 32-33
+// ============================================================
+$filasDatos = [10, 11, 12, 13, 14, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 32, 33];
+
+// Para cada fila: nombre del template → Id_Parametro
+$filasInfo = [];
+foreach ($filasDatos as $fila) {
+    $nombreTpl = trim((string)$sheet->getCell('B' . $fila)->getValue());
+    $idParam   = $paramsActivos[_cs_base($nombreTpl)] ?? 0;
+    $filasInfo[$fila] = ['nombre' => $nombreTpl, 'id_param' => $idParam];
+}
+
+// ============================================================
+// LIMPIAR VALORES DE EJEMPLO DE LA PLANTILLA en las filas de datos
+// (F..O): evita que queden valores del mes de muestra cuando una
+// estación no tiene muestra asignada o el resultado es nulo.
+// ============================================================
+foreach ($filasDatos as $fila) {
+    for ($ci = 6; $ci <= 15; $ci++) {
+        $l = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci);
+        $sheet->getCell($l . $fila)->setValue(null);
+    }
+}
+
+// ============================================================
+// DECIDIR QUÉ FILAS SE OMITEN (resultado nulo en TODAS las estaciones)
+// ============================================================
+$filasOmitir = [];
+foreach ($filasInfo as $fila => $info) {
+    $idParam = $info['id_param'];
+    $tieneValor = false;
+    foreach ($columnasEstacion as $col) {
+        $idM = $col['id'];
+        if ($idM === null) continue;
+        $v = $resultados[$idM][$idParam] ?? '';
+        if ($v !== '') { $tieneValor = true; break; }
+    }
+    if (!$tieneValor) $filasOmitir[] = $fila;
+}
+
+// ============================================================
+// ELIMINAR FILAS SIN RESULTADOS (de abajo hacia arriba para no romper índices)
+// ============================================================
+rsort($filasOmitir);
+foreach ($filasOmitir as $fila) {
+    $sheet->removeRow($fila, 1);
+}
+
+// Fila final de cada fila de datos tras los borrados
+function _cs_filaFinal(int $filaOrig, array $omitidas): int {
+    $menores = 0;
+    foreach ($omitidas as $o) { if ($o < $filaOrig) $menores++; }
+    return $filaOrig - $menores;
+}
+
+// ============================================================
+// LIMPIAR COLUMNAS MAX/MIN (P/Q) — se reescriben con valores calculados
+// ============================================================
+for ($f = 4; $f <= 45; $f++) {
+    $sheet->getCell('P' . $f)->setValue(null);
+    $sheet->getCell('Q' . $f)->setValue(null);
+}
+$sheet->getCell('P9')->setValue('MAX');
+$sheet->getCell('Q9')->setValue('MIN');
+
+// ============================================================
+// ESCRIBIR VALORES POR ESTACIÓN + MAX/MIN CALCULADOS
+// ============================================================
+foreach ($filasInfo as $filaOrig => $info) {
+    if (in_array($filaOrig, $filasOmitir, true)) continue;
+    $nf = _cs_filaFinal($filaOrig, $filasOmitir);
+    $idParam = $info['id_param'];
+
+    $valoresNum = [];
+    foreach ($columnasEstacion as $letra => $col) {
+        $idM = $col['id'];
+        $v = ($idM !== null) ? ($resultados[$idM][$idParam] ?? '') : '';
+        if ($v === '') {
+            $sheet->getCell($letra . $nf)->setValue(null);   // en blanco (sin valores de ejemplo)
+            continue;
+        }
+        if (_cs_esNumero($v)) {
+            $sheet->getCell($letra . $nf)->setValue(_cs_aNumero($v));
+            $valoresNum[] = _cs_aNumero($v);
         } else {
-            $sheet->getCell($letMax . $fila)->setValue('-');
-            $sheet->getCell($letMin . $fila)->setValue('-');
+            $sheet->getCell($letra . $nf)->setValue($v);     // ">1100", "N.D." etc.
         }
+        // Quitar color/fuente heredados de los valores de ejemplo de la plantilla
+        $sheet->getStyle($letra . $nf)->getFont()->getColor()->setARGB('FF000000');
+        $sheet->getStyle($letra . $nf)->getFont()->setBold(false);
+    }
 
-        $sheet->getRowDimension($fila)->setRowHeight(16);
+    // MAX / MIN calculados en PHP (valores, no fórmulas)
+    if (!empty($valoresNum)) {
+        $sheet->getCell('P' . $nf)->setValue(max($valoresNum));
+        $sheet->getCell('Q' . $nf)->setValue(min($valoresNum));
     }
 }
 
-// Columna A blanca
-$sheet->getStyle('A1:A' . ($filaActual + 2))->applyFromArray([
-    'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => $C_BLANCO]],
-    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_NONE]],
+// ============================================================
+// BARRIDO FINAL: SIN BORDES Y SIN RELLENOS en todo el rango usado
+// (decisión del usuario: ninguna celda con borde; todo en blanco)
+// ============================================================
+$maxFila = 45;   // el template llega a la fila 45 (bloque LMP); tras borrar filas, menos
+$sheet->getStyle('B4:Q' . $maxFila)->applyFromArray([
+    'borders' => [
+        'allBorders' => ['borderStyle' => Border::BORDER_NONE, 'color' => ['argb' => 'FF000000']],
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_NONE,
+        'startColor' => ['argb' => 'FFFFFFFF'],
+    ],
 ]);
-
-// Freeze
-$sheet->freezePane($letFStart . '8');
 
 // ============================================================
 // OUTPUT
 // ============================================================
-$nombreSafe = preg_replace('/[^A-Za-z0-9_\-]/', '_', (string)($proyecto['Nombre_Proyecto'] ?? 'proyecto'));
-$filename   = 'CalidadAgua_' . $nombreSafe . '_' . date('Ymd_His') . '.xlsx';
+$filename = 'CALIDAD_SUPERFICIAL_' . $mesUpper . '_' . $anio . '_' . date('Ymd_His') . '.xlsx';
 
 while (ob_get_level() > 0) ob_end_clean();
 
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Cache-Control: max-age=0');
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 $writer = new Xlsx($spreadsheet);
 $writer->save('php://output');

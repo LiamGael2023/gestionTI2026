@@ -129,6 +129,13 @@
             <small class="text-muted">Define en qué reportes aparece este parámetro</small>
           </div>
           <div class="mb-3">
+            <label class="form-check form-switch mb-1">
+              <input class="form-check-input" type="checkbox" id="Es_Exportable" checked>
+              <span class="form-check-label font-weight-bold">Mostrar en Reporte Individual (Excel)</span>
+            </label>
+            <small class="text-muted d-block">Si se desmarca, este parámetro se omitirá <b>únicamente en los reportes de muestra individual</b>. Seguirá apareciendo en el reporte de monitoreo y en el sistema.</small>
+          </div>
+          <div class="mb-3">
             <label class="form-label">Metodo Utilizado</label>
             <input type="text" class="form-control" id="Metodo_Utilizado" placeholder="Ej: Potenciometria, Nefelometria">
           </div>
@@ -526,6 +533,7 @@ function cargarServicios() {
 function abrirModalNuevoParametro() {
     document.getElementById('form-parametro').reset();
     document.getElementById('Id_Parametro').value = '';
+    document.getElementById('Es_Exportable').checked = true;
     document.querySelector('#modal-parametro .modal-title').textContent = 'Nuevo Parametro';
     new bootstrap.Modal(document.getElementById('modal-parametro')).show();
 }
@@ -808,6 +816,7 @@ function guardarParametro() {
         Unidad_Medida: document.getElementById('Id_Unidad_Medida').selectedOptions[0]?.text || null,
         Categoria: document.getElementById('Categoria').value,
         Tipo_Parametro: document.getElementById('Tipo_Parametro').value,
+        Es_Exportable: document.getElementById('Es_Exportable').checked ? 1 : 0,
         Metodo_Utilizado: document.getElementById('Metodo_Utilizado').value,
         Posgre_Valor: document.getElementById('Posgre_Nombre').value
     };
@@ -870,6 +879,7 @@ function editarParametro(id) {
                 }
                 document.getElementById('Categoria').value = p.Categoria || '';
                 document.getElementById('Tipo_Parametro').value = p.Tipo_Parametro || 'Ambos';
+                document.getElementById('Es_Exportable').checked = (p.Es_Exportable === undefined || p.Es_Exportable === null || parseInt(p.Es_Exportable) === 1 || p.Es_Exportable === true);
                 document.getElementById('Metodo_Utilizado').value = p.Metodo_Utilizado || '';
                 if (p.Posgre_Tabla && p.Posgre_Nombre) {
                     document.getElementById('Posgre_Nombre').value = p.Posgre_Tabla + '.' + p.Posgre_Nombre;

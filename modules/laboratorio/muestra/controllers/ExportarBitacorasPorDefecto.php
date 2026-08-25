@@ -183,6 +183,8 @@ try {
                     'ubicacion_punto' => trim((string)($row['Ubicacion_Punto'] ?? '')),
                     'punto_toma' => trim((string)($row['Punto_Toma'] ?? '')),
                     'hora_muestreo' => trim((string)($row['Hora_Muestreo'] ?? '')),
+                    'no_analizada' => !empty($row['No_Analizada']) ? 1 : 0,
+                    'observacion_muestra' => trim((string)($row['Observacion_Muestra'] ?? '')),
                     'parametros' => [],
                 ];
             }
@@ -305,6 +307,8 @@ try {
             'ubicacion_punto' => trim((string)($sample['ubicacion_punto'] ?? '-')),
             'punto_toma' => trim((string)($sample['punto_toma'] ?? '-')),
             'hora_muestreo' => '-',
+            'no_analizada' => 0,
+            'observacion_muestra' => '',
             'parametros' => [],
         ];
     };
@@ -396,11 +400,24 @@ try {
                 'ubicacion_punto' => '-',
                 'punto_toma' => '-',
                 'hora_muestreo' => '-',
+                'no_analizada' => 0,
+                'observacion_muestra' => '',
                 'parametros' => [],
             ]];
             $samplesManana = $placeholder;
             $samplesTarde = $placeholder;
-        }
+            }
+
+            // ¿La fecha tiene comentarios individuales por muestra?
+            $hayObsIndividual = false;
+            foreach ($fechaData['turnos'] as $tInfo) {
+            foreach (($tInfo['samples'] ?? []) as $s) {
+                if (trim((string)($s['observacion_muestra'] ?? '')) !== '') {
+                    $hayObsIndividual = true;
+                    break 2;
+                }
+            }
+            }
 
         $turnos = [
             'Mañana' => $samplesManana,
@@ -418,6 +435,11 @@ try {
                 $sheet->setCellValue($ubicCol . $dataRow, trim((string)($sample['ubicacion_punto'] ?? '')) !== '' ? $sample['ubicacion_punto'] : '-');
                 $sheet->setCellValue($puntoCol . $dataRow, trim((string)($sample['punto_toma'] ?? '')) !== '' ? $sample['punto_toma'] : '-');
                 $sheet->setCellValue($horaCol . $dataRow, trim((string)($sample['hora_muestreo'] ?? '')) !== '' ? $sample['hora_muestreo'] : '-');
+
+                if ($hayObsIndividual) {
+                    $obsFila = trim((string)($sample['observacion_muestra'] ?? ''));
+                    $sheet->setCellValue($obsCol . $dataRow, $obsFila !== '' ? $obsFila : '-');
+                }
 
                 $colIdx = $firstParamColIdx;
                 foreach ($paramCols as $pcol) {
@@ -442,22 +464,45 @@ try {
                     'color' => ['argb' => $colorTurno[$turnoNombre] ?? 'FFD9D9D9'],
                 ],
             ]);
-        }
 
-        $observacionMostrar = '';
-        if ($mananaSinMuestras xor $tardeSinMuestras) {
-            $turnoSinMuestras = $mananaSinMuestras ? 'Mañana' : 'Tarde';
-            $obsTurno = trim((string)($fechaData['turnos'][$turnoSinMuestras]['observacion'] ?? ''));
-            $observacionMostrar = 'Turno ' . $turnoSinMuestras . ': ' . ($obsTurno !== '' ? $obsTurno : '(sin observación)');
+            // Turno completo sin análisis (sin muestras o todas marcadas como
+            // "No Analizada"): la observación general de la bitácora se muestra en
+            // la columna Observaciones sobre el bloque del turno, como antes.
+            $samplesOriginales = $turnoNombre === 'Mañana' ? $samplesMananaOriginal : $samplesTardeOriginal;
+            $turnoVacio = $turnoNombre === 'Mañana' ? $mananaSinMuestras : $tardeSinMuestras;
+            $todasNoAnalizadas = !$turnoVacio;
+            foreach ($samplesOriginales as $smp) {
+                if (empty($smp['no_analizada'])) {
+                    $todasNoAnalizadas = false;
+                    break;
+                }
+            }
+            $turnoSinAnalisis = $turnoVacio || $todasNoAnalizadas;
+
+            $hayObsIndTurno = false;
+            foreach ($samples as $smp) {
+                if (trim((string)($smp['observacion_muestra'] ?? '')) !== '') {
+                    $hayObsIndTurno = true;
+                    break;
+                }
+            }
+
+            $obsGeneralTurno = trim((string)($fechaData['turnos'][$turnoNombre]['observacion'] ?? ''));
+
+            if ($turnoSinAnalisis && !$hayObsIndTurno && $turnoEnd >= $turnoStart) {
+                $txtObsTurno = 'Turno ' . $turnoNombre . ': ' . ($obsGeneralTurno !== '' ? $obsGeneralTurno : '(sin observación)');
+                $sheet->setCellValue($obsCol . $turnoStart, $txtObsTurno);
+                if ($turnoEnd > $turnoStart) {
+                    $sheet->mergeCells($obsCol . $turnoStart . ':' . $obsCol . $turnoEnd);
+                }
+            }
         }
 
         $fechaEnd = $dataRow - 1;
         $sheet->setCellValue($fechaCol . $fechaStart, $fecha);
         if ($fechaEnd > $fechaStart) {
             $sheet->mergeCells($fechaCol . $fechaStart . ':' . $fechaCol . $fechaEnd);
-            $sheet->mergeCells($obsCol . $fechaStart . ':' . $obsCol . $fechaEnd);
         }
-        $sheet->setCellValue($obsCol . $fechaStart, $observacionMostrar);
     }
 
     $lastDataRow = max(7, $dataRow - 1);

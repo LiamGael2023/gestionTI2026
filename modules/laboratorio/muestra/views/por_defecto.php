@@ -454,6 +454,23 @@
             <span class="form-check-label">Tarde</span>
           </label>
         </div>
+
+        <div class="mt-3">
+          <label class="form-label d-block">Muestras a duplicar <span class="text-danger">*</span></label>
+          <div class="table-responsive" style="max-height:260px; overflow:auto;">
+            <table class="table table-sm table-vcenter card-table">
+              <thead>
+                <tr>
+                  <th style="width:70px;">N°</th>
+                  <th>Punto de toma</th>
+                  <th style="width:130px;">No analizada</th>
+                  <th>Comentario (si no se analiza)</th>
+                </tr>
+              </thead>
+              <tbody id="lista-muestras-duplicar"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -489,6 +506,7 @@
   (function () {
     const apiUrl = 'modules/laboratorio/muestra/controllers/MuestraAPI.php';
     const muestrasSeleccionadas = new Set();
+    const infoMuestrasDuplicar = {};
     const modalCrearElement = document.getElementById('modal-crear-muestra');
     const modalDuplicarElement = document.getElementById('modal-duplicar-muestras');
     const modalDetalleFechaElement = document.getElementById('modal-detalle-bitacora-fecha');
@@ -798,6 +816,34 @@
       cabecera.indeterminate = marcados > 0 && marcados < checksVisibles.length;
     };
 
+    const renderListaMuestrasDuplicar = function () {
+      const tbody = document.getElementById('lista-muestras-duplicar');
+      tbody.innerHTML = '';
+      const ids = Array.from(muestrasSeleccionadas).sort(function (a, b) { return parseInt(a, 10) - parseInt(b, 10); });
+      ids.forEach(function (id) {
+        const info = infoMuestrasDuplicar[id] || {};
+        const tr = document.createElement('tr');
+        tr.dataset.idOriginal = id;
+        const punto = (info.punto_toma || '').trim() !== '' ? (info.punto_toma) : '-';
+        tr.innerHTML = '<td>' + id + '</td>'
+          + '<td>' + punto + '</td>'
+          + '<td><input type="checkbox" class="form-check-input chk-no-analizada"></td>'
+          + '<td><input type="text" class="form-control form-control-sm comentario-muestra" placeholder="Ej: en mantenimiento" style="min-width:200px;"></td>';
+        tbody.appendChild(tr);
+      });
+    };
+
+    const registrarInfoMuestra = function (checkboxEl) {
+      const id = checkboxEl.value;
+      const row = $('#tabla-muestras-defecto').DataTable().row(checkboxEl.closest('tr')).data();
+      if (row) {
+        infoMuestrasDuplicar[id] = {
+          punto_toma: row.punto_toma || '',
+          ubicacion: row.ubicacion_punto || ''
+        };
+      }
+    };
+
     const manejarRealizarAnalisis = function () {
       if (muestrasSeleccionadas.size === 0) {
         Swal.fire('Error', 'Seleccione al menos una muestra por defecto de la lista.', 'error');
@@ -805,6 +851,7 @@
       }
 
       document.getElementById('fecha_duplicacion').value = new Date().toISOString().split('T')[0];
+      renderListaMuestrasDuplicar();
       const modal = new bootstrap.Modal(modalDuplicarElement);
       modal.show();
     };
@@ -821,6 +868,17 @@
 
       const idsSeleccionados = Array.from(muestrasSeleccionadas).map(function (id) { return parseInt(id, 10); });
 
+      const observaciones = {};
+      document.querySelectorAll('#lista-muestras-duplicar tr').forEach(function (tr) {
+        const idOrig = parseInt(tr.dataset.idOriginal, 10);
+        if (!idOrig) return;
+        const noAnalizada = tr.querySelector('.chk-no-analizada').checked;
+        const comentario = tr.querySelector('.comentario-muestra').value.trim();
+        if (noAnalizada || comentario !== '') {
+          observaciones[idOrig] = { no_analizada: noAnalizada, observacion: comentario };
+        }
+      });
+
       const btnDuplicar = document.getElementById('btn-confirmar-duplicacion');
       btnDuplicar.disabled = true;
       btnDuplicar.textContent = 'Procesando...';
@@ -831,7 +889,8 @@
         body: JSON.stringify({
           ids_muestras: idsSeleccionados,
           fecha_registro: fecha,
-          turno: turno
+          turno: turno,
+          observaciones: observaciones
         })
       })
         .then(function (resp) { return resp.json(); })
@@ -1145,22 +1204,34 @@
       }
 
       let filas = '';
-      if (resultados.length === 0) {
-        filas = '<tr><td colspan="7" class="text-center text-muted py-4">No hay resultados registrados para este turno.</td></tr>';
-      } else {
-        resultados.forEach(function (r) {
-          const valor = (r.valor_hallado || '').trim();
-          filas += '<tr>' +
-            '<td>' + escapeHtml(r.id_muestra) + '</td>' +
-            '<td>' + escapeHtml(r.ubicacion_punto || '-') + '</td>' +
-            '<td>' + escapeHtml(r.punto_toma || '-') + '</td>' +
-            '<td>' + escapeHtml(r.parametro || '-') + '</td>' +
-            '<td>' + escapeHtml(r.unidad || '') + '</td>' +
-            '<td>' + escapeHtml(valor !== '' ? valor : '(pendiente)') + '</td>' +
-            '<td>' + escapeHtml(r.estado || '-') + '</td>' +
-          '</tr>';
-        });
-      }
+            let ultimoIdMuestra = null;
+            if (resultados.length === 0) {
+              filas = '<tr><td colspan="8" class="text-center text-muted py-4">No hay resultados registrados para este turno.</td></tr>';
+            } else {
+              resultados.forEach(function (r) {
+                const valor = (r.valor_hallado || '').trim();
+                const esPrimeraFilaMuestra = String(r.id_muestra) !== String(ultimoIdMuestra);
+                ultimoIdMuestra = r.id_muestra;
+                const noAnalizada = parseInt(r.no_analizada || 0, 10) === 1;
+                const obsMuestra = (r.observacion_muestra || '').trim();
+                const estadoHtml = noAnalizada
+                  ? '<span class="badge bg-danger">NO ANALIZADA</span>'
+                  : escapeHtml(r.estado || '-');
+                const obsHtml = (esPrimeraFilaMuestra && obsMuestra !== '')
+                  ? escapeHtml(obsMuestra)
+                  : '<span class="text-muted">-</span>';
+                filas += '<tr>' +
+                  '<td>' + escapeHtml(r.id_muestra) + '</td>' +
+                  '<td>' + escapeHtml(r.ubicacion_punto || '-') + '</td>' +
+                  '<td>' + escapeHtml(r.punto_toma || '-') + '</td>' +
+                  '<td>' + escapeHtml(r.parametro || '-') + '</td>' +
+                  '<td>' + escapeHtml(r.unidad || '') + '</td>' +
+                  '<td>' + escapeHtml(valor !== '' ? valor : '(pendiente)') + '</td>' +
+                  '<td>' + estadoHtml + '</td>' +
+                  '<td>' + obsHtml + '</td>' +
+                '</tr>';
+              });
+            }
 
       const obsInfo = observacion !== ''
         ? '<div class="mb-2"><strong>Observación:</strong> ' + escapeHtml(observacion) + '</div>'
@@ -1177,7 +1248,7 @@
             obsInfo +
             '<div class="table-responsive">' +
               '<table class="table table-vcenter card-table table-striped">' +
-                '<thead><tr><th>ID Muestra</th><th>Ubicación del punto</th><th>Punto de toma</th><th>Parámetro</th><th>Unidad</th><th>Valor hallado</th><th>Estado</th></tr></thead>' +
+                '<thead><tr><th>ID Muestra</th><th>Ubicación del punto</th><th>Punto de toma</th><th>Parámetro</th><th>Unidad</th><th>Valor hallado</th><th>Estado</th><th>Observación</th></tr></thead>' +
                 '<tbody>' + filas + '</tbody>' +
               '</table>' +
             '</div>' +
@@ -1346,8 +1417,10 @@
         const id = event.target.value;
         if (event.target.checked) {
           muestrasSeleccionadas.add(id);
+          registrarInfoMuestra(event.target);
         } else {
           muestrasSeleccionadas.delete(id);
+          delete infoMuestrasDuplicar[id];
         }
         actualizarCheckboxCabecera();
       });
@@ -1361,8 +1434,10 @@
           check.checked = marcar;
           if (marcar) {
             muestrasSeleccionadas.add(check.value);
+            registrarInfoMuestra(check);
           } else {
             muestrasSeleccionadas.delete(check.value);
+            delete infoMuestrasDuplicar[check.value];
           }
         });
         actualizarCheckboxCabecera();
@@ -1409,6 +1484,7 @@
 
       modalDuplicarElement.addEventListener('hidden.bs.modal', function () {
         document.getElementById('fecha_duplicacion').value = '';
+        document.getElementById('lista-muestras-duplicar').innerHTML = '';
       });
     });
   })();
