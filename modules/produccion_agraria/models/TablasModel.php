@@ -38,37 +38,46 @@ class TablasModel {
     public function guardarClase($data) {
         if (!empty($data['id_clase'])) {
             // UPDATE
-            $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.clase SET nombre_clase = ? WHERE id_clase = ?";
+            $sql    = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.clase SET nombre_clase = ? WHERE id_clase = ?";
             $params = [$data['nombre_clase'], $data['id_clase']];
-            $stmt = sqlsrv_query($this->db, $sql, $params);
+            $stmt   = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
-                return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+                error_log('[TablasModel::guardarClase] SQL Error UPDATE: ' . print_r(sqlsrv_errors(), true));
+                return ['success' => false, 'message' => 'Error al guardar. Intente nuevamente.'];
             }
+            sqlsrv_free_stmt($stmt);
             return ['success' => true, 'id' => $data['id_clase']];
         } else {
-            // INSERT
-            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.clase (nombre_clase) VALUES (?)";
+            // INSERT con OUTPUT INSERTED.id_clase (atómico)
+            $sql    = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.clase (nombre_clase) OUTPUT INSERTED.id_clase VALUES (?)";
             $params = [$data['nombre_clase']];
-            $stmt = sqlsrv_query($this->db, $sql, $params);
+            $stmt   = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
-                return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+                error_log('[TablasModel::guardarClase] SQL Error INSERT: ' . print_r(sqlsrv_errors(), true));
+                return ['success' => false, 'message' => 'Error al guardar. Intente nuevamente.'];
             }
-            return ['success' => true, 'id' => $this->getLastInsertId()];
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            sqlsrv_free_stmt($stmt);
+            return ['success' => true, 'id' => $row['id_clase'] ?? null];
         }
     }
 
     public function eliminarClase($id) {
-        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.clase SET activo = 0 WHERE id_clase = ?";
+        $sql  = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.clase SET activo = 0 WHERE id_clase = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
+        if ($stmt !== false) sqlsrv_free_stmt($stmt);
         return $stmt !== false;
     }
 
     private function getLastInsertId() {
-        $sql = "SELECT SCOPE_IDENTITY() as id";
+        // Mantenido por compatibilidad. Se prefiere OUTPUT INSERTED.id en cada query.
+        $sql  = "SELECT SCOPE_IDENTITY() as id";
         $stmt = sqlsrv_query($this->db, $sql);
         if ($stmt && $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
+            sqlsrv_free_stmt($stmt);
             return $row['id'];
         }
+        if ($stmt) sqlsrv_free_stmt($stmt);
         return null;
     }
 
@@ -101,27 +110,33 @@ class TablasModel {
 
     public function guardarCentro($data) {
         if (!empty($data['id_centro'])) {
-            $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.centro_produccion SET nombre_centro = ?, ubicacion = ?, encargado = ? WHERE id_centro = ?";
+            $sql    = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.centro_produccion SET nombre_centro = ?, ubicacion = ?, encargado = ? WHERE id_centro = ?";
             $params = [$data['nombre_centro'], $data['ubicacion'], $data['encargado'], $data['id_centro']];
-            $stmt = sqlsrv_query($this->db, $sql, $params);
+            $stmt   = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
-                return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+                error_log('[TablasModel::guardarCentro] SQL Error UPDATE: ' . print_r(sqlsrv_errors(), true));
+                return ['success' => false, 'message' => 'Error al guardar. Intente nuevamente.'];
             }
+            sqlsrv_free_stmt($stmt);
             return ['success' => true, 'id' => $data['id_centro']];
         } else {
-            $sql = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.centro_produccion (nombre_centro, ubicacion, encargado) VALUES (?, ?, ?)";
+            $sql    = "INSERT INTO BD_PRODUCCIONDESARROLLO.dbo.centro_produccion (nombre_centro, ubicacion, encargado) OUTPUT INSERTED.id_centro VALUES (?, ?, ?)";
             $params = [$data['nombre_centro'], $data['ubicacion'], $data['encargado']];
-            $stmt = sqlsrv_query($this->db, $sql, $params);
+            $stmt   = sqlsrv_query($this->db, $sql, $params);
             if ($stmt === false) {
-                return ['success' => false, 'message' => print_r(sqlsrv_errors(), true)];
+                error_log('[TablasModel::guardarCentro] SQL Error INSERT: ' . print_r(sqlsrv_errors(), true));
+                return ['success' => false, 'message' => 'Error al guardar. Intente nuevamente.'];
             }
-            return ['success' => true, 'id' => $this->getLastInsertId()];
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            sqlsrv_free_stmt($stmt);
+            return ['success' => true, 'id' => $row['id_centro'] ?? null];
         }
     }
 
     public function eliminarCentro($id) {
-        $sql = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.centro_produccion SET activo = 0 WHERE id_centro = ?";
+        $sql  = "UPDATE BD_PRODUCCIONDESARROLLO.dbo.centro_produccion SET activo = 0 WHERE id_centro = ?";
         $stmt = sqlsrv_query($this->db, $sql, [$id]);
+        if ($stmt !== false) sqlsrv_free_stmt($stmt);
         return $stmt !== false;
     }
 

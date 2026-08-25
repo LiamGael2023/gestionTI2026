@@ -71,5 +71,54 @@ class Auth {
         header("Location: " . BASE_URL . "/login");
         exit();
     }
+
+    /**
+     * Retorna los 5 niveles de permiso del usuario en sesión para un módulo.
+     * Devuelve todos en 0 si no existe registro en comun.Permisos.
+     *
+     * @param  string $modulo Nombre interno del módulo (ej: 'produccion_agraria')
+     * @return array  ['pueden_ver'=>0|1, 'pueden_crear'=>0|1, 'pueden_editar'=>0|1,
+     *                 'pueden_eliminar'=>0|1, 'pueden_exportar'=>0|1]
+     */
+    static public function permisosModulo($modulo) {
+        $defaults = [
+            'pueden_ver'      => 0,
+            'pueden_crear'    => 0,
+            'pueden_editar'   => 0,
+            'pueden_eliminar' => 0,
+            'pueden_exportar' => 0,
+        ];
+
+        if (!isset($_SESSION['usuario_id'])) {
+            return $defaults;
+        }
+
+        // Los ADMIN siempre tienen todos los permisos
+        if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] === 'ADMIN') {
+            return array_fill_keys(array_keys($defaults), 1);
+        }
+
+        $db = Conexion::conectar();
+        $sql = "SELECT p.pueden_ver, p.pueden_crear, p.pueden_editar, p.pueden_eliminar, p.pueden_exportar
+                FROM comun.Permisos p
+                INNER JOIN comun.Modulos m ON p.id_modulo = m.id_modulo
+                WHERE p.id_usuario = ? AND m.nombre = ?";
+        $stmt = sqlsrv_query($db, $sql, [$_SESSION['usuario_id'], $modulo]);
+
+        if ($stmt && sqlsrv_has_rows($stmt)) {
+            $row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+            sqlsrv_free_stmt($stmt);
+            return [
+                'pueden_ver'      => (int)($row['pueden_ver']      ?? 0),
+                'pueden_crear'    => (int)($row['pueden_crear']    ?? 0),
+                'pueden_editar'   => (int)($row['pueden_editar']   ?? 0),
+                'pueden_eliminar' => (int)($row['pueden_eliminar'] ?? 0),
+                'pueden_exportar' => (int)($row['pueden_exportar'] ?? 0),
+            ];
+        }
+
+        if ($stmt) sqlsrv_free_stmt($stmt);
+        return $defaults;
+    }
 }
 

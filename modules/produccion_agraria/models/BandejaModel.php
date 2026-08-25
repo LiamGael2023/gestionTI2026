@@ -28,8 +28,13 @@ class BandejaModel {
             $sql .= " AND t.estado = ?";
             $params[] = $filtros['estado'];
         } elseif (empty($filtros['ver_todas'])) {
-            // Excluir las procesadas y rechazadas para ver proformas pendientes
-            $sql .= " AND (t.estado IS NULL OR t.estado NOT IN ('PROCESADO', 'RECHAZADO'))";
+            // Excluir las procesadas y rechazadas para ver proformas pendientes,
+            // PERO incluir las ventas por PLANILLA (que se crean directamente en PROCESADO)
+            // para que queden visibles en la bandeja sin necesidad de filtrar por estado.
+            $sql .= " AND (
+                        (t.estado IS NULL OR t.estado NOT IN ('PROCESADO', 'RECHAZADO'))
+                        OR (t.metodo_pago = 'PLANILLA' AND t.estado = 'PROCESADO')
+                    )";
         }
         
         // Filtro por fecha
@@ -115,8 +120,13 @@ class BandejaModel {
         
         $stmtDet = sqlsrv_query($this->db, $sqlDet, [$idTransaccion]);
         $detalles = [];
-        while ($row = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC)) {
-            $detalles[] = $row;
+        if ($stmtDet !== false) {
+            while ($row = sqlsrv_fetch_array($stmtDet, SQLSRV_FETCH_ASSOC)) {
+                $detalles[] = $row;
+            }
+            sqlsrv_free_stmt($stmtDet);
+        } else {
+            error_log('[BandejaModel::obtenerProforma] Error al obtener detalles para ID ' . $idTransaccion . ': ' . print_r(sqlsrv_errors(), true));
         }
         
         $proforma['detalles'] = $detalles;

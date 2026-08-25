@@ -7,31 +7,45 @@ class VoucherModel {
     }
 
     /**
-     * Listar todos los vouchers
+     * Listar todos los vouchers con filtros opcionales
+     * @param array $filtros Soporta: 'fecha_desde', 'fecha_hasta'
      */
     public function listarVouchers($filtros = []) {
-        $sql = "SELECT v.id_voucher, v.num_operacion as num_operation, v.monto_total, v.fecha_deposito, 
+        $sql = "SELECT v.id_voucher, v.num_operacion as num_operation, v.monto_total, v.fecha_deposito,
                        v.url_imagen,
                        CASE WHEN v.archivo_blob IS NOT NULL THEN 1 ELSE 0 END as tiene_archivo,
                        COUNT(t.id_transaccion) as total_proformas,
                        ISNULL(SUM(t.total), 0) as monto_asignado
                 FROM BD_PRODUCCIONDESARROLLO.dbo.voucher_deposito v
                 LEFT JOIN BD_PRODUCCIONDESARROLLO.dbo.transaccion t ON v.id_voucher = t.id_voucher
-                WHERE v.activo = 1
-                GROUP BY v.id_voucher, v.num_operacion, v.monto_total, v.fecha_deposito, 
-                         v.url_imagen, v.archivo_blob
-                ORDER BY v.id_voucher DESC";
-        
-        $stmt = sqlsrv_query($this->db, $sql);
+                WHERE v.activo = 1";
+
+        $params = [];
+
+        if (!empty($filtros['fecha_desde'])) {
+            $sql     .= " AND CAST(v.fecha_deposito AS DATE) >= ?";
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $sql     .= " AND CAST(v.fecha_deposito AS DATE) <= ?";
+            $params[] = $filtros['fecha_hasta'];
+        }
+
+        $sql .= " GROUP BY v.id_voucher, v.num_operacion, v.monto_total, v.fecha_deposito,
+                          v.url_imagen, v.archivo_blob
+                 ORDER BY v.id_voucher DESC";
+
+        $stmt = sqlsrv_query($this->db, $sql, empty($params) ? null : $params);
         if ($stmt === false) {
-            error_log('Error listarVouchers: ' . print_r(sqlsrv_errors(), true));
+            error_log('[VoucherModel::listarVouchers] SQL Error: ' . print_r(sqlsrv_errors(), true));
             return [];
         }
-        
+
         $result = [];
         while ($row = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC)) {
             $result[] = $row;
         }
+        sqlsrv_free_stmt($stmt);
         return $result;
     }
 

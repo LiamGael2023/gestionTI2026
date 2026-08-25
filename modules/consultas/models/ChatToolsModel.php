@@ -1674,7 +1674,7 @@ class ChatToolsModel {
                 ['campo' => 'Clase', 'valor' => $prod['nombre_clase'] ?: '-'],
                 ['campo' => 'Unidad', 'valor' => $prod['unidad_medida']],
                 ['campo' => 'Centros', 'valor' => implode(', ', $centros) ?: '-'],
-                ['campo' => 'Tipo Precio', 'valor' => $prod['tipo_precio'] ?: 'Fijo'],
+                ['campo' => 'Tipo Precio', 'valor' => $prod['tipo_precio'] ?: 'Variable'],
                 ['campo' => 'Maneja Stock', 'valor' => $prod['maneja_stock'] ? 'Si' : 'No'],
                 ['campo' => 'Precio Vigente', 'valor' => $ultimoPrecio ? 'S/ ' . number_format($ultimoPrecio['precio_oficial'], 4) : 'No registrado'],
                 ['campo' => 'Stock Total', 'valor' => array_sum(array_column($stockPorCentro, 'stock')) . ' ' . $prod['unidad_medida']],
