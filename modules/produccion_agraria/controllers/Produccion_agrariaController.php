@@ -1,6 +1,13 @@
 <?php
 $action = $_GET['action'] ?? 'index';
 
+// En peticiones AJAX el router no incluye header.php, por lo que $conn puede
+// no existir. Se asegura conexión antes de evaluar permisos.
+if (!isset($conn) || !$conn) {
+    require_once 'config/db.php';
+    $conn = Conexion::conectar();
+}
+
 // ── Control de permisos por rol de Producción Agraria ─────────────
 // Mapa: acción (vista) -> url del submódulo registrado en submodulo_pa
 $mapa_submodulo_pa = [
@@ -35,10 +42,20 @@ $mapa_submodulo_pa = [
     'tool_recomendaciones' => '?module=produccion_agraria&action=consultas', 'tool_metricas' => '?module=produccion_agraria&action=consultas', 'tool_detalle_producto' => '?module=produccion_agraria&action=consultas',
 ];
 if (isset($mapa_submodulo_pa[$action])) {
-    require_once 'modules/produccion_agraria/models/PermisosModel.php';
-    $permisosPAModel = new PermisosModel($conn);
-    $permisosPA      = $permisosPAModel->obtenerPermisosSubmodulo($_SESSION['usuario_id'], $mapa_submodulo_pa[$action]);
-    // Retrocompatibilidad: si el usuario NO tiene rol de PA asignado, mantiene acceso actual.
+    // El guard de permisos es "best effort": si falla por cualquier motivo
+    // (tablas de roles ausentes, error de conexión, etc.) NO debe bloquear
+    // las operaciones de datos. Fallback: acceso permitido.
+    $permisosPA = null;
+    try {
+        require_once 'modules/produccion_agraria/models/PermisosModel.php';
+        $permisosPAModel = new PermisosModel($conn);
+        $permisosPA      = $permisosPAModel->obtenerPermisosSubmodulo($_SESSION['usuario_id'], $mapa_submodulo_pa[$action]);
+    } catch (Throwable $e) {
+        error_log('[Produccion_agrariaController] Permisos no disponibles: ' . $e->getMessage());
+        $permisosPA = null;
+    }
+    // Retrocompatibilidad: si el usuario NO tiene rol de PA asignado (o el
+    // sistema de permisos no está disponible), mantiene acceso actual.
     // Si tiene rol, se respeta la matriz de permisos (ver).
     if ($permisosPA !== null && !$permisosPA['ver']) {
         // Acciones AJAX (json): denegar con 403 JSON. Vistas: mostrar sin_acceso.
